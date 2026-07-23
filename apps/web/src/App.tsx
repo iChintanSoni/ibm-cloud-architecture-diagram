@@ -12,13 +12,19 @@ import {
   ruleMetadata,
   type ConformanceSeverity,
   type Diagnostic,
+  type DiagramTemplateId,
   type ElementId,
   type ElementPropertiesPatch,
   type Editor,
   type ExportGate,
   type SceneElement
 } from "@icad/core";
-import { InspectorPanel, LibraryPanel, type LibraryPlacement } from "@icad/ui-web";
+import {
+  InspectorPanel,
+  LibraryPanel,
+  NewDiagramDialog,
+  type LibraryPlacement
+} from "@icad/ui-web";
 import { useEffect, useRef, useState } from "react";
 import { createIbmCloudCatalog } from "./catalog";
 import { clearDraft, debounceAutosave, loadDraft, saveDraft } from "./persistence/autosave";
@@ -26,46 +32,6 @@ import { openIcadFile, saveIcadFile, supportsFileSystemAccess } from "./persiste
 import { clientPointToCanvas, placeLibraryItem } from "./placement";
 import { type ThemePreference, useResolvedTheme } from "./useResolvedTheme";
 import { buildValidationView } from "./validation";
-
-/** West-to-east demo layout (docs/05-ibm-spec-conformance.md#layout-convention). */
-function seedDemoDiagram(editor: Editor): void {
-  const ROW_Y = 150;
-
-  const customer = editor.addActor({
-    at: { x: 40, y: ROW_Y },
-    label: "Customer",
-    catalogRef: "ibm-cloud/user"
-  });
-
-  const vpc = editor.addBox({ at: { x: 220, y: 60 }, w: 560, h: 220, label: "VPC" });
-  const zone = editor.addGroup({
-    at: { x: 250, y: 100 },
-    w: 380,
-    h: 140,
-    parentId: vpc,
-    label: "Security group"
-  });
-
-  const gateway = editor.addIcon("ibm-cloud/gateway-api", { at: { x: 280, y: ROW_Y }, parentId: zone, label: "API Gateway" });
-  const compute = editor.addIcon("ibm-cloud/instance-bx", { at: { x: 500, y: ROW_Y }, parentId: zone, label: "App server" });
-  const storage = editor.addIcon("ibm-cloud/object-storage-application", {
-    at: { x: 680, y: ROW_Y },
-    parentId: vpc,
-    label: "Object storage"
-  });
-
-  editor.connect({ elementId: customer, port: "e" }, { elementId: gateway, port: "w" }, {
-    connectorType: "connection",
-    flowColor: "public"
-  });
-  editor.connect({ elementId: gateway, port: "e" }, { elementId: compute, port: "w" }, {
-    connectorType: "connection",
-    flowColor: "private"
-  });
-  editor.connect({ elementId: compute, port: "e" }, { elementId: storage, port: "w" }, {
-    connectorType: "dependency"
-  });
-}
 
 function download(filename: string, content: string, mime: string): void {
   const blob = new Blob([content], { type: mime });
@@ -95,6 +61,7 @@ export function App() {
   const [elements, setElements] = useState<SceneElement[]>([]);
   const [selectedIds, setSelectedIds] = useState<ElementId[]>([]);
   const [recoveredDraft, setRecoveredDraft] = useState(false);
+  const [newDiagramOpen, setNewDiagramOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [exportGate, setExportGateState] = useState<ExportGate>("warn");
   const carbonTheme = useResolvedTheme(themePreference);
@@ -114,9 +81,11 @@ export function App() {
       if (cancelled) return;
       if (draft) {
         editor.loadIcad(draft);
+        setThemePreference(editor.scene.canvas.theme);
         setRecoveredDraft(true);
       } else {
-        seedDemoDiagram(editor);
+        editor.newDocument("blank");
+        setNewDiagramOpen(true);
       }
       setExportGateState(editor.scene.conformance.exportGate);
       setDiagnostics(editor.lint());
@@ -199,6 +168,7 @@ export function App() {
     const editor = editorRef.current;
     if (!editor) return;
     editor.loadIcad(JSON.parse(text));
+    setThemePreference(editor.scene.canvas.theme);
     setExportGateState(editor.scene.conformance.exportGate);
     setDiagnostics(editor.lint());
     setRecoveredDraft(false);
@@ -225,6 +195,19 @@ export function App() {
     clearDraft().then(() => window.location.reload());
   };
 
+  const handleCreateDiagram = (templateId: DiagramTemplateId) => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    editor.newDocument(templateId);
+    fileHandleRef.current = null;
+    setActivePlacement(undefined);
+    setRecoveredDraft(false);
+    setExportGateState(editor.scene.conformance.exportGate);
+    setDiagnostics(editor.lint());
+    setNewDiagramOpen(false);
+    void saveDraft(editor.toIcad());
+  };
+
   const {
     groups: groupedDiagnostics,
     counts,
@@ -238,6 +221,9 @@ export function App() {
         <header className="icad-topbar">
           <span className="icad-brand">ICAD — IBM Cloud Architecture Diagrams</span>
           <div className="icad-toolbar">
+            <Button kind="tertiary" size="sm" onClick={() => setNewDiagramOpen(true)}>
+              New
+            </Button>
             <Button kind="tertiary" size="sm" onClick={() => editorRef.current?.commands.undo()}>
               Undo
             </Button>
@@ -479,6 +465,12 @@ export function App() {
             </Select>
           </div>
         </Modal>
+        <NewDiagramDialog
+          open={newDiagramOpen}
+          hasExistingContent={elements.length > 0}
+          onClose={() => setNewDiagramOpen(false)}
+          onCreate={handleCreateDiagram}
+        />
       </div>
     </Theme>
   );

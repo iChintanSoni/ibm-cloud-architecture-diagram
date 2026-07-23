@@ -1,6 +1,10 @@
 export { LibraryPanel, type LibraryPanelProps, type LibraryPlacement } from "./LibraryPanel.js";
 export { InspectorPanel, type InspectorPanelProps } from "./InspectorPanel.js";
 export {
+  NewDiagramDialog,
+  type NewDiagramDialogProps
+} from "./NewDiagramDialog.js";
+export {
   buildLayerTree,
   elementDisplayName,
   eligibleParentElements,
@@ -11,5 +15,6 @@ export {
   containerKindLabel,
   confirmedContainerPresets,
   type ContainerKind,
+  type PrimitiveKind,
   type ContainerPreset
 } from "./presets.js";

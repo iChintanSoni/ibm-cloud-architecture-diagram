@@ -370,7 +370,12 @@ export class SvgRenderer {
       }
     }
 
-    if ("label" in el && el.label?.text && el.type !== "text" && el.type !== "connector") {
+    if (el.type === "frame") {
+      const title = createSvgElement("text");
+      setAttrs(title, { x: el.x + 8, y: el.y + 18, fill: this.palette.stroke });
+      title.textContent = el.name;
+      g.appendChild(title);
+    } else if ("label" in el && el.label?.text && el.type !== "text" && el.type !== "connector") {
       g.appendChild(this.labelText(el));
     }
 

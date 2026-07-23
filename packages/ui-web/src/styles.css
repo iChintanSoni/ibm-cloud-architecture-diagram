@@ -104,6 +104,13 @@
   border-style: dotted;
 }
 
+.icad-library__primitive--frame {
+  border-color: var(--cds-border-strong-01, #8d8d8d);
+  border-style: dashed;
+  outline: 1px solid transparent;
+  outline-offset: 2px;
+}
+
 .icad-library__presets {
   display: flex;
   flex-direction: column;
@@ -252,4 +259,30 @@
 .icad-layers__label small {
   color: var(--cds-text-secondary, #525252);
   font-size: 0.6875rem;
+}
+
+.icad-new-diagram__intro,
+.icad-new-diagram__warning {
+  margin: 0 0 1.5rem;
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.icad-new-diagram__warning {
+  padding: 0.75rem;
+  border-left: 3px solid var(--cds-support-warning, #f1c21b);
+  background: var(--cds-notification-background-warning, #fdf6dd);
+}
+
+.icad-new-diagram__option {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  padding: 0.25rem 0;
+}
+
+.icad-new-diagram__option > span {
+  color: var(--cds-text-secondary, #525252);
+  font-size: 0.75rem;
+  line-height: 1.35;
 }

@@ -43,6 +43,12 @@ export class CommandBus {
     return this.redoStack.length > 0;
   }
 
+  /** Drops history when the entire document is replaced by Open/New. */
+  clear(): void {
+    this.undoStack = [];
+    this.redoStack = [];
+  }
+
   onDispatch(listener: (e: { command: Command }) => void): () => void {
     return this.emitter.on("dispatch", listener);
   }

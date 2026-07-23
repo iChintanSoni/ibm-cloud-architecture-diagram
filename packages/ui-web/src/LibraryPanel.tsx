@@ -5,13 +5,13 @@ import { groupLibraryIcons } from "./libraryModel.js";
 import {
   containerKindLabel,
   confirmedContainerPresets,
-  type ContainerKind,
+  type PrimitiveKind,
   type ContainerPreset
 } from "./presets.js";
 
 export type LibraryPlacement =
   | { type: "icon"; icon: IconMeta }
-  | { type: "primitive"; kind: ContainerKind }
+  | { type: "primitive"; kind: PrimitiveKind }
   | { type: "preset"; preset: ContainerPreset };
 
 export interface LibraryPanelProps {
@@ -50,9 +50,9 @@ export function LibraryPanel({ catalog, activePlacement, onChoose }: LibraryPane
       {!query && (
         <>
           <section className="icad-library__section">
-            <h3>Containers</h3>
+            <h3>Containers &amp; frames</h3>
             <div className="icad-library__grid">
-              {(["box", "group", "zone"] as const).map((kind) => {
+              {(["box", "group", "zone", "frame"] as const).map((kind) => {
                 const item: LibraryPlacement = { type: "primitive", kind };
                 const key = placementKey(item);
                 return (

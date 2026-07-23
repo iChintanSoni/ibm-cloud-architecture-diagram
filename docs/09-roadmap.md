@@ -122,10 +122,35 @@ Made placed elements editable and the diagram hierarchy navigable:
 **Done when:** a user can place an element, select it, edit its core properties, undo the edit, and
 navigate the same object through Layers and Validation without leaving the right inspector.
 
+##### M7.3 — IBM-level templates and frame authoring
+✅ **Done** (2026-07-23)
+
+Turned the four locked IBM diagram levels into reusable starter documents and completed the first
+frame-authoring slice:
+
+1. Added framework-agnostic `createTemplateDocument()` builders for Blank, System context,
+   High-level / logical, and Detailed / deployment diagrams. Each seeded template uses named
+   frames, valid containment, IBM catalog references, and routed west→east flows.
+2. Added undoable public `Editor.addFrame()` and atomic `Editor.reorderFrames()` APIs; frame names
+   render on the canvas and remain editable with presentation order in Properties.
+3. Added Frame to the Library placement surface with normal 16px automatic containment for later
+   elements, while new frames themselves always remain top-level.
+4. Added a Carbon New Diagram chooser, shown on first launch and available from the top bar. It
+   explicitly warns before replacing a populated document and clears its file identity.
+5. Opening or creating a document now clears stale undo/redo history, preventing commands from a
+   replaced document from mutating the new one.
+6. Covered template structure/conformance/serialization, frame creation/reordering/undo, Library
+   placement, and template selection with core and component tests.
+
+**Done when:** a user can start at any IBM diagram level, create and edit named frames, order them,
+save/reopen the result as `.icad`, and continue editing through the shared command surface.
+
 - ✅ `packages/ui-web` + `apps/web`: library panel with icon search and confirmed container
   presets; tabbed Properties/Layers/Validation inspector with selection synchronization.
-- Remaining: full Carbon top bar and command palette; IBM-level templates + frames;
-  find-on-canvas; persisted auto/light/dark preferences ([Editor UX](06-editor-ux.md)).
+- ✅ `packages/core` + `packages/ui-web` + `apps/web`: reusable IBM-level templates, first-run/New
+  chooser, and named frame authoring with presentation order.
+- Remaining: full Carbon top bar and command palette; find-on-canvas plus frame presentation
+  navigation; persisted auto/light/dark preferences ([Editor UX](06-editor-ux.md)).
 
 #### M8 — Accessibility to AA
 - Keyboard-operable canvas, screen-reader object tree, live regions, CI a11y checks ([Accessibility](07-accessibility.md)).

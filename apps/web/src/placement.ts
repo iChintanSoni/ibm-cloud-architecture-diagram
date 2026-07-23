@@ -3,6 +3,7 @@ import type { LibraryPlacement } from "@icad/ui-web";
 
 const ICON_SIZE = 48;
 const CONTAINER_SIZE = { w: 240, h: 160 };
+const FRAME_SIZE = { w: 800, h: 500 };
 const CONTAINER_PADDING = 16;
 
 function containingParent(
@@ -15,7 +16,6 @@ function containingParent(
     .filter(
       (element) =>
         isContainer(element) &&
-        element.type !== "frame" &&
         element.w >= size.w + CONTAINER_PADDING * 2 &&
         element.h >= size.h + CONTAINER_PADDING * 2 &&
         point.x >= element.x &&
@@ -46,8 +46,16 @@ function topLeftAt(
 }
 
 export function placeLibraryItem(editor: Editor, placement: LibraryPlacement, point: Point): string {
-  const size = placement.type === "icon" ? { w: ICON_SIZE, h: ICON_SIZE } : CONTAINER_SIZE;
-  const parent = containingParent(editor, point, size);
+  const size =
+    placement.type === "icon"
+      ? { w: ICON_SIZE, h: ICON_SIZE }
+      : placement.type === "primitive" && placement.kind === "frame"
+        ? FRAME_SIZE
+        : CONTAINER_SIZE;
+  const parent =
+    placement.type === "primitive" && placement.kind === "frame"
+      ? undefined
+      : containingParent(editor, point, size);
   const at = topLeftAt(point, size, parent);
   const parentOption = parent ? { parentId: parent.id } : {};
 
@@ -61,6 +69,7 @@ export function placeLibraryItem(editor: Editor, placement: LibraryPlacement, po
   if (placement.type === "primitive") {
     if (placement.kind === "box") return editor.addBox({ at, ...parentOption });
     if (placement.kind === "group") return editor.addGroup({ at, ...parentOption });
+    if (placement.kind === "frame") return editor.addFrame({ at, name: "Untitled frame" });
     return editor.addZone({ at, ...parentOption });
   }
 

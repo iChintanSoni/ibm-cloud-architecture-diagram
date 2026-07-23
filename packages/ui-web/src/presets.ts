@@ -1,7 +1,8 @@
 export type ContainerKind = "box" | "group" | "zone";
+export type PrimitiveKind = ContainerKind | "frame";
 
 /** `zone` remains the file-format primitive; Boundary is its non-normative UI label. */
-export function containerKindLabel(kind: ContainerKind): string {
+export function containerKindLabel(kind: PrimitiveKind): string {
   if (kind === "zone") return "Boundary";
   return kind[0]!.toUpperCase() + kind.slice(1);
 }

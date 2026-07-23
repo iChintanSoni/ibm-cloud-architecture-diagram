@@ -60,5 +60,6 @@ describe("library model", () => {
     expect(containerKindLabel("box")).toBe("Box");
     expect(containerKindLabel("group")).toBe("Group");
     expect(containerKindLabel("zone")).toBe("Boundary");
+    expect(containerKindLabel("frame")).toBe("Frame");
   });
 });

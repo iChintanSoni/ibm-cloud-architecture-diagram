@@ -60,6 +60,15 @@ export type { Diagnostic, Rule, RuleCategory, RuleContext, RuleMetadata, Severit
 export { ICAD_FORMAT, ICAD_VERSION, toIcad, fromIcad, applyIcad, type IcadDocument } from "./io/icad.js";
 export { exportSvg, exportPng, type SvgExportOptions, type PngExportOptions } from "./io/export.js";
 
+// Templates
+export {
+  DIAGRAM_TEMPLATES,
+  createTemplateDocument,
+  type CreateTemplateDocumentOptions,
+  type DiagramTemplate,
+  type DiagramTemplateId
+} from "./templates/templates.js";
+
 // Public API
 export {
   createEditor,

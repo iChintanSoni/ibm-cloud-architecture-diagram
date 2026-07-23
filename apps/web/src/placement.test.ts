@@ -85,4 +85,41 @@ describe("library placement", () => {
     editor.commands.undo();
     expect(editor.scene.get(id)).toBeUndefined();
   });
+
+  it("places a named top-level frame through the library", () => {
+    const parentId = editor.addBox({ at: { x: 0, y: 0 }, w: 1200, h: 900 });
+    const id = placeLibraryItem(
+      editor,
+      { type: "primitive", kind: "frame" },
+      { x: 600, y: 450 }
+    );
+
+    expect(editor.scene.get(id)).toMatchObject({
+      type: "frame",
+      name: "Untitled frame",
+      order: 1,
+      x: 200,
+      y: 200,
+      w: 800,
+      h: 500
+    });
+    expect(editor.scene.get(id)?.parentId).toBeUndefined();
+    expect(editor.scene.get(parentId)?.type).toBe("box");
+  });
+
+  it("contains later placements inside a frame with the standard inset", () => {
+    const frameId = editor.addFrame({
+      at: { x: 20, y: 20 },
+      w: 800,
+      h: 500,
+      name: "Overview"
+    });
+    const id = placeLibraryItem(
+      editor,
+      { type: "icon", icon: manifest.icons[0]! },
+      { x: 25, y: 25 }
+    );
+
+    expect(editor.scene.get(id)).toMatchObject({ parentId: frameId, x: 36, y: 36 });
+  });
 });

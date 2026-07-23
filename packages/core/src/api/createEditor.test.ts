@@ -61,6 +61,51 @@ describe("createEditor", () => {
     expect(container.querySelector(`[data-icad-id="${id}"] text`)?.textContent).toBe("Payments platform");
   });
 
+  it("adds named frames with presentation order through the public API", () => {
+    const overview = editor.addFrame({
+      at: { x: 0, y: 0 },
+      w: 600,
+      h: 400,
+      name: "Overview"
+    });
+    const deployment = editor.addFrame({
+      at: { x: 700, y: 0 },
+      w: 600,
+      h: 400,
+      name: "Deployment"
+    });
+
+    expect(editor.scene.get(overview)).toMatchObject({ type: "frame", order: 1 });
+    expect(editor.scene.get(deployment)).toMatchObject({ type: "frame", order: 2 });
+    expect(container.querySelector(`[data-icad-id="${overview}"] text`)?.textContent).toBe("Overview");
+  });
+
+  it("reorders every frame as one undoable operation", () => {
+    const overview = editor.addFrame({ at: { x: 0, y: 0 }, name: "Overview" });
+    const deployment = editor.addFrame({ at: { x: 900, y: 0 }, name: "Deployment" });
+
+    editor.reorderFrames([deployment, overview]);
+    expect(editor.scene.get(deployment)).toMatchObject({ order: 1 });
+    expect(editor.scene.get(overview)).toMatchObject({ order: 2 });
+
+    editor.commands.undo();
+    expect(editor.scene.get(overview)).toMatchObject({ order: 1 });
+    expect(editor.scene.get(deployment)).toMatchObject({ order: 2 });
+    expect(() => editor.reorderFrames([overview])).toThrow(/every frame exactly once/);
+  });
+
+  it("starts a template document and clears history from the replaced document", () => {
+    editor.addBox({ at: { x: 0, y: 0 }, label: "Old document" });
+    expect(editor.commands.canUndo()).toBe(true);
+
+    editor.newDocument("system-context");
+
+    expect(editor.scene.meta.diagramLevel).toBe("system-context");
+    expect(editor.scene.all().some((element) => element.type === "frame")).toBe(true);
+    expect(editor.commands.canUndo()).toBe(false);
+    expect(editor.selection.get()).toEqual([]);
+  });
+
   it("moves a box's contents along with it (move-with)", () => {
     const parent = editor.addBox({ at: { x: 0, y: 0 }, label: "Subnet" });
     const child = editor.addIcon("test/vpc", { at: { x: 20, y: 20 }, parentId: parent });

@@ -32,6 +32,7 @@ import type {
   EndpointLabels,
   FlowColor,
   ExportGate,
+  FrameElement,
   GroupElement,
   IconNodeElement,
   Label,
@@ -42,6 +43,10 @@ import type {
   ZoneElement,
   ZoneKind
 } from "../scene/types.js";
+import {
+  createTemplateDocument,
+  type DiagramTemplateId
+} from "../templates/templates.js";
 import { generateId } from "../util/id.js";
 import { Emitter } from "../util/emitter.js";
 
@@ -63,6 +68,11 @@ interface PlacementOptions {
 interface ContainerPlacementOptions extends PlacementOptions {
   catalogRef?: string;
   style?: Style;
+}
+
+interface FramePlacementOptions extends Omit<PlacementOptions, "label" | "parentId"> {
+  name: string;
+  order?: number;
 }
 
 export interface ExportOptions {
@@ -157,8 +167,19 @@ export class Editor {
 
   loadIcad(input: unknown): void {
     applyIcad(this.scene, input);
+    this.commands.clear();
     this.selection.clear();
     this.setTheme(this.scene.canvas.theme);
+  }
+
+  /** Replaces the current document with a reusable IBM-level starter template. */
+  newDocument(templateId: DiagramTemplateId): void {
+    this.loadIcad(
+      createTemplateDocument(templateId, {
+        catalog: { id: this.catalog.id, version: this.catalog.version },
+        theme: this.scene.canvas.theme
+      })
+    );
   }
 
   toIcad(): IcadDocument {
@@ -276,6 +297,49 @@ export class Editor {
     };
     this.commands.dispatch(addElement(element));
     return id;
+  }
+
+  addFrame(opts: FramePlacementOptions): ElementId {
+    const id = opts.id ?? generateId("frame");
+    const currentOrders = this.scene
+      .all()
+      .filter((element): element is FrameElement => element.type === "frame")
+      .map((element) => element.order);
+    const element: FrameElement = {
+      id,
+      type: "frame",
+      semantic: "boundary",
+      name: opts.name,
+      order: opts.order ?? Math.max(0, ...currentOrders) + 1,
+      x: opts.at.x,
+      y: opts.at.y,
+      w: opts.w ?? 800,
+      h: opts.h ?? 500
+    };
+    this.commands.dispatch(addElement(element));
+    return id;
+  }
+
+  /** Applies an exact presentation order to every frame as one undoable command. */
+  reorderFrames(frameIds: ElementId[]): void {
+    const frames = this.scene
+      .all()
+      .filter((element): element is FrameElement => element.type === "frame");
+    if (new Set(frameIds).size !== frameIds.length) {
+      throw new Error("Frame order cannot contain duplicate ids");
+    }
+    if (
+      frameIds.length !== frames.length ||
+      frameIds.some((id) => this.scene.get(id)?.type !== "frame")
+    ) {
+      throw new Error("Frame order must contain every frame exactly once");
+    }
+    const commands = frameIds.flatMap((id, index) => {
+      const current = this.scene.get(id) as FrameElement;
+      const order = index + 1;
+      return current.order === order ? [] : [updateElement(this.scene, id, { order })];
+    });
+    if (commands.length > 0) this.commands.dispatch(batch("reorder frames", commands));
   }
 
   connect(
