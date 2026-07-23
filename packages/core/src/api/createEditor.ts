@@ -1,11 +1,17 @@
 import type { Catalog } from "../catalog/catalog.js";
 import { CommandBus } from "../commands/commandBus.js";
-import { addElement, autoRouteConnector, setManualWaypoints } from "../commands/commands.js";
+import {
+  addElement,
+  autoRouteConnector,
+  setManualWaypoints,
+  updateConformance
+} from "../commands/commands.js";
 import { SelectionManager } from "../interaction/selection.js";
 import { applyIcad, toIcad, type IcadDocument } from "../io/icad.js";
 import { exportPng, exportSvg } from "../io/export.js";
 import { Linter } from "../linter/linter.js";
-import type { Diagnostic } from "../linter/types.js";
+import { applyQuickFix, applyQuickFixes } from "../linter/quickFix.js";
+import type { Diagnostic, Severity } from "../linter/types.js";
 import { SvgRenderer, type ResolvedTheme } from "../render/svgRenderer.js";
 import { routeConnectorInScene } from "../routing/routeConnector.js";
 import { Scene, type SceneChangeEvent } from "../scene/scene.js";
@@ -16,9 +22,11 @@ import type {
   ConnectorDirection,
   ConnectorElement,
   ConnectorType,
+  ConformanceSeverity,
   ElementId,
   EndpointLabels,
   FlowColor,
+  ExportGate,
   GroupElement,
   IconNodeElement,
   PortRef,
@@ -51,6 +59,19 @@ export interface ExportOptions {
   background?: "transparent" | "white";
 }
 
+export interface ComplianceSummary {
+  diagnostics: Diagnostic[];
+  counts: Record<Severity, number>;
+  blocked: boolean;
+}
+
+export class ExportBlockedError extends Error {
+  constructor(readonly diagnostics: Diagnostic[]) {
+    super(`Export blocked by ${diagnostics.filter((item) => item.severity === "error").length} conformance error(s).`);
+    this.name = "ExportBlockedError";
+  }
+}
+
 const DEFAULT_CONTAINER_SIZE = { w: 240, h: 160 };
 
 function resolveTheme(preference: CanvasSettings["theme"]): ResolvedTheme {
@@ -72,7 +93,7 @@ export class Editor {
   readonly catalog: Catalog;
 
   private renderer: SvgRenderer;
-  private linter = new Linter();
+  private linter: Linter;
   private changeEmitter = new Emitter<{ change: SceneChangeEvent }>();
 
   constructor(options: CreateEditorOptions) {
@@ -83,13 +104,17 @@ export class Editor {
     });
     this.commands = new CommandBus(this.scene);
     this.selection = new SelectionManager();
+    this.linter = new Linter({ catalog: this.catalog });
     this.renderer = new SvgRenderer(options.container, this.catalog, resolveTheme(this.scene.canvas.theme));
 
     this.scene.on((event) => {
       this.renderer.render(this.scene);
+      this.renderer.setDiagnostics(this.linter.run(this.scene));
       this.changeEmitter.emit("change", event);
     });
+    this.selection.on((ids) => this.renderer.setSelection(ids));
     this.renderer.render(this.scene);
+    this.renderer.setDiagnostics(this.linter.run(this.scene));
   }
 
   /** Updates the auto/light/dark preference and repaints the canvas to match. */
@@ -101,6 +126,7 @@ export class Editor {
 
   loadIcad(input: unknown): void {
     applyIcad(this.scene, input);
+    this.setTheme(this.scene.canvas.theme);
   }
 
   toIcad(): IcadDocument {
@@ -260,10 +286,54 @@ export class Editor {
   }
 
   lint(): Diagnostic[] {
-    return this.linter.run(this.scene);
+    const diagnostics = this.linter.run(this.scene);
+    this.renderer.setDiagnostics(diagnostics);
+    return diagnostics;
+  }
+
+  complianceSummary(): ComplianceSummary {
+    const diagnostics = this.lint();
+    const counts: Record<Severity, number> = { error: 0, warn: 0, info: 0 };
+    for (const diagnostic of diagnostics) counts[diagnostic.severity] += 1;
+    return {
+      diagnostics,
+      counts,
+      blocked: this.scene.conformance.exportGate === "block" && counts.error > 0
+    };
+  }
+
+  applyQuickFix(diagnostic: Diagnostic): boolean {
+    if (!diagnostic.quickFix) return false;
+    this.commands.dispatch(applyQuickFix(diagnostic));
+    return true;
+  }
+
+  applyQuickFixes(ruleId?: string): number {
+    const diagnostics = this.lint().filter(
+      (diagnostic) => diagnostic.quickFix && (ruleId === undefined || diagnostic.ruleId === ruleId)
+    );
+    if (diagnostics.length === 0) return 0;
+    this.commands.dispatch(
+      applyQuickFixes(diagnostics, ruleId ? `fix all ${ruleId} issues` : "fix all validation issues")
+    );
+    return diagnostics.length;
+  }
+
+  setExportGate(exportGate: ExportGate): void {
+    this.commands.dispatch(updateConformance(this.scene, { exportGate }));
+  }
+
+  setRuleSeverity(ruleId: string, severity?: ConformanceSeverity): void {
+    this.commands.dispatch(
+      updateConformance(this.scene, {
+        ruleSeverity: { ruleId, ...(severity !== undefined ? { severity } : {}) }
+      })
+    );
   }
 
   export(opts: ExportOptions): string | Promise<Blob> {
+    const summary = this.complianceSummary();
+    if (summary.blocked) throw new ExportBlockedError(summary.diagnostics);
     if (opts.format === "svg") {
       return exportSvg(this.scene, this.renderer, {
         ...(opts.embedSource !== undefined ? { embedSource: opts.embedSource } : {})

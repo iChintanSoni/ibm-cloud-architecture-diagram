@@ -25,6 +25,7 @@ describe(".icad io", () => {
     expect(doc.format).toBe("icad");
     expect(doc.version).toBe(1);
     expect(doc.elements).toHaveLength(1);
+    expect(doc.conformance).toEqual({ exportGate: "warn", ruleSeverities: {} });
 
     const restored = fromIcad(doc);
     expect(restored.meta.title).toBe("Demo");
@@ -39,6 +40,26 @@ describe(".icad io", () => {
 
     expect(scene.meta.title).toBe("Fresh");
     expect(scene.has("stale")).toBe(false);
+  });
+
+  it("round-trips per-document conformance settings", () => {
+    const scene = new Scene({
+      conformance: { exportGate: "block", ruleSeverities: { "missing-label": "error" } }
+    });
+    const restored = fromIcad(toIcad(scene));
+    expect(restored.conformance).toEqual({
+      exportGate: "block",
+      ruleSeverities: { "missing-label": "error" }
+    });
+  });
+
+  it("defaults conformance settings when opening a pre-M6 schema-v1 document", () => {
+    const scene = fromIcad({
+      format: "icad",
+      version: 1,
+      elements: [box("legacy")]
+    });
+    expect(scene.conformance).toEqual({ exportGate: "warn", ruleSeverities: {} });
   });
 
   it("rejects a document with the wrong format tag", () => {

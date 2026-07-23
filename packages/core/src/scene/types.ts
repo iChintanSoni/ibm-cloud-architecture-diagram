@@ -175,3 +175,15 @@ export interface CatalogRefPin {
   id: string;
   version: string;
 }
+
+export type ConformanceSeverity = "error" | "warn" | "info" | "off";
+export type ExportGate = "warn" | "block";
+
+/**
+ * Per-document linter configuration. Empty ruleSeverities means the IBM
+ * recommended defaults declared by each rule.
+ */
+export interface ConformanceSettings {
+  exportGate: ExportGate;
+  ruleSeverities: Record<string, ConformanceSeverity>;
+}

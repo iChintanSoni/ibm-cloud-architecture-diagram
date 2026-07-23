@@ -2,7 +2,14 @@ import { describe, expect, it } from "vitest";
 import { Scene } from "../scene/scene.js";
 import type { BoxElement, ConnectorElement } from "../scene/types.js";
 import { CommandBus } from "./commandBus.js";
-import { addElement, moveElements, reparentElement, removeElement, updateElement } from "./commands.js";
+import {
+  addElement,
+  moveElements,
+  reparentElement,
+  removeElement,
+  updateConformance,
+  updateElement
+} from "./commands.js";
 
 function box(id: string, parentId?: string): BoxElement {
   return { id, type: "box", semantic: "deployedOn", x: 0, y: 0, w: 100, h: 50, ...(parentId ? { parentId } : {}) };
@@ -67,6 +74,54 @@ describe("CommandBus", () => {
 
     bus.undo();
     expect(scene.get("a")?.label).toBeUndefined();
+  });
+
+  it("merges independent style patches without clobbering existing properties", () => {
+    const scene = new Scene();
+    const bus = new CommandBus(scene);
+    bus.dispatch(addElement({ ...box("a"), style: { fill: "white", stroke: "black" } }));
+
+    bus.dispatch(updateElement(scene, "a", { style: { strokeWidth: 2 } }));
+    expect(scene.get("a")?.style).toEqual({ fill: "white", stroke: "black", strokeWidth: 2 });
+
+    bus.undo();
+    expect(scene.get("a")?.style).toEqual({ fill: "white", stroke: "black" });
+  });
+
+  it("updates conformance settings through undo/redo history", () => {
+    const scene = new Scene();
+    const bus = new CommandBus(scene);
+
+    bus.dispatch(updateConformance(scene, { exportGate: "block" }));
+    bus.dispatch(
+      updateConformance(scene, {
+        ruleSeverity: { ruleId: "missing-label", severity: "error" }
+      })
+    );
+    expect(scene.conformance).toEqual({
+      exportGate: "block",
+      ruleSeverities: { "missing-label": "error" }
+    });
+
+    bus.undo();
+    expect(scene.conformance).toEqual({ exportGate: "block", ruleSeverities: {} });
+    bus.undo();
+    expect(scene.conformance).toEqual({ exportGate: "warn", ruleSeverities: {} });
+    bus.redo();
+    bus.redo();
+    expect(scene.conformance.ruleSeverities["missing-label"]).toBe("error");
+  });
+
+  it("removes a rule severity override to restore its IBM default", () => {
+    const scene = new Scene({
+      conformance: { exportGate: "warn", ruleSeverities: { "missing-label": "error" } }
+    });
+    const bus = new CommandBus(scene);
+
+    bus.dispatch(updateConformance(scene, { ruleSeverity: { ruleId: "missing-label" } }));
+    expect(scene.conformance.ruleSeverities).toEqual({});
+    bus.undo();
+    expect(scene.conformance.ruleSeverities).toEqual({ "missing-label": "error" });
   });
 
   it("restores a removed element on undo", () => {

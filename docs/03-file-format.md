@@ -25,6 +25,12 @@
     "author": "…"
   },
   "canvas": { "theme": "auto", "grid": 8, "background": "transparent" },
+  "conformance": {
+    "exportGate": "warn",                // warn | block
+    "ruleSeverities": {                  // omitted entries use IBM defaults
+      "missing-label": "error"           // error | warn | info | off
+    }
+  },
   "elements": [ /* see below */ ],
   "frames": [ /* sectioning + presentation order */ ]
 }
@@ -107,6 +113,8 @@ Handled by `core/io`. See also [Editor UX → Export](06-editor-ux.md#export).
 ### Export gate
 The [linter](05-ibm-spec-conformance.md) can optionally **warn or block** export when the diagram
 has spec violations ([D12](00-decision-log.md#d12--advisory-linter--quick-fixes--optional-export-gate--locked)). Configurable; default = warn.
+Both the gate and per-rule severity overrides live in the document's `conformance` object, so a
+team's chosen validation policy travels with the diagram.
 
 ## Why not a zip container
 

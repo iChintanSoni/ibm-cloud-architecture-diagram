@@ -1,5 +1,12 @@
 import { Emitter } from "../util/emitter.js";
-import type { CanvasSettings, CatalogRefPin, DocumentMeta, ElementId, SceneElement } from "./types.js";
+import type {
+  CanvasSettings,
+  CatalogRefPin,
+  ConformanceSettings,
+  DocumentMeta,
+  ElementId,
+  SceneElement
+} from "./types.js";
 
 export interface SceneChangeEvent {
   reason: "add" | "update" | "remove" | "replace";
@@ -21,8 +28,14 @@ export class Scene {
   meta: DocumentMeta;
   canvas: CanvasSettings;
   catalog: CatalogRefPin;
+  conformance: ConformanceSettings;
 
-  constructor(init?: { meta?: Partial<DocumentMeta>; canvas?: Partial<CanvasSettings>; catalog?: CatalogRefPin }) {
+  constructor(init?: {
+    meta?: Partial<DocumentMeta>;
+    canvas?: Partial<CanvasSettings>;
+    catalog?: CatalogRefPin;
+    conformance?: Partial<ConformanceSettings>;
+  }) {
     const now = new Date().toISOString();
     this.meta = {
       title: "Untitled diagram",
@@ -33,6 +46,10 @@ export class Scene {
     };
     this.canvas = { theme: "auto", grid: 8, background: "transparent", ...init?.canvas };
     this.catalog = init?.catalog ?? { id: "ibm-cloud", version: "0.0.0" };
+    this.conformance = {
+      exportGate: init?.conformance?.exportGate ?? "warn",
+      ruleSeverities: { ...(init?.conformance?.ruleSeverities ?? {}) }
+    };
   }
 
   on(listener: (e: SceneChangeEvent) => void): () => void {
@@ -113,5 +130,15 @@ export class Scene {
     for (const el of elements) this.elements.set(el.id, el);
     this.meta.updatedAt = new Date().toISOString();
     this.emitter.emit("change", { reason: "replace", ids: elements.map((e) => e.id) });
+  }
+
+  /** Internal settings write used by commands so configuration is undoable. */
+  _setConformance(settings: ConformanceSettings): void {
+    this.conformance = {
+      exportGate: settings.exportGate,
+      ruleSeverities: { ...settings.ruleSeverities }
+    };
+    this.meta.updatedAt = new Date().toISOString();
+    this.emitter.emit("change", { reason: "update", ids: [] });
   }
 }
