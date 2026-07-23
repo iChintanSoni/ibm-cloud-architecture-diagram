@@ -1,6 +1,13 @@
 import { routeConnectorInScene } from "../routing/routeConnector.js";
 import type { Scene } from "../scene/scene.js";
-import type { ConnectorElement, ElementId, SceneElement } from "../scene/types.js";
+import type {
+  ConformanceSettings,
+  ConnectorElement,
+  ElementId,
+  ExportGate,
+  SceneElement,
+  ConformanceSeverity
+} from "../scene/types.js";
 import type { Command } from "./types.js";
 
 /** Auto-routed connectors whose `from`/`to` is one of `ids` — these need rerouting after a move/resize. */
@@ -66,7 +73,14 @@ export function updateElement(scene: Scene, id: ElementId, patch: Partial<SceneE
     do(s) {
       const current = s.get(id);
       if (!current) return;
-      s._put({ ...current, ...patch } as SceneElement, "update");
+      const next = {
+        ...current,
+        ...patch,
+        ...("style" in patch && patch.style
+          ? { style: { ...(current.style ?? {}), ...patch.style } }
+          : {})
+      } as SceneElement;
+      s._put(next, "update");
       rerouteConnectors(s, affectedConnectors);
     },
     undo(s) {
@@ -188,6 +202,37 @@ export function batch(label: string, commands: Command[]): Command {
     },
     undo(scene) {
       for (let i = commands.length - 1; i >= 0; i -= 1) commands[i]!.undo(scene);
+    }
+  };
+}
+
+/** Updates document-level conformance settings as one undoable command. */
+export function updateConformance(
+  scene: Scene,
+  patch: {
+    exportGate?: ExportGate;
+    ruleSeverity?: { ruleId: string; severity?: ConformanceSeverity };
+  }
+): Command {
+  const previous: ConformanceSettings = {
+    exportGate: scene.conformance.exportGate,
+    ruleSeverities: { ...scene.conformance.ruleSeverities }
+  };
+  const next: ConformanceSettings = {
+    exportGate: patch.exportGate ?? previous.exportGate,
+    ruleSeverities: { ...previous.ruleSeverities }
+  };
+  if (patch.ruleSeverity) {
+    if (patch.ruleSeverity.severity === undefined) delete next.ruleSeverities[patch.ruleSeverity.ruleId];
+    else next.ruleSeverities[patch.ruleSeverity.ruleId] = patch.ruleSeverity.severity;
+  }
+  return {
+    label: "update conformance settings",
+    do(s) {
+      s._setConformance(next);
+    },
+    undo(s) {
+      s._setConformance(previous);
     }
   };
 }

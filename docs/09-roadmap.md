@@ -63,10 +63,19 @@ Ship a usable, on-spec human editor in the browser.
   discard on reload after a crash ([D10](00-decision-log.md#d10--autosave-draft--crash-recovery--locked)).
 
 #### M6 — Conformance linter
-← next
-- Rule set, diagnostics, quick-fixes, validation panel, optional export gate ([Spec Conformance](05-ibm-spec-conformance.md)).
+✅ **Done** (2026-07-23)
+- Fifteen IBM-default rules cover semantic/type and visual mismatches, catalog references, palette
+  use, containment, labels, connector validity/routing, west→east public flow, and icon geometry.
+  Rule severities (`error`/`warn`/`info`/`off`) and the warn/block export gate are configurable per
+  document and persist in `.icad`.
+- Quick-fixes use the shared command bus, including a single-step “Fix all of this type,” so every
+  correction is undoable and ready for the v2 agent API.
+- The Carbon validation panel groups by severity, selects targets, exposes rule settings, and
+  mirrors diagnostics as editor-only canvas badges. The export dialog shows a compliance summary
+  and enforces block-on-error when enabled.
 
 #### M7 — Chrome, templates, find, themes (Carbon)
+← next
 - `packages/ui-web` + `apps/web`: library panel, properties/layers, top bar, command palette;
   IBM-level templates + frames; find-on-canvas; auto/light/dark ([Editor UX](06-editor-ux.md)).
 - Container presets: surface the named shortcut table ([Icon Catalog → Container presets](04-icon-catalog.md#container-presets),

@@ -1,10 +1,26 @@
-import { ActionableNotification, Button, Tag, Theme } from "@carbon/react";
-import { createEditor, type Diagnostic, type Editor } from "@icad/core";
+import {
+  ActionableNotification,
+  Button,
+  Modal,
+  Select,
+  SelectItem,
+  Tag,
+  Theme
+} from "@carbon/react";
+import {
+  createEditor,
+  ruleMetadata,
+  type ConformanceSeverity,
+  type Diagnostic,
+  type Editor,
+  type ExportGate
+} from "@icad/core";
 import { useEffect, useRef, useState } from "react";
 import { createIbmCloudCatalog } from "./catalog";
 import { clearDraft, debounceAutosave, loadDraft, saveDraft } from "./persistence/autosave";
 import { openIcadFile, saveIcadFile, supportsFileSystemAccess } from "./persistence/fileSystem";
 import { type ThemePreference, useResolvedTheme } from "./useResolvedTheme";
+import { buildValidationView } from "./validation";
 
 /** West-to-east demo layout (docs/05-ibm-spec-conformance.md#layout-convention). */
 function seedDemoDiagram(editor: Editor): void {
@@ -70,6 +86,8 @@ export function App() {
   const [themePreference, setThemePreference] = useState<ThemePreference>("auto");
   const [diagnostics, setDiagnostics] = useState<Diagnostic[]>([]);
   const [recoveredDraft, setRecoveredDraft] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportGate, setExportGateState] = useState<ExportGate>("warn");
   const carbonTheme = useResolvedTheme(themePreference);
 
   useEffect(() => {
@@ -91,6 +109,7 @@ export function App() {
       } else {
         seedDemoDiagram(editor);
       }
+      setExportGateState(editor.scene.conformance.exportGate);
       setDiagnostics(editor.lint());
     });
 
@@ -112,9 +131,23 @@ export function App() {
     editorRef.current?.setTheme(themePreference);
   }, [themePreference]);
 
+  const openExport = () => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    const summary = editor.complianceSummary();
+    setDiagnostics(summary.diagnostics);
+    setExportGateState(editor.scene.conformance.exportGate);
+    setExportOpen(true);
+  };
+
   const handleExportSvg = () => {
-    const svg = editorRef.current?.export({ format: "svg" });
-    if (typeof svg === "string") download("diagram.svg", svg, "image/svg+xml");
+    const editor = editorRef.current;
+    if (!editor) return;
+    const svg = editor.export({ format: "svg" });
+    if (typeof svg === "string") {
+      download("diagram.svg", svg, "image/svg+xml");
+      setExportOpen(false);
+    }
   };
 
   const persistIcad = async (forceSaveAs: boolean) => {
@@ -144,6 +177,7 @@ export function App() {
     const editor = editorRef.current;
     if (!editor) return;
     editor.loadIcad(JSON.parse(text));
+    setExportGateState(editor.scene.conformance.exportGate);
     setDiagnostics(editor.lint());
     setRecoveredDraft(false);
     void saveDraft(editor.toIcad());
@@ -169,6 +203,13 @@ export function App() {
     clearDraft().then(() => window.location.reload());
   };
 
+  const {
+    groups: groupedDiagnostics,
+    counts,
+    fixableByRule,
+    exportBlocked
+  } = buildValidationView(diagnostics, exportGate);
+
   return (
     <Theme theme={carbonTheme}>
       <div className="icad-shell">
@@ -192,7 +233,7 @@ export function App() {
             <Button kind="secondary" size="sm" onClick={() => void handleOpenClick()}>
               Open .icad
             </Button>
-            <Button kind="primary" size="sm" onClick={handleExportSvg}>
+            <Button kind="primary" size="sm" onClick={openExport}>
               Export SVG
             </Button>
             <input
@@ -237,32 +278,141 @@ export function App() {
         <div className="icad-body">
           <div className="icad-canvas" ref={canvasRef} />
           <aside className="icad-validation">
-            <h2>Validation</h2>
+            <div className="icad-validation-heading">
+              <h2>Validation</h2>
+              <span aria-label={`${diagnostics.length} issues`}>{diagnostics.length}</span>
+            </div>
             {diagnostics.length === 0 && <p className="icad-muted">No conformance issues found.</p>}
-            <ul>
-              {diagnostics.map((d) => (
-                <li key={d.id}>
-                  <Tag type={d.severity === "error" ? "red" : d.severity === "warn" ? "warm-gray" : "blue"}>
-                    {d.severity}
-                  </Tag>
-                  <span>{d.message}</span>
-                  {d.quickFix && (
-                    <Button
-                      kind="ghost"
-                      size="sm"
-                      onClick={() => {
-                        editorRef.current!.commands.dispatch(d.quickFix!);
-                        setDiagnostics(editorRef.current!.lint());
-                      }}
-                    >
-                      Fix
-                    </Button>
-                  )}
-                </li>
+            {groupedDiagnostics.map(
+              ({ severity, items }) =>
+                items.length > 0 && (
+                  <section className="icad-diagnostic-group" key={severity}>
+                    <h3>
+                      {severity} <span>{items.length}</span>
+                    </h3>
+                    <ul>
+                      {items.map((diagnostic) => (
+                        <li key={diagnostic.id}>
+                          <Tag
+                            type={severity === "error" ? "red" : severity === "warn" ? "warm-gray" : "blue"}
+                          >
+                            {diagnostic.ruleId}
+                          </Tag>
+                          <button
+                            className="icad-diagnostic-target"
+                            type="button"
+                            disabled={!diagnostic.elementId}
+                            onClick={() => {
+                              if (diagnostic.elementId) editorRef.current?.selection.set([diagnostic.elementId]);
+                            }}
+                          >
+                            {diagnostic.message}
+                          </button>
+                          {diagnostic.quickFix && (
+                            <div className="icad-fix-actions">
+                              <Button
+                                kind="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  editorRef.current?.applyQuickFix(diagnostic);
+                                  setDiagnostics(editorRef.current?.lint() ?? []);
+                                }}
+                              >
+                                {diagnostic.quickFixLabel ?? "Fix"}
+                              </Button>
+                              {(fixableByRule.get(diagnostic.ruleId) ?? 0) > 1 && (
+                                <Button
+                                  kind="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    editorRef.current?.applyQuickFixes(diagnostic.ruleId);
+                                    setDiagnostics(editorRef.current?.lint() ?? []);
+                                  }}
+                                >
+                                  Fix all of this type
+                                </Button>
+                              )}
+                            </div>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                )
+            )}
+            <details className="icad-rule-settings">
+              <summary>Rule settings</summary>
+              <p className="icad-muted">Overrides are saved in this .icad document.</p>
+              {ruleMetadata.map((rule) => (
+                <Select
+                  key={rule.id}
+                  id={`icad-rule-${rule.id}`}
+                  size="sm"
+                  labelText={rule.title}
+                  value={editorRef.current?.scene.conformance.ruleSeverities[rule.id] ?? "default"}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    editorRef.current?.setRuleSeverity(
+                      rule.id,
+                      value === "default" ? undefined : (value as ConformanceSeverity)
+                    );
+                    setDiagnostics(editorRef.current?.lint() ?? []);
+                  }}
+                >
+                  <SelectItem value="default" text={`Default (${rule.defaultSeverity})`} />
+                  <SelectItem value="error" text="Error" />
+                  <SelectItem value="warn" text="Warning" />
+                  <SelectItem value="info" text="Info" />
+                  <SelectItem value="off" text="Off" />
+                </Select>
               ))}
-            </ul>
+            </details>
           </aside>
         </div>
+
+        <Modal
+          open={exportOpen}
+          size="sm"
+          modalLabel="Export"
+          modalHeading="Export SVG"
+          primaryButtonText={exportBlocked ? "Resolve errors to export" : "Export"}
+          primaryButtonDisabled={exportBlocked}
+          secondaryButtonText="Cancel"
+          onRequestClose={() => setExportOpen(false)}
+          onRequestSubmit={handleExportSvg}
+        >
+          <div className="icad-export-summary">
+            <p>IBM conformance summary</p>
+            <div className="icad-summary-counts">
+              <Tag type="red">{counts.error} errors</Tag>
+              <Tag type="warm-gray">{counts.warn} warnings</Tag>
+              <Tag type="blue">{counts.info} info</Tag>
+            </div>
+            {diagnostics.length === 0 && <p className="icad-muted">Ready to export with no known issues.</p>}
+            {diagnostics.length > 0 && exportGate === "warn" && (
+              <p className="icad-muted">Advisory mode: export remains available with validation issues.</p>
+            )}
+            {exportBlocked && (
+              <p className="icad-export-blocked">
+                Export is blocked because the diagram has error-level diagnostics.
+              </p>
+            )}
+            <Select
+              id="icad-export-gate"
+              labelText="Export gate"
+              value={exportGate}
+              onChange={(event) => {
+                const gate = event.target.value as ExportGate;
+                setExportGateState(gate);
+                editorRef.current?.setExportGate(gate);
+                setDiagnostics(editorRef.current?.lint() ?? []);
+              }}
+            >
+              <SelectItem value="warn" text="Warn (advisory)" />
+              <SelectItem value="block" text="Block on errors" />
+            </Select>
+          </div>
+        </Modal>
       </div>
     </Theme>
   );

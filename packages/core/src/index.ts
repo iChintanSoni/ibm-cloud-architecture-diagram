@@ -12,7 +12,8 @@ export {
   reparentElement,
   setManualWaypoints,
   autoRouteConnector,
-  batch
+  batch,
+  updateConformance
 } from "./commands/commands.js";
 export { CommandBus } from "./commands/commandBus.js";
 
@@ -36,16 +37,36 @@ export type { CatalogManifest, CatalogCategory, IconMeta, IconTier } from "./cat
 export { Linter } from "./linter/linter.js";
 export {
   defaultRules,
+  ruleMetadata,
   missingLabelRule,
+  duplicateLabelRule,
+  catalogIconRule,
+  containerSemanticRule,
+  containerBorderRule,
+  primaryFillRule,
+  secondaryStrokeRule,
   danglingConnectorRule,
+  standardConnectorTypeRule,
+  connectorPortRule,
   connectorCrossesObstacleRule,
-  groupWithoutBoxAncestorRule
+  groupWithoutBoxAncestorRule,
+  nodeWithoutLocationRule,
+  westEastFlowRule,
+  iconGeometryRule
 } from "./linter/rules.js";
-export type { Diagnostic, Rule, Severity } from "./linter/types.js";
+export { applyQuickFix, applyQuickFixes } from "./linter/quickFix.js";
+export type { Diagnostic, Rule, RuleCategory, RuleContext, RuleMetadata, Severity } from "./linter/types.js";
 
 // IO
 export { ICAD_FORMAT, ICAD_VERSION, toIcad, fromIcad, applyIcad, type IcadDocument } from "./io/icad.js";
 export { exportSvg, exportPng, type SvgExportOptions, type PngExportOptions } from "./io/export.js";
 
 // Public API
-export { createEditor, Editor, type CreateEditorOptions, type ExportOptions } from "./api/createEditor.js";
+export {
+  createEditor,
+  Editor,
+  ExportBlockedError,
+  type ComplianceSummary,
+  type CreateEditorOptions,
+  type ExportOptions
+} from "./api/createEditor.js";

@@ -159,3 +159,9 @@ spec size*, *re-route orthogonally*.
 Rule severities are configurable per document (with an IBM-default preset). Teams that want strict
 output can turn the export gate to **block**; ideation-heavy users can keep everything advisory.
 The default is IBM-recommended with the gate set to **warn**.
+
+The current implementation ships 15 rules across semantics, containment, labels, connectors, and
+layout. The location-context check applies to high-level/detailed diagrams (system-context and
+blank diagrams intentionally allow standalone nodes), and west→east reversal checks target public
+connections. Per-rule overrides and the export gate are stored in `.icad`; validation fixes and
+settings changes are ordinary undoable commands.

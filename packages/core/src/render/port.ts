@@ -20,4 +20,7 @@ export function portPoint(el: SceneElement, side: PortSide): Point {
     case "center":
       return { x: x + w / 2, y: y + h / 2 };
   }
+  // Invalid values can enter via hand-edited .icad JSON; the linter will
+  // report them, while rendering remains resilient at the element center.
+  return { x: x + w / 2, y: y + h / 2 };
 }

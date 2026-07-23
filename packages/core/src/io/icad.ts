@@ -1,5 +1,11 @@
 import { Scene } from "../scene/scene.js";
-import type { CanvasSettings, CatalogRefPin, DocumentMeta, SceneElement } from "../scene/types.js";
+import type {
+  CanvasSettings,
+  CatalogRefPin,
+  ConformanceSettings,
+  DocumentMeta,
+  SceneElement
+} from "../scene/types.js";
 
 export const ICAD_FORMAT = "icad" as const;
 export const ICAD_VERSION = 1 as const;
@@ -11,6 +17,7 @@ export interface IcadDocument {
   catalog: CatalogRefPin;
   meta: DocumentMeta;
   canvas: CanvasSettings;
+  conformance: ConformanceSettings;
   elements: SceneElement[];
 }
 
@@ -21,13 +28,19 @@ export function toIcad(scene: Scene): IcadDocument {
     catalog: scene.catalog,
     meta: scene.meta,
     canvas: scene.canvas,
+    conformance: scene.conformance,
     elements: scene.all()
   };
 }
 
 export function fromIcad(input: unknown): Scene {
   const doc = migrate(input);
-  const scene = new Scene({ meta: doc.meta, canvas: doc.canvas, catalog: doc.catalog });
+  const scene = new Scene({
+    meta: doc.meta,
+    canvas: doc.canvas,
+    catalog: doc.catalog,
+    conformance: doc.conformance
+  });
   scene._replaceAll(doc.elements);
   return scene;
 }
@@ -38,6 +51,10 @@ export function applyIcad(scene: Scene, input: unknown): void {
   scene.meta = doc.meta;
   scene.canvas = doc.canvas;
   scene.catalog = doc.catalog;
+  scene.conformance = {
+    exportGate: doc.conformance?.exportGate ?? "warn",
+    ruleSeverities: { ...(doc.conformance?.ruleSeverities ?? {}) }
+  };
   scene._replaceAll(doc.elements);
 }
 
