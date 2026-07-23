@@ -1,9 +1,18 @@
 import { JSDOM } from "jsdom";
 
 const GLYPH_VIEWBOX = 20;
-const SOURCE_CANVAS = 48;
-const SCALE = GLYPH_VIEWBOX / SOURCE_CANVAS;
 const SHAPE_TAGS = new Set(["rect", "polygon"]);
+const DRAWABLE_TAGS = new Set(["path", "rect", "circle", "ellipse", "polygon", "polyline", "line"]);
+
+// IBM's exports don't declare a glyph bounding box explicitly; most wrap the glyph in
+// a `<g transform="translate(12, 12)">`-ish group sized so a `_Transparent_Rectangle_`
+// hit-area rect (usually 24x24) sits at local (0,0). A minority bake that ~12,12 offset
+// directly into the path coordinates instead of expressing it as a transform — those
+// need an explicit compensating translate rather than relying on the (near-zero) transform
+// their wrapper actually carries. See extract.test.ts for a case of each shape.
+const DEFAULT_LOCAL_SIZE = 24;
+const DEFAULT_OFFSET = 12;
+const REAL_OFFSET_THRESHOLD = 5;
 
 export interface NormalizedIcon {
   /** SVG fragment (no outer <svg>), scaled into a 0..20 viewBox, ready to inline. */
@@ -18,7 +27,7 @@ export interface NormalizedIcon {
 // list in document order (it groups by selector) — walk manually instead, since the
 // *first* canvas-covering shape in true document order is always the background tile.
 function collectInOrder(root: Element, tags: Set<string>, out: Element[] = []): Element[] {
-  for (const child of Array.from(root.children)) {
+  for (const child of Array.from(root.children) as Element[]) {
     if (tags.has(child.tagName.toLowerCase())) out.push(child);
     collectInOrder(child, tags, out);
   }
@@ -63,12 +72,77 @@ function isTransparentHitbox(el: Element): boolean {
   return /transparent_rectangle/i.test(id);
 }
 
+function hasDirectDrawableChild(el: Element): boolean {
+  return Array.from(el.children).some((c) => DRAWABLE_TAGS.has((c as Element).tagName.toLowerCase()));
+}
+
+function parseTranslate(transform: string | null): { x: number; y: number } | undefined {
+  const m = transform?.match(/translate\(\s*([-\d.]+)[ ,]+([-\d.]+)\s*\)/);
+  if (!m) return undefined;
+  return { x: parseFloat(m[1]!), y: parseFloat(m[2]!) };
+}
+
 function recolorWhite(root: Element, accent: string): void {
   for (const el of Array.from(root.querySelectorAll("*")) as Element[]) {
     for (const attr of ["fill", "stroke"]) {
       if (isWhite(el.getAttribute(attr))) el.setAttribute(attr, accent);
     }
   }
+}
+
+// Every ancestor between `frame` and the icon's outer style group exists only to
+// position content within the original 48x48 Sketch/Figma artboard (often as a
+// translate(-a,-b)/translate(a,b) pair that cancels to zero). Once `frame` gets its
+// own self-contained transform into the 0..20 space, those ancestor transforms are
+// meaningless — and if `frame` itself was one half of a cancelling pair (see
+// object-storage-application, where the hit-area rect's parent *is* that half),
+// leaving the other half in place would shift the glyph off-canvas entirely.
+function clearAncestorTransforms(from: Element, root: Element): void {
+  let el = from.parentElement as Element | null;
+  while (el && el !== root) {
+    el.removeAttribute("transform");
+    el = el.parentElement as Element | null;
+  }
+}
+
+/**
+ * Re-frames the glyph so it fills the 0..20 viewBox core's renderer expects, replacing
+ * whatever transform positioned it inside the original 48x48 canvas.
+ */
+function reframeGlyph(svg: Element): void {
+  const hitbox = collectInOrder(svg, new Set(["rect"])).find(isTransparentHitbox);
+
+  let frame: Element | undefined;
+  let localSize = DEFAULT_LOCAL_SIZE;
+  let offset = { x: 0, y: 0 };
+
+  if (hitbox) {
+    frame = hitbox.parentElement as Element | undefined;
+    localSize = parseFloat(hitbox.getAttribute("width") ?? String(DEFAULT_LOCAL_SIZE));
+    // Usually (0,0), but not always — e.g. object-storage-application's hit-area
+    // rect sits at (12,12) within its (untransformed) parent.
+    offset = {
+      x: parseFloat(hitbox.getAttribute("x") ?? "0"),
+      y: parseFloat(hitbox.getAttribute("y") ?? "0")
+    };
+    hitbox.remove();
+  } else {
+    frame = collectInOrder(svg, new Set(["g"])).find(hasDirectDrawableChild);
+    if (frame) {
+      const t = parseTranslate(frame.getAttribute("transform"));
+      const isRealOffset = !!t && (Math.abs(t.x) > REAL_OFFSET_THRESHOLD || Math.abs(t.y) > REAL_OFFSET_THRESHOLD);
+      if (!isRealOffset) offset = { x: DEFAULT_OFFSET, y: DEFAULT_OFFSET };
+    }
+  }
+
+  if (!frame) return; // no glyph content left (e.g. a flat color tile with no artwork)
+
+  clearAncestorTransforms(frame, svg);
+  const scale = GLYPH_VIEWBOX / localSize;
+  frame.setAttribute(
+    "transform",
+    offset.x || offset.y ? `scale(${scale}) translate(${-offset.x}, ${-offset.y})` : `scale(${scale})`
+  );
 }
 
 /**
@@ -99,10 +173,7 @@ export function normalizeIcon(xml: string): NormalizedIcon | undefined {
     bgWrapper.remove();
   }
 
-  const allElements = Array.from(svg.querySelectorAll("*")) as Element[];
-  for (const hitbox of allElements.filter(isTransparentHitbox)) {
-    hitbox.remove();
-  }
+  reframeGlyph(svg);
 
   const color = rawColor && !isWhite(rawColor) ? rawColor.toUpperCase() : undefined;
   if (color) recolorWhite(svg, color);
@@ -111,10 +182,10 @@ export function normalizeIcon(xml: string): NormalizedIcon | undefined {
   // the outer tag, rather than serializing each child separately — which would force
   // a redundant xmlns onto every top-level child.
   const serialized = new dom.window.XMLSerializer().serializeToString(svg);
-  const inner = serialized.replace(/^<svg[^>]*>/, "").replace(/<\/svg>$/, "");
+  const fragment = serialized.replace(/^<svg[^>]*>/, "").replace(/<\/svg>$/, "");
 
   return {
-    fragment: `<g transform="scale(${SCALE})">${inner}</g>`,
+    fragment,
     rounded,
     ...(color ? { color } : {})
   };
