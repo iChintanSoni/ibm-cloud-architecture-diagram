@@ -21,6 +21,8 @@ Ship a usable, on-spec human editor in the browser.
 #### M3 — Semantic elements & containers
 ← next
 - Box (`deployedOn`), Group (`deployedTo`), Zone, Actor, IconNode, Text; containment/move-with.
+- Container presets (named shortcuts like VPC/Subnet/Region over these three primitives) are
+  explicitly out of scope here — [D21](00-decision-log.md#d21--container-presets-are-a-named-shortcut-layer-not-new-element-types--locked) lands them in M7 instead.
 
 #### M4 — Smart connectors
 - Ports, orthogonal auto-routing, IBM connector types, manual waypoints ([D13](00-decision-log.md#d13--smart-orthogonal-connectors-with-ibm-types--locked)).
@@ -35,6 +37,9 @@ Ship a usable, on-spec human editor in the browser.
 #### M7 — Chrome, templates, find, themes (Carbon)
 - `packages/ui-web` + `apps/web`: library panel, properties/layers, top bar, command palette;
   IBM-level templates + frames; find-on-canvas; auto/light/dark ([Editor UX](06-editor-ux.md)).
+- Container presets: surface the named shortcut table ([Icon Catalog → Container presets](04-icon-catalog.md#container-presets),
+  [D21](00-decision-log.md#d21--container-presets-are-a-named-shortcut-layer-not-new-element-types--locked))
+  in the library panel alongside icon search.
 
 #### M8 — Accessibility to AA
 - Keyboard-operable canvas, screen-reader object tree, live regions, CI a11y checks ([Accessibility](07-accessibility.md)).

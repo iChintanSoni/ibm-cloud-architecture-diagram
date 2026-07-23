@@ -21,6 +21,36 @@ Example the IBM docs give: *a virtual server instance is `deployedOn` a subnet a
 security group.* The tool models exactly this — the VSI node sits inside a subnet **box** and a
 security-group **group**.
 
+## Color usage
+
+Color carries meaning, and IBM's guidance is specific about *where* each weight of the palette may
+appear:
+
+| Role | Palette weight | Used for |
+|---|---|---|
+| **Primary** | 50/60 (full saturation) | Outlines, side-bar accents, color blocks, connectors |
+| **Secondary** | 10 (light tint) or white | Fills only |
+| **Alert** | Red/Yellow/Green alert tokens | Badges only |
+
+Never rely on color alone to convey meaning — labels and icons must carry it too.
+
+The nine primary colors map 1:1 to functional category and match the accent color already baked
+into each catalog icon ([Icon Catalog](04-icon-catalog.md)):
+
+| Category | Primary (outline/connector) | Secondary (10-tint fill) |
+|---|---|---|
+| Security | Red 50 `#fa4d56` | Red 10 `#fff1f1` |
+| DevOps | Magenta 50 `#ee5396` | Magenta 10 `#fff0f7` |
+| Applications | Purple 50 `#a56eff` | Purple 10 `#f6f2ff` |
+| Data & Storage | Blue 60 `#0f62fe` | Blue 10 `#edf5ff` |
+| Network | Cyan 50 `#1192e8` | Cyan 10 `#e5f6ff` |
+| Observability | Teal 50 `#009d9a` | Teal 10 `#d9fbfb` |
+| Compute | Green 60 `#198038` | Green 10 `#defbe6` |
+| Backend / generic location | Cool Gray 50 `#878d96` | Cool Gray 10 `#f2f4f8` |
+| User / Actors | Black `#000000` | — |
+
+Source: *IBM_IT Architecture diagrams kit* v1.1, "Color" slide.
+
 ## Layout convention
 
 - **West → East (left → right) = public traffic flow.** Diagrams read with external/public entry
@@ -28,13 +58,48 @@ security-group **group**.
 
 ## Connector nomenclature
 
-IBM ships a standard connector set ("IBM connectors," dotted-end variants). We model connector
-**type** as first-class:
+IBM ships a standard connector set ("IBM connectors"). We model connector **type** as first-class,
+not just a line style:
 
-- Endpoint styles (plain / arrow / dotted-end) and line styles map to IBM's set.
 - Connectors bind to **ports** on shapes and re-route when shapes move ([Architecture → Connectors](02-architecture.md#connectors)).
 - Default routing is **orthogonal**, obstacle-avoiding, west→east biased; manual waypoints override.
 - The picker labels types by IBM meaning, not by raw appearance.
+
+### Connection types
+
+Physical/protocol connections and messages between elements. Each has a bidirectional and
+unidirectional variant (arrowhead on one end vs. both):
+
+| Type | Line style | Meaning |
+|---|---|---|
+| Logical Connection / Link | dash-dot | Logical message exchanged between elements |
+| Connection | solid | Network connection |
+| Physical Connection | double line | Physical/cabled connection |
+| Tunneling Connection | solid, on a highlighted band | Traffic through a tunnel/encapsulation |
+| Traffic Through Double Tunnel | solid, on a double-highlighted band | Traffic through nested tunnels |
+
+**Color coding** (independent of the type above): green = private connection, blue = public
+connection.
+
+**Labels** follow `[Protocol/Application NAME] [Encryption/Security]:[PORT]`, e.g.
+`HTTPS TLS1.3:443`.
+
+### Relationships
+
+Logical relationships between elements — not network traffic:
+
+| Type | Line style | Meaning |
+|---|---|---|
+| Dependency | dashed arrow | Standard — used ~99% of the time, with a description label |
+| Association | solid arrow | Standard |
+| Aggregation | open-diamond + arrow | UML — "has-a," part can outlive the whole |
+| Composition | filled-diamond + arrow | UML — "owns-a," part's lifetime bound to the whole |
+| Implementation | dashed + hollow arrow | UML — realizes an interface |
+| Extends | solid + hollow arrow | UML — inheritance |
+
+Association/Aggregation/Composition edges may carry `0..N`-style cardinality labels at each end.
+
+Source: *IBM_IT Architecture diagrams kit* v1.1, "Connectors" slide.
 
 ## Categories & tiers
 
@@ -54,6 +119,10 @@ human explanation, and — where possible — an automatic **quick-fix** command
    - Box drawn but used as a grouping (should be a dashed Group), or vice versa → quick-fix:
      convert container type.
    - Node placed without an IBM icon / using a non-catalog glyph.
+   - Fill uses a primary (50/60) color instead of the category's secondary 10-tint/white →
+     quick-fix: swap to the secondary tint ([Color usage](#color-usage)).
+   - Outline, side-bar accent, or connector uses a secondary/alert color instead of primary →
+     quick-fix: swap to the category's primary.
 2. **Containment correctness**
    - Node not placed in any box/zone when the topology implies a location.
    - `deployedTo` group not inside a `deployedOn` box (illegal nesting per the model).
