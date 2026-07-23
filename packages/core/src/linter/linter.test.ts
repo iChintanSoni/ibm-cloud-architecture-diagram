@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Scene } from "../scene/scene.js";
-import type { BoxElement, ConnectorElement, GroupElement } from "../scene/types.js";
+import type { BoxElement, ConnectorElement, GroupElement, IconNodeElement } from "../scene/types.js";
 import { Linter } from "./linter.js";
 
 function box(id: string, label?: string): BoxElement {
@@ -90,6 +90,47 @@ describe("Linter", () => {
 
     const diagnostics = new Linter().run(scene);
     expect(diagnostics.some((d) => d.ruleId === "group-without-box")).toBe(false);
+  });
+
+  it("flags a connector whose straight route crosses an unrelated icon, with a reroute quick-fix", () => {
+    const scene = new Scene();
+    scene._put(box("a", "A"));
+    const b: BoxElement = { ...box("b", "B"), x: 300 };
+    scene._put(b);
+    const blocker: IconNodeElement = {
+      id: "blocker",
+      type: "iconNode",
+      semantic: "node",
+      catalogRef: "test/vpc",
+      x: 180,
+      y: 30,
+      w: 48,
+      h: 48
+    };
+    scene._put(blocker);
+    const connector: ConnectorElement = {
+      id: "c1",
+      type: "connector",
+      semantic: "node",
+      x: 0,
+      y: 0,
+      w: 0,
+      h: 0,
+      from: { elementId: "a", port: "e" },
+      to: { elementId: "b", port: "w" },
+      connectorType: "association",
+      routing: "auto",
+      waypoints: []
+    };
+    scene._put(connector);
+
+    const diagnostics = new Linter().run(scene);
+    const crossing = diagnostics.find((d) => d.ruleId === "connector-crosses-obstacle");
+    expect(crossing).toMatchObject({ severity: "warn", elementId: "c1" });
+
+    crossing!.quickFix!.do(scene);
+    const rerouted = new Linter().run(scene).find((d) => d.ruleId === "connector-crosses-obstacle");
+    expect(rerouted).toBeUndefined();
   });
 
   it("reports no blocking errors on a clean scene", () => {

@@ -1,6 +1,27 @@
+import { routeConnectorInScene } from "../routing/routeConnector.js";
 import type { Scene } from "../scene/scene.js";
-import type { ElementId, SceneElement } from "../scene/types.js";
+import type { ConnectorElement, ElementId, SceneElement } from "../scene/types.js";
 import type { Command } from "./types.js";
+
+/** Auto-routed connectors whose `from`/`to` is one of `ids` — these need rerouting after a move/resize. */
+function attachedAutoConnectors(scene: Scene, ids: Set<ElementId>): ConnectorElement[] {
+  return scene
+    .all()
+    .filter(
+      (el): el is ConnectorElement =>
+        el.type === "connector" &&
+        el.routing !== "manual" &&
+        (ids.has(el.from.elementId) || ids.has(el.to.elementId))
+    );
+}
+
+function rerouteConnectors(scene: Scene, connectors: ConnectorElement[]): void {
+  for (const connector of connectors) {
+    const current = scene.get(connector.id) as ConnectorElement | undefined;
+    if (!current) continue;
+    scene._put({ ...current, waypoints: routeConnectorInScene(scene, current) } as SceneElement, "update");
+  }
+}
 
 export function addElement(element: SceneElement): Command {
   return {
@@ -34,17 +55,23 @@ export function removeElement(scene: Scene, id: ElementId): Command {
   };
 }
 
+const GEOMETRY_FIELDS = ["x", "y", "w", "h"] as const;
+
 export function updateElement(scene: Scene, id: ElementId, patch: Partial<SceneElement>): Command {
   const previous = scene.get(id);
+  const geometryChanged = GEOMETRY_FIELDS.some((k) => k in patch);
+  const affectedConnectors = geometryChanged ? attachedAutoConnectors(scene, new Set([id])) : [];
   return {
     label: "update element",
     do(s) {
       const current = s.get(id);
       if (!current) return;
       s._put({ ...current, ...patch } as SceneElement, "update");
+      rerouteConnectors(s, affectedConnectors);
     },
     undo(s) {
       if (previous) s._put(previous, "update");
+      for (const connector of affectedConnectors) s._put(connector, "update");
     }
   };
 }
@@ -61,6 +88,7 @@ export function moveElements(scene: Scene, ids: ElementId[], dx: number, dy: num
     for (const descendant of scene.descendantsOf(id)) allIds.add(descendant.id);
   }
   const previous = new Map([...allIds].map((id) => [id, scene.get(id)]));
+  const affectedConnectors = attachedAutoConnectors(scene, allIds);
   return {
     label: "move elements",
     do(s) {
@@ -68,12 +96,14 @@ export function moveElements(scene: Scene, ids: ElementId[], dx: number, dy: num
         const el = s.get(id);
         if (el) s._put({ ...el, x: el.x + dx, y: el.y + dy } as SceneElement, "update");
       }
+      rerouteConnectors(s, affectedConnectors);
     },
     undo(s) {
       for (const id of allIds) {
         const el = previous.get(id);
         if (el) s._put(el, "update");
       }
+      for (const connector of affectedConnectors) s._put(connector, "update");
     }
   };
 }
@@ -95,6 +125,53 @@ export function reparentElement(scene: Scene, id: ElementId, parentId: ElementId
     label: "reparent element",
     do(s) {
       s._put(next, "update");
+    },
+    undo(s) {
+      s._put(previous, "update");
+    }
+  };
+}
+
+function requireConnector(scene: Scene, id: ElementId): ConnectorElement {
+  const el = scene.get(id);
+  if (!el || el.type !== "connector") throw new Error(`Not a connector: "${id}"`);
+  return el;
+}
+
+/**
+ * Overrides a connector's route with explicit waypoints and switches it to
+ * "manual" routing, so future moves/resizes of its endpoints no longer
+ * recompute the path (D13's "manual override" escape hatch).
+ */
+export function setManualWaypoints(
+  scene: Scene,
+  id: ElementId,
+  waypoints: Array<{ x: number; y: number }>
+): Command {
+  const previous = requireConnector(scene, id);
+  const next: ConnectorElement = { ...previous, waypoints, routing: "manual" };
+  return {
+    label: "set connector waypoints",
+    do(s) {
+      s._put(next, "update");
+    },
+    undo(s) {
+      s._put(previous, "update");
+    }
+  };
+}
+
+/** Switches a connector back to "auto" routing and recomputes its path immediately. */
+export function autoRouteConnector(scene: Scene, id: ElementId): Command {
+  const previous = requireConnector(scene, id);
+  return {
+    label: "auto-route connector",
+    do(s) {
+      const current = requireConnector(s, id);
+      s._put(
+        { ...current, routing: "auto", waypoints: routeConnectorInScene(s, { ...current, routing: "auto" }) },
+        "update"
+      );
     },
     undo(s) {
       s._put(previous, "update");

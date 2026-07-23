@@ -1,11 +1,29 @@
 import { describe, expect, it } from "vitest";
 import { Scene } from "../scene/scene.js";
-import type { BoxElement } from "../scene/types.js";
+import type { BoxElement, ConnectorElement } from "../scene/types.js";
 import { CommandBus } from "./commandBus.js";
 import { addElement, moveElements, reparentElement, removeElement, updateElement } from "./commands.js";
 
 function box(id: string, parentId?: string): BoxElement {
   return { id, type: "box", semantic: "deployedOn", x: 0, y: 0, w: 100, h: 50, ...(parentId ? { parentId } : {}) };
+}
+
+function connector(id: string, fromId: string, toId: string, opts: Partial<ConnectorElement> = {}): ConnectorElement {
+  return {
+    id,
+    type: "connector",
+    semantic: "node",
+    x: 0,
+    y: 0,
+    w: 0,
+    h: 0,
+    from: { elementId: fromId, port: "e" },
+    to: { elementId: toId, port: "w" },
+    connectorType: "association",
+    routing: "auto",
+    waypoints: [],
+    ...opts
+  };
 }
 
 describe("CommandBus", () => {
@@ -137,5 +155,53 @@ describe("CommandBus", () => {
     bus.dispatch(addElement(box("child", "parent")));
 
     expect(() => reparentElement(scene, "parent", "child")).toThrow(/descendant/);
+  });
+
+  it("re-routes an auto connector attached to a moved element, and undoes back", () => {
+    const scene = new Scene();
+    const bus = new CommandBus(scene);
+    bus.dispatch(addElement(box("a")));
+    bus.dispatch(addElement(box("b")));
+    bus.dispatch(addElement(connector("c1", "a", "b")));
+
+    bus.dispatch(moveElements(scene, ["b"], 0, 100));
+
+    const moved = scene.get("b");
+    expect(moved).toMatchObject({ y: 100 });
+    const connectorAfterMove = scene.get("c1") as ConnectorElement;
+    // Ports no longer face each other on a straight line, so a bend is required.
+    expect(connectorAfterMove.waypoints?.length).toBeGreaterThan(0);
+
+    bus.undo();
+    expect(scene.get("b")).toMatchObject({ y: 0 });
+    expect((scene.get("c1") as ConnectorElement).waypoints).toEqual([]);
+  });
+
+  it("leaves a manually-routed connector's waypoints untouched when its endpoint moves", () => {
+    const scene = new Scene();
+    const bus = new CommandBus(scene);
+    bus.dispatch(addElement(box("a")));
+    bus.dispatch(addElement(box("b")));
+    const manualWaypoints = [{ x: 42, y: 42 }];
+    bus.dispatch(addElement(connector("c1", "a", "b", { routing: "manual", waypoints: manualWaypoints })));
+
+    bus.dispatch(moveElements(scene, ["b"], 0, 100));
+
+    expect((scene.get("c1") as ConnectorElement).waypoints).toEqual(manualWaypoints);
+  });
+
+  it("re-routes an auto connector attached to a resized element via updateElement", () => {
+    const scene = new Scene();
+    const bus = new CommandBus(scene);
+    bus.dispatch(addElement(box("a")));
+    bus.dispatch(addElement(box("b")));
+    bus.dispatch(addElement(connector("c1", "a", "b")));
+
+    bus.dispatch(updateElement(scene, "a", { h: 400 }));
+
+    expect(scene.get("a")).toMatchObject({ h: 400 });
+    // Unrelated field updates (e.g. a label) must not trigger a reroute.
+    bus.dispatch(updateElement(scene, "b", { label: { text: "B" } }));
+    expect(scene.get("b")?.label?.text).toBe("B");
   });
 });

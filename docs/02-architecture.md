@@ -93,7 +93,7 @@ const editor = createEditor({ container, catalog, theme });
 editor.loadIcad(json); editor.toIcad();
 editor.commands.dispatch(cmd); editor.history.undo();
 editor.catalog.search("vpc"); editor.addIcon("ibm-cloud/vpc", { at });
-editor.connect(portA, portB, { type: "actor-to-node" });
+editor.connect(portA, portB, { connectorType: "association" });
 editor.lint();                 // → diagnostics + quick-fixes
 editor.export({ format: "svg", embedSource: true });
 editor.on("change", handler);
