@@ -9,39 +9,22 @@ body,
   display: flex;
   flex-direction: column;
   height: 100vh;
-}
-
-.icad-topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.5rem 1rem;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-  gap: 1rem;
-}
-
-.icad-brand {
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.icad-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.icad-theme-switch {
-  display: flex;
-  gap: 0.25rem;
-  margin-left: 0.5rem;
+  /* Carbon's UI Shell Header is position: fixed at 3rem tall; reserve the space so it
+     doesn't cover the library/canvas/inspector below it. */
+  padding-top: 3rem;
 }
 
 .icad-body {
   flex: 1;
   display: flex;
   min-height: 0;
+}
+
+.icad-canvas-region {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-width: 0;
 }
 
 .icad-canvas {

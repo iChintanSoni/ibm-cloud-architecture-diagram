@@ -391,4 +391,44 @@ describe("createEditor", () => {
     const svg = editor.export({ format: "svg", embedSource: false }) as string;
     expect(svg).not.toContain('id="icad:source"');
   });
+
+  describe("viewport", () => {
+    it("starts unscaled at the origin", () => {
+      expect(editor.viewport.get()).toEqual({ x: 0, y: 0, scale: 1 });
+    });
+
+    it("zooms in and out around the viewport center", () => {
+      editor.zoomIn();
+      expect(editor.viewport.get().scale).toBeGreaterThan(1);
+      editor.resetView();
+      editor.zoomOut();
+      expect(editor.viewport.get().scale).toBeLessThan(1);
+    });
+
+    it("resets to the identity view", () => {
+      editor.viewport.set({ x: 100, y: 100, scale: 2 });
+      editor.resetView();
+      expect(editor.viewport.get()).toEqual({ x: 0, y: 0, scale: 1 });
+    });
+
+    it("focuses the viewport on the given elements' bounding box", () => {
+      const id = editor.addBox({ at: { x: 500, y: 500 }, w: 100, h: 100, label: "Far away" });
+      editor.focusOnElements([id]);
+      const state = editor.viewport.get();
+      // The box's center (550,550) should now be roughly centered in the (fallback) 800x600 viewport.
+      expect(state.x + 800 / (2 * state.scale)).toBeCloseTo(550, 0);
+      expect(state.y + 600 / (2 * state.scale)).toBeCloseTo(550, 0);
+    });
+
+    it("does nothing when focusing on elements that don't exist", () => {
+      const before = editor.viewport.get();
+      editor.focusOnElements(["missing"]);
+      expect(editor.viewport.get()).toEqual(before);
+    });
+
+    it("computes a bounding box for a set of elements via boundsOf", () => {
+      const id = editor.addIcon("test/vpc", { at: { x: 10, y: 10 } });
+      expect(editor.boundsOf([id])).toEqual({ x: 10, y: 10, w: 48, h: 48 });
+    });
+  });
 });

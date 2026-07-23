@@ -5,6 +5,10 @@ import type { ConnectorElement, ConnectorType, SceneElement } from "../scene/typ
 import { connectorPathPoints } from "../routing/routeConnector.js";
 import { createSvgElement, setAttrs } from "./dom.js";
 import type { Point } from "./port.js";
+import type { ViewportState } from "./viewport.js";
+
+/** Used when the container reports a zero-size rect (e.g. detached in tests/jsdom). */
+const FALLBACK_VIEWPORT_SIZE = { w: 800, h: 600 };
 
 const ICON_CONTAINER = 48;
 const ICON_GLYPH = 20;
@@ -244,6 +248,20 @@ export class SvgRenderer {
   /** Updates the resolved theme; call render(scene) afterwards to repaint. */
   setTheme(theme: ResolvedTheme): void {
     this.palette = PALETTES[theme];
+  }
+
+  /** Applies the camera (docs/06-editor-ux.md#core-interactions) as the root SVG's viewBox. */
+  applyViewport(viewport: ViewportState): void {
+    const rect = this.container.getBoundingClientRect();
+    const w = (rect.width || FALLBACK_VIEWPORT_SIZE.w) / viewport.scale;
+    const h = (rect.height || FALLBACK_VIEWPORT_SIZE.h) / viewport.scale;
+    setAttrs(this.svg, { viewBox: `${viewport.x} ${viewport.y} ${w} ${h}` });
+  }
+
+  /** Current container size in CSS pixels, falling back off-DOM (e.g. tests). */
+  containerSize(): { w: number; h: number } {
+    const rect = this.container.getBoundingClientRect();
+    return { w: rect.width || FALLBACK_VIEWPORT_SIZE.w, h: rect.height || FALLBACK_VIEWPORT_SIZE.h };
   }
 
   render(scene: Scene): void {

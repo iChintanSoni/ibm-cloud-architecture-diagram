@@ -1,6 +1,7 @@
 // Scene model
 export * from "./scene/types.js";
 export { Scene, type SceneChangeEvent } from "./scene/scene.js";
+export { boundsOf } from "./scene/bounds.js";
 
 // Commands
 export type { Command } from "./commands/types.js";
@@ -24,6 +25,13 @@ export { hitTest } from "./interaction/hitTest.js";
 // Rendering
 export { SvgRenderer, type ResolvedTheme } from "./render/svgRenderer.js";
 export { portPoint, type Point } from "./render/port.js";
+export {
+  ViewportController,
+  MIN_SCALE,
+  MAX_SCALE,
+  type ViewportState,
+  type ViewportSize
+} from "./render/viewport.js";
 
 // Routing
 export { routeOrthogonal, pathCrossesObstacles, type Rect, type RoutePort } from "./routing/orthogonalRouter.js";

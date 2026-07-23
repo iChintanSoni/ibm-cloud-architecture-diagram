@@ -1,4 +1,5 @@
 import type { Catalog } from "../catalog/catalog.js";
+import { boundsOf } from "../scene/bounds.js";
 import { CommandBus } from "../commands/commandBus.js";
 import {
   addElement,
@@ -18,6 +19,8 @@ import { Linter } from "../linter/linter.js";
 import { applyQuickFix, applyQuickFixes } from "../linter/quickFix.js";
 import type { Diagnostic, Severity } from "../linter/types.js";
 import { SvgRenderer, type ResolvedTheme } from "../render/svgRenderer.js";
+import { ViewportController } from "../render/viewport.js";
+import type { Rect } from "../routing/orthogonalRouter.js";
 import { routeConnectorInScene } from "../routing/routeConnector.js";
 import { Scene, type SceneChangeEvent } from "../scene/scene.js";
 import type {
@@ -132,10 +135,13 @@ export class Editor {
   readonly commands: CommandBus;
   readonly selection: SelectionManager;
   readonly catalog: Catalog;
+  /** Ephemeral pan/zoom camera — not part of undo history or the `.icad` document. */
+  readonly viewport: ViewportController;
 
   private renderer: SvgRenderer;
   private linter: Linter;
   private changeEmitter = new Emitter<{ change: SceneChangeEvent }>();
+  private resizeObserver?: ResizeObserver;
 
   constructor(options: CreateEditorOptions) {
     this.catalog = options.catalog;
@@ -147,6 +153,7 @@ export class Editor {
     this.selection = new SelectionManager();
     this.linter = new Linter({ catalog: this.catalog });
     this.renderer = new SvgRenderer(options.container, this.catalog, resolveTheme(this.scene.canvas.theme));
+    this.viewport = new ViewportController();
 
     this.scene.on((event) => {
       this.renderer.render(this.scene);
@@ -154,8 +161,15 @@ export class Editor {
       this.changeEmitter.emit("change", event);
     });
     this.selection.on((ids) => this.renderer.setSelection(ids));
+    this.viewport.on((state) => this.renderer.applyViewport(state));
     this.renderer.render(this.scene);
     this.renderer.setDiagnostics(this.linter.run(this.scene));
+    this.renderer.applyViewport(this.viewport.get());
+
+    if (typeof ResizeObserver !== "undefined") {
+      this.resizeObserver = new ResizeObserver(() => this.renderer.applyViewport(this.viewport.get()));
+      this.resizeObserver.observe(options.container);
+    }
   }
 
   /** Updates the auto/light/dark preference and repaints the canvas to match. */
@@ -495,7 +509,51 @@ export class Editor {
     return this.selection.on(listener);
   }
 
+  /** Scene-space bounding box of one or more elements (containers include their contents). */
+  boundsOf(ids: ElementId[]): Rect | undefined {
+    return boundsOf(this.scene, ids);
+  }
+
+  /**
+   * Pans/zooms the viewport to frame the given elements — used by Find
+   * (docs/06-editor-ux.md#find-on-canvas-f) and frame presentation
+   * (docs/06-editor-ux.md#frames-sections--presentation).
+   */
+  focusOnElements(ids: ElementId[], opts?: { padding?: number; maxScale?: number }): void {
+    const rect = this.boundsOf(ids);
+    if (!rect) return;
+    this.viewport.focusOn(rect, this.renderer.containerSize(), opts);
+  }
+
+  /** Fits the viewport to the whole diagram's current extent. */
+  fitToContent(opts?: { padding?: number; maxScale?: number }): void {
+    this.focusOnElements(
+      this.scene.all().map((el) => el.id),
+      opts
+    );
+  }
+
+  zoomIn(): void {
+    const size = this.renderer.containerSize();
+    this.viewport.zoomBy(1.2, this.sceneCenter(size));
+  }
+
+  zoomOut(): void {
+    const size = this.renderer.containerSize();
+    this.viewport.zoomBy(1 / 1.2, this.sceneCenter(size));
+  }
+
+  resetView(): void {
+    this.viewport.reset();
+  }
+
+  private sceneCenter(size: { w: number; h: number }): { x: number; y: number } {
+    const { x, y, scale } = this.viewport.get();
+    return { x: x + size.w / (2 * scale), y: y + size.h / (2 * scale) };
+  }
+
   destroy(): void {
+    this.resizeObserver?.disconnect();
     this.renderer.destroy();
   }
 }

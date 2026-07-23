@@ -1,4 +1,5 @@
 import {
+  Button,
   NumberInput,
   Select,
   SelectItem,
@@ -12,10 +13,12 @@ import {
   TreeNode,
   TreeView
 } from "@carbon/react";
+import { ChevronDown, ChevronUp, Play, Stop } from "@carbon/react/icons";
 import type {
   ConnectorType,
   ElementId,
   ElementPropertiesPatch,
+  FrameElement,
   SceneElement,
   ZoneKind
 } from "@icad/core";
@@ -51,6 +54,11 @@ export interface InspectorPanelProps {
   selectedIds: ElementId[];
   validationCount: number;
   validationContent: ReactNode;
+  frames: FrameElement[];
+  presentingFrameId?: ElementId | undefined;
+  onJumpToFrame: (id: ElementId) => void;
+  onTogglePresent: () => void;
+  onPresentStep: (direction: 1 | -1) => void;
   onSelect: (id: ElementId) => void;
   onUpdate: (id: ElementId, patch: ElementPropertiesPatch) => void;
   onReparent: (id: ElementId, parentId: ElementId | undefined) => void;
@@ -289,11 +297,75 @@ function ElementProperties({
   );
 }
 
+function FramesPanel({
+  frames,
+  presentingFrameId,
+  onJumpToFrame,
+  onTogglePresent,
+  onPresentStep
+}: Pick<
+  InspectorPanelProps,
+  "frames" | "presentingFrameId" | "onJumpToFrame" | "onTogglePresent" | "onPresentStep"
+>) {
+  const ordered = [...frames].sort((a, b) => a.order - b.order);
+  const presenting = presentingFrameId !== undefined;
+
+  if (ordered.length === 0) {
+    return (
+      <div className="icad-inspector__empty">
+        <h2>No frames yet</h2>
+        <p>Add a Frame from the library to split the diagram into sections and drive Find/presentation.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="icad-frames">
+      <div className="icad-frames__toolbar">
+        <Button
+          kind={presenting ? "danger--tertiary" : "tertiary"}
+          size="sm"
+          renderIcon={presenting ? Stop : Play}
+          onClick={onTogglePresent}
+        >
+          {presenting ? "Exit presentation" : "Present frames"}
+        </Button>
+        {presenting && (
+          <>
+            <Button kind="ghost" size="sm" hasIconOnly iconDescription="Previous frame" renderIcon={ChevronUp} onClick={() => onPresentStep(-1)} />
+            <Button kind="ghost" size="sm" hasIconOnly iconDescription="Next frame" renderIcon={ChevronDown} onClick={() => onPresentStep(1)} />
+          </>
+        )}
+      </div>
+      <ol className="icad-frames__list">
+        {ordered.map((frame) => (
+          <li key={frame.id}>
+            <button
+              type="button"
+              className="icad-frames__item"
+              data-active={frame.id === presentingFrameId ? "true" : "false"}
+              onClick={() => onJumpToFrame(frame.id)}
+            >
+              <span className="icad-frames__order">{frame.order}</span>
+              <span>{frame.name.trim() || "Untitled frame"}</span>
+            </button>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
 export function InspectorPanel({
   elements,
   selectedIds,
   validationCount,
   validationContent,
+  frames,
+  presentingFrameId,
+  onJumpToFrame,
+  onTogglePresent,
+  onPresentStep,
   onSelect,
   onUpdate,
   onReparent
@@ -307,6 +379,7 @@ export function InspectorPanel({
         <TabList aria-label="Inspector views" contained fullWidth>
           <Tab>Properties</Tab>
           <Tab>Layers</Tab>
+          <Tab>Frames ({frames.length})</Tab>
           <Tab>Validation ({validationCount})</Tab>
         </TabList>
         <TabPanels>
@@ -338,6 +411,15 @@ export function InspectorPanel({
                 <p>Place an IBM Cloud element to start the diagram hierarchy.</p>
               </div>
             )}
+          </TabPanel>
+          <TabPanel className="icad-inspector__panel">
+            <FramesPanel
+              frames={frames}
+              presentingFrameId={presentingFrameId}
+              onJumpToFrame={onJumpToFrame}
+              onTogglePresent={onTogglePresent}
+              onPresentStep={onPresentStep}
+            />
           </TabPanel>
           <TabPanel className="icad-inspector__panel icad-validation-content">
             {validationContent}

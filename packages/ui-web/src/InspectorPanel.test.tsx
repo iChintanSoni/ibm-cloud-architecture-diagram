@@ -70,6 +70,10 @@ describe("InspectorPanel", () => {
           selectedIds={["vpc"]}
           validationCount={2}
           validationContent={<p>Validation content</p>}
+          frames={[]}
+          onJumpToFrame={vi.fn()}
+          onTogglePresent={vi.fn()}
+          onPresentStep={vi.fn()}
           onSelect={vi.fn()}
           onUpdate={onUpdate}
           onReparent={vi.fn()}
@@ -80,6 +84,7 @@ describe("InspectorPanel", () => {
     expect([...container.querySelectorAll('[role="tab"]')].map((tab) => tab.textContent)).toEqual([
       "Properties",
       "Layers",
+      "Frames (0)",
       "Validation (2)"
     ]);
     expect(container.querySelector("h2")?.textContent).toBe("VPC");
@@ -101,6 +106,10 @@ describe("InspectorPanel", () => {
           selectedIds={["app"]}
           validationCount={0}
           validationContent={<p>No issues</p>}
+          frames={[]}
+          onJumpToFrame={vi.fn()}
+          onTogglePresent={vi.fn()}
+          onPresentStep={vi.fn()}
           onSelect={onSelect}
           onUpdate={vi.fn()}
           onReparent={vi.fn()}
@@ -117,5 +126,84 @@ describe("InspectorPanel", () => {
     expect(appLayer.getAttribute("aria-selected")).toBe("true");
     act(() => appLayer.click());
     expect(onSelect).toHaveBeenCalledWith("app");
+  });
+
+  it("lists frames in presentation order, jumps on click, and toggles presenting", () => {
+    const onJumpToFrame = vi.fn();
+    const onTogglePresent = vi.fn();
+    const onPresentStep = vi.fn();
+
+    act(() => {
+      root.render(
+        <InspectorPanel
+          elements={elements}
+          selectedIds={[]}
+          validationCount={0}
+          validationContent={<p>No issues</p>}
+          frames={[
+            { id: "frame-2", type: "frame", semantic: "boundary", name: "Second", order: 2, x: 0, y: 0, w: 800, h: 500 },
+            { id: "frame-1", type: "frame", semantic: "boundary", name: "First", order: 1, x: 0, y: 0, w: 800, h: 500 }
+          ]}
+          presentingFrameId="frame-1"
+          onJumpToFrame={onJumpToFrame}
+          onTogglePresent={onTogglePresent}
+          onPresentStep={onPresentStep}
+          onSelect={vi.fn()}
+          onUpdate={vi.fn()}
+          onReparent={vi.fn()}
+        />
+      );
+    });
+
+    const framesTab = [...container.querySelectorAll<HTMLElement>('[role="tab"]')].find(
+      (tab) => tab.textContent === "Frames (2)"
+    )!;
+    act(() => framesTab.click());
+
+    const items = [...container.querySelectorAll<HTMLButtonElement>(".icad-frames__item")];
+    expect(items.map((item) => item.textContent)).toEqual(["1First", "2Second"]);
+    expect(items[0]?.dataset.active).toBe("true");
+
+    act(() => items[1]?.click());
+    expect(onJumpToFrame).toHaveBeenCalledWith("frame-2");
+
+    const presentButton = [...container.querySelectorAll("button")].find(
+      (button) => button.textContent === "Exit presentation"
+    )!;
+    act(() => presentButton.click());
+    expect(onTogglePresent).toHaveBeenCalled();
+
+    const toolbarButtons = [...container.querySelectorAll<HTMLButtonElement>(".icad-frames__toolbar button")];
+    act(() => toolbarButtons[2]?.click()); // [toggle, previous, next]
+    expect(onPresentStep).toHaveBeenCalledWith(1);
+  });
+
+  it("shows an empty state when there are no frames", () => {
+    act(() => {
+      root.render(
+        <InspectorPanel
+          elements={[]}
+          selectedIds={[]}
+          validationCount={0}
+          validationContent={<p>No issues</p>}
+          frames={[]}
+          onJumpToFrame={vi.fn()}
+          onTogglePresent={vi.fn()}
+          onPresentStep={vi.fn()}
+          onSelect={vi.fn()}
+          onUpdate={vi.fn()}
+          onReparent={vi.fn()}
+        />
+      );
+    });
+
+    const framesTab = [...container.querySelectorAll<HTMLElement>('[role="tab"]')].find(
+      (tab) => tab.textContent === "Frames (0)"
+    )!;
+    act(() => framesTab.click());
+
+    expect(
+      container.querySelector('[role="tabpanel"]:not([hidden]) .icad-inspector__empty h2')?.textContent
+    ).toBe("No frames yet");
   });
 });

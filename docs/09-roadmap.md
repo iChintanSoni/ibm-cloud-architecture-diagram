@@ -74,7 +74,7 @@ Ship a usable, on-spec human editor in the browser.
   and enforces block-on-error when enabled.
 
 #### M7 — Chrome, templates, find, themes (Carbon)
-🟡 **In progress**
+✅ **Done** (2026-07-23)
 - ✅ **Library vertical slice done (2026-07-23):** reusable `packages/ui-web` Carbon library
   panel, catalog search/category browsing, click-to-place icons and native containers, automatic
   containment with the prescribed 16px inset, and the four container presets confirmed by IBM
@@ -145,12 +145,33 @@ frame-authoring slice:
 **Done when:** a user can start at any IBM diagram level, create and edit named frames, order them,
 save/reopen the result as `.icad`, and continue editing through the shared command surface.
 
-- ✅ `packages/ui-web` + `apps/web`: library panel with icon search and confirmed container
-  presets; tabbed Properties/Layers/Validation inspector with selection synchronization.
-- ✅ `packages/core` + `packages/ui-web` + `apps/web`: reusable IBM-level templates, first-run/New
-  chooser, and named frame authoring with presentation order.
-- Remaining: full Carbon top bar and command palette; find-on-canvas plus frame presentation
-  navigation; persisted auto/light/dark preferences ([Editor UX](06-editor-ux.md)).
+##### M7.4 — Top bar, command palette, find, frame presentation, theme persistence
+✅ **Done** (2026-07-23)
+
+Closed out the remaining M7 chrome: a real pan/zoom camera plus the surfaces that depend on it.
+
+1. Added an ephemeral `ViewportController` (`packages/core/src/render/viewport.ts`, not part of
+   undo history or the `.icad` document) and a `boundsOf()` scene helper; `SvgRenderer` applies it
+   as the root SVG's `viewBox`. `Editor` exposes `viewport`, `focusOnElements()`, `fitToContent()`,
+   `zoomIn()`/`zoomOut()`/`resetView()`. `apps/web` wires scroll-to-pan and Ctrl/Cmd+scroll-to-zoom
+   as a native non-passive wheel listener (React's synthetic `onWheel` can't `preventDefault`).
+2. Replaced the plain button toolbar with a full Carbon UI Shell `TopBar`
+   (`packages/ui-web/src/TopBar.tsx`): File/Edit/View/Insert/Help menus, a live zoom-percent
+   indicator, Find and Command-palette actions, and the theme switch.
+3. Added `CommandPalette` (Ctrl/Cmd+K) and `FindBar` (Ctrl/Cmd+F) — Find matches element labels,
+   resolved catalog icon names, and **frame names**, jumping/zooming the viewport to each match
+   exactly per [Find on canvas](06-editor-ux.md#find-on-canvas-f).
+4. Added a **Frames** tab to the inspector listing frames in presentation order with click-to-jump
+   and a **Present frames** mode; arrow/PageUp/PageDown keys step frame-to-frame while presenting.
+5. Persisted the auto/light/dark chrome preference to `localStorage`, independent of any one
+   `.icad` document, surviving reloads.
+6. Covered the viewport math, find matching, and every new component with core/ui-web unit and
+   component tests; verified the integrated flow (insert, undo/redo, find, present, theme
+   persistence, export) end-to-end in a running browser.
+
+**Done when:** a user can run any action from the top bar or the command palette, jump to any
+element or frame by name via Find, step through a presentation, and keep their chosen theme across
+a reload.
 
 #### M8 — Accessibility to AA
 - Keyboard-operable canvas, screen-reader object tree, live regions, CI a11y checks ([Accessibility](07-accessibility.md)).

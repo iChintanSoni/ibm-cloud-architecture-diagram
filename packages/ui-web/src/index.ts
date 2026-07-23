@@ -18,3 +18,8 @@ export {
   type PrimitiveKind,
   type ContainerPreset
 } from "./presets.js";
+export { TopBar, type TopBarProps, type ThemePreference, type InsertKind } from "./TopBar.js";
+export { CommandPalette, type CommandPaletteProps } from "./CommandPalette.js";
+export { filterCommands, type CommandItem } from "./commandPaletteModel.js";
+export { FindBar, type FindBarProps } from "./FindBar.js";
+export { findMatches, type FindMatch } from "./findModel.js";
