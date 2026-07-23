@@ -43,6 +43,17 @@ custom SVG engine ([D3](00-decision-log.md#d3--svg-dom-rendering--locked)). Ever
 - **Snapping:** grid + smart guides (edges/centers) + ports.
 - **Undo/redo:** unlimited within a session, backed by the command bus.
 
+## Nesting & spacing
+
+- Nested elements keep a **16px buffer** on every side from their parent container's edge — the
+  engine enforces this as a snap/pad default when dropping into a Box/Group/Zone, not just a
+  visual guideline.
+- Alternate white and light-tint fills between nesting levels (parent vs. child container) for
+  readability, using the category's secondary color ([Spec Conformance → Color usage](05-ibm-spec-conformance.md#color-usage)).
+- Resizing a container drags from its corner handle; children reflow to keep the 16px buffer.
+
+Source: *IBM_IT Architecture diagrams kit* v1.1, "Prescribed location / Scaling elements" slide.
+
 ## Themes
 
 Auto / light / dark ([D14 theme](00-decision-log.md#d14--ibm-level-templates--frames--locked)). "Auto" follows the OS. Carbon supplies chrome tokens;

@@ -166,3 +166,21 @@ skills land in v2.
 
 - **Why:** Ships the usable core soonest; de-risks the engine before adding surfaces.
 - **Consequence:** The agent headline is designed-for but not shipped in v1. See [Roadmap](09-roadmap.md).
+
+### D21 — Container presets are a named-shortcut layer, not new element types · Locked
+IBM's kit ships ~30 named container stencils (VPC, Subnet, Region, Availability Zone, Authorization
+Boundary, Instance Group, …), each pre-set with a corner icon, category color, and label. We do
+**not** fork these into 30 element types or a catalog `groups` category. The engine keeps its three
+structural primitives — Box (`deployedOn`, solid), Group (`deployedTo`, dashed), Zone (boundary,
+dotted) — and presets are a small static table (`name → {kind, category color, optional corner
+icon}`) that the library panel offers as one-click, pre-styled inserts.
+
+- **Why:** Users expect to place "VPC," not draw a Box and manually rename/recolor it — but the
+  three-primitive scene model is simple and already correct; multiplying element types to match
+  IBM's naming would fork that model for no engine benefit.
+- **Consequence:** [M3](09-roadmap.md#m3--semantic-elements--containers) is unaffected — it ships
+  the three primitives as already scoped. The preset table and its library-panel surfacing land in
+  [M7](09-roadmap.md#m7--chrome-templates-find-themes-carbon). See the proposed table in
+  [Icon Catalog → Container presets](04-icon-catalog.md#container-presets); several entries are
+  inferred from the kit's stencil legend rather than confirmed by a worked example, so IBM Design
+  sign-off ([D17](#d17--official--ibm-internal-tool--locked)) applies before the table ships.

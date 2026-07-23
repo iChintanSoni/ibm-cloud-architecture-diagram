@@ -98,6 +98,77 @@ Re-running the pipeline against a newer upstream tag produces a new catalog vers
 }
 ```
 
+> **Containers are not catalog entries.** Box/Group/Zone ship as native ICAD engine primitives
+> ([Architecture → Scene model](02-architecture.md#the-core)), not `icons[]` rows — deliberately no
+> `groups` category above. IBM's kit does ship ~30 *named* container stencils (VPC, Subnet, Region,
+> Availability Zone, Authorization Boundary, …), each with a preset icon/color/label. Per
+> [D21](00-decision-log.md#d21--container-presets-are-a-named-shortcut-layer-not-new-element-types--locked),
+> we don't fork these into new element types — instead the library panel offers them as one-click,
+> pre-styled inserts over the three primitives. See the proposed table below.
+
+## Container presets
+
+A static lookup the library panel ([M7](09-roadmap.md#m7--chrome-templates-find-themes-carbon))
+uses to offer named, pre-styled inserts: pick "VPC" and get a correctly colored, correctly bordered
+Box with the VPC glyph in the corner and "VPC" as the label — instead of drawing a Box and manually
+styling it. Each row is `{ name, kind, category color, corner icon }`; `kind` follows the
+[Element semantics](05-ibm-spec-conformance.md#element-semantics) rule (Box = solid/`deployedOn`,
+Group = dashed/`deployedTo`, Zone = dotted/boundary).
+
+**Confidence:** rows marked `✓` reproduce IBM's own worked example from the kit exactly (border
+style, color, and icon all confirmed). The rest are inferred from the kit's stencil legend — which
+turned out to be internally inconsistent (its "OpenShift" swatch shows a solid border even though
+the kit's own worked diagram uses a dashed one) — plus semantic reasoning from the [Element
+semantics](05-ibm-spec-conformance.md#element-semantics) rule. Treat unmarked rows as a starting
+draft, not a spec citation; confirm against IBM Design before shipping ([D17](00-decision-log.md#d17--official--ibm-internal-tool--locked)).
+
+### IBM Core
+
+| Name | Kind | Category | Corner icon |
+|---|---|---|---|
+| Cloud Services | Box | Network (blue) | — |
+| Enterprise | Box | Generic (gray) | `ibm-cloud/enterprise` |
+| Data Center | Box | Generic (gray) | — |
+| Cloud Point of Presence | Box | Network (blue) | — |
+| Virtual Server | Box | Compute (green) | `ibm-cloud/virtual-server` |
+| Physical Server | Box | Compute (green) | `ibm-cloud/physical-server` |
+| Authorization Boundary | Zone | Security (red) | `ibm-cloud/authorization-boundary` |
+| Overlay Network | Box | Network (blue) | `ibm-cloud/network-overlay` |
+| Public Network | Box ✓ | Network (blue) | `ibm-cloud/public-network` |
+| VLAN | Box | Network (blue) | `ibm-cloud/vlan` |
+| VPC | Box | Network (blue) | `ibm-cloud/vpc` |
+| Internet | Box | Network (blue) | `ibm-cloud/internet` |
+| Subnet: ACL | Box | Network (blue) | `ibm-cloud/subnet-acl-rules` |
+| OpenShift | Group ✓ | Compute (green) | `ibm-cloud/open-shift` |
+
+### IBM Cloud
+
+| Name | Kind | Category | Corner icon |
+|---|---|---|---|
+| IBM Cloud | Box ✓ | Network (blue) | `ibm-cloud/ibm-cloud` |
+| Availability zone | Zone ✓ | Generic (gray) | — |
+| Region | Box ✓ | Generic (gray) | `ibm-cloud/location` |
+| Instance group | Group | Compute (green) | `ibm-cloud/instance-group` |
+| IBM Virtual Server | Box | Compute (green) | `ibm-cloud/virtual-server` |
+| Classic Infrastructure | Box | Compute (green) | — |
+| Internet services | Box | Network (blue) | `ibm-cloud/internet-services` |
+| VPC Endpoints | Box | Network (blue) | `ibm-cloud/vpc-endpoints` |
+| IBM Subnet: ACL | Box | Network (blue) | `ibm-cloud/subnet-acl-rules` |
+| IBM Classic VLAN | Box | Network (blue) | `ibm-cloud/vlan-ibm` |
+| IBM VPC | Box | Network (blue) | `ibm-cloud/ibm-cloud-vpc` |
+| Account group | Zone | Security (red) | — |
+| Security group | Zone | Security (red) | `ibm-cloud/group-security` |
+| Access group | Zone | Security (red) | — |
+| Resource group | Zone | Security (red) | — |
+
+Rows with no corner icon have no matching glyph in the upstream `svg/` set as of the pinned
+catalog version — ship them as a colored, labeled boundary with no icon, or pick a placeholder at
+implementation time.
+
+Source: *IBM_IT Architecture diagrams kit* v1.1, "Groups" slides, cross-checked against
+[IBM-Cloud/architecture-icons](https://github.com/IBM-Cloud/architecture-icons)'s `svg/` tree and
+the kit's own worked multi-zone OpenShift example.
+
 ## Runtime API (`core/catalog`)
 
 The core loads the manifest for the pinned version and exposes:
