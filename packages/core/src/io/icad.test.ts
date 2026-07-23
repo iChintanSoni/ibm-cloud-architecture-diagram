@@ -52,4 +52,71 @@ describe(".icad io", () => {
   it("rejects a non-object input", () => {
     expect(() => fromIcad(null)).toThrow(/expected a JSON object/);
   });
+
+  it("rejects a non-positive-integer version", () => {
+    expect(() => fromIcad({ format: "icad", version: 0, elements: [] })).toThrow(/version must be a positive integer/);
+  });
+
+  describe("repair on load", () => {
+    it("clears a dangling parentId", () => {
+      const scene = fromIcad({
+        format: "icad",
+        version: 1,
+        elements: [{ ...box("orphan"), parentId: "missing-parent" }]
+      });
+      expect(scene.get("orphan")).not.toHaveProperty("parentId");
+    });
+
+    it("breaks a parentId cycle instead of hanging", () => {
+      const scene = fromIcad({
+        format: "icad",
+        version: 1,
+        elements: [
+          { ...box("a"), parentId: "b" },
+          { ...box("b"), parentId: "a" }
+        ]
+      });
+      expect(scene.get("a")).not.toHaveProperty("parentId");
+      expect(scene.get("b")).not.toHaveProperty("parentId");
+    });
+
+    it("drops a connector with a missing endpoint", () => {
+      const scene = fromIcad({
+        format: "icad",
+        version: 1,
+        elements: [
+          box("kept"),
+          {
+            id: "conn",
+            type: "connector",
+            semantic: "node",
+            x: 0,
+            y: 0,
+            w: 0,
+            h: 0,
+            from: { elementId: "kept", port: "e" },
+            to: { elementId: "gone", port: "w" },
+            connectorType: "association"
+          }
+        ]
+      });
+      expect(scene.has("conn")).toBe(false);
+      expect(scene.has("kept")).toBe(true);
+    });
+
+    it("clamps non-positive or non-finite geometry to a minimum size", () => {
+      const scene = fromIcad({
+        format: "icad",
+        version: 1,
+        elements: [{ ...box("degenerate"), w: 0, h: Number.NaN }]
+      });
+      expect(scene.get("degenerate")).toMatchObject({ w: 1, h: 1 });
+    });
+
+    it("leaves a well-formed document untouched", () => {
+      const doc = toIcad(new Scene({ meta: { title: "Demo" } }));
+      const scene = fromIcad(doc);
+      expect(scene.meta.title).toBe("Demo");
+    });
+  });
 });
