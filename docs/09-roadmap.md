@@ -104,9 +104,9 @@ and used the stencil repository as the supplemental asset/inventory source:
 multi-valued before changing the `.icad` schema or replacing `parentId` with membership relations.
 
 ##### M7.2 — Selection inspector and layers
-← **next task**
+✅ **Done** (2026-07-23)
 
-Make placed elements editable and the diagram hierarchy navigable:
+Made placed elements editable and the diagram hierarchy navigable:
 
 1. Add Carbon **Properties / Layers / Validation** tabs to the right inspector, moving the existing
    validation surface into its tab without losing diagnostics, quick-fixes, or rule settings.
@@ -122,11 +122,10 @@ Make placed elements editable and the diagram hierarchy navigable:
 **Done when:** a user can place an element, select it, edit its core properties, undo the edit, and
 navigate the same object through Layers and Validation without leaving the right inspector.
 
-- `packages/ui-web` + `apps/web`: library panel, properties/layers, top bar, command palette;
-  IBM-level templates + frames; find-on-canvas; auto/light/dark ([Editor UX](06-editor-ux.md)).
-- Container presets: surface the named shortcut table ([Icon Catalog → Container presets](04-icon-catalog.md#container-presets),
-  [D21](00-decision-log.md#d21--container-presets-are-a-named-shortcut-layer-not-new-element-types--locked))
-  in the library panel alongside icon search.
+- ✅ `packages/ui-web` + `apps/web`: library panel with icon search and confirmed container
+  presets; tabbed Properties/Layers/Validation inspector with selection synchronization.
+- Remaining: full Carbon top bar and command palette; IBM-level templates + frames;
+  find-on-canvas; persisted auto/light/dark preferences ([Editor UX](06-editor-ux.md)).
 
 #### M8 — Accessibility to AA
 - Keyboard-operable canvas, screen-reader object tree, live regions, CI a11y checks ([Accessibility](07-accessibility.md)).

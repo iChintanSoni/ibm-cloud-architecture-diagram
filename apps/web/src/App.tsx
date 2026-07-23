@@ -12,10 +12,13 @@ import {
   ruleMetadata,
   type ConformanceSeverity,
   type Diagnostic,
+  type ElementId,
+  type ElementPropertiesPatch,
   type Editor,
-  type ExportGate
+  type ExportGate,
+  type SceneElement
 } from "@icad/core";
-import { LibraryPanel, type LibraryPlacement } from "@icad/ui-web";
+import { InspectorPanel, LibraryPanel, type LibraryPlacement } from "@icad/ui-web";
 import { useEffect, useRef, useState } from "react";
 import { createIbmCloudCatalog } from "./catalog";
 import { clearDraft, debounceAutosave, loadDraft, saveDraft } from "./persistence/autosave";
@@ -89,6 +92,8 @@ export function App() {
   const [themePreference, setThemePreference] = useState<ThemePreference>("auto");
   const [activePlacement, setActivePlacement] = useState<LibraryPlacement>();
   const [diagnostics, setDiagnostics] = useState<Diagnostic[]>([]);
+  const [elements, setElements] = useState<SceneElement[]>([]);
+  const [selectedIds, setSelectedIds] = useState<ElementId[]>([]);
   const [recoveredDraft, setRecoveredDraft] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [exportGate, setExportGateState] = useState<ExportGate>("warn");
@@ -118,13 +123,18 @@ export function App() {
     });
 
     const unsubscribe = editor.on(() => {
+      setElements(editor.scene.all());
       setDiagnostics(editor.lint());
       autosaveRef.current(editor.toIcad());
     });
+    const unsubscribeSelection = editor.onSelectionChange(setSelectedIds);
+    setElements(editor.scene.all());
+    setSelectedIds(editor.selection.get());
 
     return () => {
       cancelled = true;
       unsubscribe();
+      unsubscribeSelection();
       editor.destroy();
       editorRef.current = null;
     };
@@ -300,105 +310,130 @@ export function App() {
             onClick={(event) => {
               const editor = editorRef.current;
               const svg = canvasRef.current?.querySelector("svg");
-              if (!activePlacement || !editor || !svg) return;
-              const point = clientPointToCanvas(svg, event.clientX, event.clientY);
-              if (!point) return;
-              const id = placeLibraryItem(editor, activePlacement, point);
-              editor.selection.set([id]);
-              setActivePlacement(undefined);
+              if (!editor || !svg) return;
+              if (activePlacement) {
+                const point = clientPointToCanvas(svg, event.clientX, event.clientY);
+                if (!point) return;
+                const id = placeLibraryItem(editor, activePlacement, point);
+                editor.selection.set([id]);
+                setActivePlacement(undefined);
+                return;
+              }
+
+              const target = event.target instanceof Element ? event.target.closest<SVGElement>("[data-icad-id]") : null;
+              const id = target?.dataset.icadId;
+              if (!id) {
+                editor.selection.clear();
+              } else if (event.shiftKey) {
+                editor.selection.toggle(id);
+              } else {
+                editor.selection.set([id]);
+              }
             }}
           />
-          <aside className="icad-validation">
-            <div className="icad-validation-heading">
-              <h2>Validation</h2>
-              <span aria-label={`${diagnostics.length} issues`}>{diagnostics.length}</span>
-            </div>
-            {diagnostics.length === 0 && <p className="icad-muted">No conformance issues found.</p>}
-            {groupedDiagnostics.map(
-              ({ severity, items }) =>
-                items.length > 0 && (
-                  <section className="icad-diagnostic-group" key={severity}>
-                    <h3>
-                      {severity} <span>{items.length}</span>
-                    </h3>
-                    <ul>
-                      {items.map((diagnostic) => (
-                        <li key={diagnostic.id}>
-                          <Tag
-                            type={severity === "error" ? "red" : severity === "warn" ? "warm-gray" : "blue"}
-                          >
-                            {diagnostic.ruleId}
-                          </Tag>
-                          <button
-                            className="icad-diagnostic-target"
-                            type="button"
-                            disabled={!diagnostic.elementId}
-                            onClick={() => {
-                              if (diagnostic.elementId) editorRef.current?.selection.set([diagnostic.elementId]);
-                            }}
-                          >
-                            {diagnostic.message}
-                          </button>
-                          {diagnostic.quickFix && (
-                            <div className="icad-fix-actions">
-                              <Button
-                                kind="ghost"
-                                size="sm"
+          <InspectorPanel
+            elements={elements}
+            selectedIds={selectedIds}
+            validationCount={diagnostics.length}
+            onSelect={(id) => editorRef.current?.selection.set([id])}
+            onUpdate={(id: ElementId, patch: ElementPropertiesPatch) =>
+              editorRef.current?.updateElementProperties(id, patch)
+            }
+            onReparent={(id, parentId) => editorRef.current?.setElementParent(id, parentId)}
+            validationContent={
+              <>
+                <div className="icad-validation-heading">
+                  <h2>Validation</h2>
+                  <span aria-label={`${diagnostics.length} issues`}>{diagnostics.length}</span>
+                </div>
+                {diagnostics.length === 0 && <p className="icad-muted">No conformance issues found.</p>}
+                {groupedDiagnostics.map(
+                  ({ severity, items }) =>
+                    items.length > 0 && (
+                      <section className="icad-diagnostic-group" key={severity}>
+                        <h3>
+                          {severity} <span>{items.length}</span>
+                        </h3>
+                        <ul>
+                          {items.map((diagnostic) => (
+                            <li key={diagnostic.id}>
+                              <Tag
+                                type={severity === "error" ? "red" : severity === "warn" ? "warm-gray" : "blue"}
+                              >
+                                {diagnostic.ruleId}
+                              </Tag>
+                              <button
+                                className="icad-diagnostic-target"
+                                type="button"
+                                disabled={!diagnostic.elementId}
                                 onClick={() => {
-                                  editorRef.current?.applyQuickFix(diagnostic);
-                                  setDiagnostics(editorRef.current?.lint() ?? []);
+                                  if (diagnostic.elementId) editorRef.current?.selection.set([diagnostic.elementId]);
                                 }}
                               >
-                                {diagnostic.quickFixLabel ?? "Fix"}
-                              </Button>
-                              {(fixableByRule.get(diagnostic.ruleId) ?? 0) > 1 && (
-                                <Button
-                                  kind="ghost"
-                                  size="sm"
-                                  onClick={() => {
-                                    editorRef.current?.applyQuickFixes(diagnostic.ruleId);
-                                    setDiagnostics(editorRef.current?.lint() ?? []);
-                                  }}
-                                >
-                                  Fix all of this type
-                                </Button>
+                                {diagnostic.message}
+                              </button>
+                              {diagnostic.quickFix && (
+                                <div className="icad-fix-actions">
+                                  <Button
+                                    kind="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      editorRef.current?.applyQuickFix(diagnostic);
+                                      setDiagnostics(editorRef.current?.lint() ?? []);
+                                    }}
+                                  >
+                                    {diagnostic.quickFixLabel ?? "Fix"}
+                                  </Button>
+                                  {(fixableByRule.get(diagnostic.ruleId) ?? 0) > 1 && (
+                                    <Button
+                                      kind="ghost"
+                                      size="sm"
+                                      onClick={() => {
+                                        editorRef.current?.applyQuickFixes(diagnostic.ruleId);
+                                        setDiagnostics(editorRef.current?.lint() ?? []);
+                                      }}
+                                    >
+                                      Fix all of this type
+                                    </Button>
+                                  )}
+                                </div>
                               )}
-                            </div>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  </section>
-                )
-            )}
-            <details className="icad-rule-settings">
-              <summary>Rule settings</summary>
-              <p className="icad-muted">Overrides are saved in this .icad document.</p>
-              {ruleMetadata.map((rule) => (
-                <Select
-                  key={rule.id}
-                  id={`icad-rule-${rule.id}`}
-                  size="sm"
-                  labelText={rule.title}
-                  value={editorRef.current?.scene.conformance.ruleSeverities[rule.id] ?? "default"}
-                  onChange={(event) => {
-                    const value = event.target.value;
-                    editorRef.current?.setRuleSeverity(
-                      rule.id,
-                      value === "default" ? undefined : (value as ConformanceSeverity)
-                    );
-                    setDiagnostics(editorRef.current?.lint() ?? []);
-                  }}
-                >
-                  <SelectItem value="default" text={`Default (${rule.defaultSeverity})`} />
-                  <SelectItem value="error" text="Error" />
-                  <SelectItem value="warn" text="Warning" />
-                  <SelectItem value="info" text="Info" />
-                  <SelectItem value="off" text="Off" />
-                </Select>
-              ))}
-            </details>
-          </aside>
+                            </li>
+                          ))}
+                        </ul>
+                      </section>
+                    )
+                )}
+                <details className="icad-rule-settings">
+                  <summary>Rule settings</summary>
+                  <p className="icad-muted">Overrides are saved in this .icad document.</p>
+                  {ruleMetadata.map((rule) => (
+                    <Select
+                      key={rule.id}
+                      id={`icad-rule-${rule.id}`}
+                      size="sm"
+                      labelText={rule.title}
+                      value={editorRef.current?.scene.conformance.ruleSeverities[rule.id] ?? "default"}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        editorRef.current?.setRuleSeverity(
+                          rule.id,
+                          value === "default" ? undefined : (value as ConformanceSeverity)
+                        );
+                        setDiagnostics(editorRef.current?.lint() ?? []);
+                      }}
+                    >
+                      <SelectItem value="default" text={`Default (${rule.defaultSeverity})`} />
+                      <SelectItem value="error" text="Error" />
+                      <SelectItem value="warn" text="Warning" />
+                      <SelectItem value="info" text="Info" />
+                      <SelectItem value="off" text="Off" />
+                    </Select>
+                  ))}
+                </details>
+              </>
+            }
+          />
         </div>
 
         <Modal

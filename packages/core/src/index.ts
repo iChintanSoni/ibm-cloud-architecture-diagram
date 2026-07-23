@@ -67,5 +67,6 @@ export {
   ExportBlockedError,
   type ComplianceSummary,
   type CreateEditorOptions,
+  type ElementPropertiesPatch,
   type ExportOptions
 } from "./api/createEditor.js";

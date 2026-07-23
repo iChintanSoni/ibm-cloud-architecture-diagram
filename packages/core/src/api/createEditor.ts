@@ -3,9 +3,14 @@ import { CommandBus } from "../commands/commandBus.js";
 import {
   addElement,
   autoRouteConnector,
+  batch,
+  moveElements,
+  reparentElement,
   setManualWaypoints,
-  updateConformance
+  updateConformance,
+  updateElement
 } from "../commands/commands.js";
+import type { Command } from "../commands/types.js";
 import { SelectionManager } from "../interaction/selection.js";
 import { applyIcad, toIcad, type IcadDocument } from "../io/icad.js";
 import { exportPng, exportSvg } from "../io/export.js";
@@ -29,7 +34,9 @@ import type {
   ExportGate,
   GroupElement,
   IconNodeElement,
+  Label,
   PortRef,
+  SceneElement,
   Style,
   TextElement,
   ZoneElement,
@@ -69,6 +76,24 @@ export interface ComplianceSummary {
   diagnostics: Diagnostic[];
   counts: Record<Severity, number>;
   blocked: boolean;
+}
+
+/** Editable element fields exposed to UI shells and future agent surfaces. */
+export interface ElementPropertiesPatch {
+  x?: number;
+  y?: number;
+  w?: number;
+  h?: number;
+  label?: Label;
+  style?: Style;
+  catalogRef?: string;
+  zoneKind?: ZoneKind;
+  text?: string;
+  name?: string;
+  order?: number;
+  connectorType?: ConnectorType;
+  direction?: ConnectorDirection;
+  flowColor?: FlowColor;
 }
 
 export class ExportBlockedError extends Error {
@@ -132,6 +157,7 @@ export class Editor {
 
   loadIcad(input: unknown): void {
     applyIcad(this.scene, input);
+    this.selection.clear();
     this.setTheme(this.scene.canvas.theme);
   }
 
@@ -297,6 +323,46 @@ export class Editor {
     this.commands.dispatch(autoRouteConnector(this.scene, id));
   }
 
+  /**
+   * Updates inspector-editable fields as one undo step. Position edits use
+   * move-with semantics so nested contents travel with a container; geometry
+   * changes continue to reroute attached automatic connectors.
+   */
+  updateElementProperties(id: ElementId, patch: ElementPropertiesPatch): void {
+    const current = this.scene.get(id);
+    if (!current) throw new Error(`Cannot update unknown element "${id}"`);
+
+    const commands: Command[] = [];
+    const nextX = patch.x ?? current.x;
+    const nextY = patch.y ?? current.y;
+    const dx = nextX - current.x;
+    const dy = nextY - current.y;
+    if (dx !== 0 || dy !== 0) commands.push(moveElements(this.scene, [id], dx, dy));
+
+    const { x: _x, y: _y, ...fieldPatch } = patch;
+    if (Object.keys(fieldPatch).length > 0) {
+      commands.push(updateElement(this.scene, id, fieldPatch as Partial<SceneElement>));
+    }
+
+    if (commands.length === 0) return;
+    this.commands.dispatch(
+      commands.length === 1 ? commands[0]! : batch("update element properties", commands)
+    );
+  }
+
+  /** Changes containment membership as an undoable editor operation. */
+  setElementParent(id: ElementId, parentId: ElementId | undefined): void {
+    if (this.scene.get(id)?.parentId === parentId) return;
+    if (parentId !== undefined) {
+      const parent = this.scene.get(parentId);
+      if (!parent) throw new Error(`Cannot use unknown parent "${parentId}"`);
+      if (parent.type !== "box" && parent.type !== "group" && parent.type !== "zone" && parent.type !== "frame") {
+        throw new Error(`Element "${parentId}" cannot contain other elements`);
+      }
+    }
+    this.commands.dispatch(reparentElement(this.scene, id, parentId));
+  }
+
   lint(): Diagnostic[] {
     const diagnostics = this.linter.run(this.scene);
     this.renderer.setDiagnostics(diagnostics);
@@ -359,6 +425,10 @@ export class Editor {
 
   on(listener: (event: SceneChangeEvent) => void): () => void {
     return this.changeEmitter.on("change", listener);
+  }
+
+  onSelectionChange(listener: (ids: ElementId[]) => void): () => void {
+    return this.selection.on(listener);
   }
 
   destroy(): void {

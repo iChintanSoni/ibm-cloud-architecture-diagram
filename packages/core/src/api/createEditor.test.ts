@@ -71,6 +71,74 @@ describe("createEditor", () => {
     expect(editor.scene.get(child)).toMatchObject({ x: 70, y: 50 });
   });
 
+  it("edits inspector properties as one undoable move-with operation", () => {
+    const parent = editor.addBox({ at: { x: 0, y: 0 }, label: "Subnet" });
+    const child = editor.addIcon("test/vpc", { at: { x: 20, y: 20 }, parentId: parent });
+
+    editor.updateElementProperties(parent, {
+      x: 80,
+      y: 40,
+      w: 300,
+      label: { text: "Application subnet" }
+    });
+
+    expect(editor.scene.get(parent)).toMatchObject({
+      x: 80,
+      y: 40,
+      w: 300,
+      label: { text: "Application subnet" }
+    });
+    expect(editor.scene.get(child)).toMatchObject({ x: 100, y: 60 });
+
+    editor.commands.undo();
+    expect(editor.scene.get(parent)).toMatchObject({
+      x: 0,
+      y: 0,
+      w: 240,
+      label: { text: "Subnet" }
+    });
+    expect(editor.scene.get(child)).toMatchObject({ x: 20, y: 20 });
+  });
+
+  it("reroutes an attached automatic connector after an inspector resize", () => {
+    const a = editor.addBox({ at: { x: 0, y: 0 }, w: 100, h: 60, label: "A" });
+    const b = editor.addBox({ at: { x: 300, y: 0 }, w: 100, h: 60, label: "B" });
+    const connectorId = editor.connect({ elementId: a, port: "e" }, { elementId: b, port: "w" });
+
+    editor.updateElementProperties(a, { h: 400 });
+
+    expect(editor.scene.get(a)).toMatchObject({ h: 400 });
+    expect((editor.scene.get(connectorId) as { waypoints?: unknown[] }).waypoints?.length).toBeGreaterThan(0);
+    editor.commands.undo();
+    expect(editor.scene.get(a)).toMatchObject({ h: 60 });
+    expect(editor.scene.get(connectorId)).toMatchObject({ waypoints: [] });
+  });
+
+  it("reparents through the public editor API and rejects non-container parents", () => {
+    const parent = editor.addBox({ at: { x: 0, y: 0 }, label: "VPC" });
+    const child = editor.addIcon("test/vpc", { at: { x: 20, y: 20 } });
+    const nonContainer = editor.addIcon("test/vpc", { at: { x: 80, y: 20 } });
+
+    editor.setElementParent(child, parent);
+    expect(editor.scene.get(child)).toMatchObject({ parentId: parent });
+
+    editor.commands.undo();
+    expect(editor.scene.get(child)?.parentId).toBeUndefined();
+    expect(() => editor.setElementParent(child, nonContainer)).toThrow(/cannot contain/);
+  });
+
+  it("notifies shell listeners when selection changes", () => {
+    const id = editor.addBox({ at: { x: 0, y: 0 }, label: "VPC" });
+    const seen: string[][] = [];
+    const unsubscribe = editor.onSelectionChange((ids) => seen.push(ids));
+
+    editor.selection.set([id]);
+    editor.selection.clear();
+    unsubscribe();
+
+    expect(seen).toEqual([[id], []]);
+  });
+
   it("connects two elements and renders a routed polyline", () => {
     const a = editor.addBox({ at: { x: 0, y: 0 }, w: 100, h: 60, label: "A" });
     const b = editor.addBox({ at: { x: 300, y: 0 }, w: 100, h: 60, label: "B" });
