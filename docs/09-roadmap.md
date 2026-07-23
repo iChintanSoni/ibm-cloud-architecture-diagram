@@ -51,11 +51,19 @@ Ship a usable, on-spec human editor in the browser.
   it isn't attached to is flagged, with a "re-route" quick-fix.
 
 #### M5 — `.icad` I/O + export
-← next
-- Read/write single-file JSON + migration layer; SVG (embedded source) + PNG export ([File Format](03-file-format.md)).
-- File System Access API + fallback; autosave/recovery ([D9](00-decision-log.md#d9--file-system-access-api--fallback--locked)/[D10](00-decision-log.md#d10--autosave-draft--crash-recovery--locked)).
+✅ **Done** (2026-07-23)
+- `core/io`: `toIcad`/`fromIcad`/`applyIcad` round-trip the scene through the single-file JSON
+  shape; a migration registry (empty until the schema bumps past v1) feeds into a repair pass that
+  keeps a loaded scene always structurally valid regardless of source — a dangling `parentId` is
+  cleared, a `parentId` cycle is broken, a connector missing either endpoint is dropped, and
+  degenerate (non-positive/non-finite) geometry is clamped to a minimum size ([File Format](03-file-format.md#versioning--migration)).
+- SVG export (canonical, with the re-editable `.icad` source embedded per [D8](00-decision-log.md#d8--re-editable-svg-via-embedded-icad-copy--locked)) and PNG export (1×/2×/3×, transparent/white) via `core/io/export`.
+- `apps/web`: real Open/Save/Save-As through the File System Access API, falling back to
+  download/upload on browsers without it ([D9](00-decision-log.md#d9--file-system-access-api--fallback--locked)); continuous IndexedDB autosave with a recovery banner offering to
+  discard on reload after a crash ([D10](00-decision-log.md#d10--autosave-draft--crash-recovery--locked)).
 
 #### M6 — Conformance linter
+← next
 - Rule set, diagnostics, quick-fixes, validation panel, optional export gate ([Spec Conformance](05-ibm-spec-conformance.md)).
 
 #### M7 — Chrome, templates, find, themes (Carbon)
