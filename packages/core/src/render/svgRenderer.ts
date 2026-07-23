@@ -359,7 +359,7 @@ export class SvgRenderer {
       }
       case "text": {
         const text = createSvgElement("text");
-        setAttrs(text, { x: el.x, y: el.y, fill: this.palette.stroke });
+        setAttrs(text, { x: el.x, y: el.y, fill: this.labelStroke(el, scene) });
         text.textContent = el.text;
         g.appendChild(text);
         break;
@@ -372,11 +372,11 @@ export class SvgRenderer {
 
     if (el.type === "frame") {
       const title = createSvgElement("text");
-      setAttrs(title, { x: el.x + 8, y: el.y + 18, fill: this.palette.stroke });
+      setAttrs(title, { x: el.x + 8, y: el.y + 18, fill: this.labelStroke(el, scene) });
       title.textContent = el.name;
       g.appendChild(title);
     } else if ("label" in el && el.label?.text && el.type !== "text" && el.type !== "connector") {
-      g.appendChild(this.labelText(el));
+      g.appendChild(this.labelText(el, scene));
     }
 
     return g;
@@ -398,6 +398,22 @@ export class SvgRenderer {
       "stroke-dasharray": (el.style?.dashed ?? opts.dashed) ? "6 4" : undefined
     });
     return rect;
+  }
+
+  /**
+   * Containers (box/group/zone) keep a hardcoded light fill regardless of theme, for
+   * spec-fidelity/export consistency (see containerFill below). A label's parent, if any,
+   * renders directly behind it, so a label whose parent is one of those container types must
+   * stay dark even in dark theme, or it becomes low/no-contrast against that light fill.
+   * Only labels with no such parent (frame titles, root-level elements) follow the theme palette,
+   * since their background is the actual canvas, which does change with theme.
+   */
+  private labelStroke(el: SceneElement, scene: Scene): string {
+    const parent = el.parentId ? scene.get(el.parentId) : undefined;
+    if (parent && (parent.type === "box" || parent.type === "group" || parent.type === "zone")) {
+      return "#161616";
+    }
+    return this.palette.stroke;
   }
 
   private containerFill(el: SceneElement, scene: Scene): string {
@@ -443,11 +459,11 @@ export class SvgRenderer {
     return nested;
   }
 
-  private labelText(el: SceneElement): SVGTextElement {
+  private labelText(el: SceneElement, scene: Scene): SVGTextElement {
     const text = createSvgElement("text");
     const position = el.label?.position ?? "s";
     const point = { x: el.x + el.w / 2, y: position === "s" ? el.y + el.h + 14 : el.y - 6 };
-    setAttrs(text, { x: point.x, y: point.y, fill: this.palette.stroke, "text-anchor": "middle" });
+    setAttrs(text, { x: point.x, y: point.y, fill: this.labelStroke(el, scene), "text-anchor": "middle" });
     text.textContent = el.label?.text ?? "";
     return text;
   }
