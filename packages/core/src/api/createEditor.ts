@@ -18,6 +18,7 @@ import type {
   GroupElement,
   IconNodeElement,
   PortRef,
+  TextElement,
   ZoneElement,
   ZoneKind
 } from "../scene/types.js";
@@ -187,6 +188,23 @@ export class Editor {
       ...(opts.catalogRef ? { catalogRef: opts.catalogRef } : {}),
       ...(opts.parentId ? { parentId: opts.parentId } : {}),
       ...(opts.label ? { label: { text: opts.label } } : {})
+    };
+    this.commands.dispatch(addElement(element));
+    return id;
+  }
+
+  addText(opts: Omit<PlacementOptions, "label"> & { text: string }): ElementId {
+    const id = opts.id ?? generateId("text");
+    const element: TextElement = {
+      id,
+      type: "text",
+      semantic: "node",
+      text: opts.text,
+      x: opts.at.x,
+      y: opts.at.y,
+      w: opts.w ?? 120,
+      h: opts.h ?? 20,
+      ...(opts.parentId ? { parentId: opts.parentId } : {})
     };
     this.commands.dispatch(addElement(element));
     return id;

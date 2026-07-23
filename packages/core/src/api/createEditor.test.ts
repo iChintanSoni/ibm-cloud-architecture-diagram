@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { Catalog } from "../catalog/catalog.js";
 import type { CatalogManifest } from "../catalog/types.js";
+import { moveElements } from "../commands/commands.js";
 import { createEditor, type Editor } from "./createEditor.js";
 
 function testCatalog(): Catalog {
@@ -52,6 +53,22 @@ describe("createEditor", () => {
 
   it("throws when adding an unknown catalog icon", () => {
     expect(() => editor.addIcon("does/not-exist", { at: { x: 0, y: 0 } })).toThrow(/Unknown catalog icon/);
+  });
+
+  it("adds a text element and renders its content", () => {
+    const id = editor.addText({ at: { x: 10, y: 10 }, text: "Payments platform" });
+    expect(editor.scene.get(id)).toMatchObject({ type: "text", text: "Payments platform" });
+    expect(container.querySelector(`[data-icad-id="${id}"] text`)?.textContent).toBe("Payments platform");
+  });
+
+  it("moves a box's contents along with it (move-with)", () => {
+    const parent = editor.addBox({ at: { x: 0, y: 0 }, label: "Subnet" });
+    const child = editor.addIcon("test/vpc", { at: { x: 20, y: 20 }, parentId: parent });
+
+    editor.commands.dispatch(moveElements(editor.scene, [parent], 50, 30));
+
+    expect(editor.scene.get(parent)).toMatchObject({ x: 50, y: 30 });
+    expect(editor.scene.get(child)).toMatchObject({ x: 70, y: 50 });
   });
 
   it("connects two elements and renders a routed polyline", () => {

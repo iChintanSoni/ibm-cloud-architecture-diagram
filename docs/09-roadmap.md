@@ -19,12 +19,21 @@ Ship a usable, on-spec human editor in the browser.
 - `core/catalog` runtime search/resolve.
 
 #### M3 — Semantic elements & containers
-← next
-- Box (`deployedOn`), Group (`deployedTo`), Zone, Actor, IconNode, Text; containment/move-with.
+✅ **Done** (2026-07-23)
+- Box (`deployedOn`), Group (`deployedTo`), Zone, Actor, IconNode, Text elements, all reachable
+  through the public `Editor` API (`addBox`/`addGroup`/`addZone`/`addActor`/`addIcon`/`addText`).
+- Containment/move-with: `Scene.descendantsOf`/`ancestorsOf` walk the `parentId` tree (cycle-safe);
+  `moveElements` cascades a move to every nested descendant; `removeElement` cascades delete to the
+  whole subtree, undoing back to the exact prior tree; a new `reparentElement` command changes
+  container membership and rejects cycles.
+- Linter gained a containment-correctness rule: a `deployedTo` group with no `deployedOn` box
+  ancestor is flagged, per the `docs/05` worked example (VSI deployedOn a subnet, deployedTo a
+  security group — the group nests inside the box).
 - Container presets (named shortcuts like VPC/Subnet/Region over these three primitives) are
   explicitly out of scope here — [D21](00-decision-log.md#d21--container-presets-are-a-named-shortcut-layer-not-new-element-types--locked) lands them in M7 instead.
 
 #### M4 — Smart connectors
+← next
 - Ports, orthogonal auto-routing, IBM connector types, manual waypoints ([D13](00-decision-log.md#d13--smart-orthogonal-connectors-with-ibm-types--locked)).
 
 #### M5 — `.icad` I/O + export

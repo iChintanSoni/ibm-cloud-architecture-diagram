@@ -34,6 +34,46 @@ describe("Scene", () => {
     expect(scene.all()).toHaveLength(0);
   });
 
+  it("collects transitive descendants", () => {
+    const scene = new Scene();
+    scene._put(box("root"));
+    scene._put(box("child", "root"));
+    scene._put(box("grandchild", "child"));
+    scene._put(box("unrelated"));
+
+    const ids = scene.descendantsOf("root").map((el) => el.id);
+    expect(ids.sort()).toEqual(["child", "grandchild"]);
+  });
+
+  it("does not hang on a cyclic parentId chain", () => {
+    const scene = new Scene();
+    scene._put(box("a", "b"));
+    scene._put(box("b", "a"));
+
+    expect(scene.descendantsOf("a").map((el) => el.id).sort()).toEqual(["b"]);
+    expect(scene.ancestorsOf("a").map((el) => el.id)).toEqual(["b"]);
+  });
+
+  it("reports isSelfOrDescendant for self and nested elements", () => {
+    const scene = new Scene();
+    scene._put(box("root"));
+    scene._put(box("child", "root"));
+    scene._put(box("sibling"));
+
+    expect(scene.isSelfOrDescendant("root", "root")).toBe(true);
+    expect(scene.isSelfOrDescendant("root", "child")).toBe(true);
+    expect(scene.isSelfOrDescendant("root", "sibling")).toBe(false);
+  });
+
+  it("walks ancestorsOf from immediate parent to root", () => {
+    const scene = new Scene();
+    scene._put(box("root"));
+    scene._put(box("mid", "root"));
+    scene._put(box("leaf", "mid"));
+
+    expect(scene.ancestorsOf("leaf").map((el) => el.id)).toEqual(["mid", "root"]);
+  });
+
   it("emits change events on put/remove/replace", () => {
     const scene = new Scene();
     const listener = vi.fn();

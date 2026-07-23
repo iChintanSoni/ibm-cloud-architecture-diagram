@@ -125,7 +125,9 @@ human explanation, and — where possible — an automatic **quick-fix** command
      quick-fix: swap to the category's primary.
 2. **Containment correctness**
    - Node not placed in any box/zone when the topology implies a location.
-   - `deployedTo` group not inside a `deployedOn` box (illegal nesting per the model).
+   - A `deployedTo` group with no `deployedOn` box ancestor — per the worked example above, a
+     group nests inside the box it's deployed to; a group floating without one is missing that
+     location context.
 3. **Labels & metadata**
    - Missing required labels on boxes/groups/zones/actors.
    - Ambiguous or duplicate labels.
