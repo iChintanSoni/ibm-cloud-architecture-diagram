@@ -1,0 +1,25 @@
+{
+  "name": "icad",
+  "private": true,
+  "version": "0.0.0",
+  "description": "IBM Cloud Architecture Diagrams — editor monorepo",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=9"
+  },
+  "packageManager": "pnpm@11.15.1",
+  "scripts": {
+    "build": "pnpm -r --filter=./packages/* build",
+    "dev": "pnpm --filter @icad/web dev",
+    "test": "pnpm -r --filter=./packages/* test",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint",
+    "clean": "pnpm -r exec rm -rf dist node_modules/.cache"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.1",
+    "jsdom": "^29.1.1",
+    "typescript": "^5.9.3"
+  }
+}
