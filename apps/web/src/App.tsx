@@ -245,6 +245,61 @@ export function App() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [presentingFrameId, frames]);
 
+  // Keyboard-operable canvas (docs/07-accessibility.md#canvas-the-hard-20): Tab/Shift+Tab walk
+  // the meaningful element order (wrapping is disabled at the boundary so Tab can still exit to
+  // surrounding chrome — no keyboard trap), arrow keys nudge the current selection, Delete/
+  // Backspace removes it. Scoped to the canvas element itself so it never fires while typing
+  // elsewhere (Properties fields, Find, the command palette, ...).
+  useEffect(() => {
+    const node = canvasRef.current;
+    if (!node) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      const editor = editorRef.current;
+      if (!editor || presentingFrameId !== undefined) return;
+      const focusedId = event.target instanceof Element ? event.target.getAttribute("data-icad-id") : null;
+
+      if (event.key === "Tab") {
+        const order = editor.tabOrder();
+        const currentId = editor.selection.get()[0] ?? focusedId ?? undefined;
+        const currentIndex = currentId ? order.indexOf(currentId) : -1;
+        if (currentIndex === -1) return; // nothing focused yet: let Tab enter natively
+        const atBoundary = event.shiftKey ? currentIndex === 0 : currentIndex === order.length - 1;
+        if (atBoundary) return; // let Tab exit to surrounding chrome instead of wrapping
+        event.preventDefault();
+        if (event.shiftKey) editor.focusPrevious();
+        else editor.focusNext();
+        return;
+      }
+
+      let selected = editor.selection.get();
+      if (selected.length === 0 && focusedId) {
+        editor.selection.set([focusedId]);
+        selected = [focusedId];
+      }
+      if (selected.length === 0) return;
+
+      const nudge = event.shiftKey ? 8 : 1;
+      if (event.key === "ArrowUp") {
+        event.preventDefault();
+        editor.nudgeElements(selected, 0, -nudge);
+      } else if (event.key === "ArrowDown") {
+        event.preventDefault();
+        editor.nudgeElements(selected, 0, nudge);
+      } else if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        editor.nudgeElements(selected, -nudge, 0);
+      } else if (event.key === "ArrowRight") {
+        event.preventDefault();
+        editor.nudgeElements(selected, nudge, 0);
+      } else if (event.key === "Delete" || event.key === "Backspace") {
+        event.preventDefault();
+        editor.deleteElements(selected);
+      }
+    };
+    node.addEventListener("keydown", onKeyDown);
+    return () => node.removeEventListener("keydown", onKeyDown);
+  }, [presentingFrameId]);
+
   // Find jumps the viewport to the active match as the query or selection changes.
   useEffect(() => {
     if (!findOpen || findMatchesList.length === 0) return;
@@ -534,6 +589,7 @@ export function App() {
                   if (!point) return;
                   const id = placeLibraryItem(editor, activePlacement, point);
                   editor.selection.set([id]);
+                  canvasRef.current?.querySelector<SVGElement>(`[data-icad-id="${id}"]`)?.focus();
                   setActivePlacement(undefined);
                   return;
                 }
@@ -546,6 +602,9 @@ export function App() {
                   editor.selection.toggle(id);
                 } else {
                   editor.selection.set([id]);
+                  // A click may land on a non-focusable child shape (icon glyph, label text);
+                  // explicitly focus the element's own tabindex-bearing group (docs/07-accessibility.md).
+                  target.focus();
                 }
               }}
             />

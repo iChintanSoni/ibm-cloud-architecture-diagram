@@ -143,4 +143,35 @@ describe("FindBar", () => {
     act(() => input.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  it("restores focus to whatever opened it once closed", () => {
+    const trigger = document.createElement("button");
+    document.body.appendChild(trigger);
+    trigger.focus();
+    expect(document.activeElement).toBe(trigger);
+
+    const render = (open: boolean) =>
+      act(() =>
+        root.render(
+          <FindBar
+            open={open}
+            query=""
+            matches={[]}
+            activeIndex={0}
+            onQueryChange={vi.fn()}
+            onNext={vi.fn()}
+            onPrevious={vi.fn()}
+            onClose={vi.fn()}
+          />
+        )
+      );
+
+    render(true);
+    expect(document.activeElement).not.toBe(trigger);
+
+    render(false);
+    expect(document.activeElement).toBe(trigger);
+
+    trigger.remove();
+  });
 });

@@ -6,6 +6,7 @@ import {
   autoRouteConnector,
   batch,
   moveElements,
+  removeElement,
   reparentElement,
   setManualWaypoints,
   updateConformance,
@@ -13,6 +14,7 @@ import {
 } from "../commands/commands.js";
 import type { Command } from "../commands/types.js";
 import { SelectionManager } from "../interaction/selection.js";
+import { computeTabOrder } from "../interaction/tabOrder.js";
 import { applyIcad, toIcad, type IcadDocument } from "../io/icad.js";
 import { exportPng, exportSvg } from "../io/export.js";
 import { Linter } from "../linter/linter.js";
@@ -550,6 +552,68 @@ export class Editor {
   private sceneCenter(size: { w: number; h: number }): { x: number; y: number } {
     const { x, y, scale } = this.viewport.get();
     return { x: x + size.w / (2 * scale), y: y + size.h / (2 * scale) };
+  }
+
+  /**
+   * Meaningful keyboard tab order (docs/07-accessibility.md#canvas-the-hard-20):
+   * containers before children, siblings west→east, connectors last.
+   */
+  tabOrder(): ElementId[] {
+    return computeTabOrder(this.scene).map((el) => el.id);
+  }
+
+  /** Moves the single roving keyboard focus/selection to the next element in tab order, wrapping around. */
+  focusNext(): void {
+    this.stepFocus(1);
+  }
+
+  /** Moves the single roving keyboard focus/selection to the previous element in tab order, wrapping around. */
+  focusPrevious(): void {
+    this.stepFocus(-1);
+  }
+
+  private stepFocus(direction: 1 | -1): void {
+    const order = this.tabOrder();
+    if (order.length === 0) return;
+    const currentId = this.selection.get()[0];
+    const currentIndex = currentId ? order.indexOf(currentId) : -1;
+    const base = currentIndex === -1 ? (direction === 1 ? -1 : 0) : currentIndex;
+    const nextIndex = (((base + direction) % order.length) + order.length) % order.length;
+    const nextId = order[nextIndex]!;
+    this.selection.set([nextId]);
+    this.renderer.focusElement(nextId);
+    this.ensureVisible(nextId);
+  }
+
+  /** Pans/zooms only if `id` isn't already fully inside the current viewport, to avoid jarring re-centering. */
+  private ensureVisible(id: ElementId): void {
+    const bbox = this.boundsOf([id]);
+    if (!bbox) return;
+    const { x, y, scale } = this.viewport.get();
+    const size = this.renderer.containerSize();
+    const visible = { x, y, w: size.w / scale, h: size.h / scale };
+    const contained =
+      bbox.x >= visible.x &&
+      bbox.y >= visible.y &&
+      bbox.x + bbox.w <= visible.x + visible.w &&
+      bbox.y + bbox.h <= visible.y + visible.h;
+    if (!contained) this.focusOnElements([id]);
+  }
+
+  /** Nudges every given element by a scene-space delta (e.g. an arrow-key press), reusing move-with semantics. */
+  nudgeElements(ids: ElementId[], dx: number, dy: number): void {
+    const existing = ids.filter((id) => this.scene.has(id));
+    if (existing.length === 0 || (dx === 0 && dy === 0)) return;
+    this.commands.dispatch(moveElements(this.scene, existing, dx, dy));
+  }
+
+  /** Deletes the given elements — and everything nested inside them — as one undoable step. */
+  deleteElements(ids: ElementId[]): void {
+    const existing = ids.filter((id) => this.scene.has(id));
+    if (existing.length === 0) return;
+    const commands = existing.map((id) => removeElement(this.scene, id));
+    this.commands.dispatch(commands.length === 1 ? commands[0]! : batch("delete elements", commands));
+    this.selection.clear();
   }
 
   destroy(): void {

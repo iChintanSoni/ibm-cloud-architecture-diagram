@@ -106,6 +106,21 @@ describe("CommandPalette", () => {
     expect(onClose).toHaveBeenCalledTimes(2);
   });
 
+  it("restores focus to whatever opened it once closed", () => {
+    const trigger = document.createElement("button");
+    document.body.appendChild(trigger);
+    trigger.focus();
+    expect(document.activeElement).toBe(trigger);
+
+    act(() => root.render(<CommandPalette open commands={commands()} onClose={vi.fn()} />));
+    expect(document.activeElement).not.toBe(trigger);
+
+    act(() => root.render(<CommandPalette open={false} commands={commands()} onClose={vi.fn()} />));
+    expect(document.activeElement).toBe(trigger);
+
+    trigger.remove();
+  });
+
   it("resets the query when reopened", () => {
     const { rerender } = { rerender: (open: boolean) => act(() => root.render(<CommandPalette open={open} commands={commands()} onClose={vi.fn()} />)) };
 

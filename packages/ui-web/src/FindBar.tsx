@@ -26,15 +26,22 @@ export function FindBar({
   onClose
 }: FindBarProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
-    if (open) inputRef.current?.focus();
+    if (!open) return;
+    previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    inputRef.current?.focus();
+    // Restores focus to whatever opened Find (docs/07-accessibility.md#chrome-the-easy-80).
+    return () => previousFocusRef.current?.focus();
   }, [open]);
 
   if (!open) return null;
 
   return (
-    <div className="icad-find-bar" role="search" aria-label="Find on canvas">
+    // Carbon's <Search> already renders its own named role="search" landmark
+    // (labelText below) — an outer role="search" here would just duplicate it.
+    <div className="icad-find-bar">
       <Search
         ref={inputRef}
         size="sm"

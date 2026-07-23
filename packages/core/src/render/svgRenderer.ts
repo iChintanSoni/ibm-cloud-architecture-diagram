@@ -1,5 +1,7 @@
 import type { Catalog } from "../catalog/catalog.js";
+import { computeTabOrder } from "../interaction/tabOrder.js";
 import type { Diagnostic, Severity } from "../linter/types.js";
+import { accessibleName, accessibleRole } from "../scene/accessibleName.js";
 import type { Scene } from "../scene/scene.js";
 import type { ConnectorElement, ConnectorType, SceneElement } from "../scene/types.js";
 import { connectorPathPoints } from "../routing/routeConnector.js";
@@ -282,9 +284,11 @@ export class SvgRenderer {
       if (!seen.has(id)) {
         node.remove();
         this.nodes.delete(id);
+        this.selectedIds.delete(id);
       }
     }
     this.renderOverlays(scene);
+    this.syncTabIndexes(scene);
   }
 
   nodeFor(id: string): SVGElement | undefined {
@@ -297,10 +301,34 @@ export class SvgRenderer {
     if (this.currentScene) this.renderOverlays(this.currentScene);
   }
 
-  /** Mirrors SelectionManager state with a lightweight editor-only outline. */
+  /**
+   * Mirrors SelectionManager state with a lightweight editor-only outline, and
+   * keeps exactly one node in the natural tab sequence (roving tabindex,
+   * docs/07-accessibility.md#canvas-the-hard-20) — the selected element when
+   * there's exactly one, otherwise the first element in tab order. Doesn't
+   * move real DOM focus itself: a mouse click already focuses its target
+   * natively, and callers that merely highlight a selection (Find, frame
+   * presentation) shouldn't steal focus from whatever the user is typing
+   * into. Deliberate keyboard navigation calls `focusElement()` explicitly.
+   */
   setSelection(ids: string[]): void {
     this.selectedIds = new Set(ids);
-    if (this.currentScene) this.renderOverlays(this.currentScene);
+    if (!this.currentScene) return;
+    this.renderOverlays(this.currentScene);
+    this.syncTabIndexes(this.currentScene);
+  }
+
+  /** Moves real DOM focus to an element — used by deliberate keyboard navigation (Tab/Shift+Tab). */
+  focusElement(id: string): void {
+    this.nodes.get(id)?.focus();
+  }
+
+  /** Keeps exactly one node in the natural tab sequence (roving tabindex). */
+  private syncTabIndexes(scene: Scene): void {
+    const targetId = this.selectedIds.size === 1 ? [...this.selectedIds][0] : computeTabOrder(scene)[0]?.id;
+    for (const [id, node] of this.nodes) {
+      node.setAttribute("tabindex", id === targetId ? "0" : "-1");
+    }
   }
 
   destroy(): void {
@@ -313,6 +341,8 @@ export class SvgRenderer {
     const g = (existing as SVGGElement) ?? createSvgElement("g");
     g.setAttribute("data-icad-id", el.id);
     g.setAttribute("data-icad-type", el.type);
+    g.setAttribute("role", accessibleRole(el));
+    g.setAttribute("aria-label", accessibleName(el, scene, this.catalog));
     g.innerHTML = "";
 
     switch (el.type) {

@@ -431,4 +431,103 @@ describe("createEditor", () => {
       expect(editor.boundsOf([id])).toEqual({ x: 10, y: 10, w: 48, h: 48 });
     });
   });
+
+  describe("keyboard accessibility", () => {
+    it("exposes the tab order as element ids, west to east", () => {
+      const east = editor.addBox({ at: { x: 200, y: 0 }, label: "east" });
+      const west = editor.addBox({ at: { x: 0, y: 0 }, label: "west" });
+      expect(editor.tabOrder()).toEqual([west, east]);
+    });
+
+    it("focusNext/focusPrevious step the selection through the tab order and wrap around", () => {
+      const west = editor.addBox({ at: { x: 0, y: 0 }, label: "west" });
+      const east = editor.addBox({ at: { x: 200, y: 0 }, label: "east" });
+
+      editor.focusNext();
+      expect(editor.selection.get()).toEqual([west]);
+      editor.focusNext();
+      expect(editor.selection.get()).toEqual([east]);
+      editor.focusNext();
+      expect(editor.selection.get()).toEqual([west]);
+
+      editor.focusPrevious();
+      expect(editor.selection.get()).toEqual([east]);
+    });
+
+    it("does nothing for focusNext/focusPrevious on an empty scene", () => {
+      editor.focusNext();
+      expect(editor.selection.get()).toEqual([]);
+      editor.focusPrevious();
+      expect(editor.selection.get()).toEqual([]);
+    });
+
+    it("pans the viewport into view when focusNext lands on an off-screen element", () => {
+      editor.addBox({ at: { x: 0, y: 0 }, label: "west" });
+      editor.addBox({ at: { x: 5000, y: 5000 }, label: "far away" });
+
+      editor.focusNext();
+      editor.focusNext();
+
+      const state = editor.viewport.get();
+      expect(state.x).toBeGreaterThan(0);
+    });
+
+    it("nudges every given element by the same delta, undoably", () => {
+      const id = editor.addBox({ at: { x: 10, y: 10 }, label: "box" });
+      editor.nudgeElements([id], 5, -5);
+      expect(editor.scene.get(id)).toMatchObject({ x: 15, y: 5 });
+      editor.commands.undo();
+      expect(editor.scene.get(id)).toMatchObject({ x: 10, y: 10 });
+    });
+
+    it("moves nested contents along when nudging a container (move-with)", () => {
+      const parent = editor.addBox({ at: { x: 0, y: 0 }, w: 200, h: 200, label: "parent" });
+      const child = editor.addIcon("test/vpc", { at: { x: 20, y: 20 }, parentId: parent });
+      editor.nudgeElements([parent], 10, 10);
+      expect(editor.scene.get(child)).toMatchObject({ x: 30, y: 30 });
+    });
+
+    it("ignores unknown ids and a zero delta when nudging (no extra undo step pushed)", () => {
+      const id = editor.addBox({ at: { x: 10, y: 10 }, label: "box" });
+      editor.nudgeElements(["missing"], 5, 5);
+      editor.nudgeElements([id], 0, 0);
+      expect(editor.scene.get(id)).toMatchObject({ x: 10, y: 10 });
+
+      // A single undo fully removes the box, proving no no-op nudge command was pushed in between.
+      editor.commands.undo();
+      expect(editor.scene.get(id)).toBeUndefined();
+    });
+
+    it("deletes an element and its descendants as one undoable step, then clears selection", () => {
+      const parent = editor.addBox({ at: { x: 0, y: 0 }, w: 200, h: 200, label: "parent" });
+      const child = editor.addIcon("test/vpc", { at: { x: 20, y: 20 }, parentId: parent });
+      editor.selection.set([parent]);
+
+      editor.deleteElements([parent]);
+
+      expect(editor.scene.get(parent)).toBeUndefined();
+      expect(editor.scene.get(child)).toBeUndefined();
+      expect(editor.selection.get()).toEqual([]);
+
+      editor.commands.undo();
+      expect(editor.scene.get(parent)).toBeDefined();
+      expect(editor.scene.get(child)).toBeDefined();
+    });
+
+    it("deletes multiple elements as a single undo step", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, label: "a" });
+      const b = editor.addBox({ at: { x: 200, y: 0 }, label: "b" });
+
+      editor.deleteElements([a, b]);
+      expect(editor.scene.all()).toHaveLength(0);
+
+      editor.commands.undo();
+      expect(editor.scene.all().map((el) => el.id).sort()).toEqual([a, b].sort());
+    });
+
+    it("does nothing when deleting only unknown ids", () => {
+      editor.deleteElements(["missing"]);
+      expect(editor.commands.canUndo()).toBe(false);
+    });
+  });
 });

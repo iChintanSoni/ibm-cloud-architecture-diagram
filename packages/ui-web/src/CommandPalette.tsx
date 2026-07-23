@@ -13,15 +13,19 @@ export function CommandPalette({ open, commands, onClose }: CommandPaletteProps)
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
 
   const results = useMemo(() => filterCommands(commands, query), [commands, query]);
   const runnable = results.filter((command) => !command.disabled);
 
   useEffect(() => {
     if (!open) return;
+    previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setQuery("");
     setActiveIndex(0);
     inputRef.current?.focus();
+    // Restores focus to whatever opened the palette (docs/07-accessibility.md#chrome-the-easy-80).
+    return () => previousFocusRef.current?.focus();
   }, [open]);
 
   useEffect(() => {
@@ -58,6 +62,12 @@ export function CommandPalette({ open, commands, onClose }: CommandPaletteProps)
           } else if (event.key === "Enter") {
             event.preventDefault();
             runAt(activeIndex);
+          } else if (event.key === "Tab") {
+            // The search input is the only stop in the tab sequence — arrow keys navigate
+            // the list (standard combobox/listbox pattern) — so Tab traps focus here rather
+            // than leaking out to whatever is behind the modal backdrop.
+            event.preventDefault();
+            inputRef.current?.focus();
           }
         }}
       >
@@ -70,12 +80,17 @@ export function CommandPalette({ open, commands, onClose }: CommandPaletteProps)
           onChange={(event) => setQuery(event.target.value)}
         />
         <ul className="icad-command-palette__list" role="listbox" aria-label="Commands">
-          {runnable.length === 0 && <li className="icad-command-palette__empty">No matching commands</li>}
+          {runnable.length === 0 && (
+            <li role="presentation" className="icad-command-palette__empty">
+              No matching commands
+            </li>
+          )}
           {runnable.map((command, index) => (
-            <li key={command.id}>
+            <li key={command.id} role="presentation">
               <button
                 type="button"
                 role="option"
+                tabIndex={-1}
                 aria-selected={index === activeIndex}
                 className="icad-command-palette__item"
                 data-active={index === activeIndex ? "true" : "false"}

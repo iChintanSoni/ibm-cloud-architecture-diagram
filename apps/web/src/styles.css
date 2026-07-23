@@ -42,6 +42,13 @@ body,
   display: block;
 }
 
+/* The dashed selection overlay (SvgRenderer.renderOverlays) is the visible focus indicator for
+   the single roving focus model (docs/07-accessibility.md#canvas-the-hard-20); suppress the
+   browser's default outline on canvas elements so it isn't duplicated/inconsistent across browsers. */
+.icad-canvas svg [data-icad-id]:focus {
+  outline: none;
+}
+
 .icad-validation-content h2 {
   font-size: 1rem;
   margin: 0;

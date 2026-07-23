@@ -2,6 +2,7 @@
 export * from "./scene/types.js";
 export { Scene, type SceneChangeEvent } from "./scene/scene.js";
 export { boundsOf } from "./scene/bounds.js";
+export { accessibleName, accessibleRole, type AccessibleRole } from "./scene/accessibleName.js";
 
 // Commands
 export type { Command } from "./commands/types.js";
@@ -21,6 +22,7 @@ export { CommandBus } from "./commands/commandBus.js";
 // Interaction
 export { SelectionManager } from "./interaction/selection.js";
 export { hitTest } from "./interaction/hitTest.js";
+export { computeTabOrder } from "./interaction/tabOrder.js";
 
 // Rendering
 export { SvgRenderer, type ResolvedTheme } from "./render/svgRenderer.js";

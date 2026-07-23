@@ -174,7 +174,54 @@ element or frame by name via Find, step through a presentation, and keep their c
 a reload.
 
 #### M8 — Accessibility to AA
-- Keyboard-operable canvas, screen-reader object tree, live regions, CI a11y checks ([Accessibility](07-accessibility.md)).
+🟡 **In progress** — keyboard-operable canvas, screen-reader object tree, live regions, CI a11y
+checks ([Accessibility](07-accessibility.md)).
+
+##### M8.1 — Baseline canvas keyboard operation, roles/names, CI a11y checks
+✅ **Done** (2026-07-23)
+
+Per the doc's own phasing ("chrome and keyboard operation first, then the screen-reader object
+tree and live regions"), landed the foundational layer everything else builds on:
+
+1. Every canvas element now gets a real ARIA role (`group` for containers, `button` for
+   everything selectable) and an accessible name (`accessibleName()`/`accessibleRole()` in
+   `packages/core/src/scene/accessibleName.ts`) — containers mention their child count,
+   connectors describe both resolved endpoints and the connection/relationship type instead of
+   just geometry.
+2. Added a meaningful keyboard tab order (`computeTabOrder()`,
+   `packages/core/src/interaction/tabOrder.ts`): containers before children, siblings west→east
+   per [Layout convention](05-ibm-spec-conformance.md#layout-convention), connectors last.
+   `SvgRenderer` keeps exactly one element as the sole `tabindex="0"` node (roving tabindex) and
+   re-renders the existing selection outline as the shared visual focus indicator; `Editor` gained
+   `tabOrder()`, `focusNext()`/`focusPrevious()` (auto-panning into view only when the target isn't
+   already visible), `nudgeElements()`, and `deleteElements()` (cascading, undoable).
+3. `apps/web` wires Tab/Shift+Tab (exits to surrounding chrome at the boundary — no keyboard trap),
+   arrow keys (nudge, Shift for a larger step), and Delete/Backspace on the canvas; mouse clicks
+   now also move real DOM focus (a click's exact target is often a non-focusable child shape, so
+   focus doesn't follow the click for free).
+4. Fixed a real bug the accessibility pass surfaced: `SvgRenderer` originally moved DOM focus on
+   every selection change, which stole focus from Find/the command palette/frame presentation
+   while the user was still typing/clicking elsewhere. Selection and keyboard focus are now
+   decoupled — only deliberate Tab navigation calls the explicit `focusElement()`.
+5. Added a focus trap (Tab) and focus-restore-on-close to `CommandPalette` and `FindBar`
+   (`packages/ui-web`) — neither existed before.
+6. Stood up `.github/workflows/ci.yml` (typecheck, lint, test on every push/PR) and an
+   `axe-core` smoke test (`packages/ui-web/src/a11y.test.tsx`) over the Carbon chrome components;
+   this caught two real ARIA violations (an invalid listbox/listitem structure in `CommandPalette`,
+   a duplicated `role="search"` landmark in `FindBar`) before they shipped.
+
+**Known limitation:** jsdom can't evaluate layout-dependent rules (contrast, target size) or real
+screen-reader output — those need a live browser pass, tracked below.
+
+**Remaining for M8:**
+- Full nested ARIA object tree (`aria-owns`-based, so containment reads as parent/child rather
+  than a flat list) and live regions announcing meaningful changes (element added, connected,
+  validation fixed).
+- Keyboard support for resize, connect, and group/ungroup (M8.1 covers create/select/move/delete
+  only).
+- Real browser a11y checks: axe-core/IBM Equal Access against the live app (not jsdom) in CI, plus
+  Playwright keyboard E2E flows building/editing a diagram with no pointer.
+- Manual screen-reader passes (VoiceOver/NVDA) on the core authoring flow.
 
 **v1 exit criteria:** an architect builds a correct system-context + high-level diagram end to
 end, exports a reviewer-grade SVG, reopens it; linter catches common violations; AA verified.
