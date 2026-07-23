@@ -41,4 +41,28 @@ export const danglingConnectorRule: Rule = (scene: Scene): Diagnostic[] => {
   return diagnostics;
 };
 
-export const defaultRules: Rule[] = [missingLabelRule, danglingConnectorRule];
+/**
+ * A `deployedTo` Group models services grouped onto a `deployedOn` Box
+ * (docs/05-ibm-spec-conformance.md#element-semantics: "a VSI is deployedOn a
+ * subnet and deployedTo a security group" — the security-group Group nests
+ * inside the subnet Box). A Group with no Box ancestor is missing that
+ * location context. No quick-fix: we can't guess which Box was intended.
+ */
+export const groupWithoutBoxAncestorRule: Rule = (scene: Scene): Diagnostic[] => {
+  const diagnostics: Diagnostic[] = [];
+  for (const el of scene.all()) {
+    if (el.type !== "group") continue;
+    const hasBoxAncestor = scene.ancestorsOf(el.id).some((ancestor) => ancestor.type === "box");
+    if (hasBoxAncestor) continue;
+    diagnostics.push({
+      id: `group-without-box:${el.id}`,
+      ruleId: "group-without-box",
+      severity: "warn",
+      elementId: el.id,
+      message: `"${el.id}" (deployedTo group) isn't nested inside a deployedOn box.`
+    });
+  }
+  return diagnostics;
+};
+
+export const defaultRules: Rule[] = [missingLabelRule, danglingConnectorRule, groupWithoutBoxAncestorRule];

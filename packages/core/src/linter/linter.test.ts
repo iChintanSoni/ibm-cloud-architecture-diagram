@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Scene } from "../scene/scene.js";
-import type { BoxElement, ConnectorElement } from "../scene/types.js";
+import type { BoxElement, ConnectorElement, GroupElement } from "../scene/types.js";
 import { Linter } from "./linter.js";
 
 function box(id: string, label?: string): BoxElement {
@@ -13,6 +13,20 @@ function box(id: string, label?: string): BoxElement {
     w: 100,
     h: 100,
     ...(label ? { label: { text: label } } : {})
+  };
+}
+
+function group(id: string, parentId?: string): GroupElement {
+  return {
+    id,
+    type: "group",
+    semantic: "deployedTo",
+    x: 0,
+    y: 0,
+    w: 80,
+    h: 80,
+    label: { text: id },
+    ...(parentId ? { parentId } : {})
   };
 }
 
@@ -58,6 +72,24 @@ describe("Linter", () => {
     const diagnostics = new Linter().run(scene);
     const connectorDiagnostic = diagnostics.find((d) => d.ruleId === "dangling-connector");
     expect(connectorDiagnostic).toMatchObject({ severity: "error", elementId: "c1" });
+  });
+
+  it("flags a deployedTo group with no deployedOn box ancestor", () => {
+    const scene = new Scene();
+    scene._put(group("g1"));
+
+    const diagnostics = new Linter().run(scene);
+    const groupDiagnostic = diagnostics.find((d) => d.ruleId === "group-without-box");
+    expect(groupDiagnostic).toMatchObject({ severity: "warn", elementId: "g1" });
+  });
+
+  it("does not flag a group nested inside a box", () => {
+    const scene = new Scene();
+    scene._put(box("subnet", "Subnet"));
+    scene._put(group("sg", "subnet"));
+
+    const diagnostics = new Linter().run(scene);
+    expect(diagnostics.some((d) => d.ruleId === "group-without-box")).toBe(false);
   });
 
   it("reports no blocking errors on a clean scene", () => {

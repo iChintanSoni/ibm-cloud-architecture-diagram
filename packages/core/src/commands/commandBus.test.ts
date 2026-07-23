@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 import { Scene } from "../scene/scene.js";
 import type { BoxElement } from "../scene/types.js";
 import { CommandBus } from "./commandBus.js";
-import { addElement, moveElements, removeElement, updateElement } from "./commands.js";
+import { addElement, moveElements, reparentElement, removeElement, updateElement } from "./commands.js";
 
-function box(id: string): BoxElement {
-  return { id, type: "box", semantic: "deployedOn", x: 0, y: 0, w: 100, h: 50 };
+function box(id: string, parentId?: string): BoxElement {
+  return { id, type: "box", semantic: "deployedOn", x: 0, y: 0, w: 100, h: 50, ...(parentId ? { parentId } : {}) };
 }
 
 describe("CommandBus", () => {
@@ -73,5 +73,69 @@ describe("CommandBus", () => {
 
     bus.undo();
     expect(scene.get("a")).toMatchObject({ x: 0, y: 0 });
+  });
+
+  it("moves nested children along with their container (move-with)", () => {
+    const scene = new Scene();
+    const bus = new CommandBus(scene);
+    bus.dispatch(addElement(box("parent")));
+    bus.dispatch(addElement(box("child", "parent")));
+    bus.dispatch(addElement(box("grandchild", "child")));
+
+    bus.dispatch(moveElements(scene, ["parent"], 10, 20));
+    expect(scene.get("parent")).toMatchObject({ x: 10, y: 20 });
+    expect(scene.get("child")).toMatchObject({ x: 10, y: 20 });
+    expect(scene.get("grandchild")).toMatchObject({ x: 10, y: 20 });
+
+    bus.undo();
+    expect(scene.get("child")).toMatchObject({ x: 0, y: 0 });
+    expect(scene.get("grandchild")).toMatchObject({ x: 0, y: 0 });
+  });
+
+  it("does not double-move a descendant selected alongside its ancestor", () => {
+    const scene = new Scene();
+    const bus = new CommandBus(scene);
+    bus.dispatch(addElement(box("parent")));
+    bus.dispatch(addElement(box("child", "parent")));
+
+    bus.dispatch(moveElements(scene, ["parent", "child"], 10, 0));
+    expect(scene.get("child")).toMatchObject({ x: 10, y: 0 });
+  });
+
+  it("cascades removeElement to nested children and restores them on undo", () => {
+    const scene = new Scene();
+    const bus = new CommandBus(scene);
+    bus.dispatch(addElement(box("parent")));
+    bus.dispatch(addElement(box("child", "parent")));
+
+    bus.dispatch(removeElement(scene, "parent"));
+    expect(scene.has("parent")).toBe(false);
+    expect(scene.has("child")).toBe(false);
+
+    bus.undo();
+    expect(scene.get("parent")).toMatchObject({ id: "parent" });
+    expect(scene.get("child")).toMatchObject({ id: "child", parentId: "parent" });
+  });
+
+  it("reparents an element and undoes back to its prior container", () => {
+    const scene = new Scene();
+    const bus = new CommandBus(scene);
+    bus.dispatch(addElement(box("a")));
+    bus.dispatch(addElement(box("b")));
+
+    bus.dispatch(reparentElement(scene, "a", "b"));
+    expect(scene.get("a")).toMatchObject({ parentId: "b" });
+
+    bus.undo();
+    expect(scene.get("a")?.parentId).toBeUndefined();
+  });
+
+  it("throws rather than reparenting an element into its own descendant", () => {
+    const scene = new Scene();
+    const bus = new CommandBus(scene);
+    bus.dispatch(addElement(box("parent")));
+    bus.dispatch(addElement(box("child", "parent")));
+
+    expect(() => reparentElement(scene, "parent", "child")).toThrow(/descendant/);
   });
 });

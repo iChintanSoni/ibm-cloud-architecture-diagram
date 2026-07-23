@@ -55,6 +55,46 @@ export class Scene {
     return this.all().filter((el) => el.parentId === parentId);
   }
 
+  /**
+   * All transitive children of an element (containment membership), used by
+   * move-with and cascading delete. Guards against a cyclic parentId chain
+   * (which should never occur, but must not hang the engine if it does).
+   */
+  descendantsOf(id: ElementId): SceneElement[] {
+    const result: SceneElement[] = [];
+    const visited = new Set<ElementId>([id]);
+    const queue = this.childrenOf(id);
+    while (queue.length > 0) {
+      const el = queue.shift()!;
+      if (visited.has(el.id)) continue;
+      visited.add(el.id);
+      result.push(el);
+      queue.push(...this.childrenOf(el.id));
+    }
+    return result;
+  }
+
+  /** True if `id` is `ancestorId` itself or a descendant of it. */
+  isSelfOrDescendant(ancestorId: ElementId, id: ElementId): boolean {
+    if (ancestorId === id) return true;
+    return this.descendantsOf(ancestorId).some((el) => el.id === id);
+  }
+
+  /** Containing elements from immediate parent up to the root, cycle-safe. */
+  ancestorsOf(id: ElementId): SceneElement[] {
+    const result: SceneElement[] = [];
+    const visited = new Set<ElementId>([id]);
+    let current = this.get(id);
+    while (current?.parentId && !visited.has(current.parentId)) {
+      const parent = this.get(current.parentId);
+      if (!parent) break;
+      result.push(parent);
+      visited.add(parent.id);
+      current = parent;
+    }
+    return result;
+  }
+
   /** Internal write used by commands. Not exported outside the package. */
   _put(el: SceneElement, reason: SceneChangeEvent["reason"] = "add"): void {
     this.elements.set(el.id, el);
