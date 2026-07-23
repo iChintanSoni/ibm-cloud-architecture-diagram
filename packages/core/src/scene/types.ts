@@ -90,11 +90,15 @@ export interface IconNodeElement extends BaseElement {
 export interface BoxElement extends BaseElement {
   type: "box";
   semantic: "deployedOn";
+  /** Optional IBM glyph rendered in the container's top-left corner. */
+  catalogRef?: string;
 }
 
 export interface GroupElement extends BaseElement {
   type: "group";
   semantic: "deployedTo";
+  /** Optional IBM glyph rendered in the container's top-left corner. */
+  catalogRef?: string;
 }
 
 export type ZoneKind = "region" | "az" | "vpc" | "subnet" | "on-prem";
@@ -103,6 +107,8 @@ export interface ZoneElement extends BaseElement {
   type: "zone";
   semantic: "boundary";
   zoneKind: ZoneKind;
+  /** Optional IBM glyph rendered in the container's top-left corner. */
+  catalogRef?: string;
 }
 
 export interface ActorElement extends BaseElement {

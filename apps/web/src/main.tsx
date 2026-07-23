@@ -1,4 +1,5 @@
 import "@carbon/react/index.scss";
+import "@icad/ui-web/styles.css";
 import "./styles.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";

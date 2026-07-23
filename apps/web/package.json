@@ -14,6 +14,7 @@
   "dependencies": {
     "@carbon/react": "^1.112.0",
     "@icad/core": "workspace:*",
+    "@icad/ui-web": "workspace:*",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },

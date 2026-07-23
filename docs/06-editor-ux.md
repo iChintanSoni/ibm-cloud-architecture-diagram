@@ -18,7 +18,7 @@ custom SVG engine ([D3](00-decision-log.md#d3--svg-dom-rendering--locked)). Ever
 │  ├ Network│                                              │            │
 │  └ …     │                                               │            │
 ├──────────┴───────────────────────────────────────────────┴────────────┤
-│  Toolbar: select · box · group · zone · icon · connector · text · frame │  Bottom/side tools
+│ Toolbar: select · box · group · boundary · icon · connector · text · frame │ Bottom/side tools
 │  Zoom 100%  ·  Frames ▸  ·  Find (⌘F)  ·  Validation ▸                   │
 └───────────────────────────────────────────────────────────────────────┘
 ```
@@ -28,7 +28,7 @@ custom SVG engine ([D3](00-decision-log.md#d3--svg-dom-rendering--locked)). Ever
 - **Center — Canvas:** SVG viewport with pan (space-drag / scroll), zoom, snap grid, rulers.
 - **Right — Properties / Layers / Validation:** context panel for the selection, a layer/tree
   view, and the [linter](05-ibm-spec-conformance.md) diagnostics.
-- **Toolbar:** the semantic tools (box, group, zone, icon, connector, actor, text, frame).
+- **Toolbar:** the semantic tools (box, group, boundary, icon, connector, actor, text, frame).
 
 ## Core interactions
 
@@ -46,7 +46,7 @@ custom SVG engine ([D3](00-decision-log.md#d3--svg-dom-rendering--locked)). Ever
 ## Nesting & spacing
 
 - Nested elements keep a **16px buffer** on every side from their parent container's edge — the
-  engine enforces this as a snap/pad default when dropping into a Box/Group/Zone, not just a
+  engine enforces this as a snap/pad default when dropping into a Box/Group/Boundary, not just a
   visual guideline.
 - Alternate white and light-tint fills between nesting levels (parent vs. child container) for
   readability, using the category's secondary color ([Spec Conformance → Color usage](05-ibm-spec-conformance.md#color-usage)).

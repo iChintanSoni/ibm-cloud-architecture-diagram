@@ -4,6 +4,20 @@ The reason this tool exists instead of generic draw.io: it *understands* the IBM
 diagram spec and helps users stay on it. This document defines the semantics we model, the
 conventions we enforce, and how the linter works.
 
+## Normative sources
+
+When published IBM sources disagree, ICAD uses this precedence:
+
+1. [IBM Cloud Architecture Framework — Creating an architecture diagram](https://cloud.ibm.com/docs/architecture-framework?topic=architecture-framework-architecture-diagram)
+2. IBM Design-approved internal guidance
+3. Native IBM Cloud stencils in Draw.io
+4. The architecture-icons repository inventory and complementary stencil XML
+5. Raw SVG exports and repository prose
+
+The Architecture Framework is normative for Box/Group semantics, icon geometry, west→east layout,
+and export guidance. The stencil repository remains the pinned source for assets and supplemental
+inventory metadata; its raw SVG presentation is not itself the rendering specification.
+
 ## Element semantics
 
 Per IBM's guidance, shapes carry meaning, not just geometry:
@@ -14,12 +28,13 @@ Per IBM's guidance, shapes carry meaning, not just geometry:
 | **Group** | `deployedTo` — grouping of services/apps deployed **to** a box | **Dashed** border container |
 | **Node** | Standalone component/device | **Square** container, IBM icon (20×20 glyph in 48×48, 1px outline) |
 | **Actor** | Role/user | **Rounded** shape |
-| **Zone** | Region / availability zone / VPC / subnet boundary | Labeled boundary |
+| **Boundary** (`zone` internally) | Region / availability zone / VPC / subnet boundary | Labeled boundary; ICAD convenience primitive pending IBM Design confirmation |
 | **Connector** | Relationship / flow | IBM connector nomenclature (below) |
 
 Example the IBM docs give: *a virtual server instance is `deployedOn` a subnet and `deployedTo` a
-security group.* The tool models exactly this — the VSI node sits inside a subnet **box** and a
-security-group **group**.
+security group.* ICAD models both meanings, but the published guidance does not require every
+Group to be a child of a Box. Whether `deployedTo` can be multi-valued remains an IBM Design
+follow-up before any `.icad` schema change.
 
 ## Color usage
 
@@ -78,6 +93,9 @@ unidirectional variant (arrowhead on one end vs. both):
 | Tunneling Connection | solid, on a highlighted band | Traffic through a tunnel/encapsulation |
 | Traffic Through Double Tunnel | solid, on a double-highlighted band | Traffic through nested tunnels |
 
+Connection endpoints follow the published IBM reference: bidirectional connections use dots at
+both ends; unidirectional connections use a source dot and destination arrow.
+
 **Color coding** (independent of the type above): green = private connection, blue = public
 connection.
 
@@ -124,10 +142,7 @@ human explanation, and — where possible — an automatic **quick-fix** command
    - Outline, side-bar accent, or connector uses a secondary/alert color instead of primary →
      quick-fix: swap to the category's primary.
 2. **Containment correctness**
-   - Node not placed in any box/zone when the topology implies a location.
-   - A `deployedTo` group with no `deployedOn` box ancestor — per the worked example above, a
-     group nests inside the box it's deployed to; a group floating without one is missing that
-     location context.
+   - Node not placed in any box/boundary when the topology implies a location.
 3. **Labels & metadata**
    - Missing required labels on boxes/groups/zones/actors.
    - Ambiguous or duplicate labels.

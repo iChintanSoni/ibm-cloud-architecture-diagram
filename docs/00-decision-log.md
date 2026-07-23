@@ -171,8 +171,8 @@ skills land in v2.
 IBM's kit ships ~30 named container stencils (VPC, Subnet, Region, Availability Zone, Authorization
 Boundary, Instance Group, …), each pre-set with a corner icon, category color, and label. We do
 **not** fork these into 30 element types or a catalog `groups` category. The engine keeps its three
-structural primitives — Box (`deployedOn`, solid), Group (`deployedTo`, dashed), Zone (boundary,
-dotted) — and presets are a small static table (`name → {kind, category color, optional corner
+structural primitives — Box (`deployedOn`, solid), Group (`deployedTo`, dashed), and Boundary
+(`zone` internally, dotted) — and presets are a small static table (`name → {kind, category color, optional corner
 icon}`) that the library panel offers as one-click, pre-styled inserts.
 
 - **Why:** Users expect to place "VPC," not draw a Box and manually rename/recolor it — but the

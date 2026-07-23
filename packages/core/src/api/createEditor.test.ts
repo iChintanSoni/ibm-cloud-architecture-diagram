@@ -119,7 +119,7 @@ describe("createEditor", () => {
     expect(line?.getAttribute("stroke")).toBe("#0f62fe");
   });
 
-  it("renders arrowheads at both ends of a bidirectional connection", () => {
+  it("renders IBM endpoint dots at both ends of a bidirectional connection", () => {
     const a = editor.addBox({ at: { x: 0, y: 0 }, w: 100, h: 60, label: "A" });
     const b = editor.addBox({ at: { x: 300, y: 0 }, w: 100, h: 60, label: "B" });
     const connId = editor.connect(
@@ -129,7 +129,21 @@ describe("createEditor", () => {
     );
 
     const line = container.querySelector(`[data-icad-id="${connId}"] polyline`);
-    expect(line?.getAttribute("marker-start")).toBe("url(#icad-arrow)");
+    expect(line?.getAttribute("marker-start")).toBe("url(#icad-dot)");
+    expect(line?.getAttribute("marker-end")).toBe("url(#icad-dot)");
+  });
+
+  it("renders an IBM source dot and destination arrow for a unidirectional connection", () => {
+    const a = editor.addBox({ at: { x: 0, y: 0 }, w: 100, h: 60, label: "A" });
+    const b = editor.addBox({ at: { x: 300, y: 0 }, w: 100, h: 60, label: "B" });
+    const connId = editor.connect(
+      { elementId: a, port: "e" },
+      { elementId: b, port: "w" },
+      { connectorType: "connection", direction: "unidirectional" }
+    );
+
+    const line = container.querySelector(`[data-icad-id="${connId}"] polyline`);
+    expect(line?.getAttribute("marker-start")).toBe("url(#icad-dot)");
     expect(line?.getAttribute("marker-end")).toBe("url(#icad-arrow)");
   });
 
@@ -208,9 +222,13 @@ describe("createEditor", () => {
 
   it("summarizes configured error, warning, and info diagnostics", () => {
     editor.addBox({ at: { x: 0, y: 0 } });
-    editor.addGroup({ at: { x: 200, y: 0 }, label: "Security group" });
+    editor.addGroup({
+      at: { x: 200, y: 0 },
+      label: "Security group",
+      style: { dashed: false }
+    });
     editor.setRuleSeverity("missing-label", "error");
-    editor.setRuleSeverity("group-without-box", "info");
+    editor.setRuleSeverity("container-border", "info");
 
     expect(editor.complianceSummary()).toMatchObject({
       counts: { error: 1, warn: 0, info: 1 },

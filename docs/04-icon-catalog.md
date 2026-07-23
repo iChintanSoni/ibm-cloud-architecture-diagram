@@ -11,6 +11,11 @@ The catalog is the bundled, offline, versioned set of IBM icons the editor draws
 
 ## Source of truth
 
+[IBM Cloud's published architecture-diagram guidance](https://cloud.ibm.com/docs/architecture-framework?topic=architecture-framework-architecture-diagram)
+is normative for icon geometry and rendering. The repository below is the pinned asset and
+supplemental inventory source; its raw SVG appearance does not override the published 20×20 glyph
+in a white 48×48 outlined container.
+
 [IBM-Cloud/architecture-icons](https://github.com/IBM-Cloud/architecture-icons) provides icons as
 draw.io stencils (`drawio/stencils/2.0/`), draw.io templates, PowerPoint, and SVG. Per IBM's docs,
 icons are **20×20 glyphs in a 48×48 container, white fill, 1px outline**, organized by category and
@@ -77,7 +82,7 @@ Re-running the pipeline against a newer upstream tag produces a new catalog vers
     { "id": "actors",        "name": "Actors" },
     { "id": "applications",  "name": "Applications" },
     { "id": "observability", "name": "Observability" }
-    /* Group/Zone are native ICAD container elements, not catalog icons — no "groups" category. */
+    /* Group/Boundary are native ICAD elements, not catalog icons — no "groups" category. */
   ],
   "icons": [
     {
@@ -98,7 +103,7 @@ Re-running the pipeline against a newer upstream tag produces a new catalog vers
 }
 ```
 
-> **Containers are not catalog entries.** Box/Group/Zone ship as native ICAD engine primitives
+> **Containers are not catalog entries.** Box/Group/Boundary (`zone` internally) ship as native ICAD engine primitives
 > ([Architecture → Scene model](02-architecture.md#the-core)), not `icons[]` rows — deliberately no
 > `groups` category above. IBM's kit does ship ~30 *named* container stencils (VPC, Subnet, Region,
 > Availability Zone, Authorization Boundary, …), each with a preset icon/color/label. Per
@@ -113,7 +118,7 @@ uses to offer named, pre-styled inserts: pick "VPC" and get a correctly colored,
 Box with the VPC glyph in the corner and "VPC" as the label — instead of drawing a Box and manually
 styling it. Each row is `{ name, kind, category color, corner icon }`; `kind` follows the
 [Element semantics](05-ibm-spec-conformance.md#element-semantics) rule (Box = solid/`deployedOn`,
-Group = dashed/`deployedTo`, Zone = dotted/boundary).
+Group = dashed/`deployedTo`, Boundary = dotted boundary).
 
 **Confidence:** rows marked `✓` reproduce IBM's own worked example from the kit exactly (border
 style, color, and icon all confirmed). The rest are inferred from the kit's stencil legend — which
@@ -132,7 +137,7 @@ draft, not a spec citation; confirm against IBM Design before shipping ([D17](00
 | Cloud Point of Presence | Box | Network (blue) | — |
 | Virtual Server | Box | Compute (green) | `ibm-cloud/virtual-server` |
 | Physical Server | Box | Compute (green) | `ibm-cloud/physical-server` |
-| Authorization Boundary | Zone | Security (red) | `ibm-cloud/authorization-boundary` |
+| Authorization Boundary | Boundary | Security (red) | `ibm-cloud/authorization-boundary` |
 | Overlay Network | Box | Network (blue) | `ibm-cloud/network-overlay` |
 | Public Network | Box ✓ | Network (blue) | `ibm-cloud/public-network` |
 | VLAN | Box | Network (blue) | `ibm-cloud/vlan` |
@@ -146,7 +151,7 @@ draft, not a spec citation; confirm against IBM Design before shipping ([D17](00
 | Name | Kind | Category | Corner icon |
 |---|---|---|---|
 | IBM Cloud | Box ✓ | Network (blue) | `ibm-cloud/ibm-cloud` |
-| Availability zone | Zone ✓ | Generic (gray) | — |
+| Availability zone | Boundary ✓ | Generic (gray) | — |
 | Region | Box ✓ | Generic (gray) | `ibm-cloud/location` |
 | Instance group | Group | Compute (green) | `ibm-cloud/instance-group` |
 | IBM Virtual Server | Box | Compute (green) | `ibm-cloud/virtual-server` |
@@ -156,10 +161,10 @@ draft, not a spec citation; confirm against IBM Design before shipping ([D17](00
 | IBM Subnet: ACL | Box | Network (blue) | `ibm-cloud/subnet-acl-rules` |
 | IBM Classic VLAN | Box | Network (blue) | `ibm-cloud/vlan-ibm` |
 | IBM VPC | Box | Network (blue) | `ibm-cloud/ibm-cloud-vpc` |
-| Account group | Zone | Security (red) | — |
-| Security group | Zone | Security (red) | `ibm-cloud/group-security` |
-| Access group | Zone | Security (red) | — |
-| Resource group | Zone | Security (red) | — |
+| Account group | Boundary | Security (red) | — |
+| Security group | Boundary | Security (red) | `ibm-cloud/group-security` |
+| Access group | Boundary | Security (red) | — |
+| Resource group | Boundary | Security (red) | — |
 
 Rows with no corner icon have no matching glyph in the upstream `svg/` set as of the pinned
 catalog version — ship them as a colored, labeled boundary with no icon, or pick a placeholder at

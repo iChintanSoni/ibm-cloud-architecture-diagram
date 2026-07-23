@@ -38,6 +38,9 @@ importers:
       '@icad/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@icad/ui-web':
+        specifier: workspace:*
+        version: link:../../packages/ui-web
       react:
         specifier: ^19.2.8
         version: 19.2.8
@@ -91,6 +94,34 @@ importers:
 
   packages/core:
     devDependencies:
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.7
+        version: 3.2.7(@types/node@26.1.1)(jsdom@29.1.1)(lightningcss@1.33.0)(sass@1.101.6)(supports-color@7.2.0)
+
+  packages/ui-web:
+    dependencies:
+      '@carbon/react':
+        specifier: ^1.112.0
+        version: 1.112.0(react-dom@19.2.8(react@19.2.8))(react-is@16.13.1)(react@19.2.8)(sass@1.101.6)
+      '@icad/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      '@types/react':
+        specifier: ^19.2.17
+        version: 19.2.17
+      '@types/react-dom':
+        specifier: ^19.2.3
+        version: 19.2.3(@types/react@19.2.17)
+      react:
+        specifier: ^19.2.8
+        version: 19.2.8
+      react-dom:
+        specifier: ^19.2.8
+        version: 19.2.8(react@19.2.8)
       typescript:
         specifier: ^5.9.3
         version: 5.9.3

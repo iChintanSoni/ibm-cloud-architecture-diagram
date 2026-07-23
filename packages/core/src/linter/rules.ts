@@ -280,30 +280,7 @@ export const nodeWithoutLocationRule: Rule = (scene): Diagnostic[] => {
         "warn",
         "containment",
         el.id,
-        `"${el.id}" has no Box or Zone ancestor in a ${scene.meta.diagramLevel} diagram.`
-      )
-    );
-  }
-  return diagnostics;
-};
-
-/**
- * A deployedTo Group needs a deployedOn Box ancestor. No quick-fix is
- * offered because the intended location cannot be inferred safely.
- */
-export const groupWithoutBoxAncestorRule: Rule = (scene: Scene): Diagnostic[] => {
-  const diagnostics: Diagnostic[] = [];
-  for (const el of scene.all()) {
-    if (el.type !== "group") continue;
-    const hasBoxAncestor = scene.ancestorsOf(el.id).some((ancestor) => ancestor.type === "box");
-    if (hasBoxAncestor) continue;
-    diagnostics.push(
-      diagnostic(
-        "group-without-box",
-        "warn",
-        "containment",
-        el.id,
-        `"${el.id}" (deployedTo group) isn't nested inside a deployedOn box.`
+        `"${el.id}" has no Box or Boundary ancestor in a ${scene.meta.diagramLevel} diagram.`
       )
     );
   }
@@ -474,7 +451,6 @@ export const ruleMetadata: RuleMetadata[] = [
   { id: "non-catalog-icon", title: "Catalog icon", category: "semantics", defaultSeverity: "error" },
   { id: "primary-color-fill", title: "Primary color fill", category: "semantics", defaultSeverity: "warn" },
   { id: "secondary-color-stroke", title: "Secondary color stroke", category: "semantics", defaultSeverity: "warn" },
-  { id: "group-without-box", title: "Group location", category: "containment", defaultSeverity: "warn" },
   { id: "node-without-location", title: "Node location", category: "containment", defaultSeverity: "warn" },
   { id: "missing-label", title: "Required labels", category: "labels", defaultSeverity: "warn" },
   { id: "duplicate-label", title: "Duplicate labels", category: "labels", defaultSeverity: "warn" },
@@ -502,7 +478,6 @@ export const defaultRules: Rule[] = [
   catalogIconRule,
   primaryFillRule,
   secondaryStrokeRule,
-  groupWithoutBoxAncestorRule,
   nodeWithoutLocationRule,
   missingLabelRule,
   duplicateLabelRule,

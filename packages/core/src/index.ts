@@ -49,7 +49,6 @@ export {
   standardConnectorTypeRule,
   connectorPortRule,
   connectorCrossesObstacleRule,
-  groupWithoutBoxAncestorRule,
   nodeWithoutLocationRule,
   westEastFlowRule,
   iconGeometryRule

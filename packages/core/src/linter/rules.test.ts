@@ -110,10 +110,10 @@ function catalog(): Catalog {
 }
 
 describe("default conformance rules", () => {
-  it("publishes a unique IBM-default metadata entry for all 15 rules", () => {
+  it("publishes a unique IBM-default metadata entry for all 14 supported rules", () => {
     const ids = ruleMetadata.map((rule) => rule.id);
-    expect(ids).toHaveLength(15);
-    expect(new Set(ids).size).toBe(15);
+    expect(ids).toHaveLength(14);
+    expect(new Set(ids).size).toBe(14);
     expect(ids).toEqual(
       expect.arrayContaining([
         "container-semantic",
@@ -121,7 +121,6 @@ describe("default conformance rules", () => {
         "non-catalog-icon",
         "primary-color-fill",
         "secondary-color-stroke",
-        "group-without-box",
         "node-without-location",
         "missing-label",
         "duplicate-label",

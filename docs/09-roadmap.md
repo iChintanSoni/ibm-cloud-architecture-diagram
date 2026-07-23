@@ -26,9 +26,8 @@ Ship a usable, on-spec human editor in the browser.
   `moveElements` cascades a move to every nested descendant; `removeElement` cascades delete to the
   whole subtree, undoing back to the exact prior tree; a new `reparentElement` command changes
   container membership and rejects cycles.
-- Linter gained a containment-correctness rule: a `deployedTo` group with no `deployedOn` box
-  ancestor is flagged, per the `docs/05` worked example (VSI deployedOn a subnet, deployedTo a
-  security group — the group nests inside the box).
+- A `deployedTo` Group originally required a `deployedOn` Box ancestor; M7.1 removed that
+  unsupported assertion after cross-checking the published Architecture Framework.
 - Container presets (named shortcuts like VPC/Subnet/Region over these three primitives) are
   explicitly out of scope here — [D21](00-decision-log.md#d21--container-presets-are-a-named-shortcut-layer-not-new-element-types--locked) lands them in M7 instead.
 
@@ -46,7 +45,7 @@ Ship a usable, on-spec human editor in the browser.
   the five connection types (logical/physical/tunneling/double-tunnel/plain, with
   unidirectional/bidirectional + green-private/blue-public variants) and the six relationship
   types (dependency, association, aggregation, composition, implementation, extends), each with
-  its own line style and arrowhead/diamond marker.
+  its own line style and endpoint/arrowhead/diamond marker.
 - Linter gained a crossing-route rule: an auto or manual connector whose path crosses a leaf shape
   it isn't attached to is flagged, with a "re-route" quick-fix.
 
@@ -64,7 +63,7 @@ Ship a usable, on-spec human editor in the browser.
 
 #### M6 — Conformance linter
 ✅ **Done** (2026-07-23)
-- Fifteen IBM-default rules cover semantic/type and visual mismatches, catalog references, palette
+- Fourteen IBM-default rules cover semantic/type and visual mismatches, catalog references, palette
   use, containment, labels, connector validity/routing, west→east public flow, and icon geometry.
   Rule severities (`error`/`warn`/`info`/`off`) and the warn/block export gate are configurable per
   document and persist in `.icad`.
@@ -76,6 +75,34 @@ Ship a usable, on-spec human editor in the browser.
 
 #### M7 — Chrome, templates, find, themes (Carbon)
 ← next
+- **In progress — library vertical slice (2026-07-23):** reusable `packages/ui-web` Carbon library
+  panel, catalog search/category browsing, click-to-place icons and native containers, automatic
+  containment with the prescribed 16px inset, and the four container presets confirmed by IBM
+  worked examples (IBM Cloud, Public Network, OpenShift, Availability zone). Inferred presets
+  remain withheld pending IBM Design confirmation.
+
+##### M7.1 — Published-guidance conformance alignment
+✅ **Done** (2026-07-23)
+
+Aligned the implementation with the published
+[IBM Cloud Architecture Framework](https://cloud.ibm.com/docs/architecture-framework?topic=architecture-framework-architecture-diagram)
+and use the stencil repository as the supplemental asset/inventory source:
+
+1. Documented the source-of-truth precedence: Architecture Framework → IBM Design-approved internal
+   guidance → native Draw.io stencils → repository inventory/complementary XML → raw SVG exports
+   and repository prose.
+2. Removed the `group-without-box` linter rule: the published guidance defines
+   `deployedTo` but does not require every Group to be nested under a Box.
+3. Matched IBM connector endpoints: bidirectional connections use dots at both ends; unidirectional
+   connections use a source dot and destination arrow. Added reference-backed rendering tests.
+4. Relabeled the public library tool from **Zone** to **Boundary** while retaining `zone` as the
+   internal primitive until IBM Design confirms its normative status.
+5. Added golden visual fixtures for a node, actor, Box, Group, public/private connections,
+   bidirectional/unidirectional connections, and alternating white/light nested-container fills.
+
+**Separate design follow-up (not part of M7.1):** confirm whether `deployedTo` is single- or
+multi-valued before changing the `.icad` schema or replacing `parentId` with membership relations.
+
 - `packages/ui-web` + `apps/web`: library panel, properties/layers, top bar, command palette;
   IBM-level templates + frames; find-on-canvas; auto/light/dark ([Editor UX](06-editor-ux.md)).
 - Container presets: surface the named shortcut table ([Icon Catalog → Container presets](04-icon-catalog.md#container-presets),

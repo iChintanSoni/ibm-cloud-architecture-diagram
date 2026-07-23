@@ -30,6 +30,7 @@ import type {
   GroupElement,
   IconNodeElement,
   PortRef,
+  Style,
   TextElement,
   ZoneElement,
   ZoneKind
@@ -50,6 +51,11 @@ interface PlacementOptions {
   h?: number;
   parentId?: ElementId;
   label?: string;
+}
+
+interface ContainerPlacementOptions extends PlacementOptions {
+  catalogRef?: string;
+  style?: Style;
 }
 
 export interface ExportOptions {
@@ -153,7 +159,7 @@ export class Editor {
     return id;
   }
 
-  addBox(opts: PlacementOptions): ElementId {
+  addBox(opts: ContainerPlacementOptions): ElementId {
     const id = opts.id ?? generateId("box");
     const element: BoxElement = {
       id,
@@ -163,6 +169,8 @@ export class Editor {
       y: opts.at.y,
       w: opts.w ?? DEFAULT_CONTAINER_SIZE.w,
       h: opts.h ?? DEFAULT_CONTAINER_SIZE.h,
+      ...(opts.catalogRef ? { catalogRef: opts.catalogRef } : {}),
+      ...(opts.style ? { style: opts.style } : {}),
       ...(opts.parentId ? { parentId: opts.parentId } : {}),
       ...(opts.label ? { label: { text: opts.label } } : {})
     };
@@ -170,7 +178,7 @@ export class Editor {
     return id;
   }
 
-  addGroup(opts: PlacementOptions): ElementId {
+  addGroup(opts: ContainerPlacementOptions): ElementId {
     const id = opts.id ?? generateId("group");
     const element: GroupElement = {
       id,
@@ -180,6 +188,8 @@ export class Editor {
       y: opts.at.y,
       w: opts.w ?? DEFAULT_CONTAINER_SIZE.w,
       h: opts.h ?? DEFAULT_CONTAINER_SIZE.h,
+      ...(opts.catalogRef ? { catalogRef: opts.catalogRef } : {}),
+      ...(opts.style ? { style: opts.style } : {}),
       ...(opts.parentId ? { parentId: opts.parentId } : {}),
       ...(opts.label ? { label: { text: opts.label } } : {})
     };
@@ -187,7 +197,7 @@ export class Editor {
     return id;
   }
 
-  addZone(opts: PlacementOptions & { zoneKind?: ZoneKind }): ElementId {
+  addZone(opts: ContainerPlacementOptions & { zoneKind?: ZoneKind }): ElementId {
     const id = opts.id ?? generateId("zone");
     const element: ZoneElement = {
       id,
@@ -198,6 +208,8 @@ export class Editor {
       y: opts.at.y,
       w: opts.w ?? DEFAULT_CONTAINER_SIZE.w,
       h: opts.h ?? DEFAULT_CONTAINER_SIZE.h,
+      ...(opts.catalogRef ? { catalogRef: opts.catalogRef } : {}),
+      ...(opts.style ? { style: opts.style } : {}),
       ...(opts.parentId ? { parentId: opts.parentId } : {}),
       ...(opts.label ? { label: { text: opts.label } } : {})
     };

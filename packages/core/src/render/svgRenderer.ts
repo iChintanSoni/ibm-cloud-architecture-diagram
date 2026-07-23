@@ -18,6 +18,18 @@ interface Palette {
   frame: string;
 }
 
+const PRIMARY_TO_LIGHT_FILL: Record<string, string> = {
+  "#fa4d56": "#fff1f1",
+  "#ee5396": "#fff0f7",
+  "#a56eff": "#f6f2ff",
+  "#0f62fe": "#edf5ff",
+  "#1192e8": "#e5f6ff",
+  "#009d9a": "#d9fbfb",
+  "#198038": "#defbe6",
+  "#878d96": "#f2f4f8",
+  "#8d8d8d": "#f4f4f4"
+};
+
 const PALETTES: Record<ResolvedTheme, Palette> = {
   light: { stroke: "#161616", zone: "#8d8d8d", frame: "#a8a8a8" },
   dark: { stroke: "#f4f4f4", zone: "#a8a8a8", frame: "#6f6f6f" }
@@ -26,10 +38,16 @@ const PALETTES: Record<ResolvedTheme, Palette> = {
 /** Independent of connectorType (docs/05-ibm-spec-conformance.md#connector-nomenclature). */
 const FLOW_COLORS = { private: "#198038", public: "#0f62fe" } as const;
 
-type MarkerId = "icad-arrow" | "icad-arrow-hollow" | "icad-diamond-open" | "icad-diamond-filled";
-type MarkerKind = "none" | "arrow" | "arrow-hollow" | "diamond-open" | "diamond-filled";
+type MarkerId =
+  | "icad-dot"
+  | "icad-arrow"
+  | "icad-arrow-hollow"
+  | "icad-diamond-open"
+  | "icad-diamond-filled";
+type MarkerKind = "none" | "dot" | "arrow" | "arrow-hollow" | "diamond-open" | "diamond-filled";
 
 const MARKER_IDS: Record<Exclude<MarkerKind, "none">, MarkerId> = {
+  dot: "icad-dot",
   arrow: "icad-arrow",
   "arrow-hollow": "icad-arrow-hollow",
   "diamond-open": "icad-diamond-open",
@@ -144,7 +162,14 @@ const MARKER_DEFS: Array<{
   d: string;
   colorAttr: "fill" | "stroke";
   fixedFill?: string;
+  refX?: number;
 }> = [
+  {
+    id: "icad-dot",
+    d: "M5,2 A3,3 0 1,0 5,8 A3,3 0 1,0 5,2",
+    colorAttr: "fill",
+    refX: 5
+  },
   { id: "icad-arrow", d: "M0,0 L10,5 L0,10 z", colorAttr: "fill" },
   { id: "icad-arrow-hollow", d: "M0,0 L10,5 L0,10 z", colorAttr: "stroke", fixedFill: "none" },
   { id: "icad-diamond-open", d: "M0,5 L5,0 L10,5 L5,10 z", colorAttr: "stroke", fixedFill: "white" },
@@ -163,7 +188,6 @@ export class SvgRenderer {
   private layer: SVGGElement;
   private overlayLayer: SVGGElement;
   private nodes = new Map<string, SVGElement>();
-  private markers = new Map<MarkerId, { path: SVGPathElement; colorAttr: "fill" | "stroke" }>();
   private palette: Palette;
   private diagnostics: Diagnostic[] = [];
   private selectedIds = new Set<string>();
@@ -186,7 +210,7 @@ export class SvgRenderer {
       setAttrs(marker, {
         id: def.id,
         viewBox: "0 0 10 10",
-        refX: 9,
+        refX: def.refX ?? 9,
         refY: 5,
         markerWidth: 7,
         markerHeight: 7,
@@ -195,13 +219,12 @@ export class SvgRenderer {
       const path = createSvgElement("path");
       setAttrs(path, {
         d: def.d,
-        fill: def.colorAttr === "fill" ? this.palette.stroke : (def.fixedFill ?? "none"),
-        stroke: def.colorAttr === "stroke" ? this.palette.stroke : undefined,
+        fill: def.colorAttr === "fill" ? "context-stroke" : (def.fixedFill ?? "none"),
+        stroke: def.colorAttr === "stroke" ? "context-stroke" : undefined,
         "stroke-width": def.colorAttr === "stroke" ? 1.2 : undefined
       });
       marker.appendChild(path);
       defs.appendChild(marker);
-      this.markers.set(def.id, { path, colorAttr: def.colorAttr });
     }
     this.svg.appendChild(defs);
 
@@ -221,9 +244,6 @@ export class SvgRenderer {
   /** Updates the resolved theme; call render(scene) afterwards to repaint. */
   setTheme(theme: ResolvedTheme): void {
     this.palette = PALETTES[theme];
-    for (const { path, colorAttr } of this.markers.values()) {
-      path.setAttribute(colorAttr, this.palette.stroke);
-    }
   }
 
   render(scene: Scene): void {
@@ -279,19 +299,41 @@ export class SvgRenderer {
 
     switch (el.type) {
       case "box":
-        g.appendChild(this.rect(el, { stroke: this.palette.stroke, dashed: false }));
+        g.appendChild(
+          this.rect(el, {
+            stroke: this.palette.stroke,
+            dashed: false,
+            fill: this.containerFill(el, scene)
+          })
+        );
+        if (el.catalogRef) g.appendChild(this.containerCornerGlyph(el));
         break;
       case "group":
-        g.appendChild(this.rect(el, { stroke: this.palette.stroke, dashed: true }));
+        g.appendChild(
+          this.rect(el, {
+            stroke: this.palette.stroke,
+            dashed: true,
+            fill: this.containerFill(el, scene)
+          })
+        );
+        if (el.catalogRef) g.appendChild(this.containerCornerGlyph(el));
         break;
       case "zone":
-        g.appendChild(this.rect(el, { stroke: this.palette.zone, dashed: true, strokeWidth: 2 }));
+        g.appendChild(
+          this.rect(el, {
+            stroke: this.palette.zone,
+            dashed: true,
+            strokeWidth: 2,
+            fill: this.containerFill(el, scene)
+          })
+        );
+        if (el.catalogRef) g.appendChild(this.containerCornerGlyph(el));
         break;
       case "frame":
         g.appendChild(this.rect(el, { stroke: this.palette.frame, dashed: true, strokeWidth: 1 }));
         break;
       case "actor": {
-        const rect = this.rect(el, { stroke: this.palette.stroke, dashed: false });
+        const rect = this.rect(el, { stroke: this.palette.stroke, dashed: false, fill: "white" });
         rect.setAttribute("rx", String(el.h / 2));
         rect.setAttribute("ry", String(el.h / 2));
         g.appendChild(rect);
@@ -337,7 +379,7 @@ export class SvgRenderer {
 
   private rect(
     el: SceneElement,
-    opts: { stroke: string; dashed: boolean; strokeWidth?: number }
+    opts: { stroke: string; dashed: boolean; strokeWidth?: number; fill?: string }
   ): SVGRectElement {
     const rect = createSvgElement("rect");
     setAttrs(rect, {
@@ -345,12 +387,28 @@ export class SvgRenderer {
       y: el.y,
       width: el.w,
       height: el.h,
-      fill: el.style?.fill ?? "none",
+      fill: el.style?.fill ?? opts.fill ?? "none",
       stroke: el.style?.stroke ?? opts.stroke,
       "stroke-width": el.style?.strokeWidth ?? opts.strokeWidth ?? 1,
       "stroke-dasharray": (el.style?.dashed ?? opts.dashed) ? "6 4" : undefined
     });
     return rect;
+  }
+
+  private containerFill(el: SceneElement, scene: Scene): string {
+    if (el.style?.fill) return el.style.fill;
+    const containerDepth = scene
+      .ancestorsOf(el.id)
+      .filter(
+        (ancestor) =>
+          ancestor.type === "box" ||
+          ancestor.type === "group" ||
+          ancestor.type === "zone" ||
+          ancestor.type === "frame"
+      ).length;
+    if (containerDepth % 2 === 1) return "white";
+    const stroke = (el.style?.stroke ?? "").toLowerCase();
+    return PRIMARY_TO_LIGHT_FILL[stroke] ?? "#f4f4f4";
   }
 
   private iconGlyph(el: SceneElement & { catalogRef?: string }): SVGSVGElement {
@@ -364,6 +422,19 @@ export class SvgRenderer {
     });
     const fragment = el.catalogRef ? this.catalog.svg(el.catalogRef) : undefined;
     nested.innerHTML = fragment ?? "";
+    return nested;
+  }
+
+  private containerCornerGlyph(el: SceneElement & { catalogRef?: string }): SVGSVGElement {
+    const nested = createSvgElement("svg");
+    setAttrs(nested, {
+      x: el.x + 12,
+      y: el.y + 12,
+      width: ICON_GLYPH,
+      height: ICON_GLYPH,
+      viewBox: `0 0 ${ICON_GLYPH} ${ICON_GLYPH}`
+    });
+    nested.innerHTML = el.catalogRef ? (this.catalog.svg(el.catalogRef) ?? "") : "";
     return nested;
   }
 
@@ -406,9 +477,10 @@ export class SvgRenderer {
       }
     }
 
-    const startMarker =
-      style.startMarker ??
-      (CONNECTION_TYPES.has(el.connectorType) && el.direction === "bidirectional" ? style.endMarker : "none");
+    const isConnection = CONNECTION_TYPES.has(el.connectorType);
+    const startMarker: MarkerKind = isConnection ? "dot" : (style.startMarker ?? "none");
+    const endMarker: MarkerKind =
+      isConnection && el.direction === "bidirectional" ? "dot" : style.endMarker;
 
     const line = createSvgElement("polyline");
     setAttrs(line, {
@@ -418,7 +490,7 @@ export class SvgRenderer {
       "stroke-width": strokeWidth,
       "stroke-dasharray": style.dash,
       "marker-start": startMarker !== "none" ? `url(#${MARKER_IDS[startMarker]})` : undefined,
-      "marker-end": style.endMarker !== "none" ? `url(#${MARKER_IDS[style.endMarker]})` : undefined
+      "marker-end": endMarker !== "none" ? `url(#${MARKER_IDS[endMarker]})` : undefined
     });
     g.appendChild(line);
 

@@ -49,6 +49,10 @@ body,
   min-width: 0;
 }
 
+.icad-canvas[data-placement-active="true"] {
+  cursor: crosshair;
+}
+
 .icad-canvas svg {
   width: 100%;
   height: 100%;

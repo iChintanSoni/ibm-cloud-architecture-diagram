@@ -3,6 +3,9 @@ import { defineConfig } from "vite";
 
 export default defineConfig({
   plugins: [react()],
+  test: {
+    environment: "jsdom"
+  },
   resolve: {
     alias: [
       // @ibm/plex's compiled CSS uses webpack's `~pkg/path` convention in

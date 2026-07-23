@@ -15,10 +15,12 @@ import {
   type Editor,
   type ExportGate
 } from "@icad/core";
+import { LibraryPanel, type LibraryPlacement } from "@icad/ui-web";
 import { useEffect, useRef, useState } from "react";
 import { createIbmCloudCatalog } from "./catalog";
 import { clearDraft, debounceAutosave, loadDraft, saveDraft } from "./persistence/autosave";
 import { openIcadFile, saveIcadFile, supportsFileSystemAccess } from "./persistence/fileSystem";
+import { clientPointToCanvas, placeLibraryItem } from "./placement";
 import { type ThemePreference, useResolvedTheme } from "./useResolvedTheme";
 import { buildValidationView } from "./validation";
 
@@ -82,8 +84,10 @@ export function App() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const fileHandleRef = useRef<FileSystemFileHandle | null>(null);
   const autosaveRef = useRef(debounceAutosave((doc: unknown) => void saveDraft(doc)));
+  const [catalog] = useState(createIbmCloudCatalog);
 
   const [themePreference, setThemePreference] = useState<ThemePreference>("auto");
+  const [activePlacement, setActivePlacement] = useState<LibraryPlacement>();
   const [diagnostics, setDiagnostics] = useState<Diagnostic[]>([]);
   const [recoveredDraft, setRecoveredDraft] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
@@ -95,7 +99,7 @@ export function App() {
 
     const editor = createEditor({
       container: canvasRef.current,
-      catalog: createIbmCloudCatalog(),
+      catalog,
       theme: themePreference
     });
     editorRef.current = editor;
@@ -125,11 +129,19 @@ export function App() {
       editorRef.current = null;
     };
     // Mounted once: the editor owns its own theme thereafter via setTheme().
-  }, []);
+  }, [catalog]);
 
   useEffect(() => {
     editorRef.current?.setTheme(themePreference);
   }, [themePreference]);
+
+  useEffect(() => {
+    const cancelPlacement = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setActivePlacement(undefined);
+    };
+    window.addEventListener("keydown", cancelPlacement);
+    return () => window.removeEventListener("keydown", cancelPlacement);
+  }, []);
 
   const openExport = () => {
     const editor = editorRef.current;
@@ -276,7 +288,26 @@ export function App() {
         )}
 
         <div className="icad-body">
-          <div className="icad-canvas" ref={canvasRef} />
+          <LibraryPanel
+            catalog={catalog}
+            activePlacement={activePlacement}
+            onChoose={setActivePlacement}
+          />
+          <div
+            className="icad-canvas"
+            ref={canvasRef}
+            data-placement-active={activePlacement ? "true" : "false"}
+            onClick={(event) => {
+              const editor = editorRef.current;
+              const svg = canvasRef.current?.querySelector("svg");
+              if (!activePlacement || !editor || !svg) return;
+              const point = clientPointToCanvas(svg, event.clientX, event.clientY);
+              if (!point) return;
+              const id = placeLibraryItem(editor, activePlacement, point);
+              editor.selection.set([id]);
+              setActivePlacement(undefined);
+            }}
+          />
           <aside className="icad-validation">
             <div className="icad-validation-heading">
               <h2>Validation</h2>

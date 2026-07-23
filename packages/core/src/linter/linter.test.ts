@@ -75,22 +75,21 @@ describe("Linter", () => {
     expect(connectorDiagnostic).toMatchObject({ severity: "error", elementId: "c1" });
   });
 
-  it("flags a deployedTo group with no deployedOn box ancestor", () => {
+  it("does not require a deployedTo group to be nested inside a deployedOn box", () => {
     const scene = new Scene();
     scene._put(group("g1"));
 
     const diagnostics = new Linter().run(scene);
-    const groupDiagnostic = diagnostics.find((d) => d.ruleId === "group-without-box");
-    expect(groupDiagnostic).toMatchObject({ severity: "warn", elementId: "g1" });
+    expect(diagnostics).toEqual([]);
   });
 
-  it("does not flag a group nested inside a box", () => {
+  it("also accepts a group nested inside a box", () => {
     const scene = new Scene();
     scene._put(box("subnet", "Subnet"));
     scene._put(group("sg", "subnet"));
 
     const diagnostics = new Linter().run(scene);
-    expect(diagnostics.some((d) => d.ruleId === "group-without-box")).toBe(false);
+    expect(diagnostics).toEqual([]);
   });
 
   it("flags a connector whose straight route crosses an unrelated icon, with a reroute quick-fix", () => {
