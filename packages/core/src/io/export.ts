@@ -22,6 +22,7 @@ export function exportSvg(scene: Scene, renderer: SvgRenderer, opts: SvgExportOp
   renderer.render(scene);
   const clone = renderer.svg.cloneNode(true) as SVGSVGElement;
   clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+  clone.querySelector('[data-icad-layer="overlays"]')?.remove();
 
   if (opts.embedSource ?? true) {
     const metadata = document.createElementNS("http://www.w3.org/2000/svg", "metadata");

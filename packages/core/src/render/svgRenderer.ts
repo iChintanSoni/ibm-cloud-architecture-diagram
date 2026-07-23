@@ -1,4 +1,5 @@
 import type { Catalog } from "../catalog/catalog.js";
+import type { Diagnostic, Severity } from "../linter/types.js";
 import type { Scene } from "../scene/scene.js";
 import type { ConnectorElement, ConnectorType, SceneElement } from "../scene/types.js";
 import { connectorPathPoints } from "../routing/routeConnector.js";
@@ -160,9 +161,13 @@ const MARKER_DEFS: Array<{
 export class SvgRenderer {
   readonly svg: SVGSVGElement;
   private layer: SVGGElement;
+  private overlayLayer: SVGGElement;
   private nodes = new Map<string, SVGElement>();
   private markers = new Map<MarkerId, { path: SVGPathElement; colorAttr: "fill" | "stroke" }>();
   private palette: Palette;
+  private diagnostics: Diagnostic[] = [];
+  private selectedIds = new Set<string>();
+  private currentScene?: Scene;
 
   constructor(
     private container: HTMLElement,
@@ -204,6 +209,12 @@ export class SvgRenderer {
     this.layer.setAttribute("data-icad-layer", "elements");
     this.svg.appendChild(this.layer);
 
+    this.overlayLayer = createSvgElement("g");
+    this.overlayLayer.setAttribute("data-icad-layer", "overlays");
+    this.overlayLayer.setAttribute("aria-hidden", "true");
+    this.overlayLayer.setAttribute("pointer-events", "none");
+    this.svg.appendChild(this.overlayLayer);
+
     this.container.appendChild(this.svg);
   }
 
@@ -216,6 +227,7 @@ export class SvgRenderer {
   }
 
   render(scene: Scene): void {
+    this.currentScene = scene;
     const elements = scene.all();
     const seen = new Set<string>();
 
@@ -234,10 +246,23 @@ export class SvgRenderer {
         this.nodes.delete(id);
       }
     }
+    this.renderOverlays(scene);
   }
 
   nodeFor(id: string): SVGElement | undefined {
     return this.nodes.get(id);
+  }
+
+  /** Validation badges are editor-only overlays and are stripped during export. */
+  setDiagnostics(diagnostics: Diagnostic[]): void {
+    this.diagnostics = diagnostics;
+    if (this.currentScene) this.renderOverlays(this.currentScene);
+  }
+
+  /** Mirrors SelectionManager state with a lightweight editor-only outline. */
+  setSelection(ids: string[]): void {
+    this.selectedIds = new Set(ids);
+    if (this.currentScene) this.renderOverlays(this.currentScene);
   }
 
   destroy(): void {
@@ -280,11 +305,11 @@ export class SvgRenderer {
         setAttrs(rect, {
           x: el.x,
           y: el.y,
-          width: ICON_CONTAINER,
-          height: ICON_CONTAINER,
-          fill: "white",
-          stroke: "#161616",
-          "stroke-width": 1
+          width: el.w,
+          height: el.h,
+          fill: el.style?.fill ?? "white",
+          stroke: el.style?.stroke ?? "#161616",
+          "stroke-width": el.style?.strokeWidth ?? 1
         });
         g.appendChild(rect);
         g.appendChild(this.iconGlyph(el));
@@ -323,7 +348,7 @@ export class SvgRenderer {
       fill: el.style?.fill ?? "none",
       stroke: el.style?.stroke ?? opts.stroke,
       "stroke-width": el.style?.strokeWidth ?? opts.strokeWidth ?? 1,
-      "stroke-dasharray": opts.dashed ? "6 4" : undefined
+      "stroke-dasharray": (el.style?.dashed ?? opts.dashed) ? "6 4" : undefined
     });
     return rect;
   }
@@ -362,7 +387,8 @@ export class SvgRenderer {
   private renderConnector(g: SVGGElement, el: ConnectorElement, scene: Scene): void {
     const points = connectorPathPoints(scene, el);
     const pointsAttr = toPointsAttr(points);
-    const style = CONNECTOR_STYLE[el.connectorType];
+    const style =
+      (CONNECTOR_STYLE as Record<string, ConnectorStyleSpec>)[el.connectorType] ?? CONNECTOR_STYLE.association;
     const stroke = el.style?.stroke ?? (el.flowColor ? FLOW_COLORS[el.flowColor] : this.palette.stroke);
     const strokeWidth = el.style?.strokeWidth ?? 1.5;
 
@@ -427,4 +453,84 @@ export class SvgRenderer {
     el.textContent = text;
     return el;
   }
+
+  private renderOverlays(scene: Scene): void {
+    this.overlayLayer.innerHTML = "";
+
+    for (const id of this.selectedIds) {
+      const el = scene.get(id);
+      if (!el) continue;
+      if (el.type === "connector") {
+        const highlight = createSvgElement("polyline");
+        setAttrs(highlight, {
+          points: toPointsAttr(connectorPathPoints(scene, el)),
+          fill: "none",
+          stroke: "#0f62fe",
+          "stroke-width": 5,
+          "stroke-opacity": 0.35
+        });
+        this.overlayLayer.appendChild(highlight);
+      } else {
+        const outline = createSvgElement("rect");
+        setAttrs(outline, {
+          x: el.x - 3,
+          y: el.y - 3,
+          width: el.w + 6,
+          height: el.h + 6,
+          fill: "none",
+          stroke: "#0f62fe",
+          "stroke-width": 2,
+          "stroke-dasharray": "4 2"
+        });
+        this.overlayLayer.appendChild(outline);
+      }
+    }
+
+    const byElement = new Map<string, Diagnostic[]>();
+    for (const item of this.diagnostics) {
+      if (!item.elementId || !scene.has(item.elementId)) continue;
+      byElement.set(item.elementId, [...(byElement.get(item.elementId) ?? []), item]);
+    }
+    for (const [id, diagnostics] of byElement) {
+      const el = scene.get(id)!;
+      const severity = highestSeverity(diagnostics.map((item) => item.severity));
+      const at =
+        el.type === "connector"
+          ? pointAtFraction(connectorPathPoints(scene, el), 0.5)
+          : { x: el.x + el.w, y: el.y };
+      const badge = createSvgElement("g");
+      badge.setAttribute("data-icad-validation-badge", id);
+      const title = createSvgElement("title");
+      title.textContent = diagnostics.map((item) => item.message).join("\n");
+      badge.appendChild(title);
+      const circle = createSvgElement("circle");
+      setAttrs(circle, {
+        cx: at.x,
+        cy: at.y,
+        r: 8,
+        fill: severity === "error" ? "#da1e28" : severity === "warn" ? "#f1c21b" : "#0f62fe",
+        stroke: "#ffffff",
+        "stroke-width": 1.5
+      });
+      badge.appendChild(circle);
+      const text = createSvgElement("text");
+      setAttrs(text, {
+        x: at.x,
+        y: at.y + 3.5,
+        fill: severity === "warn" ? "#161616" : "#ffffff",
+        "font-size": 10,
+        "font-weight": 600,
+        "text-anchor": "middle"
+      });
+      text.textContent = diagnostics.length > 1 ? String(diagnostics.length) : "!";
+      badge.appendChild(text);
+      this.overlayLayer.appendChild(badge);
+    }
+  }
+}
+
+function highestSeverity(severities: Severity[]): Severity {
+  if (severities.includes("error")) return "error";
+  if (severities.includes("warn")) return "warn";
+  return "info";
 }

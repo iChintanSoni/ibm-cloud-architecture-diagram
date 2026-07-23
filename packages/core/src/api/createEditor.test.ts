@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { Catalog } from "../catalog/catalog.js";
 import type { CatalogManifest } from "../catalog/types.js";
 import { moveElements } from "../commands/commands.js";
-import { createEditor, type Editor } from "./createEditor.js";
+import { createEditor, ExportBlockedError, type Editor } from "./createEditor.js";
 
 function testCatalog(): Catalog {
   const manifest: CatalogManifest = {
@@ -166,6 +166,77 @@ describe("createEditor", () => {
     const diagnostics = editor.lint();
     expect(diagnostics).toHaveLength(1);
     expect(diagnostics[0]).toMatchObject({ ruleId: "missing-label" });
+  });
+
+  it("applies all quick-fixes of one type as a single undo step", () => {
+    const a = editor.addBox({ at: { x: 0, y: 0 } });
+    const b = editor.addBox({ at: { x: 200, y: 0 } });
+
+    expect(editor.applyQuickFixes("missing-label")).toBe(2);
+    expect(editor.scene.get(a)?.label?.text).toBe("Untitled");
+    expect(editor.scene.get(b)?.label?.text).toBe("Untitled");
+
+    editor.commands.undo();
+    expect(editor.scene.get(a)?.label).toBeUndefined();
+    expect(editor.scene.get(b)?.label).toBeUndefined();
+  });
+
+  it("selects validation targets and renders editor-only validation badges", () => {
+    const id = editor.addBox({ at: { x: 0, y: 0 } });
+    editor.lint();
+    expect(container.querySelector(`[data-icad-validation-badge="${id}"]`)).not.toBeNull();
+
+    editor.selection.set([id]);
+    expect(container.querySelector('[data-icad-layer="overlays"] rect')).not.toBeNull();
+
+    const svg = editor.export({ format: "svg" }) as string;
+    expect(svg).not.toContain('data-icad-layer="overlays"');
+  });
+
+  it("blocks export on errors only when the document gate is set to block", () => {
+    editor.addBox({ at: { x: 0, y: 0 } });
+    editor.setRuleSeverity("missing-label", "error");
+    expect(() => editor.export({ format: "svg" })).not.toThrow();
+
+    editor.setExportGate("block");
+    expect(() => editor.export({ format: "svg" })).toThrow(ExportBlockedError);
+
+    editor.commands.undo();
+    expect(editor.scene.conformance.exportGate).toBe("warn");
+    expect(() => editor.export({ format: "svg" })).not.toThrow();
+  });
+
+  it("summarizes configured error, warning, and info diagnostics", () => {
+    editor.addBox({ at: { x: 0, y: 0 } });
+    editor.addGroup({ at: { x: 200, y: 0 }, label: "Security group" });
+    editor.setRuleSeverity("missing-label", "error");
+    editor.setRuleSeverity("group-without-box", "info");
+
+    expect(editor.complianceSummary()).toMatchObject({
+      counts: { error: 1, warn: 0, info: 1 },
+      blocked: false
+    });
+
+    editor.setExportGate("block");
+    expect(editor.complianceSummary().blocked).toBe(true);
+  });
+
+  it("renders the highest diagnostic severity and issue count on a shared badge", () => {
+    editor.scene._put({
+      id: "invalid-icon",
+      type: "iconNode",
+      semantic: "node",
+      catalogRef: "test/missing",
+      x: 0,
+      y: 0,
+      w: 64,
+      h: 40
+    });
+    editor.lint();
+
+    const badge = container.querySelector('[data-icad-validation-badge="invalid-icon"]');
+    expect(badge?.querySelector("circle")?.getAttribute("fill")).toBe("#da1e28");
+    expect(badge?.querySelector("text")?.textContent).toBe("2");
   });
 
   it("round-trips the scene via toIcad/loadIcad", () => {

@@ -64,7 +64,24 @@ body,
 
 .icad-validation h2 {
   font-size: 1rem;
-  margin: 0 0 0.75rem;
+  margin: 0;
+}
+
+.icad-validation-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.icad-validation-heading > span,
+.icad-diagnostic-group h3 span {
+  min-width: 1.25rem;
+  padding: 0.125rem 0.375rem;
+  border-radius: 1rem;
+  background: var(--cds-layer-02, #e0e0e0);
+  text-align: center;
+  font-size: 0.75rem;
 }
 
 .icad-validation ul {
@@ -78,12 +95,94 @@ body,
 
 .icad-validation li {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
+  flex-direction: column;
   gap: 0.5rem;
   font-size: 0.875rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--cds-border-subtle-01, #e0e0e0);
+}
+
+.icad-diagnostic-group + .icad-diagnostic-group {
+  margin-top: 1rem;
+}
+
+.icad-diagnostic-group h3 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 0 0.5rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.icad-diagnostic-target {
+  appearance: none;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.icad-diagnostic-target:hover {
+  color: var(--cds-link-primary, #0f62fe);
+  text-decoration: underline;
+}
+
+.icad-diagnostic-target:disabled {
+  cursor: default;
+}
+
+.icad-fix-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-left: -0.75rem;
+}
+
+.icad-rule-settings {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--cds-border-subtle-01, #e0e0e0);
+}
+
+.icad-rule-settings summary {
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.icad-rule-settings .cds--form-item {
+  margin-top: 0.75rem;
 }
 
 .icad-muted {
   opacity: 0.7;
   font-size: 0.875rem;
+}
+
+.icad-export-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.icad-export-summary > p {
+  margin: 0;
+}
+
+.icad-summary-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.icad-export-blocked {
+  padding: 0.75rem;
+  border-left: 3px solid var(--cds-support-error, #da1e28);
+  background: var(--cds-notification-background-error, #fff1f1);
 }

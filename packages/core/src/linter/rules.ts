@@ -1,25 +1,311 @@
-import { autoRouteConnector, updateElement } from "../commands/commands.js";
+import { autoRouteConnector, batch, updateElement } from "../commands/commands.js";
+import type { Command } from "../commands/types.js";
 import { pathCrossesObstacles } from "../routing/orthogonalRouter.js";
 import { connectorPathPoints, obstaclesFor } from "../routing/routeConnector.js";
 import type { Scene } from "../scene/scene.js";
-import type { Diagnostic, Rule } from "./types.js";
+import type {
+  ConnectorElement,
+  ConnectorType,
+  PortSide,
+  SceneElement,
+  Semantic
+} from "../scene/types.js";
+import type { Diagnostic, Rule, RuleMetadata, Severity } from "./types.js";
 
 const LABELED_TYPES = new Set(["box", "group", "zone", "actor"]);
+const VALID_PORTS = new Set<PortSide>(["n", "e", "s", "w", "center"]);
+const VALID_CONNECTOR_TYPES = new Set<ConnectorType>([
+  "logical-connection",
+  "connection",
+  "physical-connection",
+  "tunneling-connection",
+  "traffic-through-double-tunnel",
+  "dependency",
+  "association",
+  "aggregation",
+  "composition",
+  "implementation",
+  "extends"
+]);
+
+const PRIMARY_TO_SECONDARY: Record<string, string> = {
+  "#fa4d56": "#fff1f1",
+  "#ee5396": "#fff0f7",
+  "#a56eff": "#f6f2ff",
+  "#0f62fe": "#edf5ff",
+  "#1192e8": "#e5f6ff",
+  "#009d9a": "#d9fbfb",
+  "#198038": "#defbe6",
+  "#878d96": "#f2f4f8"
+};
+const SECONDARY_TO_PRIMARY = Object.fromEntries(
+  Object.entries(PRIMARY_TO_SECONDARY).map(([primary, secondary]) => [secondary, primary])
+);
+
+function colorKey(color: string): string {
+  return color.trim().toLowerCase();
+}
+
+function diagnostic(
+  ruleId: string,
+  severity: Severity,
+  category: Diagnostic["category"],
+  elementId: string,
+  message: string,
+  quickFix?: Command,
+  quickFixLabel?: string
+): Diagnostic {
+  return {
+    id: `${ruleId}:${elementId}`,
+    ruleId,
+    severity,
+    category,
+    elementId,
+    message,
+    ...(quickFix ? { quickFix } : {}),
+    ...(quickFixLabel ? { quickFixLabel } : {})
+  };
+}
 
 /** Boxes/groups/zones/actors should carry a label per docs/05-ibm-spec-conformance.md. */
 export const missingLabelRule: Rule = (scene: Scene): Diagnostic[] => {
   const diagnostics: Diagnostic[] = [];
   for (const el of scene.all()) {
-    if (!LABELED_TYPES.has(el.type)) continue;
-    if (el.label?.text) continue;
-    diagnostics.push({
-      id: `missing-label:${el.id}`,
-      ruleId: "missing-label",
-      severity: "warn",
-      elementId: el.id,
-      message: `"${el.id}" (${el.type}) is missing a label.`,
-      quickFix: updateElement(scene, el.id, { label: { text: "Untitled" } })
-    });
+    if (!LABELED_TYPES.has(el.type) || el.label?.text.trim()) continue;
+    diagnostics.push(
+      diagnostic(
+        "missing-label",
+        "warn",
+        "labels",
+        el.id,
+        `"${el.id}" (${el.type}) is missing a required label.`,
+        updateElement(scene, el.id, { label: { text: "Untitled" } }),
+        "Add label"
+      )
+    );
+  }
+  return diagnostics;
+};
+
+/** Repeated visible names make reviews and connector descriptions ambiguous. */
+export const duplicateLabelRule: Rule = (scene: Scene): Diagnostic[] => {
+  const byLabel = new Map<string, SceneElement[]>();
+  for (const el of scene.all()) {
+    const label = el.label?.text.trim();
+    if (!label || el.type === "connector") continue;
+    const key = label.toLocaleLowerCase();
+    byLabel.set(key, [...(byLabel.get(key) ?? []), el]);
+  }
+
+  const diagnostics: Diagnostic[] = [];
+  for (const elements of byLabel.values()) {
+    if (elements.length < 2) continue;
+    for (let index = 0; index < elements.length; index += 1) {
+      const el = elements[index]!;
+      const original = el.label!.text.trim();
+      const replacement = `${original} ${index + 1}`;
+      diagnostics.push(
+        diagnostic(
+          "duplicate-label",
+          "warn",
+          "labels",
+          el.id,
+          `Label "${original}" is used by ${elements.length} elements.`,
+          updateElement(scene, el.id, { label: { ...el.label, text: replacement } }),
+          `Rename to "${replacement}"`
+        )
+      );
+    }
+  }
+  return diagnostics;
+};
+
+/** An IconNode must resolve to the document's pinned IBM catalog. */
+export const catalogIconRule: Rule = (scene, context): Diagnostic[] => {
+  if (!context?.catalog) return [];
+  const diagnostics: Diagnostic[] = [];
+  for (const el of scene.all()) {
+    if (el.type !== "iconNode") continue;
+    if (el.catalogRef && context.catalog.resolve(el.catalogRef)) continue;
+    diagnostics.push(
+      diagnostic(
+        "non-catalog-icon",
+        "error",
+        "semantics",
+        el.id,
+        `"${el.id}" references an icon that is not in catalog ${context.catalog.id}@${context.catalog.version}.`
+      )
+    );
+  }
+  return diagnostics;
+};
+
+/**
+ * Raw/hand-edited files can disagree about container shape and IBM semantic.
+ * Normalize the concrete type to the declared deployedOn/deployedTo meaning
+ * where that intent is recoverable.
+ */
+export const containerSemanticRule: Rule = (scene): Diagnostic[] => {
+  const diagnostics: Diagnostic[] = [];
+  for (const el of scene.all()) {
+    const semantic = (el as { semantic: Semantic }).semantic;
+    if (el.type === "box" && semantic !== "deployedOn") {
+      const convert = semantic === "deployedTo";
+      diagnostics.push(
+        diagnostic(
+          "container-semantic",
+          "error",
+          "semantics",
+          el.id,
+          `"${el.id}" is drawn as a Box but declares the "${semantic}" semantic.`,
+          updateElement(
+            scene,
+            el.id,
+            convert
+              ? ({ type: "group", semantic: "deployedTo" } as Partial<SceneElement>)
+              : ({ semantic: "deployedOn" } as Partial<SceneElement>)
+          ),
+          convert ? "Convert to Group" : "Use deployedOn"
+        )
+      );
+    }
+    if (el.type === "group" && semantic !== "deployedTo") {
+      const convert = semantic === "deployedOn";
+      diagnostics.push(
+        diagnostic(
+          "container-semantic",
+          "error",
+          "semantics",
+          el.id,
+          `"${el.id}" is drawn as a Group but declares the "${semantic}" semantic.`,
+          updateElement(
+            scene,
+            el.id,
+            convert
+              ? ({ type: "box", semantic: "deployedOn" } as Partial<SceneElement>)
+              : ({ semantic: "deployedTo" } as Partial<SceneElement>)
+          ),
+          convert ? "Convert to Box" : "Use deployedTo"
+        )
+      );
+    }
+  }
+  return diagnostics;
+};
+
+/** Explicit border overrides must preserve solid Box / dashed Group meaning. */
+export const containerBorderRule: Rule = (scene): Diagnostic[] => {
+  const diagnostics: Diagnostic[] = [];
+  for (const el of scene.all()) {
+    const wrongBox = el.type === "box" && el.style?.dashed === true;
+    const wrongGroup = el.type === "group" && el.style?.dashed === false;
+    if (!wrongBox && !wrongGroup) continue;
+    const nextStyle = { dashed: wrongGroup };
+    diagnostics.push(
+      diagnostic(
+        "container-border",
+        "warn",
+        "semantics",
+        el.id,
+        `"${el.id}" uses the wrong border style for a ${el.type}.`,
+        updateElement(scene, el.id, { style: nextStyle }),
+        wrongBox ? "Use solid border" : "Use dashed border"
+      )
+    );
+  }
+  return diagnostics;
+};
+
+/** Saturated primary colors are accents/outlines, never shape fills. */
+export const primaryFillRule: Rule = (scene): Diagnostic[] => {
+  const diagnostics: Diagnostic[] = [];
+  for (const el of scene.all()) {
+    const fill = el.style?.fill;
+    if (!fill) continue;
+    const secondary = PRIMARY_TO_SECONDARY[colorKey(fill)];
+    if (!secondary) continue;
+    diagnostics.push(
+      diagnostic(
+        "primary-color-fill",
+        "warn",
+        "semantics",
+        el.id,
+        `"${el.id}" uses a saturated primary color as a fill; IBM primary colors are for accents.`,
+        updateElement(scene, el.id, { style: { fill: secondary } }),
+        `Use ${secondary} tint`
+      )
+    );
+  }
+  return diagnostics;
+};
+
+/** Light secondary tints are fills, never outlines or connector strokes. */
+export const secondaryStrokeRule: Rule = (scene): Diagnostic[] => {
+  const diagnostics: Diagnostic[] = [];
+  for (const el of scene.all()) {
+    const stroke = el.style?.stroke;
+    if (!stroke) continue;
+    const primary = SECONDARY_TO_PRIMARY[colorKey(stroke)];
+    if (!primary) continue;
+    diagnostics.push(
+      diagnostic(
+        "secondary-color-stroke",
+        "warn",
+        "semantics",
+        el.id,
+        `"${el.id}" uses a light fill tint for an outline or connector.`,
+        updateElement(scene, el.id, { style: { stroke: primary } }),
+        `Use ${primary} primary`
+      )
+    );
+  }
+  return diagnostics;
+};
+
+/**
+ * In high-level and detailed topology, an IBM component needs location
+ * context. System-context and blank diagrams intentionally allow standalone
+ * components.
+ */
+export const nodeWithoutLocationRule: Rule = (scene): Diagnostic[] => {
+  if (scene.meta.diagramLevel !== "high-level" && scene.meta.diagramLevel !== "detailed") return [];
+  const diagnostics: Diagnostic[] = [];
+  for (const el of scene.all()) {
+    if (el.type !== "iconNode") continue;
+    const located = scene.ancestorsOf(el.id).some((ancestor) => ancestor.type === "box" || ancestor.type === "zone");
+    if (located) continue;
+    diagnostics.push(
+      diagnostic(
+        "node-without-location",
+        "warn",
+        "containment",
+        el.id,
+        `"${el.id}" has no Box or Zone ancestor in a ${scene.meta.diagramLevel} diagram.`
+      )
+    );
+  }
+  return diagnostics;
+};
+
+/**
+ * A deployedTo Group needs a deployedOn Box ancestor. No quick-fix is
+ * offered because the intended location cannot be inferred safely.
+ */
+export const groupWithoutBoxAncestorRule: Rule = (scene: Scene): Diagnostic[] => {
+  const diagnostics: Diagnostic[] = [];
+  for (const el of scene.all()) {
+    if (el.type !== "group") continue;
+    const hasBoxAncestor = scene.ancestorsOf(el.id).some((ancestor) => ancestor.type === "box");
+    if (hasBoxAncestor) continue;
+    diagnostics.push(
+      diagnostic(
+        "group-without-box",
+        "warn",
+        "containment",
+        el.id,
+        `"${el.id}" (deployedTo group) isn't nested inside a deployedOn box.`
+      )
+    );
   }
   return diagnostics;
 };
@@ -29,76 +315,201 @@ export const danglingConnectorRule: Rule = (scene: Scene): Diagnostic[] => {
   const diagnostics: Diagnostic[] = [];
   for (const el of scene.all()) {
     if (el.type !== "connector") continue;
-    const missing = !scene.has(el.from.elementId) || !scene.has(el.to.elementId);
-    if (missing) {
-      diagnostics.push({
-        id: `dangling-connector:${el.id}`,
-        ruleId: "dangling-connector",
-        severity: "error",
-        elementId: el.id,
-        message: `Connector "${el.id}" has an endpoint that no longer exists.`
-      });
+    if (scene.has(el.from.elementId) && scene.has(el.to.elementId)) continue;
+    diagnostics.push(
+      diagnostic(
+        "dangling-connector",
+        "error",
+        "connectors",
+        el.id,
+        `Connector "${el.id}" has an endpoint that no longer exists.`
+      )
+    );
+  }
+  return diagnostics;
+};
+
+/** Hand-edited files may contain connector names outside IBM's nomenclature. */
+export const standardConnectorTypeRule: Rule = (scene): Diagnostic[] => {
+  const diagnostics: Diagnostic[] = [];
+  for (const el of scene.all()) {
+    if (el.type !== "connector" || VALID_CONNECTOR_TYPES.has(el.connectorType)) continue;
+    diagnostics.push(
+      diagnostic(
+        "non-standard-connector",
+        "error",
+        "connectors",
+        el.id,
+        `Connector "${el.id}" uses the non-standard type "${String(el.connectorType)}".`,
+        updateElement(scene, el.id, { connectorType: "association" } as Partial<SceneElement>),
+        "Use Association"
+      )
+    );
+  }
+  return diagnostics;
+};
+
+function nearestPort(source: SceneElement, target: SceneElement): PortSide {
+  const dx = target.x + target.w / 2 - (source.x + source.w / 2);
+  const dy = target.y + target.h / 2 - (source.y + source.h / 2);
+  if (Math.abs(dx) >= Math.abs(dy)) return dx >= 0 ? "e" : "w";
+  return dy >= 0 ? "s" : "n";
+}
+
+/** Every endpoint must bind to one of the five named ports. */
+export const connectorPortRule: Rule = (scene): Diagnostic[] => {
+  const diagnostics: Diagnostic[] = [];
+  for (const el of scene.all()) {
+    if (el.type !== "connector") continue;
+    const invalidFrom = !VALID_PORTS.has(el.from.port);
+    const invalidTo = !VALID_PORTS.has(el.to.port);
+    if (!invalidFrom && !invalidTo) continue;
+    const fromEl = scene.get(el.from.elementId);
+    const toEl = scene.get(el.to.elementId);
+    let quickFix: Command | undefined;
+    if (fromEl && toEl) {
+      const patched: ConnectorElement = {
+        ...el,
+        from: { ...el.from, port: invalidFrom ? nearestPort(fromEl, toEl) : el.from.port },
+        to: { ...el.to, port: invalidTo ? nearestPort(toEl, fromEl) : el.to.port }
+      };
+      quickFix = batch("bind connector to nearest ports", [
+        updateElement(scene, el.id, { from: patched.from, to: patched.to } as Partial<SceneElement>),
+        autoRouteConnector(scene, el.id)
+      ]);
     }
+    diagnostics.push(
+      diagnostic(
+        "connector-not-bound-to-port",
+        "error",
+        "connectors",
+        el.id,
+        `Connector "${el.id}" has an endpoint that is not bound to a named port.`,
+        quickFix,
+        quickFix ? "Bind to nearest ports" : undefined
+      )
+    );
   }
   return diagnostics;
 };
 
 /**
- * Connectors whose current route crosses a leaf shape (icon/actor/text) it
- * isn't attached to — a clean obstacle-avoiding route exists, so re-routing
- * (docs/05-ibm-spec-conformance.md#the-linter, "Crossing/overlapping
- * routes") is offered as a quick-fix regardless of the connector's current
- * routing mode.
+ * Connectors whose route crosses a leaf shape it is not attached to can be
+ * returned to the obstacle-avoiding router.
  */
 export const connectorCrossesObstacleRule: Rule = (scene: Scene): Diagnostic[] => {
   const diagnostics: Diagnostic[] = [];
   for (const el of scene.all()) {
     if (el.type !== "connector") continue;
     if (!scene.has(el.from.elementId) || !scene.has(el.to.elementId)) continue;
+    if (!VALID_PORTS.has(el.from.port) || !VALID_PORTS.has(el.to.port)) continue;
 
     const points = connectorPathPoints(scene, el);
     const obstacles = obstaclesFor(scene, new Set([el.from.elementId, el.to.elementId]));
     if (!pathCrossesObstacles(points, obstacles)) continue;
 
-    diagnostics.push({
-      id: `connector-crosses-obstacle:${el.id}`,
-      ruleId: "connector-crosses-obstacle",
-      severity: "warn",
-      elementId: el.id,
-      message: `Connector "${el.id}" crosses another shape; a clean orthogonal route is available.`,
-      quickFix: autoRouteConnector(scene, el.id)
-    });
+    diagnostics.push(
+      diagnostic(
+        "connector-crosses-obstacle",
+        "warn",
+        "connectors",
+        el.id,
+        `Connector "${el.id}" crosses another shape; a clean orthogonal route is available.`,
+        autoRouteConnector(scene, el.id),
+        "Re-route"
+      )
+    );
   }
   return diagnostics;
 };
 
-/**
- * A `deployedTo` Group models services grouped onto a `deployedOn` Box
- * (docs/05-ibm-spec-conformance.md#element-semantics: "a VSI is deployedOn a
- * subnet and deployedTo a security group" — the security-group Group nests
- * inside the subnet Box). A Group with no Box ancestor is missing that
- * location context. No quick-fix: we can't guess which Box was intended.
- */
-export const groupWithoutBoxAncestorRule: Rule = (scene: Scene): Diagnostic[] => {
+/** Public connections should read west-to-east, with gross reversals flagged. */
+export const westEastFlowRule: Rule = (scene): Diagnostic[] => {
   const diagnostics: Diagnostic[] = [];
   for (const el of scene.all()) {
-    if (el.type !== "group") continue;
-    const hasBoxAncestor = scene.ancestorsOf(el.id).some((ancestor) => ancestor.type === "box");
-    if (hasBoxAncestor) continue;
-    diagnostics.push({
-      id: `group-without-box:${el.id}`,
-      ruleId: "group-without-box",
-      severity: "warn",
-      elementId: el.id,
-      message: `"${el.id}" (deployedTo group) isn't nested inside a deployedOn box.`
-    });
+    if (el.type !== "connector" || el.flowColor !== "public") continue;
+    const from = scene.get(el.from.elementId);
+    const to = scene.get(el.to.elementId);
+    if (!from || !to) continue;
+    const fromX = from.x + from.w / 2;
+    const toX = to.x + to.w / 2;
+    if (fromX <= toX + 48) continue;
+    diagnostics.push(
+      diagnostic(
+        "west-east-flow-reversal",
+        "warn",
+        "layout",
+        el.id,
+        `Public connector "${el.id}" flows right-to-left; public entry should read west-to-east.`
+      )
+    );
   }
   return diagnostics;
 };
 
+/** IBM node containers are exactly 48×48 with a 1px outline. */
+export const iconGeometryRule: Rule = (scene): Diagnostic[] => {
+  const diagnostics: Diagnostic[] = [];
+  for (const el of scene.all()) {
+    if (el.type !== "iconNode") continue;
+    if (el.w === 48 && el.h === 48 && (el.style?.strokeWidth === undefined || el.style.strokeWidth === 1)) continue;
+    diagnostics.push(
+      diagnostic(
+        "icon-geometry",
+        "warn",
+        "layout",
+        el.id,
+        `"${el.id}" has drifted from the IBM 48×48 container / 1px outline spec.`,
+        updateElement(scene, el.id, { w: 48, h: 48, style: { strokeWidth: 1 } }),
+        "Snap to 48×48"
+      )
+    );
+  }
+  return diagnostics;
+};
+
+export const ruleMetadata: RuleMetadata[] = [
+  { id: "container-semantic", title: "Container semantics", category: "semantics", defaultSeverity: "error" },
+  { id: "container-border", title: "Container border", category: "semantics", defaultSeverity: "warn" },
+  { id: "non-catalog-icon", title: "Catalog icon", category: "semantics", defaultSeverity: "error" },
+  { id: "primary-color-fill", title: "Primary color fill", category: "semantics", defaultSeverity: "warn" },
+  { id: "secondary-color-stroke", title: "Secondary color stroke", category: "semantics", defaultSeverity: "warn" },
+  { id: "group-without-box", title: "Group location", category: "containment", defaultSeverity: "warn" },
+  { id: "node-without-location", title: "Node location", category: "containment", defaultSeverity: "warn" },
+  { id: "missing-label", title: "Required labels", category: "labels", defaultSeverity: "warn" },
+  { id: "duplicate-label", title: "Duplicate labels", category: "labels", defaultSeverity: "warn" },
+  { id: "dangling-connector", title: "Dangling connector", category: "connectors", defaultSeverity: "error" },
+  { id: "non-standard-connector", title: "Connector type", category: "connectors", defaultSeverity: "error" },
+  {
+    id: "connector-not-bound-to-port",
+    title: "Connector ports",
+    category: "connectors",
+    defaultSeverity: "error"
+  },
+  {
+    id: "connector-crosses-obstacle",
+    title: "Connector crossing",
+    category: "connectors",
+    defaultSeverity: "warn"
+  },
+  { id: "west-east-flow-reversal", title: "West-east flow", category: "layout", defaultSeverity: "warn" },
+  { id: "icon-geometry", title: "Icon geometry", category: "layout", defaultSeverity: "warn" }
+];
+
 export const defaultRules: Rule[] = [
+  containerSemanticRule,
+  containerBorderRule,
+  catalogIconRule,
+  primaryFillRule,
+  secondaryStrokeRule,
+  groupWithoutBoxAncestorRule,
+  nodeWithoutLocationRule,
   missingLabelRule,
+  duplicateLabelRule,
   danglingConnectorRule,
+  standardConnectorTypeRule,
+  connectorPortRule,
   connectorCrossesObstacleRule,
-  groupWithoutBoxAncestorRule
+  westEastFlowRule,
+  iconGeometryRule
 ];
