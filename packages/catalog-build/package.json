@@ -1,0 +1,24 @@
+{
+  "name": "@icad/catalog-build",
+  "version": "0.0.0",
+  "description": "Build-time pipeline converting pinned IBM-Cloud/architecture-icons SVGs into packages/catalog (docs/04-icon-catalog.md).",
+  "license": "UNLICENSED",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "generate": "tsc -p tsconfig.json && node dist/build.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "jsdom": "^29.1.1",
+    "svgo": "^3.3.2"
+  },
+  "devDependencies": {
+    "@types/jsdom": "^27.0.0",
+    "@types/node": "^26.1.1",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.7"
+  }
+}

@@ -7,15 +7,15 @@ not dates.
 
 Ship a usable, on-spec human editor in the browser.
 
-**M1 — Core engine skeleton**
+**M1 — Core engine skeleton** ✅ Done (2026-07-22)
 - `packages/core`: scene model, command bus + undo, SVG DOM renderer, pan/zoom, selection,
   hit-testing. Framework-agnostic ([D2](00-decision-log.md#d2--framework-agnostic-typescript-core--thin-shells--locked)).
 
-**M2 — Icon catalog pipeline**
+**M2 — Icon catalog pipeline** ✅ Done (2026-07-23)
 - `packages/catalog-build` converts pinned IBM stencils → `packages/catalog` (manifest + SVGs).
 - `core/catalog` runtime search/resolve. See [Icon Catalog](04-icon-catalog.md).
 
-**M3 — Semantic elements & containers**
+**M3 — Semantic elements & containers** ← next
 - Box (`deployedOn`), Group (`deployedTo`), Zone, Actor, IconNode, Text; containment/move-with.
 
 **M4 — Smart connectors**

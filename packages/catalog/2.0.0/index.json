@@ -1,0 +1,2971 @@
+{
+  "id": "ibm-cloud",
+  "version": "2.0.0",
+  "upstream": {
+    "repo": "IBM-Cloud/architecture-icons",
+    "ref": "32d9c311b0dadb95f0fe4fa88b27f3af41c1dbc5"
+  },
+  "categories": [
+    {
+      "id": "ai",
+      "name": "AI"
+    },
+    {
+      "id": "actors",
+      "name": "Actors"
+    },
+    {
+      "id": "applications",
+      "name": "Applications"
+    },
+    {
+      "id": "compute",
+      "name": "Compute"
+    },
+    {
+      "id": "data",
+      "name": "Data"
+    },
+    {
+      "id": "devops",
+      "name": "DevOps"
+    },
+    {
+      "id": "storage",
+      "name": "Storage"
+    },
+    {
+      "id": "network",
+      "name": "Network"
+    },
+    {
+      "id": "observability",
+      "name": "Observability"
+    },
+    {
+      "id": "security",
+      "name": "Security"
+    }
+  ],
+  "icons": [
+    {
+      "id": "ibm-cloud/administrator",
+      "name": "Administrator",
+      "category": "actors",
+      "semantic": "actor",
+      "container": "rounded",
+      "asset": "icons/actors/administrator.svg",
+      "tier": "ibm-cloud",
+      "color": "#000000",
+      "keywords": [
+        "administrator"
+      ]
+    },
+    {
+      "id": "ibm-cloud/ai",
+      "name": "AI",
+      "category": "ai",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/ai/ai.svg",
+      "tier": "ibm-cloud",
+      "color": "#A56EFF",
+      "keywords": [
+        "ai"
+      ]
+    },
+    {
+      "id": "ibm-cloud/ai-governance-lifecycle",
+      "name": "ai governance lifecycle",
+      "category": "ai",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/ai/ai-governance-lifecycle.svg",
+      "tier": "ibm-cloud",
+      "color": "#A56EFF",
+      "keywords": [
+        "ai",
+        "governance",
+        "lifecycle"
+      ]
+    },
+    {
+      "id": "ibm-cloud/ai-governance-tracked",
+      "name": "ai governance tracked",
+      "category": "ai",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/ai/ai-governance-tracked.svg",
+      "tier": "ibm-cloud",
+      "color": "#A56EFF",
+      "keywords": [
+        "ai",
+        "governance",
+        "tracked"
+      ]
+    },
+    {
+      "id": "ibm-cloud/ai-launch",
+      "name": "ai launch",
+      "category": "ai",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/ai/ai-launch.svg",
+      "tier": "ibm-cloud",
+      "color": "#A56EFF",
+      "keywords": [
+        "ai",
+        "launch"
+      ]
+    },
+    {
+      "id": "ibm-cloud/api-1",
+      "name": "API 1",
+      "category": "applications",
+      "semantic": "actor",
+      "container": "rounded",
+      "asset": "icons/applications/api-1.svg",
+      "tier": "ibm-cloud",
+      "color": "#A56EFF",
+      "keywords": [
+        "api"
+      ]
+    },
+    {
+      "id": "ibm-cloud/api-2",
+      "name": "API 2",
+      "category": "applications",
+      "semantic": "actor",
+      "container": "rounded",
+      "asset": "icons/applications/api-2.svg",
+      "tier": "ibm-cloud",
+      "color": "#A56EFF",
+      "keywords": [
+        "api"
+      ]
+    },
+    {
+      "id": "ibm-cloud/application",
+      "name": "Application",
+      "category": "applications",
+      "semantic": "actor",
+      "container": "rounded",
+      "asset": "icons/applications/application.svg",
+      "tier": "ibm-cloud",
+      "color": "#A56EFF",
+      "keywords": [
+        "application"
+      ]
+    },
+    {
+      "id": "ibm-cloud/archive",
+      "name": "archive",
+      "category": "data",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/data/archive.svg",
+      "tier": "ibm-cloud",
+      "color": "#0F62FE",
+      "keywords": [
+        "archive"
+      ]
+    },
+    {
+      "id": "ibm-cloud/authorization-boundary",
+      "name": "Authorization Boundary",
+      "category": "security",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/security/authorization-boundary.svg",
+      "tier": "ibm-cloud",
+      "color": "#FA4D56",
+      "keywords": [
+        "authorization",
+        "boundary"
+      ]
+    },
+    {
+      "id": "ibm-cloud/automation-script",
+      "name": "Automation Script",
+      "category": "applications",
+      "semantic": "actor",
+      "container": "rounded",
+      "asset": "icons/applications/automation-script.svg",
+      "tier": "ibm-cloud",
+      "color": "#A56EFF",
+      "keywords": [
+        "automation",
+        "script"
+      ]
+    },
+    {
+      "id": "ibm-cloud/back-end-l2-switch",
+      "name": "Back end L2 Switch",
+      "category": "network",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/network/back-end-l2-switch.svg",
+      "tier": "ibm-cloud",
+      "color": "#878D96",
+      "keywords": [
+        "back",
+        "end",
+        "l2",
+        "switch"
+      ]
+    },
+    {
+      "id": "ibm-cloud/back-end-router",
+      "name": "Back End Router",
+      "category": "network",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/network/back-end-router.svg",
+      "tier": "ibm-cloud",
+      "color": "#878D96",
+      "keywords": [
+        "back",
+        "end",
+        "router"
+      ]
+    },
+    {
+      "id": "ibm-cloud/back-end-router-group",
+      "name": "Back End Router Group",
+      "category": "network",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/network/back-end-router-group.svg",
+      "tier": "ibm-cloud",
+      "color": "#878D96",
+      "keywords": [
+        "back",
+        "end",
+        "router",
+        "group"
+      ]
+    },
+    {
+      "id": "ibm-cloud/back-end-router-group-copy",
+      "name": "Back End Router Group Copy",
+      "category": "network",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/network/back-end-router-group-copy.svg",
+      "tier": "ibm-cloud",
+      "color": "#1192E8",
+      "keywords": [
+        "back",
+        "end",
+        "router",
+        "group",
+        "copy"
+      ]
+    },
+    {
+      "id": "ibm-cloud/bare-metal-server",
+      "name": "Bare Metal Server",
+      "category": "compute",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/compute/bare-metal-server.svg",
+      "tier": "ibm-cloud",
+      "color": "#198038",
+      "keywords": [
+        "bare",
+        "metal",
+        "server"
+      ]
+    },
+    {
+      "id": "ibm-cloud/bare-metal-server-01",
+      "name": "Bare Metal Server 01",
+      "category": "compute",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/compute/bare-metal-server-01.svg",
+      "tier": "ibm-cloud",
+      "color": "#198038",
+      "keywords": [
+        "bare",
+        "metal",
+        "server",
+        "01"
+      ]
+    },
+    {
+      "id": "ibm-cloud/bare-metal-server-for-vpc",
+      "name": "Bare Metal Server for VPC",
+      "category": "compute",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/compute/bare-metal-server-for-vpc.svg",
+      "tier": "ibm-cloud",
+      "color": "#198038",
+      "keywords": [
+        "bare",
+        "metal",
+        "server",
+        "for",
+        "vpc"
+      ]
+    },
+    {
+      "id": "ibm-cloud/bastion-host",
+      "name": "bastion host",
+      "category": "security",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/security/bastion-host.svg",
+      "tier": "ibm-cloud",
+      "color": "#FA4D56",
+      "keywords": [
+        "bastion",
+        "host"
+      ]
+    },
+    {
+      "id": "ibm-cloud/block-storage-application",
+      "name": "Block Storage Application",
+      "category": "data",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/data/block-storage-application.svg",
+      "tier": "ibm-cloud",
+      "color": "#0F62FE",
+      "keywords": [
+        "block",
+        "storage",
+        "application"
+      ]
+    },
+    {
+      "id": "ibm-cloud/block-volume",
+      "name": "Block Volume",
+      "category": "data",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/data/block-volume.svg",
+      "tier": "ibm-cloud",
+      "color": "#0F62FE",
+      "keywords": [
+        "block",
+        "volume"
+      ]
+    },
+    {
+      "id": "ibm-cloud/build-tool",
+      "name": "build tool",
+      "category": "devops",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/devops/build-tool.svg",
+      "tier": "ibm-cloud",
+      "color": "#EE5396",
+      "keywords": [
+        "build",
+        "tool"
+      ]
+    },
+    {
+      "id": "ibm-cloud/call-manager",
+      "name": "Call Manager",
+      "category": "observability",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/observability/call-manager.svg",
+      "tier": "ibm-cloud",
+      "color": "#009D9A",
+      "keywords": [
+        "call",
+        "manager"
+      ]
+    },
+    {
+      "id": "ibm-cloud/certificate",
+      "name": "Certificate",
+      "category": "security",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/security/certificate.svg",
+      "tier": "ibm-cloud",
+      "color": "#FA4D56",
+      "keywords": [
+        "certificate"
+      ]
+    },
+    {
+      "id": "ibm-cloud/chat-operational",
+      "name": "chat operational",
+      "category": "observability",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/observability/chat-operational.svg",
+      "tier": "ibm-cloud",
+      "color": "#009D9A",
+      "keywords": [
+        "chat",
+        "operational"
+      ]
+    },
+    {
+      "id": "ibm-cloud/chip",
+      "name": "Chip",
+      "category": "compute",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/compute/chip.svg",
+      "tier": "ibm-cloud",
+      "color": "#198038",
+      "keywords": [
+        "chip"
+      ]
+    },
+    {
+      "id": "ibm-cloud/cli-application",
+      "name": "CLI Application",
+      "category": "applications",
+      "semantic": "actor",
+      "container": "rounded",
+      "asset": "icons/applications/cli-application.svg",
+      "tier": "ibm-cloud",
+      "color": "#A56EFF",
+      "keywords": [
+        "cli",
+        "application"
+      ]
+    },
+    {
+      "id": "ibm-cloud/cloud-alerting",
+      "name": "cloud alerting",
+      "category": "observability",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/observability/cloud-alerting.svg",
+      "tier": "ibm-cloud",
+      "color": "#009D9A",
+      "keywords": [
+        "cloud",
+        "alerting"
+      ]
+    },
+    {
+      "id": "ibm-cloud/cloud-auditing",
+      "name": "cloud auditing",
+      "category": "observability",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/observability/cloud-auditing.svg",
+      "tier": "ibm-cloud",
+      "color": "#009D9A",
+      "keywords": [
+        "cloud",
+        "auditing"
+      ]
+    },
+    {
+      "id": "ibm-cloud/cloud-logging",
+      "name": "cloud logging",
+      "category": "observability",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/observability/cloud-logging.svg",
+      "tier": "ibm-cloud",
+      "color": "#009D9A",
+      "keywords": [
+        "cloud",
+        "logging"
+      ]
+    },
+    {
+      "id": "ibm-cloud/cloud-monitoring",
+      "name": "cloud monitoring",
+      "category": "observability",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/observability/cloud-monitoring.svg",
+      "tier": "ibm-cloud",
+      "color": "#009D9A",
+      "keywords": [
+        "cloud",
+        "monitoring"
+      ]
+    },
+    {
+      "id": "ibm-cloud/cloud-pak-for-security",
+      "name": "Cloud Pak for Security",
+      "category": "security",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/security/cloud-pak-for-security.svg",
+      "tier": "ibm-cloud",
+      "color": "#FA4D56",
+      "keywords": [
+        "cloud",
+        "pak",
+        "for",
+        "security"
+      ]
+    },
+    {
+      "id": "ibm-cloud/cloud-registry",
+      "name": "Cloud Registry",
+      "category": "compute",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/compute/cloud-registry.svg",
+      "tier": "ibm-cloud",
+      "color": "#198038",
+      "keywords": [
+        "cloud",
+        "registry"
+      ]
+    },
+    {
+      "id": "ibm-cloud/cloud-service-management",
+      "name": "cloud service management",
+      "category": "observability",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/observability/cloud-service-management.svg",
+      "tier": "ibm-cloud",
+      "color": "#009D9A",
+      "keywords": [
+        "cloud",
+        "service",
+        "management"
+      ]
+    },
+    {
+      "id": "ibm-cloud/code-signing-service",
+      "name": "code signing service",
+      "category": "security",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/security/code-signing-service.svg",
+      "tier": "ibm-cloud",
+      "color": "#FA4D56",
+      "keywords": [
+        "code",
+        "signing",
+        "service"
+      ]
+    },
+    {
+      "id": "ibm-cloud/content-delivery-network",
+      "name": "content delivery network",
+      "category": "network",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/network/content-delivery-network.svg",
+      "tier": "ibm-cloud",
+      "color": "#1192E8",
+      "keywords": [
+        "content",
+        "delivery",
+        "network"
+      ]
+    },
+    {
+      "id": "ibm-cloud/continuous-delivery",
+      "name": "Continuous Delivery",
+      "category": "devops",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/devops/continuous-delivery.svg",
+      "tier": "ibm-cloud",
+      "color": "#EE5396",
+      "keywords": [
+        "continuous",
+        "delivery"
+      ]
+    },
+    {
+      "id": "ibm-cloud/continuous-integration",
+      "name": "continuous integration",
+      "category": "devops",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/devops/continuous-integration.svg",
+      "tier": "ibm-cloud",
+      "color": "#EE5396",
+      "keywords": [
+        "continuous",
+        "integration"
+      ]
+    },
+    {
+      "id": "ibm-cloud/coudsatellite",
+      "name": "CoudSatellite",
+      "category": "compute",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/compute/coudsatellite.svg",
+      "tier": "ibm-cloud",
+      "color": "#198038",
+      "keywords": [
+        "coudsatellite"
+      ]
+    },
+    {
+      "id": "ibm-cloud/credentials",
+      "name": "credentials",
+      "category": "security",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/security/credentials.svg",
+      "tier": "ibm-cloud",
+      "color": "#FA4D56",
+      "keywords": [
+        "credentials"
+      ]
+    },
+    {
+      "id": "ibm-cloud/data-accessor",
+      "name": "data accessor",
+      "category": "data",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/data/data-accessor.svg",
+      "tier": "ibm-cloud",
+      "color": "#0F62FE",
+      "keywords": [
+        "data",
+        "accessor"
+      ]
+    },
+    {
+      "id": "ibm-cloud/data-backup",
+      "name": "data backup",
+      "category": "data",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/data/data-backup.svg",
+      "tier": "ibm-cloud",
+      "color": "#0F62FE",
+      "keywords": [
+        "data",
+        "backup"
+      ]
+    },
+    {
+      "id": "ibm-cloud/data-blob",
+      "name": "data blob",
+      "category": "data",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/data/data-blob.svg",
+      "tier": "ibm-cloud",
+      "color": "#0F62FE",
+      "keywords": [
+        "data",
+        "blob"
+      ]
+    },
+    {
+      "id": "ibm-cloud/data-diode",
+      "name": "Data Diode",
+      "category": "security",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/security/data-diode.svg",
+      "tier": "ibm-cloud",
+      "color": "#FA4D56",
+      "keywords": [
+        "data",
+        "diode"
+      ]
+    },
+    {
+      "id": "ibm-cloud/database",
+      "name": "Database",
+      "category": "data",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/data/database.svg",
+      "tier": "ibm-cloud",
+      "color": "#0F62FE",
+      "keywords": [
+        "database"
+      ]
+    },
+    {
+      "id": "ibm-cloud/database-datastax",
+      "name": "database datastax",
+      "category": "data",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/data/database-datastax.svg",
+      "tier": "ibm-cloud",
+      "color": "#0F62FE",
+      "keywords": [
+        "database",
+        "datastax"
+      ]
+    },
+    {
+      "id": "ibm-cloud/database-elastic",
+      "name": "database elastic",
+      "category": "data",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/data/database-elastic.svg",
+      "tier": "ibm-cloud",
+      "color": "#0F62FE",
+      "keywords": [
+        "database",
+        "elastic"
+      ]
+    },
+    {
+      "id": "ibm-cloud/database-enterprisedb",
+      "name": "database enterprisedb",
+      "category": "data",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/data/database-enterprisedb.svg",
+      "tier": "ibm-cloud",
+      "color": "#0F62FE",
+      "keywords": [
+        "database",
+        "enterprisedb"
+      ]
+    },
+    {
+      "id": "ibm-cloud/database-etcd",
+      "name": "database etcd",
+      "category": "data",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/data/database-etcd.svg",
+      "tier": "ibm-cloud",
+      "color": "#0F62FE",
+      "keywords": [
+        "database",
+        "etcd"
+      ]
+    },
+    {
+      "id": "ibm-cloud/database-messaging",
+      "name": "database messaging",
+      "category": "storage",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/storage/database-messaging.svg",
+      "tier": "ibm-cloud",
+      "color": "#0F62FE",
+      "keywords": [
+        "database",
+        "messaging"
+      ]
+    },
+    {
+      "id": "ibm-cloud/database-mongodb",
+      "name": "database mongodb",
+      "category": "data",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/data/database-mongodb.svg",
+      "tier": "ibm-cloud",
+      "color": "#0F62FE",
+      "keywords": [
+        "database",
+        "mongodb"
+      ]
+    },
+    {
+      "id": "ibm-cloud/database-postgresql",
+      "name": "database postgreSQL",
+      "category": "data",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/data/database-postgresql.svg",
+      "tier": "ibm-cloud",
+      "color": "#0F62FE",
+      "keywords": [
+        "database",
+        "postgresql"
+      ]
+    },
+    {
+      "id": "ibm-cloud/database-rabbit",
+      "name": "database rabbit",
+      "category": "data",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/data/database-rabbit.svg",
+      "tier": "ibm-cloud",
+      "color": "#0F62FE",
+      "keywords": [
+        "database",
+        "rabbit"
+      ]
+    },
+    {
+      "id": "ibm-cloud/database-redis",
+      "name": "database redis",
+      "category": "data",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/data/database-redis.svg",
+      "tier": "ibm-cloud",
+      "color": "#0F62FE",
+      "keywords": [
+        "database",
+        "redis"
+      ]
+    },
+    {
+      "id": "ibm-cloud/datastore",
+      "name": "datastore",
+      "category": "storage",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/storage/datastore.svg",
+      "tier": "ibm-cloud",
+      "color": "#0F62FE",
+      "keywords": [
+        "datastore"
+      ]
+    },
+    {
+      "id": "ibm-cloud/db2-warehouse",
+      "name": "DB2 Warehouse",
+      "category": "data",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/data/db2-warehouse.svg",
+      "tier": "ibm-cloud",
+      "color": "#0F62FE",
+      "keywords": [
+        "db2",
+        "warehouse"
+      ]
+    },
+    {
+      "id": "ibm-cloud/dedicated-host",
+      "name": "Dedicated Host",
+      "category": "compute",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/compute/dedicated-host.svg",
+      "tier": "ibm-cloud",
+      "color": "#198038",
+      "keywords": [
+        "dedicated",
+        "host"
+      ]
+    },
+    {
+      "id": "ibm-cloud/devices",
+      "name": "devices",
+      "category": "actors",
+      "semantic": "actor",
+      "container": "rounded",
+      "asset": "icons/actors/devices.svg",
+      "tier": "ibm-cloud",
+      "color": "#000000",
+      "keywords": [
+        "devices"
+      ]
+    },
+    {
+      "id": "ibm-cloud/direct-link",
+      "name": "Direct Link",
+      "category": "network",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/network/direct-link.svg",
+      "tier": "ibm-cloud",
+      "color": "#1192E8",
+      "keywords": [
+        "direct",
+        "link"
+      ]
+    },
+    {
+      "id": "ibm-cloud/dns-server",
+      "name": "DNS Server",
+      "category": "network",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/network/dns-server.svg",
+      "tier": "ibm-cloud",
+      "color": "#1192E8",
+      "keywords": [
+        "dns",
+        "server"
+      ]
+    },
+    {
+      "id": "ibm-cloud/dns-services",
+      "name": "dns services",
+      "category": "network",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/network/dns-services.svg",
+      "tier": "ibm-cloud",
+      "color": "#1192E8",
+      "keywords": [
+        "dns",
+        "services"
+      ]
+    },
+    {
+      "id": "ibm-cloud/document-protected",
+      "name": "document protected",
+      "category": "security",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/security/document-protected.svg",
+      "tier": "ibm-cloud",
+      "color": "#FA4D56",
+      "keywords": [
+        "document",
+        "protected"
+      ]
+    },
+    {
+      "id": "ibm-cloud/document-security",
+      "name": "document security",
+      "category": "security",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/security/document-security.svg",
+      "tier": "ibm-cloud",
+      "color": "#FA4D56",
+      "keywords": [
+        "document",
+        "security"
+      ]
+    },
+    {
+      "id": "ibm-cloud/document-signed",
+      "name": "document signed",
+      "category": "security",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/security/document-signed.svg",
+      "tier": "ibm-cloud",
+      "color": "#FA4D56",
+      "keywords": [
+        "document",
+        "signed"
+      ]
+    },
+    {
+      "id": "ibm-cloud/document-unprotected",
+      "name": "document unprotected",
+      "category": "security",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/security/document-unprotected.svg",
+      "tier": "ibm-cloud",
+      "color": "#FA4D56",
+      "keywords": [
+        "document",
+        "unprotected"
+      ]
+    },
+    {
+      "id": "ibm-cloud/edge-node",
+      "name": "edge node",
+      "category": "network",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/network/edge-node.svg",
+      "tier": "ibm-cloud",
+      "color": "#1192E8",
+      "keywords": [
+        "edge",
+        "node"
+      ]
+    },
+    {
+      "id": "ibm-cloud/encryption",
+      "name": "encryption",
+      "category": "security",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/security/encryption.svg",
+      "tier": "ibm-cloud",
+      "color": "#FA4D56",
+      "keywords": [
+        "encryption"
+      ]
+    },
+    {
+      "id": "ibm-cloud/enterprise",
+      "name": "Enterprise",
+      "category": "actors",
+      "semantic": "actor",
+      "container": "rounded",
+      "asset": "icons/actors/enterprise.svg",
+      "tier": "ibm-cloud",
+      "color": "#000000",
+      "keywords": [
+        "enterprise"
+      ]
+    },
+    {
+      "id": "ibm-cloud/file-storage",
+      "name": "File Storage",
+      "category": "data",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/data/file-storage.svg",
+      "tier": "ibm-cloud",
+      "color": "#0F62FE",
+      "keywords": [
+        "file",
+        "storage"
+      ]
+    },
+    {
+      "id": "ibm-cloud/file-storage-application",
+      "name": "File Storage Application",
+      "category": "data",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/data/file-storage-application.svg",
+      "tier": "ibm-cloud",
+      "color": "#0F62FE",
+      "keywords": [
+        "file",
+        "storage",
+        "application"
+      ]
+    },
+    {
+      "id": "ibm-cloud/file-system",
+      "name": "file system",
+      "category": "data",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/data/file-system.svg",
+      "tier": "ibm-cloud",
+      "color": "#0F62FE",
+      "keywords": [
+        "file",
+        "system"
+      ]
+    },
+    {
+      "id": "ibm-cloud/fingerprint-recognition",
+      "name": "fingerprint recognition",
+      "category": "security",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/security/fingerprint-recognition.svg",
+      "tier": "ibm-cloud",
+      "color": "#FA4D56",
+      "keywords": [
+        "fingerprint",
+        "recognition"
+      ]
+    },
+    {
+      "id": "ibm-cloud/firewall",
+      "name": "firewall",
+      "category": "security",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/security/firewall.svg",
+      "tier": "ibm-cloud",
+      "color": "#FA4D56",
+      "keywords": [
+        "firewall"
+      ]
+    },
+    {
+      "id": "ibm-cloud/firewall-classic",
+      "name": "firewall classic",
+      "category": "security",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/security/firewall-classic.svg",
+      "tier": "ibm-cloud",
+      "color": "#FA4D56",
+      "keywords": [
+        "firewall",
+        "classic"
+      ]
+    },
+    {
+      "id": "ibm-cloud/flag",
+      "name": "flag",
+      "category": "actors",
+      "semantic": "actor",
+      "container": "rounded",
+      "asset": "icons/actors/flag.svg",
+      "tier": "ibm-cloud",
+      "color": "#000000",
+      "keywords": [
+        "flag"
+      ]
+    },
+    {
+      "id": "ibm-cloud/floating-ip",
+      "name": "floating ip",
+      "category": "network",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/network/floating-ip.svg",
+      "tier": "ibm-cloud",
+      "color": "#1192E8",
+      "keywords": [
+        "floating",
+        "ip"
+      ]
+    },
+    {
+      "id": "ibm-cloud/flow-logs-vpc",
+      "name": "flow logs vpc",
+      "category": "observability",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/observability/flow-logs-vpc.svg",
+      "tier": "ibm-cloud",
+      "color": "#009D9A",
+      "keywords": [
+        "flow",
+        "logs",
+        "vpc"
+      ]
+    },
+    {
+      "id": "ibm-cloud/gateway",
+      "name": "gateway",
+      "category": "network",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/network/gateway.svg",
+      "tier": "ibm-cloud",
+      "color": "#1192E8",
+      "keywords": [
+        "gateway"
+      ]
+    },
+    {
+      "id": "ibm-cloud/gateway-api",
+      "name": "gateway api",
+      "category": "network",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/network/gateway-api.svg",
+      "tier": "ibm-cloud",
+      "color": "#1192E8",
+      "keywords": [
+        "gateway",
+        "api"
+      ]
+    },
+    {
+      "id": "ibm-cloud/gateway-user-access",
+      "name": "gateway user access",
+      "category": "security",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/security/gateway-user-access.svg",
+      "tier": "ibm-cloud",
+      "color": "#FA4D56",
+      "keywords": [
+        "gateway",
+        "user",
+        "access"
+      ]
+    },
+    {
+      "id": "ibm-cloud/gateway-vpn",
+      "name": "gateway vpn",
+      "category": "security",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/security/gateway-vpn.svg",
+      "tier": "ibm-cloud",
+      "color": "#FA4D56",
+      "keywords": [
+        "gateway",
+        "vpn"
+      ]
+    },
+    {
+      "id": "ibm-cloud/global-load-balancer",
+      "name": "Global Load Balancer",
+      "category": "network",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/network/global-load-balancer.svg",
+      "tier": "ibm-cloud",
+      "color": "#1192E8",
+      "keywords": [
+        "global",
+        "load",
+        "balancer"
+      ]
+    },
+    {
+      "id": "ibm-cloud/group",
+      "name": "Group",
+      "category": "actors",
+      "semantic": "actor",
+      "container": "rounded",
+      "asset": "icons/actors/group.svg",
+      "tier": "ibm-cloud",
+      "color": "#000000",
+      "keywords": [
+        "group"
+      ]
+    },
+    {
+      "id": "ibm-cloud/group-98",
+      "name": "Group 98",
+      "category": "ai",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/ai/group-98.svg",
+      "tier": "ibm-cloud",
+      "color": "#A56EFF",
+      "keywords": [
+        "group",
+        "98"
+      ]
+    },
+    {
+      "id": "ibm-cloud/group-meeting",
+      "name": "Group Meeting",
+      "category": "actors",
+      "semantic": "actor",
+      "container": "rounded",
+      "asset": "icons/actors/group-meeting.svg",
+      "tier": "ibm-cloud",
+      "color": "#000000",
+      "keywords": [
+        "group",
+        "meeting"
+      ]
+    },
+    {
+      "id": "ibm-cloud/group-security",
+      "name": "group security",
+      "category": "security",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/security/group-security.svg",
+      "tier": "ibm-cloud",
+      "color": "#FA4D56",
+      "keywords": [
+        "group",
+        "security"
+      ]
+    },
+    {
+      "id": "ibm-cloud/gui",
+      "name": "gui",
+      "category": "observability",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/observability/gui.svg",
+      "tier": "ibm-cloud",
+      "color": "#009D9A",
+      "keywords": [
+        "gui"
+      ]
+    },
+    {
+      "id": "ibm-cloud/gui-management",
+      "name": "gui management",
+      "category": "observability",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/observability/gui-management.svg",
+      "tier": "ibm-cloud",
+      "color": "#009D9A",
+      "keywords": [
+        "gui",
+        "management"
+      ]
+    },
+    {
+      "id": "ibm-cloud/hardware-security-module",
+      "name": "hardware security module",
+      "category": "security",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/security/hardware-security-module.svg",
+      "tier": "ibm-cloud",
+      "color": "#FA4D56",
+      "keywords": [
+        "hardware",
+        "security",
+        "module"
+      ]
+    },
+    {
+      "id": "ibm-cloud/hybrid-networking",
+      "name": "hybrid networking",
+      "category": "network",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/network/hybrid-networking.svg",
+      "tier": "ibm-cloud",
+      "color": "#1192E8",
+      "keywords": [
+        "hybrid",
+        "networking"
+      ]
+    },
+    {
+      "id": "ibm-cloud/ibm-cloud",
+      "name": "IBM Cloud",
+      "category": "network",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/network/ibm-cloud.svg",
+      "tier": "ibm-cloud",
+      "color": "#1192E8",
+      "keywords": [
+        "ibm",
+        "cloud"
+      ]
+    },
+    {
+      "id": "ibm-cloud/ibm-cloud-hyper-protect-dbaas",
+      "name": "ibm cloud hyper protect dbaas",
+      "category": "storage",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/storage/ibm-cloud-hyper-protect-dbaas.svg",
+      "tier": "ibm-cloud",
+      "color": "#0F62FE",
+      "keywords": [
+        "ibm",
+        "cloud",
+        "hyper",
+        "protect",
+        "dbaas"
+      ]
+    },
+    {
+      "id": "ibm-cloud/ibm-cloud-key-protect",
+      "name": "ibm cloud key protect",
+      "category": "security",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/security/ibm-cloud-key-protect.svg",
+      "tier": "ibm-cloud",
+      "color": "#FA4D56",
+      "keywords": [
+        "ibm",
+        "cloud",
+        "key",
+        "protect"
+      ]
+    },
+    {
+      "id": "ibm-cloud/ibm-cloud-pak-data",
+      "name": "ibm cloud pak data",
+      "category": "data",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/data/ibm-cloud-pak-data.svg",
+      "tier": "ibm-cloud",
+      "color": "#0F62FE",
+      "keywords": [
+        "ibm",
+        "cloud",
+        "pak",
+        "data"
+      ]
+    },
+    {
+      "id": "ibm-cloud/ibm-cloud-subnets",
+      "name": "IBM Cloud Subnets",
+      "category": "network",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/network/ibm-cloud-subnets.svg",
+      "tier": "ibm-cloud",
+      "color": "#1192E8",
+      "keywords": [
+        "ibm",
+        "cloud",
+        "subnets"
+      ]
+    },
+    {
+      "id": "ibm-cloud/ibm-cloud-vpc",
+      "name": "ibm cloud vpc",
+      "category": "network",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/network/ibm-cloud-vpc.svg",
+      "tier": "ibm-cloud",
+      "color": "#1192E8",
+      "keywords": [
+        "ibm",
+        "cloud",
+        "vpc"
+      ]
+    },
+    {
+      "id": "ibm-cloud/ibm-cloudant",
+      "name": "ibm cloudant",
+      "category": "storage",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/storage/ibm-cloudant.svg",
+      "tier": "ibm-cloud",
+      "color": "#0F62FE",
+      "keywords": [
+        "ibm",
+        "cloudant"
+      ]
+    },
+    {
+      "id": "ibm-cloud/ibm-datastage",
+      "name": "ibm datastage",
+      "category": "storage",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/storage/ibm-datastage.svg",
+      "tier": "ibm-cloud",
+      "color": "#0F62FE",
+      "keywords": [
+        "ibm",
+        "datastage"
+      ]
+    },
+    {
+      "id": "ibm-cloud/ibm-db2",
+      "name": "ibm db2",
+      "category": "storage",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/storage/ibm-db2.svg",
+      "tier": "ibm-cloud",
+      "color": "#0F62FE",
+      "keywords": [
+        "ibm",
+        "db2"
+      ]
+    },
+    {
+      "id": "ibm-cloud/ibm-db2-alt",
+      "name": "ibm db2 alt",
+      "category": "data",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/data/ibm-db2-alt.svg",
+      "tier": "ibm-cloud",
+      "color": "#0F62FE",
+      "keywords": [
+        "ibm",
+        "db2",
+        "alt"
+      ]
+    },
+    {
+      "id": "ibm-cloud/ibm-vpn-for-vpc",
+      "name": "IBM VPN for VPC",
+      "category": "security",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/security/ibm-vpn-for-vpc.svg",
+      "tier": "ibm-cloud",
+      "color": "#FA4D56",
+      "keywords": [
+        "ibm",
+        "vpn",
+        "for",
+        "vpc"
+      ]
+    },
+    {
+      "id": "ibm-cloud/ibm-watsonx",
+      "name": "IBM WatsonX",
+      "category": "ai",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/ai/ibm-watsonx.svg",
+      "tier": "ibm-cloud",
+      "color": "#A56EFF",
+      "keywords": [
+        "ibm",
+        "watsonx"
+      ]
+    },
+    {
+      "id": "ibm-cloud/ibm-watsonx-governance",
+      "name": "IBM® watsonx.governance™",
+      "category": "ai",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/ai/ibm-watsonx-governance.svg",
+      "tier": "ibm-cloud",
+      "color": "#A56EFF",
+      "keywords": [
+        "ibm",
+        "watsonx",
+        "governance"
+      ]
+    },
+    {
+      "id": "ibm-cloud/identity-and-access-management",
+      "name": "Identity and Access Management",
+      "category": "security",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/security/identity-and-access-management.svg",
+      "tier": "ibm-cloud",
+      "color": "#FA4D56",
+      "keywords": [
+        "identity",
+        "and",
+        "access",
+        "management"
+      ]
+    },
+    {
+      "id": "ibm-cloud/image-service",
+      "name": "Image Service",
+      "category": "compute",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/compute/image-service.svg",
+      "tier": "ibm-cloud",
+      "color": "#198038",
+      "keywords": [
+        "image",
+        "service"
+      ]
+    },
+    {
+      "id": "ibm-cloud/instance-bx",
+      "name": "Instance BX",
+      "category": "compute",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/compute/instance-bx.svg",
+      "tier": "ibm-cloud",
+      "color": "#198038",
+      "keywords": [
+        "instance",
+        "bx"
+      ]
+    },
+    {
+      "id": "ibm-cloud/instance-cx",
+      "name": "instance cx",
+      "category": "compute",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/compute/instance-cx.svg",
+      "tier": "ibm-cloud",
+      "color": "#198038",
+      "keywords": [
+        "instance",
+        "cx"
+      ]
+    },
+    {
+      "id": "ibm-cloud/instance-group",
+      "name": "Instance Group",
+      "category": "compute",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/compute/instance-group.svg",
+      "tier": "ibm-cloud",
+      "color": "#198038",
+      "keywords": [
+        "instance",
+        "group"
+      ]
+    },
+    {
+      "id": "ibm-cloud/instance-mx",
+      "name": "instance mx",
+      "category": "compute",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/compute/instance-mx.svg",
+      "tier": "ibm-cloud",
+      "color": "#198038",
+      "keywords": [
+        "instance",
+        "mx"
+      ]
+    },
+    {
+      "id": "ibm-cloud/internet",
+      "name": "Internet",
+      "category": "network",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/network/internet.svg",
+      "tier": "ibm-cloud",
+      "color": "#1192E8",
+      "keywords": [
+        "internet"
+      ]
+    },
+    {
+      "id": "ibm-cloud/internet-services",
+      "name": "internet services",
+      "category": "network",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/network/internet-services.svg",
+      "tier": "ibm-cloud",
+      "color": "#1192E8",
+      "keywords": [
+        "internet",
+        "services"
+      ]
+    },
+    {
+      "id": "ibm-cloud/intrusion-prevention",
+      "name": "intrusion prevention",
+      "category": "security",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/security/intrusion-prevention.svg",
+      "tier": "ibm-cloud",
+      "color": "#FA4D56",
+      "keywords": [
+        "intrusion",
+        "prevention"
+      ]
+    },
+    {
+      "id": "ibm-cloud/key",
+      "name": "Key",
+      "category": "security",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/security/key.svg",
+      "tier": "ibm-cloud",
+      "color": "#FA4D56",
+      "keywords": [
+        "key"
+      ]
+    },
+    {
+      "id": "ibm-cloud/kubernetes",
+      "name": "Kubernetes",
+      "category": "compute",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/compute/kubernetes.svg",
+      "tier": "ibm-cloud",
+      "color": "#198038",
+      "keywords": [
+        "kubernetes"
+      ]
+    },
+    {
+      "id": "ibm-cloud/kubernetes-cluster",
+      "name": "Kubernetes Cluster",
+      "category": "compute",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/compute/kubernetes-cluster.svg",
+      "tier": "ibm-cloud",
+      "color": "#198038",
+      "keywords": [
+        "kubernetes",
+        "cluster"
+      ]
+    },
+    {
+      "id": "ibm-cloud/l2-switch",
+      "name": "L2 Switch",
+      "category": "network",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/network/l2-switch.svg",
+      "tier": "ibm-cloud",
+      "color": "#1192E8",
+      "keywords": [
+        "l2",
+        "switch"
+      ]
+    },
+    {
+      "id": "ibm-cloud/l3-switch",
+      "name": "L3 Switch",
+      "category": "network",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/network/l3-switch.svg",
+      "tier": "ibm-cloud",
+      "color": "#1192E8",
+      "keywords": [
+        "l3",
+        "switch"
+      ]
+    },
+    {
+      "id": "ibm-cloud/laptop",
+      "name": "laptop",
+      "category": "actors",
+      "semantic": "actor",
+      "container": "rounded",
+      "asset": "icons/actors/laptop.svg",
+      "tier": "ibm-cloud",
+      "color": "#000000",
+      "keywords": [
+        "laptop"
+      ]
+    },
+    {
+      "id": "ibm-cloud/load-balancer-application",
+      "name": "load balancer application",
+      "category": "network",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/network/load-balancer-application.svg",
+      "tier": "ibm-cloud",
+      "color": "#1192E8",
+      "keywords": [
+        "load",
+        "balancer",
+        "application"
+      ]
+    },
+    {
+      "id": "ibm-cloud/load-balancer-classic",
+      "name": "load balancer classic",
+      "category": "network",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/network/load-balancer-classic.svg",
+      "tier": "ibm-cloud",
+      "color": "#1192E8",
+      "keywords": [
+        "load",
+        "balancer",
+        "classic"
+      ]
+    },
+    {
+      "id": "ibm-cloud/load-balancer-listner",
+      "name": "Load Balancer Listner",
+      "category": "network",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/network/load-balancer-listner.svg",
+      "tier": "ibm-cloud",
+      "color": "#1192E8",
+      "keywords": [
+        "load",
+        "balancer",
+        "listner"
+      ]
+    },
+    {
+      "id": "ibm-cloud/load-balancer-pool",
+      "name": "Load Balancer Pool",
+      "category": "network",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/network/load-balancer-pool.svg",
+      "tier": "ibm-cloud",
+      "color": "#1192E8",
+      "keywords": [
+        "load",
+        "balancer",
+        "pool"
+      ]
+    },
+    {
+      "id": "ibm-cloud/load-balancer-vpc",
+      "name": "Load Balancer VPC",
+      "category": "network",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/network/load-balancer-vpc.svg",
+      "tier": "ibm-cloud",
+      "color": "#1192E8",
+      "keywords": [
+        "load",
+        "balancer",
+        "vpc"
+      ]
+    },
+    {
+      "id": "ibm-cloud/local-load-balancer",
+      "name": "Local Load Balancer",
+      "category": "network",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/network/local-load-balancer.svg",
+      "tier": "ibm-cloud",
+      "color": "#1192E8",
+      "keywords": [
+        "local",
+        "load",
+        "balancer"
+      ]
+    },
+    {
+      "id": "ibm-cloud/location",
+      "name": "location",
+      "category": "actors",
+      "semantic": "actor",
+      "container": "rounded",
+      "asset": "icons/actors/location.svg",
+      "tier": "ibm-cloud",
+      "color": "#000000",
+      "keywords": [
+        "location"
+      ]
+    },
+    {
+      "id": "ibm-cloud/lte-transmission",
+      "name": "LTE Transmission",
+      "category": "network",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/network/lte-transmission.svg",
+      "tier": "ibm-cloud",
+      "color": "#1192E8",
+      "keywords": [
+        "lte",
+        "transmission"
+      ]
+    },
+    {
+      "id": "ibm-cloud/machine-learning",
+      "name": "machine learning",
+      "category": "ai",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/ai/machine-learning.svg",
+      "tier": "ibm-cloud",
+      "color": "#A56EFF",
+      "keywords": [
+        "machine",
+        "learning"
+      ]
+    },
+    {
+      "id": "ibm-cloud/machine-learning-model-1",
+      "name": "machine learning model(1)",
+      "category": "ai",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/ai/machine-learning-model-1.svg",
+      "tier": "ibm-cloud",
+      "color": "#A56EFF",
+      "keywords": [
+        "machine",
+        "learning",
+        "model"
+      ]
+    },
+    {
+      "id": "ibm-cloud/mail-gateway",
+      "name": "Mail Gateway",
+      "category": "network",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/network/mail-gateway.svg",
+      "tier": "ibm-cloud",
+      "color": "#1192E8",
+      "keywords": [
+        "mail",
+        "gateway"
+      ]
+    },
+    {
+      "id": "ibm-cloud/message-queue",
+      "name": "Message Queue",
+      "category": "network",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/network/message-queue.svg",
+      "tier": "ibm-cloud",
+      "color": "#1192E8",
+      "keywords": [
+        "message",
+        "queue"
+      ]
+    },
+    {
+      "id": "ibm-cloud/mobile",
+      "name": "mobile",
+      "category": "actors",
+      "semantic": "actor",
+      "container": "rounded",
+      "asset": "icons/actors/mobile.svg",
+      "tier": "ibm-cloud",
+      "color": "#000000",
+      "keywords": [
+        "mobile"
+      ]
+    },
+    {
+      "id": "ibm-cloud/mobile-application",
+      "name": "Mobile Application",
+      "category": "applications",
+      "semantic": "actor",
+      "container": "rounded",
+      "asset": "icons/applications/mobile-application.svg",
+      "tier": "ibm-cloud",
+      "color": "#A56EFF",
+      "keywords": [
+        "mobile",
+        "application"
+      ]
+    },
+    {
+      "id": "ibm-cloud/model-tuned",
+      "name": "model tuned",
+      "category": "ai",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/ai/model-tuned.svg",
+      "tier": "ibm-cloud",
+      "color": "#A56EFF",
+      "keywords": [
+        "model",
+        "tuned"
+      ]
+    },
+    {
+      "id": "ibm-cloud/mysql",
+      "name": "mysql",
+      "category": "data",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/data/mysql.svg",
+      "tier": "ibm-cloud",
+      "color": "#0F62FE",
+      "keywords": [
+        "mysql"
+      ]
+    },
+    {
+      "id": "ibm-cloud/network-acl",
+      "name": "Network ACL",
+      "category": "security",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/security/network-acl.svg",
+      "tier": "ibm-cloud",
+      "color": "#FA4D56",
+      "keywords": [
+        "network",
+        "acl"
+      ]
+    },
+    {
+      "id": "ibm-cloud/network-admin-control",
+      "name": "network admin control",
+      "category": "security",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/security/network-admin-control.svg",
+      "tier": "ibm-cloud",
+      "color": "#FA4D56",
+      "keywords": [
+        "network",
+        "admin",
+        "control"
+      ]
+    },
+    {
+      "id": "ibm-cloud/network-interface",
+      "name": "Network Interface",
+      "category": "network",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/network/network-interface.svg",
+      "tier": "ibm-cloud",
+      "color": "#1192E8",
+      "keywords": [
+        "network",
+        "interface"
+      ]
+    },
+    {
+      "id": "ibm-cloud/network-load-balancer",
+      "name": "Network Load Balancer",
+      "category": "network",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/network/network-load-balancer.svg",
+      "tier": "ibm-cloud",
+      "color": "#1192E8",
+      "keywords": [
+        "network",
+        "load",
+        "balancer"
+      ]
+    },
+    {
+      "id": "ibm-cloud/network-overlay",
+      "name": "Network Overlay",
+      "category": "network",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/network/network-overlay.svg",
+      "tier": "ibm-cloud",
+      "color": "#1192E8",
+      "keywords": [
+        "network",
+        "overlay"
+      ]
+    },
+    {
+      "id": "ibm-cloud/object-bucket",
+      "name": "Object Bucket",
+      "category": "data",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/data/object-bucket.svg",
+      "tier": "ibm-cloud",
+      "color": "#0F62FE",
+      "keywords": [
+        "object",
+        "bucket"
+      ]
+    },
+    {
+      "id": "ibm-cloud/object-storage-application",
+      "name": "Object Storage Application",
+      "category": "data",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/data/object-storage-application.svg",
+      "tier": "ibm-cloud",
+      "color": "#0F62FE",
+      "keywords": [
+        "object",
+        "storage",
+        "application"
+      ]
+    },
+    {
+      "id": "ibm-cloud/object-storage-slisor",
+      "name": "Object Storage Slisor",
+      "category": "data",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/data/object-storage-slisor.svg",
+      "tier": "ibm-cloud",
+      "color": "#0F62FE",
+      "keywords": [
+        "object",
+        "storage",
+        "slisor"
+      ]
+    },
+    {
+      "id": "ibm-cloud/open-shift",
+      "name": "Open Shift",
+      "category": "compute",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/compute/open-shift.svg",
+      "tier": "ibm-cloud",
+      "color": "#198038",
+      "keywords": [
+        "open",
+        "shift"
+      ]
+    },
+    {
+      "id": "ibm-cloud/pcn-e-node",
+      "name": "pcn e node",
+      "category": "security",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/security/pcn-e-node.svg",
+      "tier": "ibm-cloud",
+      "color": "#FA4D56",
+      "keywords": [
+        "pcn",
+        "node"
+      ]
+    },
+    {
+      "id": "ibm-cloud/pcn-p-node",
+      "name": "pcn p node",
+      "category": "security",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/security/pcn-p-node.svg",
+      "tier": "ibm-cloud",
+      "color": "#FA4D56",
+      "keywords": [
+        "pcn",
+        "node"
+      ]
+    },
+    {
+      "id": "ibm-cloud/pcn-z-node",
+      "name": "pcn z node",
+      "category": "security",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/security/pcn-z-node.svg",
+      "tier": "ibm-cloud",
+      "color": "#FA4D56",
+      "keywords": [
+        "pcn",
+        "node"
+      ]
+    },
+    {
+      "id": "ibm-cloud/phone-application",
+      "name": "phone application",
+      "category": "applications",
+      "semantic": "actor",
+      "container": "rounded",
+      "asset": "icons/applications/phone-application.svg",
+      "tier": "ibm-cloud",
+      "color": "#A56EFF",
+      "keywords": [
+        "phone",
+        "application"
+      ]
+    },
+    {
+      "id": "ibm-cloud/physical-server",
+      "name": "Physical Server",
+      "category": "compute",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/compute/physical-server.svg",
+      "tier": "ibm-cloud",
+      "color": "#198038",
+      "keywords": [
+        "physical",
+        "server"
+      ]
+    },
+    {
+      "id": "ibm-cloud/preprod-environment",
+      "name": "PreProd Environment",
+      "category": "devops",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/devops/preprod-environment.svg",
+      "tier": "ibm-cloud",
+      "color": "#EE5396",
+      "keywords": [
+        "preprod",
+        "environment"
+      ]
+    },
+    {
+      "id": "ibm-cloud/preprod-service",
+      "name": "PreProd Service",
+      "category": "devops",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/devops/preprod-service.svg",
+      "tier": "ibm-cloud",
+      "color": "#EE5396",
+      "keywords": [
+        "preprod",
+        "service"
+      ]
+    },
+    {
+      "id": "ibm-cloud/process",
+      "name": "Process",
+      "category": "compute",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/compute/process.svg",
+      "tier": "ibm-cloud",
+      "color": "#198038",
+      "keywords": [
+        "process"
+      ]
+    },
+    {
+      "id": "ibm-cloud/process-gray",
+      "name": "Process Gray",
+      "category": "compute",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/compute/process-gray.svg",
+      "tier": "ibm-cloud",
+      "color": "#878D96",
+      "keywords": [
+        "process",
+        "gray"
+      ]
+    },
+    {
+      "id": "ibm-cloud/process-green",
+      "name": "Process Green",
+      "category": "compute",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/compute/process-green.svg",
+      "tier": "ibm-cloud",
+      "color": "#198038",
+      "keywords": [
+        "process",
+        "green"
+      ]
+    },
+    {
+      "id": "ibm-cloud/prod-environment",
+      "name": "Prod Environment",
+      "category": "devops",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/devops/prod-environment.svg",
+      "tier": "ibm-cloud",
+      "color": "#EE5396",
+      "keywords": [
+        "prod",
+        "environment"
+      ]
+    },
+    {
+      "id": "ibm-cloud/production-regulated",
+      "name": "Production Regulated",
+      "category": "devops",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/devops/production-regulated.svg",
+      "tier": "ibm-cloud",
+      "color": "#EE5396",
+      "keywords": [
+        "production",
+        "regulated"
+      ]
+    },
+    {
+      "id": "ibm-cloud/production-service",
+      "name": "Production Service",
+      "category": "devops",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/devops/production-service.svg",
+      "tier": "ibm-cloud",
+      "color": "#EE5396",
+      "keywords": [
+        "production",
+        "service"
+      ]
+    },
+    {
+      "id": "ibm-cloud/prompt-session",
+      "name": "prompt session",
+      "category": "ai",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/ai/prompt-session.svg",
+      "tier": "ibm-cloud",
+      "color": "#A56EFF",
+      "keywords": [
+        "prompt",
+        "session"
+      ]
+    },
+    {
+      "id": "ibm-cloud/prompt-template",
+      "name": "prompt template",
+      "category": "ai",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/ai/prompt-template.svg",
+      "tier": "ibm-cloud",
+      "color": "#A56EFF",
+      "keywords": [
+        "prompt",
+        "template"
+      ]
+    },
+    {
+      "id": "ibm-cloud/public-gateway",
+      "name": "Public Gateway",
+      "category": "network",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/network/public-gateway.svg",
+      "tier": "ibm-cloud",
+      "color": "#1192E8",
+      "keywords": [
+        "public",
+        "gateway"
+      ]
+    },
+    {
+      "id": "ibm-cloud/public-network",
+      "name": "Public Network",
+      "category": "network",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/network/public-network.svg",
+      "tier": "ibm-cloud",
+      "color": "#1192E8",
+      "keywords": [
+        "public",
+        "network"
+      ]
+    },
+    {
+      "id": "ibm-cloud/push-to-talk",
+      "name": "Push to talk",
+      "category": "network",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/network/push-to-talk.svg",
+      "tier": "ibm-cloud",
+      "color": "#1192E8",
+      "keywords": [
+        "push",
+        "to",
+        "talk"
+      ]
+    },
+    {
+      "id": "ibm-cloud/repo-artifact",
+      "name": "repo artifact",
+      "category": "devops",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/devops/repo-artifact.svg",
+      "tier": "ibm-cloud",
+      "color": "#EE5396",
+      "keywords": [
+        "repo",
+        "artifact"
+      ]
+    },
+    {
+      "id": "ibm-cloud/repo-source-code",
+      "name": "repo source code",
+      "category": "devops",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/devops/repo-source-code.svg",
+      "tier": "ibm-cloud",
+      "color": "#EE5396",
+      "keywords": [
+        "repo",
+        "source",
+        "code"
+      ]
+    },
+    {
+      "id": "ibm-cloud/router",
+      "name": "Router",
+      "category": "network",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/network/router.svg",
+      "tier": "ibm-cloud",
+      "color": "#1192E8",
+      "keywords": [
+        "router"
+      ]
+    },
+    {
+      "id": "ibm-cloud/sattelite",
+      "name": "Sattelite",
+      "category": "compute",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/compute/sattelite.svg",
+      "tier": "ibm-cloud",
+      "color": "#198038",
+      "keywords": [
+        "sattelite"
+      ]
+    },
+    {
+      "id": "ibm-cloud/secrets-manager",
+      "name": "Secrets Manager",
+      "category": "security",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/security/secrets-manager.svg",
+      "tier": "ibm-cloud",
+      "color": "#FA4D56",
+      "keywords": [
+        "secrets",
+        "manager"
+      ]
+    },
+    {
+      "id": "ibm-cloud/security-gateway",
+      "name": "Security Gateway",
+      "category": "security",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/security/security-gateway.svg",
+      "tier": "ibm-cloud",
+      "color": "#FA4D56",
+      "keywords": [
+        "security",
+        "gateway"
+      ]
+    },
+    {
+      "id": "ibm-cloud/security-services",
+      "name": "security services",
+      "category": "security",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/security/security-services.svg",
+      "tier": "ibm-cloud",
+      "color": "#FA4D56",
+      "keywords": [
+        "security",
+        "services"
+      ]
+    },
+    {
+      "id": "ibm-cloud/server-proxy",
+      "name": "Server Proxy",
+      "category": "network",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/network/server-proxy.svg",
+      "tier": "ibm-cloud",
+      "color": "#1192E8",
+      "keywords": [
+        "server",
+        "proxy"
+      ]
+    },
+    {
+      "id": "ibm-cloud/serverless-application",
+      "name": "Serverless Application",
+      "category": "devops",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/devops/serverless-application.svg",
+      "tier": "ibm-cloud",
+      "color": "#EE5396",
+      "keywords": [
+        "serverless",
+        "application"
+      ]
+    },
+    {
+      "id": "ibm-cloud/service-desk",
+      "name": "Service Desk",
+      "category": "actors",
+      "semantic": "actor",
+      "container": "rounded",
+      "asset": "icons/actors/service-desk.svg",
+      "tier": "ibm-cloud",
+      "color": "#000000",
+      "keywords": [
+        "service",
+        "desk"
+      ]
+    },
+    {
+      "id": "ibm-cloud/service-id",
+      "name": "Service ID",
+      "category": "actors",
+      "semantic": "actor",
+      "container": "rounded",
+      "asset": "icons/actors/service-id.svg",
+      "tier": "ibm-cloud",
+      "color": "#000000",
+      "keywords": [
+        "service",
+        "id"
+      ]
+    },
+    {
+      "id": "ibm-cloud/session-border-control",
+      "name": "session border control",
+      "category": "security",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/security/session-border-control.svg",
+      "tier": "ibm-cloud",
+      "color": "#FA4D56",
+      "keywords": [
+        "session",
+        "border",
+        "control"
+      ]
+    },
+    {
+      "id": "ibm-cloud/sg-rules",
+      "name": "SG Rules",
+      "category": "security",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/security/sg-rules.svg",
+      "tier": "ibm-cloud",
+      "color": "#FA4D56",
+      "keywords": [
+        "sg",
+        "rules"
+      ]
+    },
+    {
+      "id": "ibm-cloud/sim-card",
+      "name": "sim card",
+      "category": "security",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/security/sim-card.svg",
+      "tier": "ibm-cloud",
+      "color": "#FA4D56",
+      "keywords": [
+        "sim",
+        "card"
+      ]
+    },
+    {
+      "id": "ibm-cloud/sql",
+      "name": "SQL",
+      "category": "data",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/data/sql.svg",
+      "tier": "ibm-cloud",
+      "color": "#0F62FE",
+      "keywords": [
+        "sql"
+      ]
+    },
+    {
+      "id": "ibm-cloud/subnet",
+      "name": "Subnet",
+      "category": "network",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/network/subnet.svg",
+      "tier": "ibm-cloud",
+      "color": "#1192E8",
+      "keywords": [
+        "subnet"
+      ]
+    },
+    {
+      "id": "ibm-cloud/subnet-acl-rules",
+      "name": "subnet acl rules",
+      "category": "security",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/security/subnet-acl-rules.svg",
+      "tier": "ibm-cloud",
+      "color": "#FA4D56",
+      "keywords": [
+        "subnet",
+        "acl",
+        "rules"
+      ]
+    },
+    {
+      "id": "ibm-cloud/tablet",
+      "name": "tablet",
+      "category": "actors",
+      "semantic": "actor",
+      "container": "rounded",
+      "asset": "icons/actors/tablet.svg",
+      "tier": "ibm-cloud",
+      "color": "#000000",
+      "keywords": [
+        "tablet"
+      ]
+    },
+    {
+      "id": "ibm-cloud/test-service",
+      "name": "Test Service",
+      "category": "devops",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/devops/test-service.svg",
+      "tier": "ibm-cloud",
+      "color": "#EE5396",
+      "keywords": [
+        "test",
+        "service"
+      ]
+    },
+    {
+      "id": "ibm-cloud/testing",
+      "name": "Testing",
+      "category": "devops",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/devops/testing.svg",
+      "tier": "ibm-cloud",
+      "color": "#EE5396",
+      "keywords": [
+        "testing"
+      ]
+    },
+    {
+      "id": "ibm-cloud/transit-gatewa",
+      "name": "Transit Gatewa",
+      "category": "network",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/network/transit-gatewa.svg",
+      "tier": "ibm-cloud",
+      "color": "#1192E8",
+      "keywords": [
+        "transit",
+        "gatewa"
+      ]
+    },
+    {
+      "id": "ibm-cloud/tsv",
+      "name": "TSV",
+      "category": "data",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/data/tsv.svg",
+      "tier": "ibm-cloud",
+      "color": "#0F62FE",
+      "keywords": [
+        "tsv"
+      ]
+    },
+    {
+      "id": "ibm-cloud/tuning",
+      "name": "tuning",
+      "category": "ai",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/ai/tuning.svg",
+      "tier": "ibm-cloud",
+      "color": "#A56EFF",
+      "keywords": [
+        "tuning"
+      ]
+    },
+    {
+      "id": "ibm-cloud/two-factor-authentication",
+      "name": "two factor authentication",
+      "category": "security",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/security/two-factor-authentication.svg",
+      "tier": "ibm-cloud",
+      "color": "#FA4D56",
+      "keywords": [
+        "two",
+        "factor",
+        "authentication"
+      ]
+    },
+    {
+      "id": "ibm-cloud/unified-communications",
+      "name": "Unified Communications",
+      "category": "network",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/network/unified-communications.svg",
+      "tier": "ibm-cloud",
+      "color": "#1192E8",
+      "keywords": [
+        "unified",
+        "communications"
+      ]
+    },
+    {
+      "id": "ibm-cloud/user",
+      "name": "User",
+      "category": "actors",
+      "semantic": "actor",
+      "container": "rounded",
+      "asset": "icons/actors/user.svg",
+      "tier": "ibm-cloud",
+      "color": "#000000",
+      "keywords": [
+        "user"
+      ]
+    },
+    {
+      "id": "ibm-cloud/user-collaborate",
+      "name": "User collaborate",
+      "category": "actors",
+      "semantic": "actor",
+      "container": "rounded",
+      "asset": "icons/actors/user-collaborate.svg",
+      "tier": "ibm-cloud",
+      "color": "#000000",
+      "keywords": [
+        "user",
+        "collaborate"
+      ]
+    },
+    {
+      "id": "ibm-cloud/virtual-application",
+      "name": "Virtual Application",
+      "category": "applications",
+      "semantic": "actor",
+      "container": "rounded",
+      "asset": "icons/applications/virtual-application.svg",
+      "tier": "ibm-cloud",
+      "color": "#A56EFF",
+      "keywords": [
+        "virtual",
+        "application"
+      ]
+    },
+    {
+      "id": "ibm-cloud/virtual-desktop",
+      "name": "Virtual Desktop",
+      "category": "compute",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/compute/virtual-desktop.svg",
+      "tier": "ibm-cloud",
+      "color": "#198038",
+      "keywords": [
+        "virtual",
+        "desktop"
+      ]
+    },
+    {
+      "id": "ibm-cloud/virtual-server",
+      "name": "Virtual Server",
+      "category": "compute",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/compute/virtual-server.svg",
+      "tier": "ibm-cloud",
+      "color": "#198038",
+      "keywords": [
+        "virtual",
+        "server"
+      ]
+    },
+    {
+      "id": "ibm-cloud/virtual-server-classic",
+      "name": "Virtual Server Classic",
+      "category": "compute",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/compute/virtual-server-classic.svg",
+      "tier": "ibm-cloud",
+      "color": "#198038",
+      "keywords": [
+        "virtual",
+        "server",
+        "classic"
+      ]
+    },
+    {
+      "id": "ibm-cloud/vlan",
+      "name": "VLAN",
+      "category": "network",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/network/vlan.svg",
+      "tier": "ibm-cloud",
+      "color": "#1192E8",
+      "keywords": [
+        "vlan"
+      ]
+    },
+    {
+      "id": "ibm-cloud/vlan-ibm",
+      "name": "vlan ibm",
+      "category": "network",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/network/vlan-ibm.svg",
+      "tier": "ibm-cloud",
+      "color": "#1192E8",
+      "keywords": [
+        "vlan",
+        "ibm"
+      ]
+    },
+    {
+      "id": "ibm-cloud/voice-route",
+      "name": "Voice Route",
+      "category": "network",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/network/voice-route.svg",
+      "tier": "ibm-cloud",
+      "color": "#1192E8",
+      "keywords": [
+        "voice",
+        "route"
+      ]
+    },
+    {
+      "id": "ibm-cloud/vpc",
+      "name": "VPC",
+      "category": "network",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/network/vpc.svg",
+      "tier": "ibm-cloud",
+      "color": "#1192E8",
+      "keywords": [
+        "vpc"
+      ]
+    },
+    {
+      "id": "ibm-cloud/vpc-endpoints",
+      "name": "VPC Endpoints",
+      "category": "network",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/network/vpc-endpoints.svg",
+      "tier": "ibm-cloud",
+      "color": "#1192E8",
+      "keywords": [
+        "vpc",
+        "endpoints"
+      ]
+    },
+    {
+      "id": "ibm-cloud/vpn-connection",
+      "name": "vpn connection",
+      "category": "security",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/security/vpn-connection.svg",
+      "tier": "ibm-cloud",
+      "color": "#FA4D56",
+      "keywords": [
+        "vpn",
+        "connection"
+      ]
+    },
+    {
+      "id": "ibm-cloud/vpn-policy",
+      "name": "vpn policy",
+      "category": "security",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/security/vpn-policy.svg",
+      "tier": "ibm-cloud",
+      "color": "#FA4D56",
+      "keywords": [
+        "vpn",
+        "policy"
+      ]
+    },
+    {
+      "id": "ibm-cloud/watsonx-ai",
+      "name": "watsonx ai",
+      "category": "ai",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/ai/watsonx-ai.svg",
+      "tier": "ibm-cloud",
+      "color": "#A56EFF",
+      "keywords": [
+        "watsonx",
+        "ai"
+      ]
+    },
+    {
+      "id": "ibm-cloud/watsonx-data",
+      "name": "watsonx data",
+      "category": "ai",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/ai/watsonx-data.svg",
+      "tier": "ibm-cloud",
+      "color": "#A56EFF",
+      "keywords": [
+        "watsonx",
+        "data"
+      ]
+    },
+    {
+      "id": "ibm-cloud/web-application",
+      "name": "Web Application",
+      "category": "applications",
+      "semantic": "actor",
+      "container": "rounded",
+      "asset": "icons/applications/web-application.svg",
+      "tier": "ibm-cloud",
+      "color": "#A56EFF",
+      "keywords": [
+        "web",
+        "application"
+      ]
+    },
+    {
+      "id": "ibm-cloud/wifi-bridge",
+      "name": "Wifi Bridge",
+      "category": "network",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/network/wifi-bridge.svg",
+      "tier": "ibm-cloud",
+      "color": "#1192E8",
+      "keywords": [
+        "wifi",
+        "bridge"
+      ]
+    },
+    {
+      "id": "ibm-cloud/wifi-controller",
+      "name": "Wifi Controller",
+      "category": "network",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/network/wifi-controller.svg",
+      "tier": "ibm-cloud",
+      "color": "#1192E8",
+      "keywords": [
+        "wifi",
+        "controller"
+      ]
+    },
+    {
+      "id": "ibm-cloud/wifi-not-secure",
+      "name": "wifi not secure",
+      "category": "security",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/security/wifi-not-secure.svg",
+      "tier": "ibm-cloud",
+      "color": "#FA4D56",
+      "keywords": [
+        "wifi",
+        "not",
+        "secure"
+      ]
+    },
+    {
+      "id": "ibm-cloud/wifi-router",
+      "name": "Wifi Router",
+      "category": "network",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/network/wifi-router.svg",
+      "tier": "ibm-cloud",
+      "color": "#1192E8",
+      "keywords": [
+        "wifi",
+        "router"
+      ]
+    },
+    {
+      "id": "ibm-cloud/wifi-secure",
+      "name": "wifi secure",
+      "category": "security",
+      "semantic": "node",
+      "container": "square",
+      "asset": "icons/security/wifi-secure.svg",
+      "tier": "ibm-cloud",
+      "color": "#FA4D56",
+      "keywords": [
+        "wifi",
+        "secure"
+      ]
+    }
+  ]
+}
