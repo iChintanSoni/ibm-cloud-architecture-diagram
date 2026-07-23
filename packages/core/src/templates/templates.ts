@@ -368,7 +368,7 @@ function elementsFor(templateId: DiagramTemplateId): SceneElement[] {
 function routeTemplateConnectors(elements: SceneElement[]): SceneElement[] {
   const scene = new Scene();
   scene._replaceAll(elements);
-  return elements.map((element) =>
+  return scene.all().map((element) =>
     element.type === "connector"
       ? { ...element, waypoints: routeConnectorInScene(scene, element) }
       : element
