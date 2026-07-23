@@ -57,12 +57,17 @@ Type-specific additions:
 | `group` | — (dashed border) | `deployedTo` grouping of services/apps |
 | `zone` | `zoneKind: "region"\|"az"\|"vpc"…` | Boundary/location |
 | `actor` | `catalogRef?` | Role/user (rounded) |
-| `connector` | `from`, `to` (port refs), `connectorType`, `waypoints[]` | IBM connector nomenclature |
+| `connector` | `from`, `to` (port refs), `connectorType`, `waypoints[]`, `routing?`, `direction?`, `flowColor?`, `cardinality?` | IBM connector nomenclature |
 | `text` | `text`, typography | Free annotation |
 | `frame` | `name`, `order`, `bounds` | Section + presentation step |
 
 Ports are referenced as `{ elementId, port: "n"|"e"|"s"|"w"|"center" }`. Connectors store their
-routed `waypoints` for stable re-open, but the router can re-derive them.
+routed `waypoints` for stable re-open, but the router can re-derive them — `routing: "auto"`
+(default) re-routes on every endpoint move/resize; `routing: "manual"` keeps whatever waypoints
+were last set. `direction` (`"unidirectional"` default, or `"bidirectional"`) and `flowColor`
+(`"private"`/`"public"`) apply to connection-type connectors; `cardinality` (`{ from?, to? }`
+labels) applies to relationship-type connectors. See
+[Connector nomenclature](05-ibm-spec-conformance.md#connector-nomenclature) for the full type list.
 
 ## Catalog references, not embeds
 

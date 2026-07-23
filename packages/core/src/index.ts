@@ -4,7 +4,16 @@ export { Scene, type SceneChangeEvent } from "./scene/scene.js";
 
 // Commands
 export type { Command } from "./commands/types.js";
-export { addElement, removeElement, updateElement, moveElements, batch } from "./commands/commands.js";
+export {
+  addElement,
+  removeElement,
+  updateElement,
+  moveElements,
+  reparentElement,
+  setManualWaypoints,
+  autoRouteConnector,
+  batch
+} from "./commands/commands.js";
 export { CommandBus } from "./commands/commandBus.js";
 
 // Interaction
@@ -15,13 +24,23 @@ export { hitTest } from "./interaction/hitTest.js";
 export { SvgRenderer, type ResolvedTheme } from "./render/svgRenderer.js";
 export { portPoint, type Point } from "./render/port.js";
 
+// Routing
+export { routeOrthogonal, pathCrossesObstacles, type Rect, type RoutePort } from "./routing/orthogonalRouter.js";
+export { routeConnectorInScene, connectorPathPoints } from "./routing/routeConnector.js";
+
 // Catalog
 export { Catalog } from "./catalog/catalog.js";
 export type { CatalogManifest, CatalogCategory, IconMeta, IconTier } from "./catalog/types.js";
 
 // Linter
 export { Linter } from "./linter/linter.js";
-export { defaultRules, missingLabelRule, danglingConnectorRule } from "./linter/rules.js";
+export {
+  defaultRules,
+  missingLabelRule,
+  danglingConnectorRule,
+  connectorCrossesObstacleRule,
+  groupWithoutBoxAncestorRule
+} from "./linter/rules.js";
 export type { Diagnostic, Rule, Severity } from "./linter/types.js";
 
 // IO

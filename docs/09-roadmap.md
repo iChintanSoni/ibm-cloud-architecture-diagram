@@ -33,10 +33,25 @@ Ship a usable, on-spec human editor in the browser.
   explicitly out of scope here — [D21](00-decision-log.md#d21--container-presets-are-a-named-shortcut-layer-not-new-element-types--locked) lands them in M7 instead.
 
 #### M4 — Smart connectors
-← next
-- Ports, orthogonal auto-routing, IBM connector types, manual waypoints ([D13](00-decision-log.md#d13--smart-orthogonal-connectors-with-ibm-types--locked)).
+✅ **Done** (2026-07-23)
+- Connectors bind to named ports (`n`/`e`/`s`/`w`/`center`) and route through a grid-based
+  orthogonal (Manhattan) router: obstacle-free where possible, fewest bends, mild west→east bias
+  per [Layout convention](05-ibm-spec-conformance.md#layout-convention). Obstacles are leaf shapes
+  (icon/actor/text) only — containers are never treated as obstacles, since IBM deployment
+  diagrams routinely cross a box/zone boundary.
+- Moving or resizing a connected element re-routes its attached `"auto"` connectors as part of the
+  same undoable command; `editor.setConnectorWaypoints()` overrides a route manually (switches it
+  to `"manual"`, exempt from auto re-routing) and `editor.autoRouteConnector()` reverts it.
+- Full IBM connector nomenclature ([Connector nomenclature](05-ibm-spec-conformance.md#connector-nomenclature)):
+  the five connection types (logical/physical/tunneling/double-tunnel/plain, with
+  unidirectional/bidirectional + green-private/blue-public variants) and the six relationship
+  types (dependency, association, aggregation, composition, implementation, extends), each with
+  its own line style and arrowhead/diamond marker.
+- Linter gained a crossing-route rule: an auto or manual connector whose path crosses a leaf shape
+  it isn't attached to is flagged, with a "re-route" quick-fix.
 
 #### M5 — `.icad` I/O + export
+← next
 - Read/write single-file JSON + migration layer; SVG (embedded source) + PNG export ([File Format](03-file-format.md)).
 - File System Access API + fallback; autosave/recovery ([D9](00-decision-log.md#d9--file-system-access-api--fallback--locked)/[D10](00-decision-log.md#d10--autosave-draft--crash-recovery--locked)).
 

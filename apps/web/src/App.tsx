@@ -32,10 +32,12 @@ function seedDemoDiagram(editor: Editor): void {
   });
 
   editor.connect({ elementId: customer, port: "e" }, { elementId: gateway, port: "w" }, {
-    connectorType: "actor-to-node"
+    connectorType: "connection",
+    flowColor: "public"
   });
   editor.connect({ elementId: gateway, port: "e" }, { elementId: compute, port: "w" }, {
-    connectorType: "flow"
+    connectorType: "connection",
+    flowColor: "private"
   });
   editor.connect({ elementId: compute, port: "e" }, { elementId: storage, port: "w" }, {
     connectorType: "dependency"

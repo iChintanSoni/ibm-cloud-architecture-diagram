@@ -81,6 +81,75 @@ describe("createEditor", () => {
     expect(polyline?.getAttribute("points")).toContain("100,30");
   });
 
+  it("routes a connector around an icon placed in its path", () => {
+    const a = editor.addBox({ at: { x: 0, y: 0 }, w: 100, h: 60, label: "A" });
+    const b = editor.addBox({ at: { x: 300, y: 0 }, w: 100, h: 60, label: "B" });
+    editor.addIcon("test/vpc", { at: { x: 180, y: 5 } });
+    const connId = editor.connect({ elementId: a, port: "e" }, { elementId: b, port: "w" });
+
+    expect(editor.scene.get(connId)).toMatchObject({ routing: "auto" });
+    const waypoints = (editor.scene.get(connId) as { waypoints?: unknown[] }).waypoints;
+    expect(waypoints?.length).toBeGreaterThan(0);
+  });
+
+  it("renders a dashed line and a hollow arrowhead for an implementation connector", () => {
+    const a = editor.addBox({ at: { x: 0, y: 0 }, w: 100, h: 60, label: "A" });
+    const b = editor.addBox({ at: { x: 300, y: 0 }, w: 100, h: 60, label: "B" });
+    const connId = editor.connect(
+      { elementId: a, port: "e" },
+      { elementId: b, port: "w" },
+      { connectorType: "implementation" }
+    );
+
+    const line = container.querySelector(`[data-icad-id="${connId}"] polyline`);
+    expect(line?.getAttribute("stroke-dasharray")).toBe("4 3");
+    expect(line?.getAttribute("marker-end")).toBe("url(#icad-arrow-hollow)");
+  });
+
+  it("colors a connection-type connector by flowColor", () => {
+    const a = editor.addBox({ at: { x: 0, y: 0 }, w: 100, h: 60, label: "A" });
+    const b = editor.addBox({ at: { x: 300, y: 0 }, w: 100, h: 60, label: "B" });
+    const connId = editor.connect(
+      { elementId: a, port: "e" },
+      { elementId: b, port: "w" },
+      { connectorType: "connection", flowColor: "public" }
+    );
+
+    const line = container.querySelector(`[data-icad-id="${connId}"] polyline`);
+    expect(line?.getAttribute("stroke")).toBe("#0f62fe");
+  });
+
+  it("renders arrowheads at both ends of a bidirectional connection", () => {
+    const a = editor.addBox({ at: { x: 0, y: 0 }, w: 100, h: 60, label: "A" });
+    const b = editor.addBox({ at: { x: 300, y: 0 }, w: 100, h: 60, label: "B" });
+    const connId = editor.connect(
+      { elementId: a, port: "e" },
+      { elementId: b, port: "w" },
+      { connectorType: "connection", direction: "bidirectional" }
+    );
+
+    const line = container.querySelector(`[data-icad-id="${connId}"] polyline`);
+    expect(line?.getAttribute("marker-start")).toBe("url(#icad-arrow)");
+    expect(line?.getAttribute("marker-end")).toBe("url(#icad-arrow)");
+  });
+
+  it("overrides the route with manual waypoints and can switch back to auto", () => {
+    const a = editor.addBox({ at: { x: 0, y: 0 }, w: 100, h: 60, label: "A" });
+    const b = editor.addBox({ at: { x: 300, y: 0 }, w: 100, h: 60, label: "B" });
+    const connId = editor.connect({ elementId: a, port: "e" }, { elementId: b, port: "w" });
+
+    editor.setConnectorWaypoints(connId, [{ x: 150, y: 200 }]);
+    expect(editor.scene.get(connId)).toMatchObject({ routing: "manual", waypoints: [{ x: 150, y: 200 }] });
+
+    editor.commands.dispatch(moveElements(editor.scene, [b], 0, 50));
+    expect(editor.scene.get(connId)).toMatchObject({ waypoints: [{ x: 150, y: 200 }] });
+
+    editor.autoRouteConnector(connId);
+    const reRouted = editor.scene.get(connId) as { routing?: string; waypoints?: unknown[] };
+    expect(reRouted.routing).toBe("auto");
+    expect(reRouted.waypoints).not.toEqual([{ x: 150, y: 200 }]);
+  });
+
   it("undoes and redoes through the shared command bus", () => {
     const id = editor.addBox({ at: { x: 0, y: 0 }, label: "VPC" });
     expect(editor.scene.has(id)).toBe(true);

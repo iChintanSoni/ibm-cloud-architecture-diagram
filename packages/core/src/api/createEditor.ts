@@ -1,20 +1,24 @@
 import type { Catalog } from "../catalog/catalog.js";
 import { CommandBus } from "../commands/commandBus.js";
-import { addElement } from "../commands/commands.js";
+import { addElement, autoRouteConnector, setManualWaypoints } from "../commands/commands.js";
 import { SelectionManager } from "../interaction/selection.js";
 import { applyIcad, toIcad, type IcadDocument } from "../io/icad.js";
 import { exportPng, exportSvg } from "../io/export.js";
 import { Linter } from "../linter/linter.js";
 import type { Diagnostic } from "../linter/types.js";
 import { SvgRenderer, type ResolvedTheme } from "../render/svgRenderer.js";
+import { routeConnectorInScene } from "../routing/routeConnector.js";
 import { Scene, type SceneChangeEvent } from "../scene/scene.js";
 import type {
   ActorElement,
   BoxElement,
   CanvasSettings,
+  ConnectorDirection,
   ConnectorElement,
   ConnectorType,
   ElementId,
+  EndpointLabels,
+  FlowColor,
   GroupElement,
   IconNodeElement,
   PortRef,
@@ -210,9 +214,20 @@ export class Editor {
     return id;
   }
 
-  connect(from: PortRef, to: PortRef, opts: { connectorType?: ConnectorType; id?: ElementId } = {}): ElementId {
+  connect(
+    from: PortRef,
+    to: PortRef,
+    opts: {
+      connectorType?: ConnectorType;
+      direction?: ConnectorDirection;
+      flowColor?: FlowColor;
+      cardinality?: EndpointLabels;
+      label?: string;
+      id?: ElementId;
+    } = {}
+  ): ElementId {
     const id = opts.id ?? generateId("conn");
-    const element: ConnectorElement = {
+    const base: ConnectorElement = {
       id,
       type: "connector",
       semantic: "node",
@@ -222,10 +237,26 @@ export class Editor {
       h: 0,
       from,
       to,
-      connectorType: opts.connectorType ?? "association"
+      connectorType: opts.connectorType ?? "association",
+      routing: "auto",
+      ...(opts.direction ? { direction: opts.direction } : {}),
+      ...(opts.flowColor ? { flowColor: opts.flowColor } : {}),
+      ...(opts.cardinality ? { cardinality: opts.cardinality } : {}),
+      ...(opts.label ? { label: { text: opts.label } } : {})
     };
+    const element: ConnectorElement = { ...base, waypoints: routeConnectorInScene(this.scene, base) };
     this.commands.dispatch(addElement(element));
     return id;
+  }
+
+  /** Overrides a connector's route with explicit waypoints (D13's manual escape hatch). */
+  setConnectorWaypoints(id: ElementId, waypoints: Array<{ x: number; y: number }>): void {
+    this.commands.dispatch(setManualWaypoints(this.scene, id, waypoints));
+  }
+
+  /** Switches a manually-routed connector back to auto-routing. */
+  autoRouteConnector(id: ElementId): void {
+    this.commands.dispatch(autoRouteConnector(this.scene, id));
   }
 
   lint(): Diagnostic[] {

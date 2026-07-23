@@ -28,11 +28,45 @@ export interface PortRef {
   port: PortSide;
 }
 
-export type ConnectorType =
-  | "association"
-  | "flow"
+/**
+ * Physical/protocol connections and messages between elements
+ * (docs/05-ibm-spec-conformance.md#connector-nomenclature).
+ */
+export type ConnectionType =
+  | "logical-connection"
+  | "connection"
+  | "physical-connection"
+  | "tunneling-connection"
+  | "traffic-through-double-tunnel";
+
+/** Logical relationships between elements, not network traffic. */
+export type RelationshipType =
   | "dependency"
-  | "actor-to-node";
+  | "association"
+  | "aggregation"
+  | "composition"
+  | "implementation"
+  | "extends";
+
+export type ConnectorType = ConnectionType | RelationshipType;
+
+/** Connection types render one arrowhead (unidirectional) or two (bidirectional). */
+export type ConnectorDirection = "unidirectional" | "bidirectional";
+
+/** Independent of connectorType: green = private connection, blue = public. */
+export type FlowColor = "private" | "public";
+
+/**
+ * "auto" connectors are recomputed by the orthogonal router whenever an
+ * endpoint moves or resizes; "manual" connectors keep whatever waypoints
+ * were last set and are never touched by the router.
+ */
+export type RoutingMode = "auto" | "manual";
+
+export interface EndpointLabels {
+  from?: string;
+  to?: string;
+}
 
 interface BaseElement {
   id: ElementId;
@@ -83,7 +117,15 @@ export interface ConnectorElement extends BaseElement {
   from: PortRef;
   to: PortRef;
   connectorType: ConnectorType;
+  /** Defaults to "unidirectional"; only meaningful for ConnectionType connectors. */
+  direction?: ConnectorDirection;
+  /** Only meaningful for ConnectionType connectors. */
+  flowColor?: FlowColor;
+  /** "0..N"-style cardinality labels; only meaningful for RelationshipType connectors. */
+  cardinality?: EndpointLabels;
   waypoints?: Array<{ x: number; y: number }>;
+  /** Defaults to "auto". See RoutingMode. */
+  routing?: RoutingMode;
 }
 
 export interface TextElement extends BaseElement {
