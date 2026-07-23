@@ -7,32 +7,36 @@ not dates.
 
 Ship a usable, on-spec human editor in the browser.
 
-**M1 — Core engine skeleton** ✅ Done (2026-07-22)
+#### M1 — Core engine skeleton
+✅ **Done** (2026-07-22)
 - `packages/core`: scene model, command bus + undo, SVG DOM renderer, pan/zoom, selection,
   hit-testing. Framework-agnostic ([D2](00-decision-log.md#d2--framework-agnostic-typescript-core--thin-shells--locked)).
 
-**M2 — Icon catalog pipeline** ✅ Done (2026-07-23)
-- `packages/catalog-build` converts pinned IBM stencils → `packages/catalog` (manifest + SVGs).
-- `core/catalog` runtime search/resolve. See [Icon Catalog](04-icon-catalog.md).
+#### M2 — Icon catalog pipeline
+✅ **Done** (2026-07-23)
+- `packages/catalog-build` converts a pinned IBM stencils commit → `packages/catalog` (manifest +
+  SVGs): 207 icons across 10 categories. See [Icon Catalog](04-icon-catalog.md).
+- `core/catalog` runtime search/resolve.
 
-**M3 — Semantic elements & containers** ← next
+#### M3 — Semantic elements & containers
+← next
 - Box (`deployedOn`), Group (`deployedTo`), Zone, Actor, IconNode, Text; containment/move-with.
 
-**M4 — Smart connectors**
+#### M4 — Smart connectors
 - Ports, orthogonal auto-routing, IBM connector types, manual waypoints ([D13](00-decision-log.md#d13--smart-orthogonal-connectors-with-ibm-types--locked)).
 
-**M5 — `.icad` I/O + export**
+#### M5 — `.icad` I/O + export
 - Read/write single-file JSON + migration layer; SVG (embedded source) + PNG export ([File Format](03-file-format.md)).
 - File System Access API + fallback; autosave/recovery ([D9](00-decision-log.md#d9--file-system-access-api--fallback--locked)/[D10](00-decision-log.md#d10--autosave-draft--crash-recovery--locked)).
 
-**M6 — Conformance linter**
+#### M6 — Conformance linter
 - Rule set, diagnostics, quick-fixes, validation panel, optional export gate ([Spec Conformance](05-ibm-spec-conformance.md)).
 
-**M7 — Chrome, templates, find, themes (Carbon)**
+#### M7 — Chrome, templates, find, themes (Carbon)
 - `packages/ui-web` + `apps/web`: library panel, properties/layers, top bar, command palette;
   IBM-level templates + frames; find-on-canvas; auto/light/dark ([Editor UX](06-editor-ux.md)).
 
-**M8 — Accessibility to AA**
+#### M8 — Accessibility to AA
 - Keyboard-operable canvas, screen-reader object tree, live regions, CI a11y checks ([Accessibility](07-accessibility.md)).
 
 **v1 exit criteria:** an architect builds a correct system-context + high-level diagram end to

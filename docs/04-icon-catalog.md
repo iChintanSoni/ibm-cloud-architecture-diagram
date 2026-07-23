@@ -3,6 +3,12 @@
 The catalog is the bundled, offline, versioned set of IBM icons the editor draws from. It is
 **generated at build time** from IBM's published stencils ([D11](00-decision-log.md#d11--build-time-icon-conversion-bundled-offline-catalog--locked)).
 
+> **Status:** implemented ([Roadmap M2](09-roadmap.md#m2--icon-catalog-pipeline)).
+> `packages/catalog-build` has generated `packages/catalog/2.0.0` — 207 icons across 10 categories
+> (`ai`, `actors`, `applications`, `compute`, `data`, `devops`, `network`, `observability`,
+> `security`, `storage`), pinned at upstream commit `32d9c311b`. A few details below differ from
+> the original design once real icon data was in hand — noted inline.
+
 ## Source of truth
 
 [IBM-Cloud/architecture-icons](https://github.com/IBM-Cloud/architecture-icons) provides icons as
@@ -28,16 +34,23 @@ flowchart LR
 
 Steps:
 
-1. **Extract** shapes from IBM draw.io stencil XML and the SVG set (including the
-   "not released in draw.io" complementary set).
-2. **Normalize** to a canonical 48×48 container, consistent viewBox, and IBM color tokens; strip
-   editor-specific cruft.
-3. **Optimize** each SVG (SVGO) for crisp, small, inlineable assets.
+1. **Extract** shapes from the upstream `svg/` set (the draw.io stencil XML turned out to be
+   redundant — the SVG export already carries every icon, including the "not released in draw.io"
+   complementary set, and is far simpler to parse than mxGraph XML).
+2. **Normalize**: each upstream file is a 48×48 colored tile with a white glyph on top. We strip
+   that background tile (recording its color as the icon's accent), recolor the now-exposed white
+   glyph to that accent color, and re-frame the glyph into the 20×20 viewBox `core/render` expects
+   for its own white 48×48 container — reading the glyph's local size/offset from its
+   `_Transparent_Rectangle_` hit-area rect when present, with a sensible default otherwise (see
+   `packages/catalog-build/src/extract.ts`).
+3. **Optimize** each SVG (SVGO) for crisp, small, inlineable assets; ids are namespaced per icon so
+   the handful of icons using `clipPath`/`mask` don't collide when several share a canvas.
 4. **Derive metadata** per icon: stable `id`, display `name`, `category`, default `semantic`,
-   `color`, search `keywords`, and `aliases` (old→new IDs for migration).
+   `color`, search `keywords`. (`aliases`, for old→new ID migration, will start being populated the
+   first time the catalog version is bumped — nothing to alias from yet on the first cut.)
 5. **Emit** `packages/catalog/<version>/` = an `index.json` manifest + individual optimized SVGs.
-6. **Verify**: schema-valid, no duplicate IDs, every icon has an accessible name, container spec
-   respected.
+6. **Verify**: no duplicate IDs, every icon has an accessible name, every referenced asset file
+   exists.
 
 Re-running the pipeline against a newer upstream tag produces a new catalog version; we add
 `aliases` for anything renamed so existing files migrate cleanly.
@@ -49,32 +62,38 @@ Re-running the pipeline against a newer upstream tag produces a new catalog vers
 {
   "id": "ibm-cloud",
   "version": "2.0.0",
-  "upstream": { "repo": "IBM-Cloud/architecture-icons", "ref": "…commit…" },
+  "upstream": {
+    "repo": "IBM-Cloud/architecture-icons",
+    "ref": "32d9c311b0dadb95f0fe4fa88b27f3af41c1dbc5"
+  },
   "categories": [
-    { "id": "compute",  "name": "Compute" },
-    { "id": "network",  "name": "Network" },
-    { "id": "storage",  "name": "Storage" },
-    { "id": "security", "name": "Security" },
-    { "id": "data",     "name": "Data" },
-    { "id": "devops",   "name": "DevOps" },
-    { "id": "ai",       "name": "AI" },
-    { "id": "actors",   "name": "Actors" },
-    { "id": "groups",   "name": "Groups" }
-    /* …IBM Core, IBM Cloud, Domains/Industries, 3rd Party groupings… */
+    { "id": "compute",       "name": "Compute" },
+    { "id": "network",       "name": "Network" },
+    { "id": "storage",       "name": "Storage" },
+    { "id": "security",      "name": "Security" },
+    { "id": "data",          "name": "Data" },
+    { "id": "devops",        "name": "DevOps" },
+    { "id": "ai",            "name": "AI" },
+    { "id": "actors",        "name": "Actors" },
+    { "id": "applications",  "name": "Applications" },
+    { "id": "observability", "name": "Observability" }
+    /* Group/Zone are native ICAD container elements, not catalog icons — no "groups" category. */
   ],
   "icons": [
     {
       "id": "ibm-cloud/vpc",
-      "name": "Virtual Private Cloud",
+      "name": "VPC",
       "category": "network",
       "semantic": "node",              // default IBM meaning when placed
       "container": "square",
-      "color": "#0f62fe",
+      "color": "#1192E8",
       "asset": "icons/network/vpc.svg",
-      "keywords": ["vpc", "virtual private cloud", "gen2"],
-      "aliases": ["ibm-cloud/gen2-vpc"],
-      "tier": "ibm-cloud"              // ibm-core | ibm-cloud | domains | third-party
+      "keywords": ["vpc"],
+      "tier": "ibm-cloud"              // ibm-core | ibm-cloud | domains | third-party —
+                                       // only "ibm-cloud" is populated so far; see below
     }
+    // `aliases` (old→new ID, for migration) will appear on entries once the catalog is
+    // re-generated against a newer upstream ref and something gets renamed.
   ]
 }
 ```
