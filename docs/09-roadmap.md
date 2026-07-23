@@ -74,8 +74,8 @@ Ship a usable, on-spec human editor in the browser.
   and enforces block-on-error when enabled.
 
 #### M7 — Chrome, templates, find, themes (Carbon)
-← next
-- **In progress — library vertical slice (2026-07-23):** reusable `packages/ui-web` Carbon library
+🟡 **In progress**
+- ✅ **Library vertical slice done (2026-07-23):** reusable `packages/ui-web` Carbon library
   panel, catalog search/category browsing, click-to-place icons and native containers, automatic
   containment with the prescribed 16px inset, and the four container presets confirmed by IBM
   worked examples (IBM Cloud, Public Network, OpenShift, Availability zone). Inferred presets
@@ -86,7 +86,7 @@ Ship a usable, on-spec human editor in the browser.
 
 Aligned the implementation with the published
 [IBM Cloud Architecture Framework](https://cloud.ibm.com/docs/architecture-framework?topic=architecture-framework-architecture-diagram)
-and use the stencil repository as the supplemental asset/inventory source:
+and used the stencil repository as the supplemental asset/inventory source:
 
 1. Documented the source-of-truth precedence: Architecture Framework → IBM Design-approved internal
    guidance → native Draw.io stencils → repository inventory/complementary XML → raw SVG exports
@@ -102,6 +102,25 @@ and use the stencil repository as the supplemental asset/inventory source:
 
 **Separate design follow-up (not part of M7.1):** confirm whether `deployedTo` is single- or
 multi-valued before changing the `.icad` schema or replacing `parentId` with membership relations.
+
+##### M7.2 — Selection inspector and layers
+← **next task**
+
+Make placed elements editable and the diagram hierarchy navigable:
+
+1. Add Carbon **Properties / Layers / Validation** tabs to the right inspector, moving the existing
+   validation surface into its tab without losing diagnostics, quick-fixes, or rule settings.
+2. Expose selection changes to the React shell and show single-selection properties for label,
+   position, size, parent container, and type-specific fields.
+3. Route every property mutation through public `Editor` commands so edits are undoable, reroute
+   attached connectors when geometry changes, and autosave normally.
+4. Add a hierarchical Layers tree derived from `parentId`; selecting a row selects the canvas
+   element, and the selected canvas element is revealed in the tree.
+5. Cover inspector edits, undo/redo, connector rerouting, layer nesting, and selection
+   synchronization with component and integration tests.
+
+**Done when:** a user can place an element, select it, edit its core properties, undo the edit, and
+navigate the same object through Layers and Validation without leaving the right inspector.
 
 - `packages/ui-web` + `apps/web`: library panel, properties/layers, top bar, command palette;
   IBM-level templates + frames; find-on-canvas; auto/light/dark ([Editor UX](06-editor-ux.md)).
