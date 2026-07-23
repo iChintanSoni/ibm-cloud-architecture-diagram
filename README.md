@@ -1,0 +1,115 @@
+# ICAD — IBM Cloud Architecture Diagrams
+
+A purpose-built editor for **IBM Cloud architecture diagrams** — "Excalidraw, but for IBM Cloud,
+and spec-aware." It renders crisp, IBM-Design-faithful diagrams, understands IBM element semantics
+natively (`deployedOn` / `deployedTo`, nodes, actors, zones), saves to a first-class **`.icad`**
+file, and — from v2 — can be driven by AI agents through an MCP server and Agent Skills.
+
+> **Status:** early scaffold ([Roadmap M1](docs/09-roadmap.md#m1--core-engine-skeleton)). The
+> engine skeleton (`packages/core`) and the web shell (`apps/web`) build, typecheck, and run —
+> scene model, command bus with undo/redo, SVG renderer with light/dark theming, a placeholder
+> icon catalog, the advisory linter, and `.icad` save/load/export all work end to end. The real
+> IBM icon catalog (`packages/catalog-build`, M2) and the remaining editor UX (M3–M8) are next.
+
+> **Positioning:** official IBM-internal tool. Uses the sanctioned
+> [IBM Cloud architecture icons](https://github.com/IBM-Cloud/architecture-icons); releases are
+> gated by IBM Design sign-off.
+
+---
+
+## Why this exists
+
+The sanctioned path today is **draw.io + the IBM Cloud stencil library**. It works, but nothing
+enforces the IBM conventions, draw.io has no IBM semantics to validate or autocomplete against,
+there's no first-class file identity, and there's no clean way for an agent to author a diagram.
+ICAD fixes all four. See [Vision & Scope](docs/01-vision-and-scope.md).
+
+## What makes it different
+
+- **Spec-aware, not generic.** Shapes carry IBM meaning; an advisory **linter** with quick-fixes
+  keeps diagrams on-spec. → [Spec Conformance](docs/05-ibm-spec-conformance.md)
+- **Crisp & on-brand.** Exact IBM icons (20×20 glyph in 48×48, 1px outline), orthogonal
+  connectors, Carbon + IBM Plex chrome — no hand-drawn look. → [Editor UX](docs/06-editor-ux.md)
+- **Files-first & git-friendly.** Local-first single-file JSON `.icad`; SVGs embed a re-editable
+  copy. → [File Format](docs/03-file-format.md)
+- **Machine-authorable (v2).** One headless engine drives both the human editor and an MCP server,
+  so agents and people edit the same diagrams. → [Agent Integration](docs/08-agent-integration.md)
+- **Accessible by requirement.** IBM Equal Access / WCAG 2.1 AA, including a keyboard-operable,
+  screen-reader-navigable canvas. → [Accessibility](docs/07-accessibility.md)
+
+## Feature snapshot
+
+| Area | v1 (MVP) | Later |
+|---|---|---|
+| Editor | SVG canvas, semantic shapes, containers, smart orthogonal connectors | Presentation polish |
+| IBM icons | Bundled offline catalog from IBM stencils | Catalog refresh tooling (v3) |
+| Conformance | Advisory linter + quick-fixes + export gate | More rules |
+| Files | `.icad` open/save, autosave + crash recovery | — |
+| Export | SVG (embedded source) + PNG, clipboard | — |
+| Templates | System context / high-level / detailed + frames | More templates |
+| Themes | Auto / light / dark | — |
+| Agents | *(designed for)* | MCP server + Agent Skills (v2) |
+| Surfaces | Web app | VS Code (v2), Desktop/Tauri (v3) |
+
+## Documentation
+
+The full plan lives in [`/docs`](docs/):
+
+| # | Doc | What's inside |
+|---|---|---|
+| 00 | [Decision Log](docs/00-decision-log.md) | The 20 locked decisions (ADRs) + rationale |
+| 01 | [Vision & Scope](docs/01-vision-and-scope.md) | Problem, personas, goals, non-goals, positioning |
+| 02 | [Architecture](docs/02-architecture.md) | Monorepo, framework-agnostic core, SVG engine, data flow |
+| 03 | [File Format](docs/03-file-format.md) | `.icad` JSON schema, migrations, SVG/PNG export |
+| 04 | [Icon Catalog](docs/04-icon-catalog.md) | IBM stencil → catalog build pipeline, manifest schema |
+| 05 | [Spec Conformance](docs/05-ibm-spec-conformance.md) | Element semantics, connectors, the linter |
+| 06 | [Editor UX](docs/06-editor-ux.md) | Carbon UI, canvas interactions, persistence, themes, find, templates |
+| 07 | [Accessibility](docs/07-accessibility.md) | Equal Access / WCAG 2.1 AA plan (incl. canvas a11y) |
+| 08 | [Agent Integration](docs/08-agent-integration.md) | MCP authoring toolset + Agent Skills (v2) |
+| 09 | [Roadmap](docs/09-roadmap.md) | v1 → v2 → v3 milestones and exit criteria |
+
+## Architecture at a glance
+
+```
+packages/core        framework-agnostic TS engine (scene, commands, SVG render, linter, io, catalog, api)
+packages/catalog     generated IBM icon catalog (manifest + optimized SVGs)
+packages/catalog-build  build-time IBM stencil → catalog converter
+packages/ui-web      Carbon + IBM Plex app chrome (React)
+packages/mcp         (v2) MCP server wrapping core/api
+apps/web             v1 web shell (Vite)
+apps/vscode          (v2) VS Code custom editor for .icad
+apps/desktop         (v3) Tauri shell
+```
+
+The core has **no UI-framework dependency**; every mutation is a **command** (so undo, autosave,
+and the future MCP server share one path); rendering and export both target **SVG**. Details in
+[Architecture](docs/02-architecture.md).
+
+## The `.icad` file
+
+A single human-readable JSON file. Icons are referenced by catalog ID (not embedded), so files are
+tiny and diff cleanly in git. Full schema in [File Format](docs/03-file-format.md).
+
+## Tech stack
+
+TypeScript (strict) · custom SVG DOM renderer · React + Carbon Design System + IBM Plex (shells) ·
+pnpm workspaces · Vite · Vitest / Playwright / IBM Equal Access checks. Node ≥ 20, pnpm ≥ 9.
+
+## Getting started
+
+```bash
+pnpm install
+pnpm --filter @icad/core build   # build the engine
+pnpm --filter @icad/core test    # run its unit tests
+pnpm --filter @icad/web dev      # run the web editor (http://localhost:5173)
+```
+
+The web app currently renders against a small **placeholder** icon set
+(`apps/web/src/demoCatalog.ts`), not real IBM artwork — that's swapped for the generated catalog
+once `packages/catalog-build` (Roadmap M2) exists.
+
+## References
+
+- [IBM Cloud — Creating an architecture diagram](https://cloud.ibm.com/docs/architecture-framework?topic=architecture-framework-architecture-diagram)
+- [IBM-Cloud/architecture-icons](https://github.com/IBM-Cloud/architecture-icons)
+- [IBM Design Language](https://www.ibm.com/design/language/) · [Carbon Design System](https://carbondesignsystem.com/) · [IBM Equal Access Toolkit](https://www.ibm.com/able/toolkit/)
