@@ -174,8 +174,9 @@ element or frame by name via Find, step through a presentation, and keep their c
 a reload.
 
 #### M8 — Accessibility to AA
-🟡 **In progress** — keyboard-operable canvas, screen-reader object tree, live regions, CI a11y
-checks ([Accessibility](07-accessibility.md)).
+🟡 **In progress** — everything automatable is done (keyboard-operable canvas including
+connect/group, nested screen-reader object tree, live regions, real-browser CI a11y checks); only
+a manual VoiceOver/NVDA pass remains ([Accessibility](07-accessibility.md)).
 
 ##### M8.1 — Baseline canvas keyboard operation, roles/names, CI a11y checks
 ✅ **Done** (2026-07-23)
@@ -213,15 +214,49 @@ tree and live regions"), landed the foundational layer everything else builds on
 **Known limitation:** jsdom can't evaluate layout-dependent rules (contrast, target size) or real
 screen-reader output — those need a live browser pass, tracked below.
 
+##### M8.2 — Connect/group interactions, nested object tree, live regions, real-browser CI
+✅ **Done** (2026-07-23)
+
+Closed out every remaining M8 item except the manual screen-reader pass:
+
+1. Built port-to-port connector drawing from scratch — it didn't exist as a mouse feature before
+   this pass. `packages/core/src/routing/pickPorts.ts` picks a reasonable port pair by dominant
+   axis; `SvgRenderer` reveals a hovered element's four port markers, draws the in-progress draft
+   line, and exposes `Editor.connectNearest()`/`setConnectorDraftPoints()`/`previewConnectorBetween()`.
+   `apps/web` wires the mouse gesture (hover to reveal ports, drag from a port, drop on an exact
+   port or anywhere on another element for a nearest-port fallback, drop on empty canvas cancels)
+   and a keyboard equivalent (press `c` on a focused element to enter connect mode, Tab to aim at a
+   target, Enter to confirm, Escape to cancel).
+2. Built `Editor.groupElements()`/`ungroupElement()` — also new. `ungroupElement` is a hand-written
+   `Command` rather than a composed `batch()`, because `removeElement`'s cascading delete snapshots
+   descendants at construction time, which would delete children mid-reparent if composed naively.
+   Wired to `Ctrl/Cmd+G` / `Ctrl/Cmd+Shift+G`, the Edit menu, and the command palette.
+3. Decoupled keyboard focus from selection (`Editor.focusedElement()`/`focusElement()` vs.
+   `editor.selection`): Tab moves focus only, Enter selects the focused element, Shift+Space
+   extends the selection without collapsing it — needed so keyboard users can build a multi-element
+   selection (for Group) the same way a mouse user shift-clicks.
+4. Added the full nested ARIA object tree: containers render `aria-owns` over their children, so
+   assistive tech reads containment as real parent/child structure (`Frame > Boundary > Boundary >
+   Group > button`) instead of a flat list — confirmed against a live accessibility tree, not just
+   jsdom.
+5. Added `LiveRegion` (`packages/ui-web/src/LiveRegion.tsx`, visually-hidden `role="status"`) and
+   wired announcements to insert/delete/connect/group/ungroup/quick-fix actions.
+6. Stood up real-browser a11y + keyboard E2E: Playwright + `@axe-core/playwright`
+   (`apps/web/e2e/`), wired into a new CI `e2e` job. Found and fixed four real accessibility bugs
+   that jsdom's axe pass couldn't catch (no `<main>` landmark, no `<h1>`, an `<h1>` not contained by
+   a landmark, a scrollable command-palette list without a verifiable keyboard path) plus two
+   Carbon/test-infra issues (styled radio buttons intercept clicks on the input itself, not the
+   label; Modal leaves fading content in the DOM after "close").
+7. Verified every new interaction manually in a live browser (not just automated tests): mouse
+   drag-to-connect, mouse Group/Ungroup via the Edit menu, and live-region announcements all confirmed
+   working end-to-end. (One dead end during that pass: hovering an element showed zero port markers
+   on a diagram carried over from earlier manual testing — traced to a stray leftover frame
+   overlapping the scene, which legitimately won `hitTest`'s topmost-bbox match ahead of the element
+   underneath; not a product bug, and reproduced cleanly with correct behavior on a fresh diagram.)
+
 **Remaining for M8:**
-- Full nested ARIA object tree (`aria-owns`-based, so containment reads as parent/child rather
-  than a flat list) and live regions announcing meaningful changes (element added, connected,
-  validation fixed).
-- Keyboard support for resize, connect, and group/ungroup (M8.1 covers create/select/move/delete
-  only).
-- Real browser a11y checks: axe-core/IBM Equal Access against the live app (not jsdom) in CI, plus
-  Playwright keyboard E2E flows building/editing a diagram with no pointer.
-- Manual screen-reader passes (VoiceOver/NVDA) on the core authoring flow.
+- Manual screen-reader passes (VoiceOver/NVDA) on the core authoring flow — the one item that
+  can't be automated and needs a human at an actual screen reader.
 
 **v1 exit criteria:** an architect builds a correct system-context + high-level diagram end to
 end, exports a reviewer-grade SVG, reopens it; linter catches common violations; AA verified.

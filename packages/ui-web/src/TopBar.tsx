@@ -35,6 +35,11 @@ export interface TopBarProps {
   canUndo: boolean;
   canRedo: boolean;
 
+  onGroup: () => void;
+  onUngroup: () => void;
+  canGroup: boolean;
+  canUngroup: boolean;
+
   zoomPercent: number;
   onZoomIn: () => void;
   onZoomOut: () => void;
@@ -88,6 +93,10 @@ export function TopBar({
   onRedo,
   canUndo,
   canRedo,
+  onGroup,
+  onUngroup,
+  canGroup,
+  canUngroup,
   zoomPercent,
   onZoomIn,
   onZoomOut,
@@ -118,6 +127,12 @@ export function TopBar({
           </MenuAction>
           <MenuAction onClick={onRedo} disabled={!canRedo}>
             Redo
+          </MenuAction>
+          <MenuAction onClick={onGroup} disabled={!canGroup}>
+            Group
+          </MenuAction>
+          <MenuAction onClick={onUngroup} disabled={!canUngroup}>
+            Ungroup
           </MenuAction>
         </HeaderMenu>
         <HeaderMenu menuLinkName="View" aria-label="View">

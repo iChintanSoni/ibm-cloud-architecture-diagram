@@ -9,6 +9,9 @@ import {
 } from "@carbon/react";
 import {
   createEditor,
+  hitTest,
+  isContainer,
+  portPoint,
   ruleMetadata,
   type ConformanceSeverity,
   type Diagnostic,
@@ -18,6 +21,7 @@ import {
   type Editor,
   type ExportGate,
   type FrameElement,
+  type PortSide,
   type SceneElement
 } from "@icad/core";
 import {
@@ -25,14 +29,16 @@ import {
   FindBar,
   InspectorPanel,
   LibraryPanel,
+  LiveRegion,
   NewDiagramDialog,
   TopBar,
+  elementDisplayName,
   findMatches,
   type CommandItem,
   type InsertKind,
   type LibraryPlacement
 } from "@icad/ui-web";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { createIbmCloudCatalog } from "./catalog";
 import { clearDraft, debounceAutosave, loadDraft, saveDraft } from "./persistence/autosave";
 import { openIcadFile, saveIcadFile, supportsFileSystemAccess } from "./persistence/fileSystem";
@@ -82,11 +88,20 @@ export function App() {
   const [exportGate, setExportGateState] = useState<ExportGate>("warn");
   const [zoomPercent, setZoomPercent] = useState(100);
   const [presentingFrameId, setPresentingFrameId] = useState<ElementId>();
+  const [connectingFromId, setConnectingFromId] = useState<ElementId>();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [findOpen, setFindOpen] = useState(false);
   const [findQuery, setFindQuery] = useState("");
   const [findActiveIndex, setFindActiveIndex] = useState(0);
+  const [announcement, setAnnouncement] = useState("");
   const carbonTheme = useResolvedTheme(themePreference);
+
+  // Live region for meaningful changes (docs/07-accessibility.md#canvas-the-hard-20): briefly
+  // clears first so the same message announces again even if it repeats back to back.
+  const announce = (message: string) => {
+    setAnnouncement("");
+    window.setTimeout(() => setAnnouncement(message), 50);
+  };
 
   const setThemePreference = (preference: ThemePreference) => {
     setThemePreferenceState(preference);
@@ -111,6 +126,10 @@ export function App() {
   // that render runs, the command stacks have fully settled.
   const canUndo = editorRef.current?.commands.canUndo() ?? false;
   const canRedo = editorRef.current?.commands.canRedo() ?? false;
+  const singleSelected =
+    selectedIds.length === 1 ? elements.find((element) => element.id === selectedIds[0]) : undefined;
+  const canGroup = selectedIds.length >= 2;
+  const canUngroup = singleSelected !== undefined && isContainer(singleSelected);
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -211,7 +230,16 @@ export function App() {
         return;
       }
       if (isEditableTarget(event.target)) return;
-      if (meta && (event.key === "=" || event.key === "+")) {
+      if (meta && event.key.toLowerCase() === "z" && event.shiftKey) {
+        event.preventDefault();
+        editorRef.current?.commands.redo();
+      } else if (meta && event.key.toLowerCase() === "z") {
+        event.preventDefault();
+        editorRef.current?.commands.undo();
+      } else if (meta && event.key.toLowerCase() === "y") {
+        event.preventDefault();
+        editorRef.current?.commands.redo();
+      } else if (meta && (event.key === "=" || event.key === "+")) {
         event.preventDefault();
         editorRef.current?.zoomIn();
       } else if (meta && event.key === "-") {
@@ -220,6 +248,12 @@ export function App() {
       } else if (meta && event.key === "0") {
         event.preventDefault();
         editorRef.current?.resetView();
+      } else if (meta && event.key.toLowerCase() === "g" && event.shiftKey) {
+        event.preventDefault();
+        handleUngroup();
+      } else if (meta && event.key.toLowerCase() === "g") {
+        event.preventDefault();
+        handleGroup();
       }
     };
     window.addEventListener("keydown", onKeyDown);
@@ -245,29 +279,82 @@ export function App() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [presentingFrameId, frames]);
 
-  // Keyboard-operable canvas (docs/07-accessibility.md#canvas-the-hard-20): Tab/Shift+Tab walk
-  // the meaningful element order (wrapping is disabled at the boundary so Tab can still exit to
-  // surrounding chrome — no keyboard trap), arrow keys nudge the current selection, Delete/
-  // Backspace removes it. Scoped to the canvas element itself so it never fires while typing
-  // elsewhere (Properties fields, Find, the command palette, ...).
+  // Keyboard-operable canvas (docs/07-accessibility.md#canvas-the-hard-20). Tab/Shift+Tab move
+  // keyboard focus only — wrapping is disabled at the boundary so Tab can still exit to
+  // surrounding chrome (no keyboard trap) — Enter/Space select the focused element (Shift+ toggles
+  // it into/out of a multi-selection, so a multi-element selection is fully keyboard-buildable for
+  // Group), arrow keys nudge the current selection, Delete/Backspace removes it, and "C" starts
+  // keyboard connect mode (Tab to a target, Enter to confirm, Escape to cancel). Scoped to the
+  // canvas element itself so it never fires while typing elsewhere (Properties fields, Find, the
+  // command palette, ...).
   useEffect(() => {
     const node = canvasRef.current;
     if (!node) return;
     const onKeyDown = (event: KeyboardEvent) => {
       const editor = editorRef.current;
       if (!editor || presentingFrameId !== undefined) return;
-      const focusedId = event.target instanceof Element ? event.target.getAttribute("data-icad-id") : null;
+
+      // Sync from wherever real DOM focus actually is: handles the bootstrap case where the
+      // very first Tab into the canvas lands natively on the roving tabindex="0" element,
+      // before any editor.focusElement() call has run.
+      const targetId = event.target instanceof Element ? event.target.getAttribute("data-icad-id") : null;
+      if (targetId && editor.focusedElement() !== targetId) editor.focusElement(targetId);
+      const focusedId = editor.focusedElement();
+
+      if (connectingFromId !== undefined) {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          editor.clearConnectorDraft();
+          editor.setHoveredElement(undefined);
+          setConnectingFromId(undefined);
+        } else if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          if (focusedId && focusedId !== connectingFromId) connectAndAnnounce(connectingFromId, focusedId);
+          editor.clearConnectorDraft();
+          editor.setHoveredElement(undefined);
+          setConnectingFromId(undefined);
+        } else if (event.key === "Tab") {
+          const order = editor.tabOrder();
+          const currentIndex = focusedId ? order.indexOf(focusedId) : -1;
+          if (currentIndex === -1) return;
+          const atBoundary = event.shiftKey ? currentIndex === 0 : currentIndex === order.length - 1;
+          if (atBoundary) return;
+          event.preventDefault();
+          if (event.shiftKey) editor.focusPrevious();
+          else editor.focusNext();
+          const nextId = editor.focusedElement();
+          if (nextId && nextId !== connectingFromId) editor.previewConnectorBetween(connectingFromId, nextId);
+        }
+        return; // swallow every other key (e.g. arrows) while connecting
+      }
 
       if (event.key === "Tab") {
         const order = editor.tabOrder();
-        const currentId = editor.selection.get()[0] ?? focusedId ?? undefined;
-        const currentIndex = currentId ? order.indexOf(currentId) : -1;
+        const currentIndex = focusedId ? order.indexOf(focusedId) : -1;
         if (currentIndex === -1) return; // nothing focused yet: let Tab enter natively
         const atBoundary = event.shiftKey ? currentIndex === 0 : currentIndex === order.length - 1;
         if (atBoundary) return; // let Tab exit to surrounding chrome instead of wrapping
         event.preventDefault();
         if (event.shiftKey) editor.focusPrevious();
         else editor.focusNext();
+        return;
+      }
+
+      if (event.key === "Enter" || event.key === " ") {
+        if (!focusedId) return;
+        event.preventDefault();
+        if (event.shiftKey) editor.selection.toggle(focusedId);
+        else editor.selection.set([focusedId]);
+        return;
+      }
+
+      if (event.key.toLowerCase() === "c" && !event.metaKey && !event.ctrlKey && !event.altKey) {
+        const source = focusedId ?? editor.selection.get()[0];
+        const el = source ? editor.scene.get(source) : undefined;
+        if (!el || el.type === "connector" || el.type === "frame") return;
+        event.preventDefault();
+        setConnectingFromId(el.id);
+        editor.setHoveredElement(el.id);
         return;
       }
 
@@ -293,12 +380,14 @@ export function App() {
         editor.nudgeElements(selected, nudge, 0);
       } else if (event.key === "Delete" || event.key === "Backspace") {
         event.preventDefault();
+        const names = selected.map((deleteId) => elementDisplayName(editor.scene.get(deleteId)!));
         editor.deleteElements(selected);
+        announce(names.length === 1 ? `${names[0]} deleted` : `${names.length} elements deleted`);
       }
     };
     node.addEventListener("keydown", onKeyDown);
     return () => node.removeEventListener("keydown", onKeyDown);
-  }, [presentingFrameId]);
+  }, [presentingFrameId, connectingFromId]);
 
   // Find jumps the viewport to the active match as the query or selection changes.
   useEffect(() => {
@@ -472,6 +561,108 @@ export function App() {
       id = placeLibraryItem(editor, placement, center);
     }
     editor.selection.set([id]);
+    announce(`${elementDisplayName(editor.scene.get(id)!)} added`);
+  };
+
+  const handleGroup = () => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    const ids = editor.selection.get();
+    const groupId = editor.groupElements(ids);
+    if (groupId) announce(`Grouped ${ids.length} elements`);
+  };
+
+  const handleUngroup = () => {
+    const editor = editorRef.current;
+    const id = editor?.selection.get()[0];
+    const element = id ? editor?.scene.get(id) : undefined;
+    if (!editor || !id || !element) return;
+    const name = elementDisplayName(element);
+    editor.ungroupElement(id);
+    announce(`Ungrouped ${name}`);
+  };
+
+  /** Connects two elements and announces it (docs/07-accessibility.md#canvas-the-hard-20). */
+  const connectAndAnnounce = (fromId: ElementId, toId: ElementId, exact?: { fromPort: PortSide; toPort: PortSide }) => {
+    const editor = editorRef.current;
+    const from = editor?.scene.get(fromId);
+    const to = editor?.scene.get(toId);
+    if (!editor || !from || !to) return;
+    const id = exact
+      ? editor.connect({ elementId: fromId, port: exact.fromPort }, { elementId: toId, port: exact.toPort })
+      : editor.connectNearest(fromId, toId);
+    if (!id) return;
+    editor.selection.set([id]);
+    announce(`Connected ${elementDisplayName(from)} to ${elementDisplayName(to)}`);
+  };
+
+  // Mouse drag-to-connect (docs/06-editor-ux.md#core-interactions): hover a shape to reveal its
+  // ports (SvgRenderer draws them), mousedown on one starts a rubber-band drag; dropping on
+  // another element's port uses that exact port, dropping anywhere else on it auto-picks a
+  // reasonable pair (connectNearest); dropping on empty canvas cancels.
+  const draggingPortRef = useRef<{ elementId: ElementId; side: PortSide } | undefined>(undefined);
+
+  const parsePortAttr = (value: string): { elementId: ElementId; side: PortSide } => {
+    const separator = value.lastIndexOf(":");
+    return { elementId: value.slice(0, separator), side: value.slice(separator + 1) as PortSide };
+  };
+
+  const handleCanvasMouseMove = (event: ReactMouseEvent<HTMLDivElement>) => {
+    const editor = editorRef.current;
+    const svg = canvasRef.current?.querySelector("svg");
+    if (!editor || !svg || activePlacement) return;
+    const point = clientPointToCanvas(svg, event.clientX, event.clientY);
+    if (!point) return;
+
+    if (draggingPortRef.current) {
+      const source = editor.scene.get(draggingPortRef.current.elementId);
+      if (source) editor.setConnectorDraftPoints(portPoint(source, draggingPortRef.current.side), point);
+    }
+
+    const hit = hitTest(editor.scene, point);
+    editor.setHoveredElement(hit && hit.type !== "connector" && hit.type !== "frame" ? hit.id : undefined);
+  };
+
+  const handleCanvasMouseDown = (event: ReactMouseEvent<HTMLDivElement>) => {
+    const editor = editorRef.current;
+    const portAttr =
+      event.target instanceof Element
+        ? event.target.closest<SVGElement>("[data-icad-port]")?.getAttribute("data-icad-port")
+        : null;
+    if (!editor || !portAttr) return;
+    const { elementId, side } = parsePortAttr(portAttr);
+    draggingPortRef.current = { elementId, side };
+    const source = editor.scene.get(elementId);
+    if (source) editor.setConnectorDraftPoints(portPoint(source, side), portPoint(source, side));
+  };
+
+  const handleCanvasMouseUp = (event: ReactMouseEvent<HTMLDivElement>) => {
+    const editor = editorRef.current;
+    const dragging = draggingPortRef.current;
+    draggingPortRef.current = undefined;
+    editor?.clearConnectorDraft();
+    editor?.setHoveredElement(undefined);
+    if (!editor || !dragging) return;
+
+    const targetPortAttr =
+      event.target instanceof Element
+        ? event.target.closest<SVGElement>("[data-icad-port]")?.getAttribute("data-icad-port")
+        : null;
+    if (targetPortAttr) {
+      const target = parsePortAttr(targetPortAttr);
+      if (target.elementId !== dragging.elementId) {
+        connectAndAnnounce(dragging.elementId, target.elementId, { fromPort: dragging.side, toPort: target.side });
+      }
+      return;
+    }
+
+    const svg = canvasRef.current?.querySelector("svg");
+    const point = svg ? clientPointToCanvas(svg, event.clientX, event.clientY) : undefined;
+    if (!point) return;
+    const target = hitTest(editor.scene, point);
+    if (target && target.id !== dragging.elementId && target.type !== "connector") {
+      connectAndAnnounce(dragging.elementId, target.id);
+    }
   };
 
   const commands: CommandItem[] = [
@@ -482,8 +673,31 @@ export function App() {
       ? [{ id: "save-as", label: "Save As…", category: "File", run: handleSaveIcadAs }]
       : []),
     { id: "export", label: "Export…", category: "File", run: openExport },
-    { id: "undo", label: "Undo", category: "Edit", disabled: !canUndo, run: () => editorRef.current?.commands.undo() },
-    { id: "redo", label: "Redo", category: "Edit", disabled: !canRedo, run: () => editorRef.current?.commands.redo() },
+    {
+      id: "undo",
+      label: "Undo",
+      category: "Edit",
+      shortcut: "Ctrl+Z",
+      disabled: !canUndo,
+      run: () => editorRef.current?.commands.undo()
+    },
+    {
+      id: "redo",
+      label: "Redo",
+      category: "Edit",
+      shortcut: "Ctrl+Shift+Z",
+      disabled: !canRedo,
+      run: () => editorRef.current?.commands.redo()
+    },
+    { id: "group", label: "Group", category: "Edit", shortcut: "Ctrl+G", disabled: !canGroup, run: handleGroup },
+    {
+      id: "ungroup",
+      label: "Ungroup",
+      category: "Edit",
+      shortcut: "Ctrl+Shift+G",
+      disabled: !canUngroup,
+      run: handleUngroup
+    },
     { id: "zoom-in", label: "Zoom in", category: "View", run: () => editorRef.current?.zoomIn() },
     { id: "zoom-out", label: "Zoom out", category: "View", run: () => editorRef.current?.zoomOut() },
     { id: "zoom-reset", label: "Reset zoom to 100%", category: "View", run: () => editorRef.current?.resetView() },
@@ -523,6 +737,7 @@ export function App() {
   return (
     <Theme theme={carbonTheme}>
       <div className="icad-shell">
+        <LiveRegion message={announcement} />
         <TopBar
           onNew={() => setNewDiagramOpen(true)}
           onOpen={() => void handleOpenClick()}
@@ -533,6 +748,10 @@ export function App() {
           onRedo={() => editorRef.current?.commands.redo()}
           canUndo={canUndo}
           canRedo={canRedo}
+          onGroup={handleGroup}
+          onUngroup={handleUngroup}
+          canGroup={canGroup}
+          canUngroup={canUngroup}
           zoomPercent={zoomPercent}
           onZoomIn={() => editorRef.current?.zoomIn()}
           onZoomOut={() => editorRef.current?.zoomOut()}
@@ -569,7 +788,8 @@ export function App() {
           />
         )}
 
-        <div className="icad-body">
+        <main className="icad-body" aria-label="Diagram editor">
+          <h1 className="icad-visually-hidden">ICAD — IBM Cloud Architecture Diagrams</h1>
           <LibraryPanel
             catalog={catalog}
             activePlacement={activePlacement}
@@ -580,16 +800,32 @@ export function App() {
               className="icad-canvas"
               ref={canvasRef}
               data-placement-active={activePlacement ? "true" : "false"}
+              onMouseMove={handleCanvasMouseMove}
+              onMouseDown={handleCanvasMouseDown}
+              onMouseUp={handleCanvasMouseUp}
               onClick={(event) => {
                 const editor = editorRef.current;
                 const svg = canvasRef.current?.querySelector("svg");
                 if (!editor || !svg) return;
+                // A drag-to-connect gesture already handled this interaction on mouseup.
+                if (event.target instanceof Element && event.target.closest("[data-icad-port]")) return;
+
+                if (connectingFromId !== undefined) {
+                  const clicked = event.target instanceof Element ? event.target.closest<SVGElement>("[data-icad-id]") : null;
+                  const clickedId = clicked?.dataset.icadId;
+                  if (clickedId && clickedId !== connectingFromId) connectAndAnnounce(connectingFromId, clickedId);
+                  editor.clearConnectorDraft();
+                  editor.setHoveredElement(undefined);
+                  setConnectingFromId(undefined);
+                  return;
+                }
+
                 if (activePlacement) {
                   const point = clientPointToCanvas(svg, event.clientX, event.clientY);
                   if (!point) return;
                   const id = placeLibraryItem(editor, activePlacement, point);
                   editor.selection.set([id]);
-                  canvasRef.current?.querySelector<SVGElement>(`[data-icad-id="${id}"]`)?.focus();
+                  editor.focusElement(id);
                   setActivePlacement(undefined);
                   return;
                 }
@@ -600,11 +836,10 @@ export function App() {
                   editor.selection.clear();
                 } else if (event.shiftKey) {
                   editor.selection.toggle(id);
+                  editor.focusElement(id);
                 } else {
                   editor.selection.set([id]);
-                  // A click may land on a non-focusable child shape (icon glyph, label text);
-                  // explicitly focus the element's own tabindex-bearing group (docs/07-accessibility.md).
-                  target.focus();
+                  editor.focusElement(id);
                 }
               }}
             />
@@ -618,6 +853,12 @@ export function App() {
               onPrevious={findPrevious}
               onClose={closeFind}
             />
+            {connectingFromId !== undefined && (
+              <div className="icad-connect-hint" role="status">
+                Connecting from <strong>{elementDisplayName(elements.find((el) => el.id === connectingFromId)!)}</strong> —
+                Tab to a target, Enter to confirm, Esc to cancel.
+              </div>
+            )}
           </div>
           <InspectorPanel
             elements={elements}
@@ -673,6 +914,7 @@ export function App() {
                                     onClick={() => {
                                       editorRef.current?.applyQuickFix(diagnostic);
                                       setDiagnostics(editorRef.current?.lint() ?? []);
+                                      announce(`Fixed: ${diagnostic.message}`);
                                     }}
                                   >
                                     {diagnostic.quickFixLabel ?? "Fix"}
@@ -682,8 +924,9 @@ export function App() {
                                       kind="ghost"
                                       size="sm"
                                       onClick={() => {
-                                        editorRef.current?.applyQuickFixes(diagnostic.ruleId);
+                                        const count = editorRef.current?.applyQuickFixes(diagnostic.ruleId) ?? 0;
                                         setDiagnostics(editorRef.current?.lint() ?? []);
+                                        announce(`Fixed ${count} issue${count === 1 ? "" : "s"} of this type`);
                                       }}
                                     >
                                       Fix all of this type
@@ -727,7 +970,7 @@ export function App() {
               </>
             }
           />
-        </div>
+        </main>
 
         <Modal
           open={exportOpen}

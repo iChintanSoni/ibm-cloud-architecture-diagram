@@ -6,7 +6,7 @@ import type { Scene } from "../scene/scene.js";
 import type { ConnectorElement, ConnectorType, SceneElement } from "../scene/types.js";
 import { connectorPathPoints } from "../routing/routeConnector.js";
 import { createSvgElement, setAttrs } from "./dom.js";
-import type { Point } from "./port.js";
+import { portPoint, type Point } from "./port.js";
 import type { ViewportState } from "./viewport.js";
 
 /** Used when the container reports a zero-size rect (e.g. detached in tests/jsdom). */
@@ -197,6 +197,9 @@ export class SvgRenderer {
   private palette: Palette;
   private diagnostics: Diagnostic[] = [];
   private selectedIds = new Set<string>();
+  private focusedId: string | undefined;
+  private hoveredPortsId: string | undefined;
+  private draftConnector: { from: Point; to: Point } | undefined;
   private currentScene?: Scene;
 
   constructor(
@@ -285,6 +288,7 @@ export class SvgRenderer {
         node.remove();
         this.nodes.delete(id);
         this.selectedIds.delete(id);
+        if (this.focusedId === id) this.focusedId = undefined;
       }
     }
     this.renderOverlays(scene);
@@ -302,14 +306,12 @@ export class SvgRenderer {
   }
 
   /**
-   * Mirrors SelectionManager state with a lightweight editor-only outline, and
-   * keeps exactly one node in the natural tab sequence (roving tabindex,
-   * docs/07-accessibility.md#canvas-the-hard-20) — the selected element when
-   * there's exactly one, otherwise the first element in tab order. Doesn't
-   * move real DOM focus itself: a mouse click already focuses its target
-   * natively, and callers that merely highlight a selection (Find, frame
-   * presentation) shouldn't steal focus from whatever the user is typing
-   * into. Deliberate keyboard navigation calls `focusElement()` explicitly.
+   * Mirrors SelectionManager state with a lightweight editor-only outline
+   * (docs/07-accessibility.md#canvas-the-hard-20). Never moves real DOM
+   * focus itself: focus follows `focusedId` (`focusElement()`), a separate
+   * concept from selection, so callers that merely highlight a selection
+   * (Find, frame presentation) don't steal focus from whatever the user is
+   * typing into.
    */
   setSelection(ids: string[]): void {
     this.selectedIds = new Set(ids);
@@ -318,14 +320,34 @@ export class SvgRenderer {
     this.syncTabIndexes(this.currentScene);
   }
 
-  /** Moves real DOM focus to an element — used by deliberate keyboard navigation (Tab/Shift+Tab). */
+  /**
+   * Moves real DOM focus and the roving tabindex to an element. Distinct
+   * from setSelection: Tab alone never changes what's selected.
+   */
   focusElement(id: string): void {
+    this.focusedId = id;
     this.nodes.get(id)?.focus();
+    if (!this.currentScene) return;
+    this.syncTabIndexes(this.currentScene);
+    this.renderOverlays(this.currentScene);
   }
 
-  /** Keeps exactly one node in the natural tab sequence (roving tabindex). */
+  /** Shows (or clears, when either point is omitted) a rubber-band preview line while drawing a connector. */
+  setConnectorDraft(from?: Point, to?: Point): void {
+    this.draftConnector = from && to ? { from, to } : undefined;
+    if (this.currentScene) this.renderOverlays(this.currentScene);
+  }
+
+  /** Reveals port markers (n/e/s/w) on a hovered element (docs/06-editor-ux.md#core-interactions), or clears them. */
+  setHoveredElement(id?: string): void {
+    this.hoveredPortsId = id;
+    if (this.currentScene) this.renderOverlays(this.currentScene);
+  }
+
+  /** Keeps exactly one node in the natural tab sequence (roving tabindex), preferring keyboard focus over selection. */
   private syncTabIndexes(scene: Scene): void {
-    const targetId = this.selectedIds.size === 1 ? [...this.selectedIds][0] : computeTabOrder(scene)[0]?.id;
+    const targetId =
+      this.focusedId ?? (this.selectedIds.size === 1 ? [...this.selectedIds][0] : computeTabOrder(scene)[0]?.id);
     for (const [id, node] of this.nodes) {
       node.setAttribute("tabindex", id === targetId ? "0" : "-1");
     }
@@ -339,10 +361,17 @@ export class SvgRenderer {
   private renderElement(el: SceneElement, scene: Scene): SVGElement {
     const existing = this.nodes.get(el.id);
     const g = (existing as SVGGElement) ?? createSvgElement("g");
+    g.setAttribute("id", el.id);
     g.setAttribute("data-icad-id", el.id);
     g.setAttribute("data-icad-type", el.type);
     g.setAttribute("role", accessibleRole(el));
     g.setAttribute("aria-label", accessibleName(el, scene, this.catalog));
+    // Screen-reader object tree (docs/07-accessibility.md#canvas-the-hard-20): containment is
+    // a flat DOM list (paint order doubles as the SVG stacking order), so `aria-owns` is how
+    // a container's contents are exposed as parent/child rather than a flat sequence.
+    const childIds = scene.childrenOf(el.id).map((child) => child.id);
+    if (childIds.length > 0) g.setAttribute("aria-owns", childIds.join(" "));
+    else g.removeAttribute("aria-owns");
     g.innerHTML = "";
 
     switch (el.type) {
@@ -666,6 +695,59 @@ export class SvgRenderer {
       text.textContent = diagnostics.length > 1 ? String(diagnostics.length) : "!";
       badge.appendChild(text);
       this.overlayLayer.appendChild(badge);
+    }
+
+    if (this.focusedId) {
+      const el = scene.get(this.focusedId);
+      if (el && el.type !== "connector") {
+        const ring = createSvgElement("rect");
+        setAttrs(ring, {
+          x: el.x - 6,
+          y: el.y - 6,
+          width: el.w + 12,
+          height: el.h + 12,
+          fill: "none",
+          stroke: "#0f62fe",
+          "stroke-width": 1,
+          "stroke-dasharray": "1 2"
+        });
+        this.overlayLayer.appendChild(ring);
+      }
+    }
+
+    if (this.hoveredPortsId) {
+      const el = scene.get(this.hoveredPortsId);
+      if (el && el.type !== "connector" && el.type !== "frame") {
+        for (const side of ["n", "e", "s", "w"] as const) {
+          const point = portPoint(el, side);
+          const marker = createSvgElement("circle");
+          setAttrs(marker, {
+            cx: point.x,
+            cy: point.y,
+            r: 6,
+            fill: "#ffffff",
+            stroke: "#0f62fe",
+            "stroke-width": 1.5,
+            "pointer-events": "all",
+            "data-icad-port": `${el.id}:${side}`
+          });
+          this.overlayLayer.appendChild(marker);
+        }
+      }
+    }
+
+    if (this.draftConnector) {
+      const line = createSvgElement("line");
+      setAttrs(line, {
+        x1: this.draftConnector.from.x,
+        y1: this.draftConnector.from.y,
+        x2: this.draftConnector.to.x,
+        y2: this.draftConnector.to.y,
+        stroke: "#0f62fe",
+        "stroke-width": 2,
+        "stroke-dasharray": "4 3"
+      });
+      this.overlayLayer.appendChild(line);
     }
   }
 }

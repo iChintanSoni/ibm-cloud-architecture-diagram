@@ -14,6 +14,7 @@ export function CommandPalette({ open, commands, onClose }: CommandPaletteProps)
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
+  const listRef = useRef<HTMLUListElement>(null);
 
   const results = useMemo(() => filterCommands(commands, query), [commands, query]);
   const runnable = results.filter((command) => !command.disabled);
@@ -31,6 +32,17 @@ export function CommandPalette({ open, commands, onClose }: CommandPaletteProps)
   useEffect(() => {
     setActiveIndex(0);
   }, [query]);
+
+  // Keeps the highlighted option in view as arrow keys move it — the list's items are
+  // intentionally not real tab stops (arrow keys navigate instead, standard combobox/listbox
+  // pattern), so this is how keyboard users reach options that have scrolled out of view.
+  useEffect(() => {
+    const activeItem = listRef.current?.querySelector('[data-active="true"]');
+    // jsdom has no layout engine and doesn't implement scrollIntoView at all.
+    if (activeItem instanceof HTMLElement && typeof activeItem.scrollIntoView === "function") {
+      activeItem.scrollIntoView({ block: "nearest" });
+    }
+  }, [activeIndex]);
 
   if (!open) return null;
 
@@ -79,7 +91,7 @@ export function CommandPalette({ open, commands, onClose }: CommandPaletteProps)
           value={query}
           onChange={(event) => setQuery(event.target.value)}
         />
-        <ul className="icad-command-palette__list" role="listbox" aria-label="Commands">
+        <ul ref={listRef} className="icad-command-palette__list" role="listbox" aria-label="Commands">
           {runnable.length === 0 && (
             <li role="presentation" className="icad-command-palette__empty">
               No matching commands

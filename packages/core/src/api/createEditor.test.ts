@@ -439,19 +439,41 @@ describe("createEditor", () => {
       expect(editor.tabOrder()).toEqual([west, east]);
     });
 
-    it("focusNext/focusPrevious step the selection through the tab order and wrap around", () => {
+    it("focusNext/focusPrevious step keyboard focus through the tab order and wrap around, without touching selection", () => {
       const west = editor.addBox({ at: { x: 0, y: 0 }, label: "west" });
       const east = editor.addBox({ at: { x: 200, y: 0 }, label: "east" });
 
       editor.focusNext();
-      expect(editor.selection.get()).toEqual([west]);
+      expect(editor.focusedElement()).toBe(west);
       editor.focusNext();
-      expect(editor.selection.get()).toEqual([east]);
+      expect(editor.focusedElement()).toBe(east);
       editor.focusNext();
-      expect(editor.selection.get()).toEqual([west]);
+      expect(editor.focusedElement()).toBe(west);
 
       editor.focusPrevious();
-      expect(editor.selection.get()).toEqual([east]);
+      expect(editor.focusedElement()).toBe(east);
+
+      // Tab navigation alone never selects anything (docs/07-accessibility.md).
+      expect(editor.selection.get()).toEqual([]);
+    });
+
+    it("focusElement moves keyboard focus directly without changing selection", () => {
+      const id = editor.addBox({ at: { x: 0, y: 0 }, label: "box" });
+      editor.focusElement(id);
+      expect(editor.focusedElement()).toBe(id);
+      expect(editor.selection.get()).toEqual([]);
+    });
+
+    it("ignores focusElement for an unknown id", () => {
+      editor.focusElement("missing");
+      expect(editor.focusedElement()).toBeUndefined();
+    });
+
+    it("clears focusedElement when the focused element is deleted", () => {
+      const id = editor.addBox({ at: { x: 0, y: 0 }, label: "box" });
+      editor.focusElement(id);
+      editor.deleteElements([id]);
+      expect(editor.focusedElement()).toBeUndefined();
     });
 
     it("does nothing for focusNext/focusPrevious on an empty scene", () => {
@@ -528,6 +550,179 @@ describe("createEditor", () => {
     it("does nothing when deleting only unknown ids", () => {
       editor.deleteElements(["missing"]);
       expect(editor.commands.canUndo()).toBe(false);
+    });
+  });
+
+  describe("group / ungroup", () => {
+    it("groups two elements into a new Group container sized to their bounds, and selects it", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
+      const b = editor.addBox({ at: { x: 200, y: 100 }, w: 50, h: 50, label: "b" });
+
+      const groupId = editor.groupElements([a, b]);
+
+      expect(groupId).toBeDefined();
+      expect(editor.scene.get(groupId!)).toMatchObject({ type: "group", semantic: "deployedTo" });
+      expect(editor.scene.get(a)?.parentId).toBe(groupId);
+      expect(editor.scene.get(b)?.parentId).toBe(groupId);
+      // bbox of a (0,0,50,50) + b (200,100,50,50) is x:0 y:0 w:250 h:150, padded by 16 on each side.
+      expect(editor.scene.get(groupId!)).toMatchObject({ x: -16, y: -16, w: 282, h: 182 });
+      expect(editor.selection.get()).toEqual([groupId]);
+    });
+
+    it("nests the new group under a shared parent", () => {
+      const parent = editor.addBox({ at: { x: 0, y: 0 }, w: 400, h: 400, label: "parent" });
+      const a = editor.addIcon("test/vpc", { at: { x: 10, y: 10 }, parentId: parent });
+      const b = editor.addIcon("test/vpc", { at: { x: 100, y: 10 }, parentId: parent });
+
+      const groupId = editor.groupElements([a, b]);
+      expect(editor.scene.get(groupId!)?.parentId).toBe(parent);
+    });
+
+    it("defaults to canvas root when grouped elements don't share a parent", () => {
+      const parent = editor.addBox({ at: { x: 0, y: 0 }, w: 400, h: 400, label: "parent" });
+      const a = editor.addIcon("test/vpc", { at: { x: 10, y: 10 }, parentId: parent });
+      const b = editor.addBox({ at: { x: 500, y: 0 }, w: 50, h: 50, label: "root box" });
+
+      const groupId = editor.groupElements([a, b]);
+      expect(editor.scene.get(groupId!)?.parentId).toBeUndefined();
+    });
+
+    it("undoes grouping as a single step, restoring original parents", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, label: "a" });
+      const b = editor.addBox({ at: { x: 200, y: 0 }, label: "b" });
+
+      const groupId = editor.groupElements([a, b]);
+      editor.commands.undo();
+
+      expect(editor.scene.get(groupId!)).toBeUndefined();
+      expect(editor.scene.get(a)?.parentId).toBeUndefined();
+      expect(editor.scene.get(b)?.parentId).toBeUndefined();
+    });
+
+    it("does nothing when grouping fewer than two known elements", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, label: "a" });
+      expect(editor.groupElements([a])).toBeUndefined();
+      expect(editor.groupElements(["missing-1", "missing-2"])).toBeUndefined();
+
+      // A single undo fully removes `a`, proving no group command was pushed in between.
+      editor.commands.undo();
+      expect(editor.scene.get(a)).toBeUndefined();
+    });
+
+    it("ungroups a container, reparenting its children to the container's own parent, and selects them", () => {
+      const outer = editor.addBox({ at: { x: 0, y: 0 }, w: 400, h: 400, label: "outer" });
+      const group = editor.addGroup({ at: { x: 10, y: 10 }, w: 200, h: 200, parentId: outer, label: "inner" });
+      const a = editor.addIcon("test/vpc", { at: { x: 20, y: 20 }, parentId: group });
+      const b = editor.addIcon("test/vpc", { at: { x: 100, y: 20 }, parentId: group });
+
+      editor.ungroupElement(group);
+
+      expect(editor.scene.get(group)).toBeUndefined();
+      expect(editor.scene.get(a)?.parentId).toBe(outer);
+      expect(editor.scene.get(b)?.parentId).toBe(outer);
+      expect(editor.selection.get().sort()).toEqual([a, b].sort());
+    });
+
+    it("ungroups a root-level container to canvas root", () => {
+      const group = editor.addGroup({ at: { x: 0, y: 0 }, w: 200, h: 200, label: "group" });
+      const a = editor.addIcon("test/vpc", { at: { x: 20, y: 20 }, parentId: group });
+
+      editor.ungroupElement(group);
+      expect(editor.scene.get(a)?.parentId).toBeUndefined();
+    });
+
+    it("undoes an ungroup as a single step", () => {
+      const group = editor.addGroup({ at: { x: 0, y: 0 }, w: 200, h: 200, label: "group" });
+      const a = editor.addIcon("test/vpc", { at: { x: 20, y: 20 }, parentId: group });
+
+      editor.ungroupElement(group);
+      editor.commands.undo();
+
+      expect(editor.scene.get(group)).toBeDefined();
+      expect(editor.scene.get(a)?.parentId).toBe(group);
+    });
+
+    it("does nothing for an unknown id or a non-container element", () => {
+      const icon = editor.addIcon("test/vpc", { at: { x: 0, y: 0 } });
+      editor.ungroupElement("missing");
+      editor.ungroupElement(icon);
+
+      // A single undo fully removes the icon, proving no ungroup command was pushed in between.
+      editor.commands.undo();
+      expect(editor.scene.get(icon)).toBeUndefined();
+    });
+  });
+
+  describe("connectNearest", () => {
+    it("connects two elements using a port pair inferred from their relative position", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
+      const b = editor.addBox({ at: { x: 300, y: 0 }, w: 50, h: 50, label: "b" });
+
+      const connId = editor.connectNearest(a, b);
+
+      expect(connId).toBeDefined();
+      expect(editor.scene.get(connId!)).toMatchObject({
+        type: "connector",
+        from: { elementId: a, port: "e" },
+        to: { elementId: b, port: "w" }
+      });
+      expect(editor.selection.get()).toEqual([connId]);
+    });
+
+    it("passes through connector type/direction/flowColor options", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, label: "a" });
+      const b = editor.addBox({ at: { x: 300, y: 0 }, label: "b" });
+      const connId = editor.connectNearest(a, b, { connectorType: "dependency" });
+      expect(editor.scene.get(connId!)).toMatchObject({ connectorType: "dependency" });
+    });
+
+    it("does nothing for unknown ids, self-connections, or connector endpoints", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, label: "a" });
+      const b = editor.addBox({ at: { x: 300, y: 0 }, label: "b" });
+      const connId = editor.connectNearest(a, b);
+
+      expect(editor.connectNearest(a, "missing")).toBeUndefined();
+      expect(editor.connectNearest(a, a)).toBeUndefined();
+      expect(editor.connectNearest(connId!, b)).toBeUndefined();
+    });
+  });
+
+  describe("connector draft preview + port hover", () => {
+    it("shows a port-marker hover ring on an element and clears it", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, label: "a" });
+      editor.setHoveredElement(a);
+      expect(container.querySelector(`[data-icad-port^="${a}:"]`)).not.toBeNull();
+      editor.setHoveredElement(undefined);
+      expect(container.querySelector(`[data-icad-port^="${a}:"]`)).toBeNull();
+    });
+
+    it("draws a connector preview snapped to the nearest ports between two elements", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
+      const b = editor.addBox({ at: { x: 300, y: 0 }, w: 50, h: 50, label: "b" });
+      editor.previewConnectorBetween(a, b);
+
+      const line = container.querySelector('[data-icad-layer="overlays"] line')!;
+      expect(line.getAttribute("x1")).toBe("50"); // a's east port
+      expect(line.getAttribute("x2")).toBe("300"); // b's west port
+    });
+
+    it("draws a connector preview at arbitrary points for a mouse drag in progress", () => {
+      editor.setConnectorDraftPoints({ x: 5, y: 5 }, { x: 40, y: 60 });
+      const line = container.querySelector('[data-icad-layer="overlays"] line')!;
+      expect(line.getAttribute("x2")).toBe("40");
+      expect(line.getAttribute("y2")).toBe("60");
+    });
+
+    it("clears the connector draft", () => {
+      editor.setConnectorDraftPoints({ x: 0, y: 0 }, { x: 1, y: 1 });
+      editor.clearConnectorDraft();
+      expect(container.querySelector('[data-icad-layer="overlays"] line')).toBeNull();
+    });
+
+    it("does nothing when previewing between an unknown element", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, label: "a" });
+      editor.previewConnectorBetween(a, "missing");
+      expect(container.querySelector('[data-icad-layer="overlays"] line')).toBeNull();
     });
   });
 });

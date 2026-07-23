@@ -20,33 +20,36 @@ import { exportPng, exportSvg } from "../io/export.js";
 import { Linter } from "../linter/linter.js";
 import { applyQuickFix, applyQuickFixes } from "../linter/quickFix.js";
 import type { Diagnostic, Severity } from "../linter/types.js";
+import { portPoint, type Point } from "../render/port.js";
 import { SvgRenderer, type ResolvedTheme } from "../render/svgRenderer.js";
 import { ViewportController } from "../render/viewport.js";
 import type { Rect } from "../routing/orthogonalRouter.js";
+import { pickPorts } from "../routing/pickPorts.js";
 import { routeConnectorInScene } from "../routing/routeConnector.js";
 import { Scene, type SceneChangeEvent } from "../scene/scene.js";
-import type {
-  ActorElement,
-  BoxElement,
-  CanvasSettings,
-  ConnectorDirection,
-  ConnectorElement,
-  ConnectorType,
-  ConformanceSeverity,
-  ElementId,
-  EndpointLabels,
-  FlowColor,
-  ExportGate,
-  FrameElement,
-  GroupElement,
-  IconNodeElement,
-  Label,
-  PortRef,
-  SceneElement,
-  Style,
-  TextElement,
-  ZoneElement,
-  ZoneKind
+import {
+  isContainer,
+  type ActorElement,
+  type BoxElement,
+  type CanvasSettings,
+  type ConnectorDirection,
+  type ConnectorElement,
+  type ConnectorType,
+  type ConformanceSeverity,
+  type ElementId,
+  type EndpointLabels,
+  type FlowColor,
+  type ExportGate,
+  type FrameElement,
+  type GroupElement,
+  type IconNodeElement,
+  type Label,
+  type PortRef,
+  type SceneElement,
+  type Style,
+  type TextElement,
+  type ZoneElement,
+  type ZoneKind
 } from "../scene/types.js";
 import {
   createTemplateDocument,
@@ -144,6 +147,7 @@ export class Editor {
   private linter: Linter;
   private changeEmitter = new Emitter<{ change: SceneChangeEvent }>();
   private resizeObserver?: ResizeObserver;
+  private focusedId: ElementId | undefined;
 
   constructor(options: CreateEditorOptions) {
     this.catalog = options.catalog;
@@ -158,6 +162,7 @@ export class Editor {
     this.viewport = new ViewportController();
 
     this.scene.on((event) => {
+      if (this.focusedId && !this.scene.has(this.focusedId)) this.focusedId = undefined;
       this.renderer.render(this.scene);
       this.renderer.setDiagnostics(this.linter.run(this.scene));
       this.changeEmitter.emit("change", event);
@@ -562,12 +567,30 @@ export class Editor {
     return computeTabOrder(this.scene).map((el) => el.id);
   }
 
-  /** Moves the single roving keyboard focus/selection to the next element in tab order, wrapping around. */
+  /**
+   * The element keyboard focus is currently on — independent of `selection`.
+   * Tab/Shift+Tab move this without changing what's selected (so a screen
+   * reader's "active descendant" and the app's "what nudge/delete/Properties
+   * act on" can differ, e.g. while building a multi-selection with
+   * Shift+Space); Enter/Space act on whatever this currently points at.
+   */
+  focusedElement(): ElementId | undefined {
+    return this.focusedId;
+  }
+
+  /** Moves real DOM focus (and the roving tabindex) to `id` without touching `selection`. */
+  focusElement(id: ElementId): void {
+    if (!this.scene.has(id)) return;
+    this.focusedId = id;
+    this.renderer.focusElement(id);
+  }
+
+  /** Moves keyboard focus to the next element in tab order, wrapping around. */
   focusNext(): void {
     this.stepFocus(1);
   }
 
-  /** Moves the single roving keyboard focus/selection to the previous element in tab order, wrapping around. */
+  /** Moves keyboard focus to the previous element in tab order, wrapping around. */
   focusPrevious(): void {
     this.stepFocus(-1);
   }
@@ -575,13 +598,11 @@ export class Editor {
   private stepFocus(direction: 1 | -1): void {
     const order = this.tabOrder();
     if (order.length === 0) return;
-    const currentId = this.selection.get()[0];
-    const currentIndex = currentId ? order.indexOf(currentId) : -1;
+    const currentIndex = this.focusedId ? order.indexOf(this.focusedId) : -1;
     const base = currentIndex === -1 ? (direction === 1 ? -1 : 0) : currentIndex;
     const nextIndex = (((base + direction) % order.length) + order.length) % order.length;
     const nextId = order[nextIndex]!;
-    this.selection.set([nextId]);
-    this.renderer.focusElement(nextId);
+    this.focusElement(nextId);
     this.ensureVisible(nextId);
   }
 
@@ -614,6 +635,131 @@ export class Editor {
     const commands = existing.map((id) => removeElement(this.scene, id));
     this.commands.dispatch(commands.length === 1 ? commands[0]! : batch("delete elements", commands));
     this.selection.clear();
+  }
+
+  /**
+   * Groups 2+ elements into a new Group container sized to their combined
+   * bounds (+ padding), reparenting all of them into it as one undoable step
+   * (docs/06-editor-ux.md#core-interactions). Nests the new group under the
+   * elements' shared parent when they all have the same one, otherwise the
+   * group lands at canvas root. Selects the new group. No-ops (returns
+   * undefined) for fewer than two known elements.
+   */
+  groupElements(ids: ElementId[], opts: { padding?: number } = {}): ElementId | undefined {
+    const existing = [...new Set(ids)].filter((id) => this.scene.has(id));
+    if (existing.length < 2) return undefined;
+    const bbox = this.boundsOf(existing);
+    if (!bbox) return undefined;
+
+    const padding = opts.padding ?? 16;
+    const parents = new Set(existing.map((id) => this.scene.get(id)!.parentId));
+    const parentId = parents.size === 1 ? [...parents][0] : undefined;
+
+    const groupId = generateId("group");
+    const group: GroupElement = {
+      id: groupId,
+      type: "group",
+      semantic: "deployedTo",
+      x: bbox.x - padding,
+      y: bbox.y - padding,
+      w: bbox.w + padding * 2,
+      h: bbox.h + padding * 2,
+      ...(parentId ? { parentId } : {})
+    };
+
+    const commands: Command[] = [
+      addElement(group),
+      ...existing.map((id) => reparentElement(this.scene, id, groupId))
+    ];
+    this.commands.dispatch(batch("group elements", commands));
+    this.selection.set([groupId]);
+    return groupId;
+  }
+
+  /**
+   * Removes a container but keeps its contents, reparenting them to the
+   * container's own parent as one undoable step, then selects the freed
+   * elements. No-ops for an unknown id or a non-container element.
+   */
+  ungroupElement(id: ElementId): void {
+    const container = this.scene.get(id);
+    if (!container || !isContainer(container)) return;
+    const children = this.scene.childrenOf(id);
+    const parentId = container.parentId;
+    const originalChildren = children.map((child) => ({ ...child }));
+
+    // Hand-written rather than composed from reparentElement + removeElement: the latter's
+    // cascading delete snapshots descendants at *construction* time, which would still be
+    // [container, ...children] before the reparents below ever run, deleting the children too.
+    const command: Command = {
+      label: "ungroup",
+      do(s) {
+        for (const child of children) {
+          const current = s.get(child.id);
+          if (!current) continue;
+          const next = { ...current, parentId } as SceneElement;
+          if (parentId === undefined) delete next.parentId;
+          s._put(next, "update");
+        }
+        s._remove(container.id);
+      },
+      undo(s) {
+        s._put(container, "add");
+        for (const original of originalChildren) s._put(original, "update");
+      }
+    };
+    this.commands.dispatch(command);
+    this.selection.set(children.map((child) => child.id));
+  }
+
+  /**
+   * Connects two elements without requiring exact ports — picks a reasonable
+   * port pair from their relative position (`pickPorts`) — for mouse
+   * drag-to-connect and keyboard connect mode alike
+   * (docs/06-editor-ux.md#core-interactions).
+   */
+  connectNearest(
+    fromId: ElementId,
+    toId: ElementId,
+    opts: {
+      connectorType?: ConnectorType;
+      direction?: ConnectorDirection;
+      flowColor?: FlowColor;
+      cardinality?: EndpointLabels;
+      label?: string;
+    } = {}
+  ): ElementId | undefined {
+    const from = this.scene.get(fromId);
+    const to = this.scene.get(toId);
+    if (!from || !to || from.type === "connector" || to.type === "connector" || fromId === toId) return undefined;
+    const ports = pickPorts(from, to);
+    const id = this.connect({ elementId: fromId, port: ports.from }, { elementId: toId, port: ports.to }, opts);
+    this.selection.set([id]);
+    return id;
+  }
+
+  /** Reveals (or hides, when omitted) port markers on an element — hover for mouse, or the source while keyboard-connecting. */
+  setHoveredElement(id?: ElementId): void {
+    this.renderer.setHoveredElement(id);
+  }
+
+  /** Rubber-band preview at arbitrary scene points — mouse drag-to-connect, before a drop target is known. */
+  setConnectorDraftPoints(from: Point, to: Point): void {
+    this.renderer.setConnectorDraft(from, to);
+  }
+
+  /** Rubber-band preview snapped to two elements' nearest ports — keyboard connect mode. */
+  previewConnectorBetween(fromId: ElementId, toId: ElementId): void {
+    const from = this.scene.get(fromId);
+    const to = this.scene.get(toId);
+    if (!from || !to) return;
+    const ports = pickPorts(from, to);
+    this.renderer.setConnectorDraft(portPoint(from, ports.from), portPoint(to, ports.to));
+  }
+
+  /** Clears any connector rubber-band preview. */
+  clearConnectorDraft(): void {
+    this.renderer.setConnectorDraft(undefined, undefined);
   }
 
   destroy(): void {

@@ -42,11 +42,26 @@ body,
   display: block;
 }
 
-/* The dashed selection overlay (SvgRenderer.renderOverlays) is the visible focus indicator for
-   the single roving focus model (docs/07-accessibility.md#canvas-the-hard-20); suppress the
-   browser's default outline on canvas elements so it isn't duplicated/inconsistent across browsers. */
+/* SvgRenderer draws its own dashed focus ring and selection outline in the overlay layer
+   (docs/07-accessibility.md#canvas-the-hard-20) so they stay visually consistent across
+   browsers; suppress the native outline to avoid a redundant/clashing second ring. */
 .icad-canvas svg [data-icad-id]:focus {
   outline: none;
+}
+
+.icad-connect-hint {
+  position: absolute;
+  top: 0.75rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  padding: 0.5rem 0.875rem;
+  border: 1px solid var(--cds-border-subtle-01, #e0e0e0);
+  border-radius: 4px;
+  background: var(--cds-layer-01, #ffffff);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  font-size: 0.8125rem;
+  white-space: nowrap;
 }
 
 .icad-validation-content h2 {

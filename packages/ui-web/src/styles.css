@@ -465,3 +465,16 @@
   color: var(--cds-text-secondary, #525252);
   font-variant-numeric: tabular-nums;
 }
+
+/* Standard "sr-only" pattern: present in the accessibility tree, invisible on screen. */
+.icad-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

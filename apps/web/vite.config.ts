@@ -4,7 +4,10 @@ import { defineConfig } from "vite";
 export default defineConfig({
   plugins: [react()],
   test: {
-    environment: "jsdom"
+    environment: "jsdom",
+    // e2e/ holds Playwright specs (playwright.config.ts) — they use a different test runner
+    // and globals, so keep them out of Vitest's default include glob.
+    include: ["src/**/*.test.{ts,tsx}"]
   },
   resolve: {
     alias: [

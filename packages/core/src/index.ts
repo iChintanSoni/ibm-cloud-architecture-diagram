@@ -38,6 +38,7 @@ export {
 // Routing
 export { routeOrthogonal, pathCrossesObstacles, type Rect, type RoutePort } from "./routing/orthogonalRouter.js";
 export { routeConnectorInScene, connectorPathPoints } from "./routing/routeConnector.js";
+export { pickPorts } from "./routing/pickPorts.js";
 
 // Catalog
 export { Catalog } from "./catalog/catalog.js";

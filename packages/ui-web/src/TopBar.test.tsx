@@ -19,6 +19,10 @@ function baseProps(overrides: Partial<TopBarProps> = {}): TopBarProps {
     onRedo: vi.fn(),
     canUndo: false,
     canRedo: false,
+    onGroup: vi.fn(),
+    onUngroup: vi.fn(),
+    canGroup: false,
+    canUngroup: false,
     zoomPercent: 100,
     onZoomIn: vi.fn(),
     onZoomOut: vi.fn(),
@@ -93,6 +97,24 @@ describe("TopBar", () => {
     expect(undoItem.getAttribute("aria-disabled")).toBeNull();
     act(() => undoItem.click());
     expect(onUndo).toHaveBeenCalled();
+  });
+
+  it("disables Group/Ungroup until enabled, then invokes them", () => {
+    const onGroup = vi.fn();
+    const onUngroup = vi.fn();
+    act(() => {
+      root.render(<TopBar {...baseProps({ onGroup, onUngroup, canGroup: false, canUngroup: true })} />);
+    });
+
+    const groupItem = findByText(container, "a", "Group") as HTMLAnchorElement;
+    expect(groupItem.getAttribute("aria-disabled")).toBe("true");
+    act(() => groupItem.click());
+    expect(onGroup).not.toHaveBeenCalled();
+
+    const ungroupItem = findByText(container, "a", "Ungroup") as HTMLAnchorElement;
+    expect(ungroupItem.getAttribute("aria-disabled")).toBeNull();
+    act(() => ungroupItem.click());
+    expect(onUngroup).toHaveBeenCalled();
   });
 
   it("inserts a frame via the Insert menu", () => {

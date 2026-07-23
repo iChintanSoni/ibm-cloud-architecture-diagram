@@ -81,6 +81,33 @@ describe("SvgRenderer accessibility", () => {
     expect(renderer.nodeFor("server")?.getAttribute("aria-label")).toBe("Virtual Private Cloud");
   });
 
+  it("gives every element a real id so aria-owns can reference it", () => {
+    scene._put(box("vpc", 0));
+    renderer.render(scene);
+    expect(renderer.nodeFor("vpc")?.getAttribute("id")).toBe("vpc");
+  });
+
+  it("exposes containment via aria-owns, forming a screen-reader object tree", () => {
+    scene._put(box("vpc", 0));
+    scene._put(icon("server-1", 10, "vpc"));
+    scene._put(icon("server-2", 60, "vpc"));
+    renderer.render(scene);
+
+    expect(renderer.nodeFor("vpc")?.getAttribute("aria-owns")).toBe("server-1 server-2");
+    expect(renderer.nodeFor("server-1")?.hasAttribute("aria-owns")).toBe(false);
+  });
+
+  it("keeps aria-owns in sync as children are added, reparented, and removed", () => {
+    scene._put(box("vpc", 0));
+    scene._put(icon("server-1", 10, "vpc"));
+    renderer.render(scene);
+    expect(renderer.nodeFor("vpc")?.getAttribute("aria-owns")).toBe("server-1");
+
+    scene._remove("server-1");
+    renderer.render(scene);
+    expect(renderer.nodeFor("vpc")?.hasAttribute("aria-owns")).toBe(false);
+  });
+
   it("defaults the roving tabindex to the first element in tab order when nothing is selected", () => {
     scene._put(box("east", 200));
     scene._put(box("west", 0));
