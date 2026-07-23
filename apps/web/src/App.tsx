@@ -1,14 +1,18 @@
 import { Button, Tag, Theme } from "@carbon/react";
 import { createEditor, type Diagnostic, type Editor } from "@icad/core";
 import { useEffect, useRef, useState } from "react";
-import { createDemoCatalog } from "./demoCatalog";
+import { createIbmCloudCatalog } from "./catalog";
 import { type ThemePreference, useResolvedTheme } from "./useResolvedTheme";
 
 /** West-to-east demo layout (docs/05-ibm-spec-conformance.md#layout-convention). */
 function seedDemoDiagram(editor: Editor): void {
   const ROW_Y = 150;
 
-  const customer = editor.addActor({ at: { x: 40, y: ROW_Y }, label: "Customer" });
+  const customer = editor.addActor({
+    at: { x: 40, y: ROW_Y },
+    label: "Customer",
+    catalogRef: "ibm-cloud/user"
+  });
 
   const vpc = editor.addBox({ at: { x: 220, y: 60 }, w: 560, h: 220, label: "VPC" });
   const zone = editor.addGroup({
@@ -19,9 +23,13 @@ function seedDemoDiagram(editor: Editor): void {
     label: "Security group"
   });
 
-  const gateway = editor.addIcon("demo/vpc", { at: { x: 280, y: ROW_Y }, parentId: zone, label: "API Gateway" });
-  const compute = editor.addIcon("demo/compute", { at: { x: 500, y: ROW_Y }, parentId: zone, label: "App server" });
-  const storage = editor.addIcon("demo/storage", { at: { x: 680, y: ROW_Y }, parentId: vpc, label: "Object storage" });
+  const gateway = editor.addIcon("ibm-cloud/gateway-api", { at: { x: 280, y: ROW_Y }, parentId: zone, label: "API Gateway" });
+  const compute = editor.addIcon("ibm-cloud/instance-bx", { at: { x: 500, y: ROW_Y }, parentId: zone, label: "App server" });
+  const storage = editor.addIcon("ibm-cloud/object-storage-application", {
+    at: { x: 680, y: ROW_Y },
+    parentId: vpc,
+    label: "Object storage"
+  });
 
   editor.connect({ elementId: customer, port: "e" }, { elementId: gateway, port: "w" }, {
     connectorType: "actor-to-node"
@@ -58,7 +66,7 @@ export function App() {
 
     const editor = createEditor({
       container: canvasRef.current,
-      catalog: createDemoCatalog(),
+      catalog: createIbmCloudCatalog(),
       theme: themePreference
     });
     editorRef.current = editor;
