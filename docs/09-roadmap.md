@@ -174,9 +174,9 @@ element or frame by name via Find, step through a presentation, and keep their c
 a reload.
 
 #### M8 — Accessibility to AA
-🟡 **In progress** — everything automatable is done (keyboard-operable canvas including
-connect/group, nested screen-reader object tree, live regions, real-browser CI a11y checks); only
-a manual VoiceOver/NVDA pass remains ([Accessibility](07-accessibility.md)).
+🟡 **In progress** — everything automatable is done, and a live-browser verification pass has since
+found and fixed four real defects the automated suite couldn't see; only the actual human
+VoiceOver/NVDA sign-off pass remains ([Accessibility](07-accessibility.md)).
 
 ##### M8.1 — Baseline canvas keyboard operation, roles/names, CI a11y checks
 ✅ **Done** (2026-07-23)
@@ -254,9 +254,50 @@ Closed out every remaining M8 item except the manual screen-reader pass:
    overlapping the scene, which legitimately won `hitTest`'s topmost-bbox match ahead of the element
    underneath; not a product bug, and reproduced cleanly with correct behavior on a fresh diagram.)
 
-**Remaining for M8:**
-- Manual screen-reader passes (VoiceOver/NVDA) on the core authoring flow — the one item that
-  can't be automated and needs a human at an actual screen reader.
+##### M8.3 — Live-browser verification pass; manual sign-off script
+✅ **Verification pass done, human sign-off still pending** (2026-07-23)
+
+Before handing M8 to an actual screen-reader user, drove the real Chrome accessibility tree (the
+same data VoiceOver/NVDA consume) against a running instance to exercise every M8.1/M8.2 flow
+end-to-end. Found and fixed four real defects no automated suite (jsdom axe or Playwright axe) had
+caught, because each one is a live-interaction/data-integrity gap rather than a static markup
+violation:
+
+1. **Catalog icon placement had no keyboard path at all.** The Library panel's "arm a placement,
+   then click a canvas point" gesture — used for every icon and preset, not just containers — only
+   ever completed on a mouse click; a keyboard user could reach every button but never finish
+   placing an icon, the actual content of an IBM architecture diagram. Fixed by detecting a
+   keyboard activation (`event.detail === 0` on the button's click event) and placing immediately
+   at the viewport center in that case, matching how `Insert X` commands already behave
+   (`packages/ui-web/src/LibraryPanel.tsx`, `apps/web/src/App.tsx`, `apps/web/src/placement.ts`).
+2. **`Insert X` commands never moved keyboard focus to the new element.** `handleInsert` set
+   selection and announced the addition but left real DOM focus wherever the triggering menu/palette
+   closed (typically `<body>`), unlike every other insertion path — breaking the natural
+   create-then-immediately-edit/move/connect flow for a keyboard user. Fixed by calling
+   `editor.focusElement(id)` there too (`apps/web/src/App.tsx`).
+3. **Cascading delete left dangling connectors.** Deleting a container cascades to its descendants
+   (by design), but a connector attached to one of those descendants from *outside* the deleted
+   subtree survived with an endpoint that no longer resolves — surfacing live as an interactive
+   element literally named "Connector: unknown element to unknown element". The `.icad` repair pass
+   already drops exactly this case on load ([File Format](03-file-format.md#versioning--migration)),
+   but nothing cleaned it up live in the running editor. Fixed `removeElement` to also remove (and
+   undo-restore) any connector referencing a deleted element
+   (`packages/core/src/commands/commands.ts`), with a regression test in `commandBus.test.ts`.
+4. **Ungroup announced success even when nothing happened.** `ungroupElement()` correctly no-ops on
+   a non-container, but the Ctrl/Cmd+Shift+G keyboard shortcut called it unconditionally and
+   announced "Ungrouped X" regardless — a screen-reader user could be told an action occurred that
+   didn't. Fixed by gating the handler on `isContainer()`, matching the Edit-menu item's existing
+   `canUngroup` gate (`apps/web/src/App.tsx`).
+
+All four fixes verified live (not just re-run through unit tests) by reproducing each bug and its
+fix end-to-end in a running browser; full core/ui-web/web unit suites and the Playwright a11y +
+keyboard E2E specs all still pass.
+
+**Remaining for M8:** the actual human sign-off pass. A live-browser accessibility-tree walk is a
+strong proxy but isn't the same as a person's ears at a real screen reader judging phrasing,
+timing, and verbosity — [Accessibility](07-accessibility.md#manual-screen-reader-script-voiceover--nvda)
+now has a concrete ~20-minute script for that pass (VoiceOver or NVDA), written so any teammate can
+run it without prior context.
 
 **v1 exit criteria:** an architect builds a correct system-context + high-level diagram end to
 end, exports a reviewer-grade SVG, reopens it; linter catches common violations; AA verified.

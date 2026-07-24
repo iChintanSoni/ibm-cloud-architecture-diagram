@@ -89,6 +89,14 @@ export function placeLibraryItem(editor: Editor, placement: LibraryPlacement, po
   });
 }
 
+/** The canvas point centered in the current viewport — used for keyboard-only placement, where
+ * there's no click position to place at (docs/07-accessibility.md#canvas-the-hard-20). */
+export function viewportCenter(editor: Editor, canvasEl: HTMLElement): Point {
+  const rect = canvasEl.getBoundingClientRect();
+  const { x, y, scale } = editor.viewport.get();
+  return { x: x + rect.width / (2 * scale), y: y + rect.height / (2 * scale) };
+}
+
 export function clientPointToCanvas(svg: SVGSVGElement, clientX: number, clientY: number): Point | undefined {
   const matrix = svg.getScreenCTM();
   if (!matrix) return undefined;

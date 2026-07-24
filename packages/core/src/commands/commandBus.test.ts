@@ -190,6 +190,23 @@ describe("CommandBus", () => {
     expect(scene.get("child")).toMatchObject({ id: "child", parentId: "parent" });
   });
 
+  it("removes a connector left dangling by a cascading delete, and restores it on undo", () => {
+    const scene = new Scene();
+    const bus = new CommandBus(scene);
+    bus.dispatch(addElement(box("parent")));
+    bus.dispatch(addElement(box("child", "parent")));
+    bus.dispatch(addElement(box("outsider")));
+    bus.dispatch(addElement(connector("conn", "child", "outsider")));
+
+    bus.dispatch(removeElement(scene, "parent"));
+    expect(scene.has("conn")).toBe(false);
+    expect(scene.has("outsider")).toBe(true);
+
+    bus.undo();
+    expect(scene.get("conn")).toMatchObject({ id: "conn" });
+    expect(scene.get("child")).toMatchObject({ id: "child", parentId: "parent" });
+  });
+
   it("reparents an element and undoes back to its prior container", () => {
     const scene = new Scene();
     const bus = new CommandBus(scene);

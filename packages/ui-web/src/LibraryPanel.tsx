@@ -17,7 +17,9 @@ export type LibraryPlacement =
 export interface LibraryPanelProps {
   catalog: Catalog;
   activePlacement?: LibraryPlacement | undefined;
-  onChoose: (placement: LibraryPlacement) => void;
+  /** `immediate` is true for a keyboard activation (Enter/Space), which has no canvas click to
+   * follow — the host should place it straight away rather than arm a mouse-aiming mode. */
+  onChoose: (placement: LibraryPlacement, immediate?: boolean) => void;
 }
 
 function placementKey(placement: LibraryPlacement | undefined): string | undefined {
@@ -61,7 +63,7 @@ export function LibraryPanel({ catalog, activePlacement, onChoose }: LibraryPane
                     type="button"
                     className="icad-library__item"
                     aria-pressed={activeKey === key}
-                    onClick={() => onChoose(item)}
+                    onClick={(event) => onChoose(item, event.detail === 0)}
                   >
                     <span className={`icad-library__primitive icad-library__primitive--${kind}`} />
                     <span>{containerKindLabel(kind)}</span>
@@ -82,7 +84,7 @@ export function LibraryPanel({ catalog, activePlacement, onChoose }: LibraryPane
                     type="button"
                     className="icad-library__preset"
                     aria-pressed={activeKey === placementKey(item)}
-                    onClick={() => onChoose(item)}
+                    onClick={(event) => onChoose(item, event.detail === 0)}
                   >
                     <span style={{ borderColor: preset.color }} />
                     {preset.name}
@@ -111,7 +113,7 @@ export function LibraryPanel({ catalog, activePlacement, onChoose }: LibraryPane
                     className="icad-library__item"
                     title={icon.name}
                     aria-pressed={activeKey === placementKey(item)}
-                    onClick={() => onChoose(item)}
+                    onClick={(event) => onChoose(item, event.detail === 0)}
                   >
                     <svg viewBox="0 0 20 20" aria-hidden="true">
                       <g dangerouslySetInnerHTML={{ __html: catalog.svg(icon.id) ?? "" }} />

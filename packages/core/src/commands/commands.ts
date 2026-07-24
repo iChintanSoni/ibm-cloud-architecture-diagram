@@ -44,20 +44,35 @@ export function addElement(element: SceneElement): Command {
 
 /**
  * Removes an element and, per containment membership (move-with applies
- * symmetrically to delete), every element nested under it. Undo restores the
- * whole subtree, parents before children so intermediate parentId lookups
- * stay valid throughout.
+ * symmetrically to delete), every element nested under it. Also removes any
+ * connector attached to a deleted element but left outside the subtree (e.g.
+ * a Group's member connected to a sibling elsewhere on the canvas) — without
+ * this, the connector survives with an endpoint that no longer resolves,
+ * which the `.icad` repair pass only cleans up on next load, not live in the
+ * editor (docs/03-file-format.md#versioning--migration). Undo restores
+ * everything, parents before children so intermediate parentId lookups stay
+ * valid throughout.
  */
 export function removeElement(scene: Scene, id: ElementId): Command {
   const root = scene.get(id);
   const subtree = root ? [root, ...scene.descendantsOf(id)] : [];
+  const subtreeIds = new Set(subtree.map((el) => el.id));
+  const danglingConnectors = scene
+    .all()
+    .filter(
+      (el): el is ConnectorElement =>
+        el.type === "connector" &&
+        !subtreeIds.has(el.id) &&
+        (subtreeIds.has(el.from.elementId) || subtreeIds.has(el.to.elementId))
+    );
+  const removed = [...subtree, ...danglingConnectors];
   return {
     label: "remove element",
     do(s) {
-      for (const el of subtree) s._remove(el.id);
+      for (const el of removed) s._remove(el.id);
     },
     undo(s) {
-      for (const el of subtree) s._put(el, "add");
+      for (const el of removed) s._put(el, "add");
     }
   };
 }

@@ -42,7 +42,7 @@ import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEven
 import { createIbmCloudCatalog } from "./catalog";
 import { clearDraft, debounceAutosave, loadDraft, saveDraft } from "./persistence/autosave";
 import { openIcadFile, saveIcadFile, supportsFileSystemAccess } from "./persistence/fileSystem";
-import { clientPointToCanvas, placeLibraryItem } from "./placement";
+import { clientPointToCanvas, placeLibraryItem, viewportCenter } from "./placement";
 import { loadThemePreference, saveThemePreference } from "./persistence/themePreference";
 import { type ThemePreference, useResolvedTheme } from "./useResolvedTheme";
 import { buildValidationView } from "./validation";
@@ -546,9 +546,7 @@ export function App() {
   const handleInsert = (kind: InsertKind) => {
     const editor = editorRef.current;
     if (!editor || !canvasRef.current) return;
-    const rect = canvasRef.current.getBoundingClientRect();
-    const { x, y, scale } = editor.viewport.get();
-    const center = { x: x + rect.width / (2 * scale), y: y + rect.height / (2 * scale) };
+    const center = viewportCenter(editor, canvasRef.current);
 
     let id: ElementId;
     if (kind === "actor") {
@@ -561,6 +559,22 @@ export function App() {
       id = placeLibraryItem(editor, placement, center);
     }
     editor.selection.set([id]);
+    editor.focusElement(id);
+    announce(`${elementDisplayName(editor.scene.get(id)!)} added`);
+  };
+
+  // Mouse users arm a placement, then click a canvas location for it. A keyboard activation
+  // (Enter/Space on the library button) has no click position to give, so it places immediately
+  // at the viewport center instead of entering that mouse-only aiming mode (docs/07-accessibility.md#canvas-the-hard-20).
+  const handleChooseFromLibrary = (placement: LibraryPlacement, immediate?: boolean) => {
+    const editor = editorRef.current;
+    if (!immediate || !editor || !canvasRef.current) {
+      setActivePlacement(placement);
+      return;
+    }
+    const id = placeLibraryItem(editor, placement, viewportCenter(editor, canvasRef.current));
+    editor.selection.set([id]);
+    editor.focusElement(id);
     announce(`${elementDisplayName(editor.scene.get(id)!)} added`);
   };
 
@@ -576,7 +590,10 @@ export function App() {
     const editor = editorRef.current;
     const id = editor?.selection.get()[0];
     const element = id ? editor?.scene.get(id) : undefined;
-    if (!editor || !id || !element) return;
+    // ungroupElement() already no-ops on a non-container (docs above it in createEditor.ts), but
+    // this check keeps the live-region announcement from firing when nothing actually happened —
+    // e.g. the keyboard shortcut fires unconditionally, unlike the Edit menu item's canUngroup gate.
+    if (!editor || !id || !element || !isContainer(element)) return;
     const name = elementDisplayName(element);
     editor.ungroupElement(id);
     announce(`Ungrouped ${name}`);
@@ -793,7 +810,7 @@ export function App() {
           <LibraryPanel
             catalog={catalog}
             activePlacement={activePlacement}
-            onChoose={setActivePlacement}
+            onChoose={handleChooseFromLibrary}
           />
           <div className="icad-canvas-region">
             <div

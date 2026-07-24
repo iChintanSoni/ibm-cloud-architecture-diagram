@@ -62,3 +62,59 @@ label** is both a spec violation and an accessible-name gap. Fixing spec issues 
 
 Full canvas a11y is real, budgeted work and lands **incrementally within v1** — chrome and
 keyboard operation first, then the screen-reader object tree and live regions, all before GA.
+
+## Manual screen-reader script (VoiceOver / NVDA)
+
+CI (axe-core, keyboard E2E) catches structural violations and verifies every action is
+keyboard-reachable, but it can't judge whether the *spoken result* actually makes sense to a
+screen-reader user — phrasing, timing, double-announcements, or a stale name. That judgment needs
+a human at a real screen reader. Run this on **VoiceOver** (macOS: Cmd+F5) or **NVDA** (Windows,
+free) before a release; ~20 minutes.
+
+**What to listen for at every step**, beyond "did it do the right thing":
+- The name spoken is current and correct — never a stale label, an internal ID, or literally the
+  word "unknown".
+- A live-region announcement fires once, is timely (not delayed past your next action), and
+  doesn't collide with or repeat another announcement.
+- Nothing is announced as a `button`/`group`/etc. with no accessible name.
+- Verbosity is reasonable — a container announces its child count once, not per keystroke.
+
+**Script** (start a Blank diagram):
+1. **Insert a container** (Insert menu → Box). Confirm it's announced added and focus lands on it
+   (not left in the menu).
+2. **Place a catalog icon two ways**: click one in the Library panel, then arm and click a canvas
+   point (mouse flow) — *and separately* Tab to a different icon button and press Enter/Space
+   (keyboard flow, no mouse). Both must place the icon and announce it; the keyboard path must not
+   require a follow-up click to complete.
+3. **Tab across the canvas.** Confirm the order is sensible (containers before children, west→east,
+   connectors last) and each stop's name is meaningful on its own, without seeing the screen.
+4. **Connect two elements by keyboard**: focus one, press `c`, Tab to a target, Enter. Confirm the
+   "Connecting from X — Tab to a target..." prompt is spoken, and the result is announced as
+   "Connected A to B", not just a geometry description.
+5. **Build a multi-selection** (Enter, then Tab + Shift+Enter to a second element) and group it
+   (Ctrl/Cmd+G). Confirm "Grouped N elements" and that the container's spoken name updates to
+   reflect its new child count.
+6. **Ungroup, delete, undo.** Confirm each is announced, and — this is the one jsdom/axe cannot
+   check — that deleting a container never leaves a connector behind whose endpoints don't
+   resolve (it would read as something like "unknown element to unknown element"; there should be
+   nothing at all instead).
+7. **Find on canvas** (Ctrl/Cmd+F) and the **Command palette** (Ctrl/Cmd+K): confirm typing filters
+   audibly sane results, arrow-key navigation is announced per item, and closing either returns
+   focus exactly where it was.
+8. **Frames + Present mode**: jump to a frame from the Frames tab, enter Present, step with
+   arrow/PageUp/PageDown, confirm each frame's name is announced on entry.
+9. **Validation panel**: trigger a rule (e.g. leave an element unlabeled), confirm the panel
+   announces the new count and each finding reads as a complete sentence a non-visual user could
+   act on, not just a rule ID.
+10. **Export dialog**: confirm the compliance summary and format options are all announced with
+    working labels.
+
+File anything that fails this as a normal bug — the accessible name, role, or live-region wiring is
+almost always a small, local fix (see `accessibleName()` in `packages/core/src/scene/accessibleName.ts`
+and the `announce()` calls in `apps/web/src/App.tsx`), not a redesign.
+
+**Known, accepted gap, not a blocker:** Undo/Redo (Ctrl/Cmd+Z / Shift+Ctrl/Cmd+Z) has no live-region
+announcement — the canvas updates silently. Every other mutating action announces; this one was
+never in scope per M8.2's committed list (insert/delete/connect/group/ungroup/quick-fix). Worth a
+follow-up if the manual pass finds it disorienting in practice, but it shouldn't block sign-off on
+its own.
