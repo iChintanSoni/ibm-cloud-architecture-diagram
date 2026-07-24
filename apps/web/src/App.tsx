@@ -42,6 +42,15 @@ import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEven
 import { createIbmCloudCatalog } from "./catalog";
 import { clearDraft, debounceAutosave, loadDraft, saveDraft } from "./persistence/autosave";
 import { openIcadFile, saveIcadFile, supportsFileSystemAccess } from "./persistence/fileSystem";
+import {
+  consumeStartupFile,
+  isTauri,
+  onNativeFileOpen,
+  openIcadFileNative,
+  saveExportNative,
+  saveIcadFileNative,
+  setNativeTheme
+} from "./persistence/tauri";
 import { clientPointToCanvas, placeLibraryItem, viewportCenter } from "./placement";
 import { loadThemePreference, saveThemePreference } from "./persistence/themePreference";
 import { type ThemePreference, useResolvedTheme } from "./useResolvedTheme";
@@ -53,14 +62,17 @@ function isEditableTarget(target: EventTarget | null): boolean {
   return target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
 }
 
-function download(filename: string, content: string, mime: string): void {
-  const blob = new Blob([content], { type: mime });
+function downloadBlob(filename: string, blob: Blob): void {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
   anchor.download = filename;
   anchor.click();
   URL.revokeObjectURL(url);
+}
+
+function download(filename: string, content: string, mime: string): void {
+  downloadBlob(filename, new Blob([content], { type: mime }));
 }
 
 function filenameFor(title: string): string {
@@ -72,6 +84,7 @@ export function App() {
   const editorRef = useRef<Editor | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const fileHandleRef = useRef<FileSystemFileHandle | null>(null);
+  const nativeFilePathRef = useRef<string | null>(null);
   const autosaveRef = useRef(debounceAutosave((doc: unknown) => void saveDraft(doc)));
   const [catalog] = useState(createIbmCloudCatalog);
 
@@ -85,6 +98,9 @@ export function App() {
   const [recoveredDraft, setRecoveredDraft] = useState(false);
   const [newDiagramOpen, setNewDiagramOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const [exportFormat, setExportFormat] = useState<"svg" | "png">("svg");
+  const [pngScale, setPngScale] = useState<1 | 2 | 3>(1);
+  const [pngBackground, setPngBackground] = useState<"transparent" | "white">("transparent");
   const [exportGate, setExportGateState] = useState<ExportGate>("warn");
   const [zoomPercent, setZoomPercent] = useState(100);
   const [presentingFrameId, setPresentingFrameId] = useState<ElementId>();
@@ -142,9 +158,16 @@ export function App() {
     editorRef.current = editor;
 
     let cancelled = false;
-    loadDraft().then((draft) => {
+    // A file opened via OS double-click/"Open With" (Tauri only) takes priority over
+    // an unrelated leftover autosave draft — the user asked for a specific document.
+    const startupFile = isTauri() ? consumeStartupFile() : Promise.resolve(null);
+    Promise.all([startupFile, loadDraft()]).then(([opened, draft]) => {
       if (cancelled) return;
-      if (draft) {
+      if (opened) {
+        nativeFilePathRef.current = opened.path;
+        editor.loadIcad(JSON.parse(opened.text));
+        editor.setTheme(themePreference);
+      } else if (draft) {
         editor.loadIcad(draft);
         // Theme-only changes never mutate the scene through a command, so they never
         // trigger the autosave below — the recovered draft's theme can be stale. Keep
@@ -184,6 +207,33 @@ export function App() {
   useEffect(() => {
     editorRef.current?.setTheme(themePreference);
   }, [themePreference]);
+
+  // Native window chrome (Tauri only): "auto" hands theming back to the OS (matching an
+  // unset window `theme` config); an explicit light/dark choice forces the titlebar to
+  // match rather than leaving it OS-driven while the canvas itself has been overridden.
+  useEffect(() => {
+    if (!isTauri()) return;
+    void setNativeTheme(themePreference === "auto" ? null : themePreference);
+  }, [themePreference]);
+
+  // A `.icad` opened while the app is already running (Tauri only): a second launch
+  // caught by the single-instance plugin, or a macOS "Open With" after startup.
+  useEffect(() => {
+    if (!isTauri()) return;
+    let cancelled = false;
+    let unsubscribe: (() => void) | undefined;
+    onNativeFileOpen((file) => {
+      nativeFilePathRef.current = file.path;
+      loadIntoEditor(file.text);
+    }).then((unsub) => {
+      if (cancelled) unsub();
+      else unsubscribe = unsub;
+    });
+    return () => {
+      cancelled = true;
+      unsubscribe?.();
+    };
+  }, []);
 
   useEffect(() => {
     const cancelPlacement = (event: KeyboardEvent) => {
@@ -411,15 +461,45 @@ export function App() {
     setExportOpen(true);
   };
 
+  /** Native Save dialog when running under Tauri, browser download otherwise (D22). */
+  const saveExport = async (
+    filename: string,
+    blob: Blob,
+    filters: { name: string; extensions: string[] }[]
+  ) => {
+    if (isTauri()) {
+      await saveExportNative(blob, filename, filters);
+      return;
+    }
+    downloadBlob(filename, blob);
+  };
+
   const handleExportSvg = () => {
     const editor = editorRef.current;
     if (!editor) return;
     const svg = editor.export({ format: "svg" });
     if (typeof svg === "string") {
-      download("diagram.svg", svg, "image/svg+xml");
-      setExportOpen(false);
+      void saveExport("diagram.svg", new Blob([svg], { type: "image/svg+xml" }), [
+        { name: "SVG image", extensions: ["svg"] }
+      ]).then(() => setExportOpen(false));
     }
   };
+
+  const handleExportPng = () => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    Promise.resolve(editor.export({ format: "png", scale: pngScale, background: pngBackground })).then(
+      (result) => {
+        if (result instanceof Blob) {
+          void saveExport("diagram.png", result, [{ name: "PNG image", extensions: ["png"] }]).then(() =>
+            setExportOpen(false)
+          );
+        }
+      }
+    );
+  };
+
+  const handleExport = () => (exportFormat === "svg" ? handleExportSvg() : handleExportPng());
 
   const persistIcad = async (forceSaveAs: boolean) => {
     const editor = editorRef.current;
@@ -427,6 +507,15 @@ export function App() {
     const doc = editor.toIcad();
     const content = JSON.stringify(doc, null, 2);
     const filename = filenameFor(doc.meta.title);
+
+    if (isTauri()) {
+      const path = await saveIcadFileNative(content, forceSaveAs ? null : nativeFilePathRef.current, filename);
+      if (path) {
+        nativeFilePathRef.current = path;
+        await clearDraft();
+      }
+      return;
+    }
 
     if (supportsFileSystemAccess()) {
       const handle = await saveIcadFile(content, forceSaveAs ? null : fileHandleRef.current, filename);
@@ -457,6 +546,13 @@ export function App() {
   };
 
   const handleOpenClick = async () => {
+    if (isTauri()) {
+      const opened = await openIcadFileNative();
+      if (!opened) return; // user canceled the picker
+      nativeFilePathRef.current = opened.path;
+      loadIntoEditor(opened.text);
+      return;
+    }
     if (supportsFileSystemAccess()) {
       const opened = await openIcadFile();
       if (!opened) return; // user canceled the picker
@@ -686,7 +782,7 @@ export function App() {
     { id: "new", label: "New diagram…", category: "File", run: () => setNewDiagramOpen(true) },
     { id: "open", label: "Open .icad…", category: "File", run: () => void handleOpenClick() },
     { id: "save", label: "Save .icad", category: "File", shortcut: "Ctrl+S", run: handleSaveIcad },
-    ...(supportsFileSystemAccess()
+    ...(isTauri() || supportsFileSystemAccess()
       ? [{ id: "save-as", label: "Save As…", category: "File", run: handleSaveIcadAs }]
       : []),
     { id: "export", label: "Export…", category: "File", run: openExport },
@@ -759,7 +855,7 @@ export function App() {
           onNew={() => setNewDiagramOpen(true)}
           onOpen={() => void handleOpenClick()}
           onSave={handleSaveIcad}
-          {...(supportsFileSystemAccess() ? { onSaveAs: handleSaveIcadAs } : {})}
+          {...(isTauri() || supportsFileSystemAccess() ? { onSaveAs: handleSaveIcadAs } : {})}
           onExport={openExport}
           onUndo={() => editorRef.current?.commands.undo()}
           onRedo={() => editorRef.current?.commands.redo()}
@@ -993,12 +1089,12 @@ export function App() {
           open={exportOpen}
           size="sm"
           modalLabel="Export"
-          modalHeading="Export SVG"
+          modalHeading="Export diagram"
           primaryButtonText={exportBlocked ? "Resolve errors to export" : "Export"}
           primaryButtonDisabled={exportBlocked}
           secondaryButtonText="Cancel"
           onRequestClose={() => setExportOpen(false)}
-          onRequestSubmit={handleExportSvg}
+          onRequestSubmit={handleExport}
         >
           <div className="icad-export-summary">
             <p>IBM conformance summary</p>
@@ -1015,6 +1111,40 @@ export function App() {
               <p className="icad-export-blocked">
                 Export is blocked because the diagram has error-level diagnostics.
               </p>
+            )}
+            <Select
+              id="icad-export-format"
+              labelText="Format"
+              value={exportFormat}
+              onChange={(event) => setExportFormat(event.target.value as "svg" | "png")}
+            >
+              <SelectItem value="svg" text="SVG (re-editable, per D8)" />
+              <SelectItem value="png" text="PNG (raster)" />
+            </Select>
+            {exportFormat === "png" && (
+              <>
+                <Select
+                  id="icad-export-png-scale"
+                  labelText="Scale"
+                  value={String(pngScale)}
+                  onChange={(event) => setPngScale(Number(event.target.value) as 1 | 2 | 3)}
+                >
+                  <SelectItem value="1" text="1×" />
+                  <SelectItem value="2" text="2×" />
+                  <SelectItem value="3" text="3×" />
+                </Select>
+                <Select
+                  id="icad-export-png-background"
+                  labelText="Background"
+                  value={pngBackground}
+                  onChange={(event) =>
+                    setPngBackground(event.target.value as "transparent" | "white")
+                  }
+                >
+                  <SelectItem value="transparent" text="Transparent" />
+                  <SelectItem value="white" text="White" />
+                </Select>
+              </>
             )}
             <Select
               id="icad-export-gate"

@@ -39,7 +39,7 @@ ibm-cloud-diagram/
 ├── apps/
 │   ├── web/                  # v1 web shell (Vite): mounts core + ui-web
 │   ├── vscode/               # (v2) VS Code custom editor for .icad
-│   └── desktop/              # (v3) Tauri shell
+│   └── desktop/              # (v3) Tauri shell — src-tauri/ only; wraps apps/web's own build
 ├── docs/
 └── README.md
 ```
@@ -107,7 +107,10 @@ Shells provide chrome and host integration only; they call the core API.
   Persistence via File System Access API + fallback ([D9](00-decision-log.md#d9--file-system-access-api--fallback--locked)); autosave/recovery via OPFS ([D10](00-decision-log.md#d10--autosave-draft--crash-recovery--locked)).
 - **`apps/vscode` (v2):** custom editor registered for `.icad`; core runs in the webview, the
   extension host handles file I/O.
-- **`apps/desktop` (v3):** Tauri window; native file associations for `.icad`.
+- **`apps/desktop` (v3):** Tauri window; native file associations for `.icad`. Unlike
+  `apps/vscode`, there's no separate frontend package — `tauri.conf.json` points straight at
+  `apps/web`'s own build output, so it's `apps/web` unmodified plus a thin native bridge
+  ([D22](00-decision-log.md#d22--desktop-shell-reuses-webs-file-system-access--autosave-layer-unlike-vs-code--locked-v3)).
 
 ## Data flow (open → edit → save)
 

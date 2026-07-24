@@ -184,3 +184,22 @@ icon}`) that the library panel offers as one-click, pre-styled inserts.
   [Icon Catalog → Container presets](04-icon-catalog.md#container-presets); several entries are
   inferred from the kit's stencil legend rather than confirmed by a worked example, so IBM Design
   sign-off ([D17](#d17--official--ibm-internal-tool--locked)) applies before the table ships.
+
+### D22 — Desktop shell reuses web's File System Access + autosave layer, unlike VS Code · Locked (v3)
+`apps/desktop` (Tauri) does **not** replace `apps/web`'s persistence layer the way
+[M10](09-roadmap.md#m10--appsvscode) replaced it with VS Code's hot exit. It mounts `apps/web`
+unchanged inside the Tauri webview and layers a native bridge on top only where a browser API
+genuinely doesn't reach: opening a file passed via OS double-click/file association, and a native
+Open/Save/Save-As path for platforms where the File System Access API isn't available (Tauri on
+macOS/Linux uses the system WebKit/WebKitGTK engine, not Chromium, so `showOpenFilePicker`/
+`showSaveFilePicker` are absent there the same way they're absent in Safari today).
+
+- **Why:** [D9](#d9--file-system-access-api--fallback--locked)'s browser fallback
+  (download/upload) and [D10](#d10--autosave-draft--crash-recovery--locked)'s OPFS/IndexedDB
+  autosave-and-recovery both already work unmodified inside any modern webview engine (WebView2 or
+  WebKit) — reimplementing them the way the VS Code custom editor had to would duplicate
+  already-shipped, already-tested code for no reason specific to this shell.
+- **Consequence:** `apps/web` gains a small number of Tauri-feature-detected code paths (native
+  dialog/fs calls, a file-association open-event listener), but the File System Access/
+  download-fallback and autosave/recovery logic itself stays untouched. See
+  [Roadmap M11](09-roadmap.md#m11--appsdesktop-tauri-shell).

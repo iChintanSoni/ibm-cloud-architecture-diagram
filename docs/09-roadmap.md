@@ -468,9 +468,169 @@ accepts with minor edits; `.icad` opens identically in web and VS Code.
 
 ## v3 — Desktop + scale
 
-- **`apps/desktop`** — Tauri shell, native `.icad` file associations, offline install.
-- Performance: viewport virtualization for very large diagrams if needed ([D3](00-decision-log.md#d3--svg-dom-rendering--locked) note).
-- Catalog refresh cadence + migration tooling for new IBM icon versions.
+Put the same engine on the desktop as a native app, and make sure it holds up at real-world
+diagram sizes and catalog churn. Carries two open items forward from v1/v2 rather than blocking on
+them: M8.3's human VoiceOver/NVDA sign-off and M10's interactive F5 VS Code pass both still need a
+real device this environment doesn't have; they proceed in parallel with v3, not before it.
+
+#### M11 — `apps/desktop` (Tauri shell)
+🟡 **In progress** (2026-07-24) — scaffolded, themed, iconed, builds and bundles headlessly; the
+interactive sign-off, code signing, and DMG packaging are what's left (all need a real machine).
+
+Same "core runs in the webview, the host handles file I/O" split as
+[M10](#m10--appsvscode) ([Architecture](02-architecture.md#shells)). Landed so far:
+
+1. `apps/desktop` scaffolded via `tauri init` (`--ci`, non-interactive) and hand-tuned: a Tauri
+   (Rust) host in `src-tauri/`, no separate webview package — `tauri.conf.json`'s `frontendDist`
+   points straight at `apps/web`'s own build output (`../../web/dist`, `devUrl` at its Vite dev
+   server) and `beforeDevCommand`/`beforeBuildCommand` just run `apps/web`'s existing `dev`/`build`
+   scripts. `@icad/core` and `@icad/ui-web` are therefore reused unmodified, same as M10 confirmed
+   possible — there's no `apps/desktop/webview/src` fork to keep in sync.
+2. **Persistence reused as-is, per [D22](00-decision-log.md#d22--desktop-shell-reuses-webs-file-system-access--autosave-layer-unlike-vs-code--locked-v3)**:
+   `apps/web`'s D9 File System Access path and D10 OPFS/IndexedDB autosave+recovery banner are
+   completely untouched. The only new code is `apps/web/src/persistence/tauri.ts` — native
+   Open/Save/Save-As via `@tauri-apps/plugin-dialog`+`plugin-fs`, a `consumeStartupFile()`/
+   `onNativeFileOpen()` pair for the file-association path below — gated behind a synchronous
+   `isTauri()` check (mirrors `@tauri-apps/api/core`'s own detection) and reached only through
+   dynamic `import()`, confirmed via the production build output to code-split into their own
+   small chunks that a plain browser build never fetches. `App.tsx`'s `persistIcad`/
+   `handleOpenClick` now check `isTauri()` before falling through to the existing File System
+   Access/download-fallback branches, unchanged.
+3. Native `.icad` file associations: `tauri.conf.json`'s `bundle.fileAssociations` registers the
+   extension for the platform bundler to wire into Info.plist/registry/desktop-entry. The Rust host
+   (`src-tauri/src/lib.rs`) covers both OS delivery mechanisms — Windows/Linux hand a launched
+   process the path as an argv, parsed by `icad_path_from_args`; macOS delivers "Open With" as a
+   `RunEvent::Opened` run-loop event instead, including on a cold first launch. A cold-start path is
+   exposed once through a `get_startup_file` command (an emitted event would race the frontend
+   attaching its listener) while `tauri-plugin-single-instance` — registered first, a Tauri
+   requirement — redirects a second launch's path into the already-running window via an
+   `icad://open-file` event and focuses it, rather than spawning a duplicate process.
+4. `capabilities/default.json` grants `fs:allow-read-text-file`/`allow-write-text-file` an
+   intentionally unscoped `"path": "**"` — a general-purpose file-associated editor has to reach any
+   user-chosen path, not just an app-sandboxed one — flagged here as a real security-relevant choice
+   worth a dedicated review before packaging for actual distribution, not asserted as final.
+5. `app.security.csp` was tightened from `tauri init`'s default `null` to a same-origin policy
+   (`default-src 'self'`, plus `data:` for the already-bundled IBM Plex fonts/icons); `identifier`
+   set to a placeholder `com.ibm.icad.desktop` pending a real IBM-issued reverse-DNS id before any
+   real code-signing/distribution.
+6. **Real app icon, sourced from IBM's own catalog, not invented.** `apps/desktop/app-icon.svg`
+   recolors the `ibm-cloud` glyph from
+   [Icon Catalog](04-icon-catalog.md) (`packages/catalog/2.0.0/icons/network/ibm-cloud.svg`, the
+   pinned IBM-Cloud/architecture-icons stencil) white-on-IBM-Blue-60, centered in a rounded square
+   per macOS's convention of baking the icon's silhouette into the artwork rather than relying on
+   OS masking. `pnpm tauri icon app-icon.svg` regenerated every platform size/format from it (the
+   iOS/Android variants it also produces were deleted — v3 has no mobile target); a rebuild
+   confirmed the bundled `.app`'s `icon.icns` byte-for-byte matches the regenerated one. Still an
+   explicit placeholder pending real IBM Design sign-off before any real distribution, same as
+   [D21](00-decision-log.md#d21--container-presets-are-a-named-shortcut-layer-not-new-element-types--locked)'s
+   posture on unconfirmed presets.
+7. **Native window chrome now follows the resolved theme, not just launch-time config.**
+   `persistence/tauri.ts`'s `setNativeTheme()` calls `@tauri-apps/api/window`'s
+   `getCurrentWindow().setTheme()` whenever
+   [M7.4](#m74--top-bar-command-palette-find-frame-presentation-theme-persistence)'s persisted
+   preference changes: `"auto"` passes `null` (hands the titlebar back to the OS, live — the same
+   behavior an unset window `theme` config already gave for free); an explicit light/dark choice
+   forces the titlebar to match, rather than leaving native chrome OS-driven while the canvas itself
+   has been overridden. The in-canvas theme resolution itself
+   (`useResolvedTheme`'s `matchMedia("(prefers-color-scheme: dark)")` listener) was already
+   correct under any modern webview and needed no changes.
+8. **PNG export UI — the real gap was bigger than "unexercised under Tauri": `apps/web` never had a
+   PNG option in its Export dialog at all**, in either shell, even though `core/io/export`'s
+   `exportPng` (scale 1×/2×/3×, transparent/white background) has existed since
+   [M5](#m5--icad-io--export). Added a format selector (SVG/PNG) plus PNG's scale/background
+   controls to the shared Export modal, and a unified `handleExport` dispatching to
+   `handleExportSvg`/`handleExportPng`. Both now save through a new `saveExport()` helper: a native
+   Save dialog via `persistence/tauri.ts`'s `saveExportNative()` (`@tauri-apps/plugin-dialog` +
+   `plugin-fs`'s binary `writeFile`) under Tauri, the pre-existing browser `downloadBlob()`
+   otherwise — so SVG export on desktop gained a real native Save-As for free in the same change,
+   where it previously always silently dropped into the Downloads folder even when running in
+   Tauri. This lands in `apps/web` only, so it also reaches the browser shell and — per D22 — desktop
+   for free; `apps/vscode`'s separately-forked `webview/src` still carries its own PNG deferral from
+   [M9.1](#m91--catalog-document-authoring-and-conformancesvg-export-tools)/[M10](#m10--appsvscode)
+   untouched.
+9. Verified headlessly in this environment (no GUI/display access here, so nothing below is a
+   substitute for an interactive pass): `cargo check` passes for the Rust host — which also
+   validates `tauri.conf.json` and `capabilities/default.json` parse correctly, since
+   `tauri::generate_context!()` parses both at compile time; `apps/web`'s own typecheck/lint/test/
+   build all still pass with every new code path added (24 tests in `persistence/tauri.test.ts` —
+   dialog cancel, Save vs. Save-As, startup-file/relaunch-event handling, native theme sync, native
+   export save); `cargo tauri build` completed two full release compiles (before and after the icon
+   swap) and produced a working `ICAD.app` each time — its generated `Info.plist` confirms
+   `bundle.fileAssociations` round-tripped correctly into a real `CFBundleDocumentTypes` entry for
+   `.icad`, and the bundled `icon.icns` was confirmed byte-identical to the freshly generated one.
+   The `.dmg` packaging step itself hung on the first attempt and had to be killed (later rebuilds
+   used `--bundles app` to skip it): `bundle_dmg.sh` drives Finder over AppleScript to lay out the
+   disk-image window, which needs a real interactive WindowServer session this sandbox doesn't have
+   — a known limitation of headless macOS (unrelated to anything in this change; unconfirmed
+   whether it reproduces on a real CI runner or a human's own machine, both of which typically have
+   one).
+
+**Not yet done:**
+- `.dmg` packaging — confirmed hanging in this specific sandbox (see above), not yet retried
+  anywhere with a real WindowServer session.
+- Code signing/notarization (an IBM org/certificate dependency, not a code task — same posture as
+  [D17](00-decision-log.md#d17--official--ibm-internal-tool--locked)'s sign-off gate) and the actual
+  interactive pass: open by double-click, Open/Save/Save-As, native file association end to end,
+  offline launch. Same limitation M10 hit — this environment can build, bundle, and unit-test the
+  app but has no GUI/display access to drive a native window interactively.
+
+**Done when:** a `.icad` file opens identically in web, VS Code, and desktop; double-clicking a
+`.icad` file launches or focuses the desktop app and loads it; SVG and PNG export both work
+natively; the app runs fully offline post-install.
+
+#### M12 — Performance at scale
+⬜ **Not started**
+
+[D3](00-decision-log.md#d3--svg-dom-rendering--locked) flagged viewport virtualization as something
+"very large diagrams may need... later" — benchmark first, build only if the benchmark demands it:
+
+1. Generate synthetic large diagrams (e.g. 500 / 1,000 / 2,000+ elements and connectors) and
+   measure, headlessly in `packages/core` (the same jsdom setup `packages/mcp` already proves out):
+   initial render time, pan/zoom frame time, hit-testing, lint pass time, and command-bus
+   undo/redo time.
+2. Only if a real threshold is breached, add viewport virtualization to the SVG renderer: cull
+   off-screen elements from the live DOM while keeping them in the scene model and hit-testing
+   index. This touches several things M8 built on the assumption of a fully-materialized DOM —
+   DOM-based hit-testing, the `aria-owns` nested a11y tree
+   ([M8.2](#m82--connectgroup-interactions-nested-object-tree-live-regions-real-browser-ci)), and
+   keyboard tab order ([M8.1](#m81--baseline-canvas-keyboard-operation-rolesnames-ci-a11y-checks))
+   — all need re-verification against a partially-virtualized DOM, not just the renderer itself.
+3. If the benchmark doesn't show a real problem at realistic diagram sizes, don't build
+   virtualization — document the benchmark result instead and revisit if a real diagram ever
+   breaches it.
+
+**Done when:** a documented benchmark exists for render/pan/zoom/hit-test/lint at defined element
+counts; virtualization ships only if that benchmark demanded it, with a11y/keyboard coverage
+re-verified against the virtualized DOM.
+
+#### M13 — Catalog refresh cadence + migration tooling
+⬜ **Not started**
+
+1. Define the refresh trigger: how `packages/catalog-build` re-pins a newer
+   `IBM-Cloud/architecture-icons` commit — an IBM Design-signaled manual re-pin
+   ([D17](00-decision-log.md#d17--official--ibm-internal-tool--locked)) rather than an unattended
+   scheduled job, consistent with this being an IBM-gated tool.
+2. Build a diff tool comparing the generated catalog directory across versions (e.g.
+   `packages/catalog/2.0.0` vs. a new `3.0.0`) — added / renamed / removed icons — to catch
+   `catalogRef` breakage before it reaches a shipped `.icad`.
+3. Decide and implement the resolution story for a `.icad` document whose `catalogRef` no longer
+   exists in the currently bundled catalog version: today [File Format](03-file-format.md#versioning--migration)'s
+   repair pass only handles structural issues (dangling `parentId`, degenerate geometry, …), not a
+   missing catalog reference. Likely a placeholder/greyed icon plus a dedicated linter diagnostic
+   rather than a hard load error, tracked against a bundled-catalog-version field alongside the
+   `.icad` schema version already recorded.
+4. Decide whether catalog-ref migrations belong in the same (currently empty) migration registry
+   `core/io` already has for `.icad` schema bumps ([M5](#m5--icad-io--export)), or a separate
+   registry — don't conflate the two without deciding explicitly.
+
+**Done when:** a documented, exercised process re-pins the catalog to a new IBM stencil release
+end-to-end, with a defined (not silent) outcome for any `.icad` file left referencing a
+now-missing icon.
+
+**v3 exit criteria:** `apps/desktop` ships with native `.icad` file associations on macOS, Windows,
+and Linux, and opens a document identically to web and VS Code; a documented performance benchmark
+exists for large diagrams, with virtualization shipped only if it was actually needed; the catalog
+refresh process has been exercised at least once end-to-end with a defined missing-icon story.
 
 ## Explicitly deferred / revisit later
 
