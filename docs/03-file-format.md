@@ -97,8 +97,9 @@ Handled by `core/io`. See also [Editor UX → Export](06-editor-ux.md#export).
 - Produced directly from the render tree, so export == on-screen.
 - Defaults mirror IBM guidance: transparent background, embedded fonts/images, spec colors.
 - **Re-editable copy ([D8](00-decision-log.md#d8--re-editable-svg-via-embedded-icad-copy--locked)):** the full `.icad` JSON is embedded in a
-  `<metadata>`/`<desc>` block so the tool can reopen the SVG and restore the editable scene. An
-  **"export without source"** option omits it for public assets.
+  `<metadata>`/`<desc>` block so the tool can reopen the SVG and restore the editable scene. The
+  `core/io` export API accepts an `embedSource: false` option to omit it, but no surface currently
+  exposes that as a UI toggle — SVG export always embeds the source today.
 
 ```xml
 <svg …>

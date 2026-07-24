@@ -121,9 +121,11 @@ Source: *IBM_IT Architecture diagrams kit* v1.1, "Connectors" slide.
 
 ## Categories & tiers
 
-Icons are organized by the IBM tiers — IBM (Core), IBM Cloud, IBM Domains/Industries, 3rd Party —
-and by functional category (compute, network, storage, security, data, devops, ai, actors,
-groups). The library panel mirrors this. See [Icon Catalog](04-icon-catalog.md).
+The catalog schema is designed for IBM's tiers — IBM (Core), IBM Cloud, IBM Domains/Industries,
+3rd Party — as well as functional category (compute, network, storage, security, data, devops, ai,
+actors, applications). Today's generated catalog tags all 207 icons under a single tier
+(`ibm-cloud`); the tier taxonomy isn't populated yet, so the Library panel currently groups by
+category only. See [Icon Catalog](04-icon-catalog.md).
 
 ## The linter (`core/linter`)
 
@@ -175,7 +177,7 @@ Rule severities are configurable per document (with an IBM-default preset). Team
 output can turn the export gate to **block**; ideation-heavy users can keep everything advisory.
 The default is IBM-recommended with the gate set to **warn**.
 
-The current implementation ships 15 rules across semantics, containment, labels, connectors, and
+The current implementation ships 14 rules across semantics, containment, labels, connectors, and
 layout. The location-context check applies to high-level/detailed diagrams (system-context and
 blank diagrams intentionally allow standalone nodes), and west→east reversal checks target public
 connections. Per-rule overrides and the export gate are stored in `.icad`; validation fixes and

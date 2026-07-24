@@ -25,7 +25,7 @@ build incrementally and self-correct via the linter.
 
 **Catalog & discovery**
 - `catalog_search({ query })` → matching IBM icons (id, name, category, semantic).
-- `catalog_categories()` → category/tier tree.
+- `catalog_categories()` → the list of icon categories.
 
 **Document**
 - `doc_create({ level, force? })` → new `.icad` scene from a template level (`blank` |

@@ -8,49 +8,54 @@ custom SVG engine ([D3](00-decision-log.md#d3--svg-dom-rendering--locked)). Ever
 
 ```
 ┌───────────────────────────────────────────────────────────────────────┐
-│  Menu · File  Edit  View  Insert  Help          [Theme ☾]  [Export ▾]  │  Top bar (Carbon)
+│  Menu · File  Edit  View  Insert  Help    [Find] [⌘K] [Theme] [Export] │  Top bar (Carbon)
 ├──────────┬───────────────────────────────────────────────┬────────────┤
 │ Library  │                                               │ Properties │
-│ (icons)  │                   CANVAS                       │  + Layers  │
-│  search  │           (SVG, pan/zoom, grid)               │            │
+│ (icons)  │                   CANVAS                       │  Layers    │
+│  search  │              (SVG, pan/zoom)                  │  Frames    │
 │  ├ Groups│                                               │  Validation│
-│  ├ Compute│                                              │  panel     │
+│  ├ Compute│                                              │            │
 │  ├ Network│                                              │            │
 │  └ …     │                                               │            │
-├──────────┴───────────────────────────────────────────────┴────────────┤
-│ Toolbar: select · box · group · boundary · icon · connector · text · frame │ Bottom/side tools
-│  Zoom 100%  ·  Frames ▸  ·  Find (⌘F)  ·  Validation ▸                   │
-└───────────────────────────────────────────────────────────────────────┘
+└──────────┴───────────────────────────────────────────────┴────────────┘
 ```
 
-- **Left — Library panel:** searchable IBM catalog, grouped by category/tier exactly like draw.io
-  ([Icon Catalog](04-icon-catalog.md)). Drag onto canvas or click-to-place.
-- **Center — Canvas:** SVG viewport with pan (space-drag / scroll), zoom, snap grid, rulers.
-- **Right — Properties / Layers / Validation:** context panel for the selection, a layer/tree
-  view, and the [linter](05-ibm-spec-conformance.md) diagnostics.
-- **Toolbar:** the semantic tools (box, group, boundary, icon, connector, actor, text, frame).
+- **Left — Library panel:** searchable IBM catalog, grouped by category
+  ([Icon Catalog](04-icon-catalog.md)). Click an icon to arm it, then click the canvas to place
+  it — there's no drag-and-drop from the panel today.
+- **Center — Canvas:** SVG viewport with pan (scroll) and zoom (Ctrl/Cmd+scroll, or the View menu
+  zoom commands). No visible grid and no rulers.
+- **Right — Inspector:** four tabs — Properties (the selection), Layers (the containment tree),
+  Frames (presentation order), and Validation (the [linter](05-ibm-spec-conformance.md)
+  diagnostics).
+- **No separate toolbar.** Every insert action lives in the Insert menu or the Library panel.
 
 ## Core interactions
 
-- **Placing icons:** drag from library or click the icon tool then click canvas; icons land at
-  spec size (48×48 container). Dropping inside a box/group sets containment automatically.
-- **Containers:** draw a Box (solid, `deployedOn`) or Group (dashed, `deployedTo`); child elements
-  move with the container. Convert types via the linter quick-fix or Properties.
-- **Connectors:** hover a shape to reveal ports; drag port→port to connect. Orthogonal
-  auto-routing with obstacle avoidance; grab a segment to add a manual waypoint. Pick the IBM
-  connector type in Properties.
-- **Selection:** click, shift-click, marquee, ⌘/Ctrl+A. Group/ungroup, align, distribute, z-order.
-- **Snapping:** grid + smart guides (edges/centers) + ports.
+- **Placing icons:** click an icon in the Library panel to arm it, then click the canvas — or
+  press Enter/Space on a focused icon to place it at the viewport center. Placing inside a
+  box/group/zone sets containment (`parentId`) automatically.
+- **Containers:** insert a Box (solid, `deployedOn`) or Group (dashed, `deployedTo`) from the
+  Insert menu or Library panel; child elements move with the container. Convert types via the
+  linter quick-fix or Properties.
+- **Connectors:** hover a shape to reveal ports; drag port→port to connect, or focus a source,
+  press `c`, Tab to a target, and press Enter. Orthogonal auto-routing with obstacle avoidance;
+  there's no gesture for manually editing a connector's waypoints yet. Pick the IBM connector type
+  in Properties.
+- **Selection:** click, shift-click, or keyboard Enter/Shift+Enter. No marquee selection, no
+  Ctrl/Cmd+select-all, and no align/distribute/z-order commands yet.
+- **Snapping:** connector ports only — no grid or alignment-guide snapping.
 - **Undo/redo:** unlimited within a session, backed by the command bus.
 
 ## Nesting & spacing
 
-- Nested elements keep a **16px buffer** on every side from their parent container's edge — the
-  engine enforces this as a snap/pad default when dropping into a Box/Group/Boundary, not just a
-  visual guideline.
+- A newly created Group (from grouping a multi-selection) is sized to fit its contents plus a
+  **16px pad** on every side — that's the one place the 16px buffer is actively applied today,
+  not a general snap/pad rule enforced on every container edit.
 - Alternate white and light-tint fills between nesting levels (parent vs. child container) for
   readability, using the category's secondary color ([Spec Conformance → Color usage](05-ibm-spec-conformance.md#color-usage)).
-- Resizing a container drags from its corner handle; children reflow to keep the 16px buffer.
+- There's no drag-to-resize yet — width and height are set via typed W/H fields in the Properties
+  tab, and resizing a container doesn't reflow its children.
 
 Source: *IBM_IT Architecture diagrams kit* v1.1, "Prescribed location / Scaling elements" slide.
 
@@ -87,18 +92,20 @@ Templates encode the conventions so a newcomer starts on-spec.
 
 - **Open/Save/Save As** via the File System Access API on Chromium; **download/upload** fallback on
   Safari/Firefox ([D9](00-decision-log.md#d9--file-system-access-api--fallback--locked)).
-- **Autosave draft** to OPFS continuously; on reload after a crash, offer **Restore** ([D10](00-decision-log.md#d10--autosave-draft--crash-recovery--locked)).
-- The title bar shows dirty state; ⌘S writes the `.icad` file and clears it.
+- **Autosave draft** to IndexedDB, debounced ~800ms after every change; on reload after a crash,
+  offer **Restore** ([D10](00-decision-log.md#d10--autosave-draft--crash-recovery--locked)).
+- ⌘S writes the `.icad` file.
 
 ## Export
 
 From the Export menu ([File Format → Export](03-file-format.md#export)):
 
-- **SVG** (canonical): transparent bg, embedded fonts, spec colors, **re-editable embedded
-  `.icad`** by default (toggle off for public assets).
+- **SVG** (canonical): transparent bg, embedded fonts, spec colors, always embeds a re-editable
+  copy of the `.icad` source. The `core/io` export API accepts an `embedSource: false` option, but
+  no UI surface currently exposes it as a toggle.
 - **PNG**: 1×/2×/3×, transparent or white.
-- **Copy to clipboard** (PNG/SVG) for quick paste into decks/docs/tickets.
 - The dialog shows a **compliance summary** from the linter; the export gate (warn/block) applies.
+- No clipboard-copy option exists yet — exports save to disk.
 
 ## Keyboard-first
 
