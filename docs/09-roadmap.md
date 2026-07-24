@@ -306,11 +306,65 @@ end, exports a reviewer-grade SVG, reopens it; linter catches common violations;
 
 Make the same engine machine-authorable and put it where developers live.
 
-- **`packages/mcp`** — full authoring toolset over `core/api` ([Agent Integration](08-agent-integration.md), [D15](00-decision-log.md#d15--mcp-full-authoring-toolset--locked-v2)).
+#### M9 — MCP server (agent authoring toolset)
+🟡 **In progress**
+
+##### M9.1 — Catalog, document, authoring, and conformance/SVG-export tools
+✅ **Done** (2026-07-24)
+
+`packages/mcp` — a new workspace package, an MCP server exposing `core/api`'s `Editor` to agents
+over stdio, so "agents and humans drive one engine" per D2/D15
+([Agent Integration](08-agent-integration.md), [D15](00-decision-log.md#d15--mcp-full-authoring-toolset--locked-v2)):
+
+1. `Editor` isn't headless by itself — its constructor needs a real `HTMLElement` container and its
+   renderer touches bare DOM globals (D3's locked "live SVG DOM nodes"). `src/headlessEditor.ts`
+   builds one jsdom `Window` at process start and copies the globals `Editor`/`io/export.ts`
+   actually reference (`document`, `XMLSerializer`, `Image`, `URL`, `Blob`, ...) onto `globalThis`
+   — the same thing `packages/core`'s own jsdom-based test suite already proves works, just outside
+   a test runner. `packages/catalog-build` already depends on `jsdom` as a real dependency for the
+   same kind of need — direct precedent in this repo.
+2. 25 tools across four groups — catalog search/categories; document create/open/save/get; every
+   `element_add_*`, update/move/delete, connect (exact-port + nearest-port auto-pick), group/ungroup,
+   frame reorder; lint, quick-fix apply (single + all), SVG export. `src/catalog.ts` is a Node-native
+   equivalent of `apps/web/src/catalog.ts`'s catalog loader (that one depends on Vite's
+   `import.meta.glob`, unavailable in a plain Node process).
+3. `quickfix_apply` takes a diagnostic **id**, not a raw diagnostic object — `Diagnostic.quickFix`
+   is a live `Command` (closures), which cannot survive the JSON-RPC boundary. The server caches the
+   most recent `lint()` results by id (`src/state.ts`) and looks the real object up server-side.
+4. Every authoring/conformance/export/save tool requires an explicit `doc_create`/`doc_open` first
+   (mirrors the human product's own forced "New Diagram chooser on first launch," M7.3, rather than
+   silently authoring into a scene an agent never asked to start); `doc_create`/`doc_open` refuse to
+   replace a document with unsaved changes unless called with `force: true`.
+5. Tools return both a short human-readable summary and, where there's real structured data to
+   reason over (ids, diagnostics, the full document), `structuredContent` validated against a zod
+   `outputSchema`.
+6. Tested by spinning up a real client+server pair per test over the MCP SDK's `InMemoryTransport`
+   (25 tools, 5 test files, 15 tests) — a full protocol round-trip, not just calling handler
+   functions directly. Additionally verified end-to-end over **real stdio**: the compiled server
+   spawned as an actual subprocess, driven through `doc_create` → `element_add_icon` →
+   `connect_nearest` → `lint` → `quickfix_apply_all` → `export_diagram` → `doc_save`, then reopened
+   in a *second*, independent subprocess via `doc_open` to confirm the round-trip is real, not just
+   in-memory.
+
+**Deferred, explicitly** (not silently dropped):
+- **PNG export.** `io/export.ts`'s `exportPng` itself requires a real browser canvas 2D context;
+  jsdom doesn't implement canvas without the native `canvas` npm package (not installed anywhere in
+  this repo, and unproven headless — no existing test coverage to lean on). `export_diagram`
+  supports `format: "svg"` only until that's spiked and proven.
+- **`editor.open({ path })`** (hand off to a running human-editor shell) — needs real
+  application-launching/IPC that doesn't exist yet (no `apps/desktop`; `apps/web` is a dev-server-only
+  Vite app). Belongs with `apps/desktop` (v3) or a VS Code integration, not this package.
+- Agent Skills (M9.2, below) and `apps/vscode` (M10).
+
+##### M9.2 — Agent Skills
+⬜ **Not started**
+
 - **Agent Skills** — `ibm-diagram-authoring` / `-spec` / `-export` ([D16](00-decision-log.md#d16--authoring--spec--export-agent-skills--locked-v2)).
-- **`apps/vscode`** — custom editor for `.icad`, diagrams-in-repo next to code.
 - Harden generation quality against real requirement prompts (the A2A "GenerateArchitectureDiagram"
   capability).
+
+#### M10 — `apps/vscode`
+⬜ **Not started** — custom editor for `.icad`, diagrams-in-repo next to code.
 
 **v2 exit criteria:** an agent generates a valid, non-trivial topology from a paragraph a human
 accepts with minor edits; `.icad` opens identically in web and VS Code.
