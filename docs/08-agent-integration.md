@@ -19,29 +19,36 @@ headless core with no UI dependency ([D2](00-decision-log.md#d2--framework-agnos
 **Full authoring toolset** ([D15](00-decision-log.md#d15--mcp-full-authoring-toolset--locked-v2)) — fine-grained tools, not one black box, so agents can
 build incrementally and self-correct via the linter.
 
-### Tools (illustrative)
+### Tools (as shipped, M9.1)
+
+25 tools across four groups (`packages/mcp/src/tools/`):
 
 **Catalog & discovery**
-- `catalog.search({ query })` → matching IBM icons (id, name, category, semantic).
-- `catalog.categories()` → category/tier tree.
+- `catalog_search({ query })` → matching IBM icons (id, name, category, semantic).
+- `catalog_categories()` → category/tier tree.
 
 **Document**
-- `doc.create({ level })` → new `.icad` scene from a template level.
-- `doc.open({ path })` / `doc.save({ path })`.
-- `doc.get()` → current scene (elements, frames, meta).
+- `doc_create({ level, force? })` → new `.icad` scene from a template level (`blank` |
+  `system-context` | `high-level` | `detailed`).
+- `doc_open({ path, force? })` / `doc_save({ path? })`.
+- `doc_get()` → current scene (elements, frames, meta).
 
 **Authoring**
-- `element.addIcon({ catalogRef, at, parentId, label })`
-- `element.addBox|addGroup|addZone|addActor({ … })`
-- `element.update({ id, patch })` / `element.move` / `element.delete`
-- `connect({ from, to, connectorType })`
-- `frame.add({ name, bounds, order })`
+- `element_add_icon({ catalogRef, at, parentId?, label? })`
+- `element_add_box` / `element_add_group` / `element_add_zone({ zoneKind? })` / `element_add_actor` / `element_add_text` / `element_add_frame({ name, order? })`
+- `element_update({ id, patch })` / `element_move({ ids, dx, dy })` / `element_delete({ ids })`
+- `connect({ from, to, connectorType?, direction?, flowColor?, cardinality?, label? })` (exact ports) /
+  `connect_nearest({ fromId, toId, ... })` (auto-picked ports)
+- `group_elements({ ids, padding? })` / `ungroup_element({ id })`
+- `frame_reorder({ frameIds })`
 
 **Conformance & output**
-- `lint()` → diagnostics + available quick-fixes.
-- `quickfix.apply({ diagnosticId })`.
-- `export({ format: "svg"|"png", embedSource })` → file/bytes.
-- `editor.open({ path })` → hand off to the human editor (when a shell is running).
+- `lint()` → diagnostics + counts + available quick-fixes.
+- `quickfix_apply({ diagnosticId })` / `quickfix_apply_all({ ruleId? })`.
+- `export_diagram({ format: "svg", embedSource?, path? })` → file/bytes. PNG is deferred (needs a
+  real browser canvas, unproven headless — see [Roadmap M9.1](09-roadmap.md#m91--catalog-document-authoring-and-conformancesvg-export-tools)).
+- `editor.open({ path })` → hand off to the human editor (when a shell is running) — **not yet
+  implemented**; needs `apps/desktop`/VS Code IPC that doesn't exist (deferred past M9.1).
 
 ### Contract & safety
 
@@ -55,19 +62,24 @@ build incrementally and self-correct via the linter.
 
 ## Agent Skills
 
-**Authoring + spec + export skill set** ([D16](00-decision-log.md#d16--authoring--spec--export-agent-skills--locked-v2)) — `SKILL.md` packages that teach an agent to
-use the MCP well and produce **spec-compliant** diagrams. Composable, not one monolith:
+**Authoring + spec + export skill set** ([D16](00-decision-log.md#d16--authoring--spec--export-agent-skills--locked-v2)) — `SKILL.md` packages
+(`packages/mcp/skills/`) that teach an agent to use the MCP well and produce **spec-compliant**
+diagrams. Composable, not one monolith:
 
 1. **`ibm-diagram-authoring`** — translate requirements → elements: choose the right diagram level,
-   pick icons, model `deployedOn`/`deployedTo` correctly, lay out west→east, connect with proper
-   IBM connector types.
-2. **`ibm-diagram-spec`** — the conventions reference (semantics, connector nomenclature,
-   categories/tiers, layout rules) the authoring skill leans on and the linter enforces.
-3. **`ibm-diagram-export`** — validate → resolve diagnostics via quick-fixes → export canonical
-   SVG/PNG (with or without embedded source).
+   resolve icons via `catalog_search`, model `deployedOn`/`deployedTo` correctly, build outside-in
+   and west→east, connect with proper IBM connector types. Includes a worked example (requirement →
+   full tool-call sequence).
+2. **`ibm-diagram-spec`** — the conventions reference (element semantics, color usage, connector
+   nomenclature, categories/tiers, layout, linter rule categories) the authoring and export skills
+   lean on and the linter enforces.
+3. **`ibm-diagram-export`** — validate (`lint`) → resolve diagnostics via quick-fixes
+   (`quickfix_apply`/`quickfix_apply_all`) → export canonical SVG (`export_diagram`; PNG deferred,
+   see above) with or without embedded source, plus `doc_save` for the `.icad` itself.
 
-Skills version alongside the MCP toolset and the [catalog](04-icon-catalog.md), so guidance never
-references tools or icons that don't exist.
+Skills version alongside the MCP toolset and the [catalog](04-icon-catalog.md); `packages/mcp/src/skills.test.ts`
+guards the docs against drift by asserting every tool name referenced in a `SKILL.md` is a real,
+currently-registered MCP tool.
 
 ## End-to-end (the whiteboard flow)
 
@@ -77,15 +89,16 @@ sequenceDiagram
   participant S as Agent Skills
   participant M as ICAD MCP Server
   participant C as Core (headless)
-  A->>S: load ibm-diagram-authoring + spec
-  A->>M: doc.create({ level: "high-level" })
+  A->>S: load ibm-diagram-authoring + ibm-diagram-spec
+  A->>M: doc_create({ level: "high-level" })
   M->>C: command(s)
-  A->>M: catalog.search / addBox / addIcon / connect …
+  A->>M: catalog_search / element_add_box / element_add_icon / connect_nearest …
   M->>C: commands (undoable, validated)
+  A->>S: load ibm-diagram-export
   A->>M: lint()
   M-->>A: diagnostics + quick-fixes
-  A->>M: quickfix.apply … until clean
-  A->>M: export({ format: "svg", embedSource: true })
+  A->>M: quickfix_apply_all() … until clean
+  A->>M: export_diagram({ format: "svg", embedSource: true })
   M-->>A: diagram (SVG) + .icad
   A-->>A: hand to human to refine in the editor
 ```

@@ -307,7 +307,7 @@ end, exports a reviewer-grade SVG, reopens it; linter catches common violations;
 Make the same engine machine-authorable and put it where developers live.
 
 #### M9 — MCP server (agent authoring toolset)
-🟡 **In progress**
+✅ **Done** (2026-07-24)
 
 ##### M9.1 — Catalog, document, authoring, and conformance/SVG-export tools
 ✅ **Done** (2026-07-24)
@@ -357,11 +357,37 @@ over stdio, so "agents and humans drive one engine" per D2/D15
 - Agent Skills (M9.2, below) and `apps/vscode` (M10).
 
 ##### M9.2 — Agent Skills
-⬜ **Not started**
+✅ **Done** (2026-07-24)
 
-- **Agent Skills** — `ibm-diagram-authoring` / `-spec` / `-export` ([D16](00-decision-log.md#d16--authoring--spec--export-agent-skills--locked-v2)).
-- Harden generation quality against real requirement prompts (the A2A "GenerateArchitectureDiagram"
-  capability).
+`packages/mcp/skills/` — three composable `SKILL.md` packages
+([D16](00-decision-log.md#d16--authoring--spec--export-agent-skills--locked-v2), [Agent Integration](08-agent-integration.md)):
+
+1. **`ibm-diagram-spec`** — the conventions reference: element semantics (Box/Group/Zone/Actor/
+   Connector), color usage, connector nomenclature (connection vs. relationship families,
+   `flowColor`, cardinality), categories/tiers, west→east layout, and the linter's five rule
+   categories. Self-contained (doesn't require repo access to `docs/`), since a skill package can
+   travel to an agent independent of this repository.
+2. **`ibm-diagram-authoring`** — the workflow: read a requirement for actors/locations/groupings/
+   components/relationships, pick a diagram level (`doc_create`), resolve every icon through
+   `catalog_search` (never invent a `catalogRef`), build outside-in with `parentId` chains, lay out
+   west→east, pick the right `connectorType`/`flowColor`, and lint incrementally rather than only at
+   the end. Includes a worked example: a full requirement-to-tool-call-sequence for a 3-tier
+   VPC-hosted app.
+3. **`ibm-diagram-export`** — validate (`lint`) → resolve via `quickfix_apply`/`quickfix_apply_all`
+   (re-lint after, since diagnostic ids go stale) → `export_diagram` (SVG only — PNG still deferred
+   per M9.1) → `doc_save` for the `.icad` source itself, which export doesn't touch.
+
+`packages/mcp/src/skills.test.ts` guards all three against drift: it spins up a real MCP
+client/server pair, lists the actual registered tools, and asserts every snake_case inline-code
+token in each `SKILL.md` resolves to one of them — a typo'd or renamed tool reference fails CI
+instead of silently misleading an agent.
+
+**Deferred, explicitly:** hardening generation quality against a corpus of real requirement prompts
+(the A2A "GenerateArchitectureDiagram" capability) needs an actual agent loop driving the MCP server
+end-to-end and judging output quality — a live-agent evaluation pass, not something this
+documentation-and-tooling change can self-verify. Tracked as follow-up before the v2 exit criteria
+("an agent generates a valid, non-trivial topology from a paragraph a human accepts with minor
+edits") are called met.
 
 #### M10 — `apps/vscode`
 ⬜ **Not started** — custom editor for `.icad`, diagrams-in-repo next to code.
