@@ -1,0 +1,926 @@
+import { Button, Modal, Select, SelectItem, Tag, Theme } from "@carbon/react";
+import {
+  createEditor,
+  hitTest,
+  isContainer,
+  portPoint,
+  ruleMetadata,
+  type ConformanceSeverity,
+  type Diagnostic,
+  type DiagramTemplateId,
+  type ElementId,
+  type ElementPropertiesPatch,
+  type Editor,
+  type ExportGate,
+  type FrameElement,
+  type PortSide,
+  type SceneElement
+} from "@icad/core";
+import {
+  CommandPalette,
+  FindBar,
+  InspectorPanel,
+  LibraryPanel,
+  LiveRegion,
+  NewDiagramDialog,
+  TopBar,
+  elementDisplayName,
+  findMatches,
+  type CommandItem,
+  type InsertKind,
+  type LibraryPlacement
+} from "@icad/ui-web";
+import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
+import { createIbmCloudCatalog } from "./catalog";
+import { clientPointToCanvas, placeLibraryItem, viewportCenter } from "./placement";
+import { onHostMessage, postToHost } from "./vscodeApi";
+import { useVsCodeTheme } from "./useVsCodeTheme";
+import { buildValidationView } from "./validation";
+
+/** Ctrl/Cmd+K and Ctrl/Cmd+F stay global; other shortcuts back off while the user is typing. */
+function isEditableTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
+}
+
+export function App() {
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const editorRef = useRef<Editor | null>(null);
+  const [catalog] = useState(createIbmCloudCatalog);
+
+  const { kind: themeKind, carbonTheme } = useVsCodeTheme();
+  const [activePlacement, setActivePlacement] = useState<LibraryPlacement>();
+  const [diagnostics, setDiagnostics] = useState<Diagnostic[]>([]);
+  const [elements, setElements] = useState<SceneElement[]>([]);
+  const [selectedIds, setSelectedIds] = useState<ElementId[]>([]);
+  const [newDiagramOpen, setNewDiagramOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportGate, setExportGateState] = useState<ExportGate>("warn");
+  const [zoomPercent, setZoomPercent] = useState(100);
+  const [presentingFrameId, setPresentingFrameId] = useState<ElementId>();
+  const [connectingFromId, setConnectingFromId] = useState<ElementId>();
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [findOpen, setFindOpen] = useState(false);
+  const [findQuery, setFindQuery] = useState("");
+  const [findActiveIndex, setFindActiveIndex] = useState(0);
+  const [announcement, setAnnouncement] = useState("");
+
+  // Live region for meaningful changes (docs/07-accessibility.md#canvas-the-hard-20): briefly
+  // clears first so the same message announces again even if it repeats back to back.
+  const announce = (message: string) => {
+    setAnnouncement("");
+    window.setTimeout(() => setAnnouncement(message), 50);
+  };
+
+  const frames = useMemo(
+    () =>
+      elements
+        .filter((element): element is FrameElement => element.type === "frame")
+        .sort((a, b) => a.order - b.order),
+    [elements]
+  );
+  const findMatchesList = useMemo(
+    () => findMatches(elements, catalog, findQuery),
+    [elements, catalog, findQuery]
+  );
+
+  // Recomputed every render (not tracked in state): editorRef mutations don't cause re-renders by
+  // themselves, but every dispatch/undo/redo already flows through the scene "change" listener
+  // below, which does setState and triggers one — by the time that render runs, the command
+  // stacks have fully settled.
+  const canUndo = editorRef.current?.commands.canUndo() ?? false;
+  const canRedo = editorRef.current?.commands.canRedo() ?? false;
+  const singleSelected =
+    selectedIds.length === 1 ? elements.find((element) => element.id === selectedIds[0]) : undefined;
+  const canGroup = selectedIds.length >= 2;
+  const canUngroup = singleSelected !== undefined && isContainer(singleSelected);
+
+  // Mounts the editor and wires the host<->webview protocol (shared/protocol.ts). Unlike
+  // apps/web's App.tsx, there's no File System Access API / IndexedDB here at all — the extension
+  // host (icadEditorProvider.ts) owns file I/O, undo/redo bridging, and hot-exit backup; this
+  // effect's job is just to relay between the engine's own events and postMessage.
+  useEffect(() => {
+    if (!canvasRef.current) return;
+
+    const editor = createEditor({ container: canvasRef.current, catalog });
+    editorRef.current = editor;
+
+    const unsubscribeChange = editor.on(() => {
+      setElements(editor.scene.all());
+      setDiagnostics(editor.lint());
+    });
+    const unsubscribeSelection = editor.onSelectionChange(setSelectedIds);
+    const unsubscribeViewport = editor.viewport.on((viewport) => setZoomPercent(viewport.scale * 100));
+    // commands.onDispatch fires only on a genuine new CommandBus.dispatch() — never on
+    // commands.undo()/redo() replay (see packages/core/src/commands/commandBus.ts) — which is
+    // exactly the boundary the undo/redo bridge needs: only real user actions become a new VS
+    // Code undo-stack entry.
+    const unsubscribeDispatch = editor.commands.onDispatch(({ command }) => {
+      postToHost({ type: "edit", content: JSON.stringify(editor.toIcad()), label: command.label });
+    });
+
+    const unsubscribeHost = onHostMessage((message) => {
+      if (message.type === "init" || message.type === "revert") {
+        editor.loadIcad(JSON.parse(message.content));
+        setExportGateState(editor.scene.conformance.exportGate);
+        setDiagnostics(editor.lint());
+        setElements(editor.scene.all());
+        setPresentingFrameId(undefined);
+        setActivePlacement(undefined);
+      } else if (message.type === "undo") {
+        editor.commands.undo();
+        postToHost({ type: "sync", content: JSON.stringify(editor.toIcad()) });
+      } else if (message.type === "redo") {
+        editor.commands.redo();
+        postToHost({ type: "sync", content: JSON.stringify(editor.toIcad()) });
+      }
+    });
+
+    setElements(editor.scene.all());
+    setSelectedIds(editor.selection.get());
+    setZoomPercent(editor.viewport.get().scale * 100);
+    postToHost({ type: "ready" });
+
+    return () => {
+      unsubscribeChange();
+      unsubscribeSelection();
+      unsubscribeViewport();
+      unsubscribeDispatch();
+      unsubscribeHost();
+      editor.destroy();
+      editorRef.current = null;
+    };
+    // Mounted once: catalog never changes for the lifetime of a webview instance.
+  }, [catalog]);
+
+  useEffect(() => {
+    editorRef.current?.setTheme(themeKind);
+  }, [themeKind]);
+
+  useEffect(() => {
+    const cancelPlacement = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setActivePlacement(undefined);
+    };
+    window.addEventListener("keydown", cancelPlacement);
+    return () => window.removeEventListener("keydown", cancelPlacement);
+  }, []);
+
+  // Scroll pans, Ctrl/Cmd+scroll zooms toward the cursor (docs/06-editor-ux.md#core-interactions).
+  // Attached as a native, non-passive listener so preventDefault actually stops page scroll.
+  useEffect(() => {
+    const node = canvasRef.current;
+    if (!node) return;
+    const onWheel = (event: WheelEvent) => {
+      const editor = editorRef.current;
+      const svg = node.querySelector("svg");
+      if (!editor || !svg) return;
+      event.preventDefault();
+      if (event.ctrlKey || event.metaKey) {
+        const focal = clientPointToCanvas(svg, event.clientX, event.clientY);
+        editor.viewport.zoomBy(Math.exp(-event.deltaY * 0.01), focal);
+      } else {
+        const { scale } = editor.viewport.get();
+        editor.viewport.panBy(event.deltaX / scale, event.deltaY / scale);
+      }
+    };
+    node.addEventListener("wheel", onWheel, { passive: false });
+    return () => node.removeEventListener("wheel", onWheel);
+  }, []);
+
+  // Global command palette / find / zoom shortcuts (docs/06-editor-ux.md#keyboard-first).
+  // Deliberately excludes Ctrl/Cmd+Z / Shift+Z / Y: VS Code owns undo/redo for the active custom
+  // editor and bridges it back in via the "undo"/"redo" host messages above — binding it here too
+  // would double-undo.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const meta = event.metaKey || event.ctrlKey;
+      if (meta && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        openPalette();
+        return;
+      }
+      if (meta && event.key.toLowerCase() === "f") {
+        event.preventDefault();
+        openFind();
+        return;
+      }
+      if (isEditableTarget(event.target)) return;
+      if (meta && (event.key === "=" || event.key === "+")) {
+        event.preventDefault();
+        editorRef.current?.zoomIn();
+      } else if (meta && event.key === "-") {
+        event.preventDefault();
+        editorRef.current?.zoomOut();
+      } else if (meta && event.key === "0") {
+        event.preventDefault();
+        editorRef.current?.resetView();
+      } else if (meta && event.key.toLowerCase() === "g" && event.shiftKey) {
+        event.preventDefault();
+        handleUngroup();
+      } else if (meta && event.key.toLowerCase() === "g") {
+        event.preventDefault();
+        handleGroup();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  // Presentation-mode stepping (docs/06-editor-ux.md#frames-sections--presentation).
+  useEffect(() => {
+    if (presentingFrameId === undefined) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (isEditableTarget(event.target)) return;
+      if (event.key === "ArrowRight" || event.key === "ArrowDown" || event.key === "PageDown") {
+        event.preventDefault();
+        stepPresentation(1);
+      } else if (event.key === "ArrowLeft" || event.key === "ArrowUp" || event.key === "PageUp") {
+        event.preventDefault();
+        stepPresentation(-1);
+      } else if (event.key === "Escape") {
+        setPresentingFrameId(undefined);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [presentingFrameId, frames]);
+
+  // Keyboard-operable canvas (docs/07-accessibility.md#canvas-the-hard-20). Tab/Shift+Tab move
+  // keyboard focus only — wrapping is disabled at the boundary so Tab can still exit to
+  // surrounding chrome (no keyboard trap) — Enter/Space select the focused element (Shift+ toggles
+  // it into/out of a multi-selection, so a multi-element selection is fully keyboard-buildable for
+  // Group), arrow keys nudge the current selection, Delete/Backspace removes it, and "C" starts
+  // keyboard connect mode (Tab to a target, Enter to confirm, Escape to cancel). Scoped to the
+  // canvas element itself so it never fires while typing elsewhere (Properties fields, Find, the
+  // command palette, ...).
+  useEffect(() => {
+    const node = canvasRef.current;
+    if (!node) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      const editor = editorRef.current;
+      if (!editor || presentingFrameId !== undefined) return;
+
+      // Sync from wherever real DOM focus actually is: handles the bootstrap case where the
+      // very first Tab into the canvas lands natively on the roving tabindex="0" element,
+      // before any editor.focusElement() call has run.
+      const targetId = event.target instanceof Element ? event.target.getAttribute("data-icad-id") : null;
+      if (targetId && editor.focusedElement() !== targetId) editor.focusElement(targetId);
+      const focusedId = editor.focusedElement();
+
+      if (connectingFromId !== undefined) {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          editor.clearConnectorDraft();
+          editor.setHoveredElement(undefined);
+          setConnectingFromId(undefined);
+        } else if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          if (focusedId && focusedId !== connectingFromId) connectAndAnnounce(connectingFromId, focusedId);
+          editor.clearConnectorDraft();
+          editor.setHoveredElement(undefined);
+          setConnectingFromId(undefined);
+        } else if (event.key === "Tab") {
+          const order = editor.tabOrder();
+          const currentIndex = focusedId ? order.indexOf(focusedId) : -1;
+          if (currentIndex === -1) return;
+          const atBoundary = event.shiftKey ? currentIndex === 0 : currentIndex === order.length - 1;
+          if (atBoundary) return;
+          event.preventDefault();
+          if (event.shiftKey) editor.focusPrevious();
+          else editor.focusNext();
+          const nextId = editor.focusedElement();
+          if (nextId && nextId !== connectingFromId) editor.previewConnectorBetween(connectingFromId, nextId);
+        }
+        return; // swallow every other key (e.g. arrows) while connecting
+      }
+
+      if (event.key === "Tab") {
+        const order = editor.tabOrder();
+        const currentIndex = focusedId ? order.indexOf(focusedId) : -1;
+        if (currentIndex === -1) return; // nothing focused yet: let Tab enter natively
+        const atBoundary = event.shiftKey ? currentIndex === 0 : currentIndex === order.length - 1;
+        if (atBoundary) return; // let Tab exit to surrounding chrome instead of wrapping
+        event.preventDefault();
+        if (event.shiftKey) editor.focusPrevious();
+        else editor.focusNext();
+        return;
+      }
+
+      if (event.key === "Enter" || event.key === " ") {
+        if (!focusedId) return;
+        event.preventDefault();
+        if (event.shiftKey) editor.selection.toggle(focusedId);
+        else editor.selection.set([focusedId]);
+        return;
+      }
+
+      if (event.key.toLowerCase() === "c" && !event.metaKey && !event.ctrlKey && !event.altKey) {
+        const source = focusedId ?? editor.selection.get()[0];
+        const el = source ? editor.scene.get(source) : undefined;
+        if (!el || el.type === "connector" || el.type === "frame") return;
+        event.preventDefault();
+        setConnectingFromId(el.id);
+        editor.setHoveredElement(el.id);
+        return;
+      }
+
+      let selected = editor.selection.get();
+      if (selected.length === 0 && focusedId) {
+        editor.selection.set([focusedId]);
+        selected = [focusedId];
+      }
+      if (selected.length === 0) return;
+
+      const nudge = event.shiftKey ? 8 : 1;
+      if (event.key === "ArrowUp") {
+        event.preventDefault();
+        editor.nudgeElements(selected, 0, -nudge);
+      } else if (event.key === "ArrowDown") {
+        event.preventDefault();
+        editor.nudgeElements(selected, 0, nudge);
+      } else if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        editor.nudgeElements(selected, -nudge, 0);
+      } else if (event.key === "ArrowRight") {
+        event.preventDefault();
+        editor.nudgeElements(selected, nudge, 0);
+      } else if (event.key === "Delete" || event.key === "Backspace") {
+        event.preventDefault();
+        const names = selected.map((deleteId) => elementDisplayName(editor.scene.get(deleteId)!));
+        editor.deleteElements(selected);
+        announce(names.length === 1 ? `${names[0]} deleted` : `${names.length} elements deleted`);
+      }
+    };
+    node.addEventListener("keydown", onKeyDown);
+    return () => node.removeEventListener("keydown", onKeyDown);
+  }, [presentingFrameId, connectingFromId]);
+
+  // Find jumps the viewport to the active match as the query or selection changes.
+  useEffect(() => {
+    if (!findOpen || findMatchesList.length === 0) return;
+    const match = findMatchesList[findActiveIndex % findMatchesList.length];
+    if (!match) return;
+    editorRef.current?.selection.set([match.id]);
+    editorRef.current?.focusOnElements([match.id]);
+  }, [findOpen, findActiveIndex, findMatchesList]);
+
+  useEffect(() => {
+    setFindActiveIndex(0);
+  }, [findQuery]);
+
+  const openExport = () => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    const summary = editor.complianceSummary();
+    setDiagnostics(summary.diagnostics);
+    setExportGateState(editor.scene.conformance.exportGate);
+    setExportOpen(true);
+  };
+
+  const handleExportSvg = () => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    const svg = editor.export({ format: "svg" });
+    if (typeof svg === "string") {
+      postToHost({ type: "exportSvg", content: svg });
+      setExportOpen(false);
+    }
+  };
+
+  const handleCreateDiagram = (templateId: DiagramTemplateId) => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    editor.newDocument(templateId);
+    setActivePlacement(undefined);
+    setExportGateState(editor.scene.conformance.exportGate);
+    setDiagnostics(editor.lint());
+    setNewDiagramOpen(false);
+    setPresentingFrameId(undefined);
+  };
+
+  const stepPresentation = (direction: 1 | -1) => {
+    if (frames.length === 0) return;
+    const currentIndex = frames.findIndex((frame) => frame.id === presentingFrameId);
+    const nextIndex = (((currentIndex === -1 ? 0 : currentIndex + direction) % frames.length) + frames.length) % frames.length;
+    const next = frames[nextIndex]!;
+    setPresentingFrameId(next.id);
+    editorRef.current?.selection.set([next.id]);
+    editorRef.current?.focusOnElements([next.id]);
+  };
+
+  const onTogglePresent = () => {
+    if (presentingFrameId !== undefined) {
+      setPresentingFrameId(undefined);
+      return;
+    }
+    const first = frames[0];
+    if (!first) return;
+    setPresentingFrameId(first.id);
+    editorRef.current?.selection.set([first.id]);
+    editorRef.current?.focusOnElements([first.id]);
+  };
+
+  const onJumpToFrame = (id: ElementId) => {
+    editorRef.current?.selection.set([id]);
+    editorRef.current?.focusOnElements([id]);
+    if (presentingFrameId !== undefined) setPresentingFrameId(id);
+  };
+
+  const closeFind = () => {
+    setFindOpen(false);
+    setFindQuery("");
+  };
+
+  const openFind = () => {
+    setPaletteOpen(false);
+    setFindOpen(true);
+  };
+
+  const openPalette = () => {
+    closeFind();
+    setPaletteOpen(true);
+  };
+
+  const findNext = () => {
+    if (findMatchesList.length === 0) return;
+    setFindActiveIndex((index) => (index + 1) % findMatchesList.length);
+  };
+
+  const findPrevious = () => {
+    if (findMatchesList.length === 0) return;
+    setFindActiveIndex((index) => (index - 1 + findMatchesList.length) % findMatchesList.length);
+  };
+
+  const handleInsert = (kind: InsertKind) => {
+    const editor = editorRef.current;
+    if (!editor || !canvasRef.current) return;
+    const center = viewportCenter(editor, canvasRef.current);
+
+    let id: ElementId;
+    if (kind === "actor") {
+      id = editor.addActor({ at: { x: center.x - 24, y: center.y - 24 }, label: "Actor" });
+    } else if (kind === "text") {
+      id = editor.addText({ at: { x: center.x - 60, y: center.y - 10 }, text: "Text" });
+    } else {
+      const placement: LibraryPlacement =
+        kind === "boundary" ? { type: "primitive", kind: "zone" } : { type: "primitive", kind };
+      id = placeLibraryItem(editor, placement, center);
+    }
+    editor.selection.set([id]);
+    editor.focusElement(id);
+    announce(`${elementDisplayName(editor.scene.get(id)!)} added`);
+  };
+
+  // Mouse users arm a placement, then click a canvas location for it. A keyboard activation
+  // (Enter/Space on the library button) has no click position to give, so it places immediately
+  // at the viewport center instead of entering that mouse-only aiming mode (docs/07-accessibility.md#canvas-the-hard-20).
+  const handleChooseFromLibrary = (placement: LibraryPlacement, immediate?: boolean) => {
+    const editor = editorRef.current;
+    if (!immediate || !editor || !canvasRef.current) {
+      setActivePlacement(placement);
+      return;
+    }
+    const id = placeLibraryItem(editor, placement, viewportCenter(editor, canvasRef.current));
+    editor.selection.set([id]);
+    editor.focusElement(id);
+    announce(`${elementDisplayName(editor.scene.get(id)!)} added`);
+  };
+
+  const handleGroup = () => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    const ids = editor.selection.get();
+    const groupId = editor.groupElements(ids);
+    if (groupId) announce(`Grouped ${ids.length} elements`);
+  };
+
+  const handleUngroup = () => {
+    const editor = editorRef.current;
+    const id = editor?.selection.get()[0];
+    const element = id ? editor?.scene.get(id) : undefined;
+    // ungroupElement() already no-ops on a non-container, but this check keeps the live-region
+    // announcement from firing when nothing actually happened — e.g. the keyboard shortcut fires
+    // unconditionally, unlike the Edit menu item's canUngroup gate.
+    if (!editor || !id || !element || !isContainer(element)) return;
+    const name = elementDisplayName(element);
+    editor.ungroupElement(id);
+    announce(`Ungrouped ${name}`);
+  };
+
+  /** Connects two elements and announces it (docs/07-accessibility.md#canvas-the-hard-20). */
+  const connectAndAnnounce = (fromId: ElementId, toId: ElementId, exact?: { fromPort: PortSide; toPort: PortSide }) => {
+    const editor = editorRef.current;
+    const from = editor?.scene.get(fromId);
+    const to = editor?.scene.get(toId);
+    if (!editor || !from || !to) return;
+    const id = exact
+      ? editor.connect({ elementId: fromId, port: exact.fromPort }, { elementId: toId, port: exact.toPort })
+      : editor.connectNearest(fromId, toId);
+    if (!id) return;
+    editor.selection.set([id]);
+    announce(`Connected ${elementDisplayName(from)} to ${elementDisplayName(to)}`);
+  };
+
+  // Mouse drag-to-connect (docs/06-editor-ux.md#core-interactions): hover a shape to reveal its
+  // ports (SvgRenderer draws them), mousedown on one starts a rubber-band drag; dropping on
+  // another element's port uses that exact port, dropping anywhere else on it auto-picks a
+  // reasonable pair (connectNearest); dropping on empty canvas cancels.
+  const draggingPortRef = useRef<{ elementId: ElementId; side: PortSide } | undefined>(undefined);
+
+  const parsePortAttr = (value: string): { elementId: ElementId; side: PortSide } => {
+    const separator = value.lastIndexOf(":");
+    return { elementId: value.slice(0, separator), side: value.slice(separator + 1) as PortSide };
+  };
+
+  const handleCanvasMouseMove = (event: ReactMouseEvent<HTMLDivElement>) => {
+    const editor = editorRef.current;
+    const svg = canvasRef.current?.querySelector("svg");
+    if (!editor || !svg || activePlacement) return;
+    const point = clientPointToCanvas(svg, event.clientX, event.clientY);
+    if (!point) return;
+
+    if (draggingPortRef.current) {
+      const source = editor.scene.get(draggingPortRef.current.elementId);
+      if (source) editor.setConnectorDraftPoints(portPoint(source, draggingPortRef.current.side), point);
+    }
+
+    const hit = hitTest(editor.scene, point);
+    editor.setHoveredElement(hit && hit.type !== "connector" && hit.type !== "frame" ? hit.id : undefined);
+  };
+
+  const handleCanvasMouseDown = (event: ReactMouseEvent<HTMLDivElement>) => {
+    const editor = editorRef.current;
+    const portAttr =
+      event.target instanceof Element
+        ? event.target.closest<SVGElement>("[data-icad-port]")?.getAttribute("data-icad-port")
+        : null;
+    if (!editor || !portAttr) return;
+    const { elementId, side } = parsePortAttr(portAttr);
+    draggingPortRef.current = { elementId, side };
+    const source = editor.scene.get(elementId);
+    if (source) editor.setConnectorDraftPoints(portPoint(source, side), portPoint(source, side));
+  };
+
+  const handleCanvasMouseUp = (event: ReactMouseEvent<HTMLDivElement>) => {
+    const editor = editorRef.current;
+    const dragging = draggingPortRef.current;
+    draggingPortRef.current = undefined;
+    editor?.clearConnectorDraft();
+    editor?.setHoveredElement(undefined);
+    if (!editor || !dragging) return;
+
+    const targetPortAttr =
+      event.target instanceof Element
+        ? event.target.closest<SVGElement>("[data-icad-port]")?.getAttribute("data-icad-port")
+        : null;
+    if (targetPortAttr) {
+      const target = parsePortAttr(targetPortAttr);
+      if (target.elementId !== dragging.elementId) {
+        connectAndAnnounce(dragging.elementId, target.elementId, { fromPort: dragging.side, toPort: target.side });
+      }
+      return;
+    }
+
+    const svg = canvasRef.current?.querySelector("svg");
+    const point = svg ? clientPointToCanvas(svg, event.clientX, event.clientY) : undefined;
+    if (!point) return;
+    const target = hitTest(editor.scene, point);
+    if (target && target.id !== dragging.elementId && target.type !== "connector") {
+      connectAndAnnounce(dragging.elementId, target.id);
+    }
+  };
+
+  const commands: CommandItem[] = [
+    { id: "new", label: "New diagram…", category: "File", run: () => setNewDiagramOpen(true) },
+    { id: "open", label: "Open file…", category: "File", run: () => postToHost({ type: "requestOpen" }) },
+    { id: "save", label: "Save", category: "File", shortcut: "Ctrl+S", run: () => postToHost({ type: "requestSave" }) },
+    { id: "save-as", label: "Save As…", category: "File", run: () => postToHost({ type: "requestSaveAs" }) },
+    { id: "export", label: "Export…", category: "File", run: openExport },
+    {
+      id: "undo",
+      label: "Undo",
+      category: "Edit",
+      shortcut: "Ctrl+Z",
+      disabled: !canUndo,
+      run: () => editorRef.current?.commands.undo()
+    },
+    {
+      id: "redo",
+      label: "Redo",
+      category: "Edit",
+      shortcut: "Ctrl+Shift+Z",
+      disabled: !canRedo,
+      run: () => editorRef.current?.commands.redo()
+    },
+    { id: "group", label: "Group", category: "Edit", shortcut: "Ctrl+G", disabled: !canGroup, run: handleGroup },
+    {
+      id: "ungroup",
+      label: "Ungroup",
+      category: "Edit",
+      shortcut: "Ctrl+Shift+G",
+      disabled: !canUngroup,
+      run: handleUngroup
+    },
+    { id: "zoom-in", label: "Zoom in", category: "View", run: () => editorRef.current?.zoomIn() },
+    { id: "zoom-out", label: "Zoom out", category: "View", run: () => editorRef.current?.zoomOut() },
+    { id: "zoom-reset", label: "Reset zoom to 100%", category: "View", run: () => editorRef.current?.resetView() },
+    { id: "fit", label: "Fit to content", category: "View", run: () => editorRef.current?.fitToContent() },
+    { id: "find", label: "Find on canvas…", category: "View", shortcut: "Ctrl+F", run: openFind },
+    { id: "insert-box", label: "Insert Box", category: "Insert", run: () => handleInsert("box") },
+    { id: "insert-group", label: "Insert Group", category: "Insert", run: () => handleInsert("group") },
+    { id: "insert-boundary", label: "Insert Boundary", category: "Insert", run: () => handleInsert("boundary") },
+    { id: "insert-actor", label: "Insert Actor", category: "Insert", run: () => handleInsert("actor") },
+    { id: "insert-text", label: "Insert Text", category: "Insert", run: () => handleInsert("text") },
+    { id: "insert-frame", label: "Insert Frame", category: "Insert", run: () => handleInsert("frame") },
+    {
+      id: "present",
+      label: presentingFrameId !== undefined ? "Exit presentation" : "Present frames",
+      category: "Frames",
+      disabled: presentingFrameId === undefined && frames.length === 0,
+      run: onTogglePresent
+    },
+    ...frames.map((frame) => ({
+      id: `frame:${frame.id}`,
+      label: `Go to frame: ${frame.name.trim() || "Untitled frame"}`,
+      category: "Frames",
+      run: () => onJumpToFrame(frame.id)
+    }))
+  ];
+
+  const {
+    groups: groupedDiagnostics,
+    counts,
+    fixableByRule,
+    exportBlocked
+  } = buildValidationView(diagnostics, exportGate);
+
+  return (
+    <Theme theme={carbonTheme}>
+      <div className="icad-shell">
+        <LiveRegion message={announcement} />
+        <TopBar
+          onNew={() => setNewDiagramOpen(true)}
+          onOpen={() => postToHost({ type: "requestOpen" })}
+          onSave={() => postToHost({ type: "requestSave" })}
+          onSaveAs={() => postToHost({ type: "requestSaveAs" })}
+          onExport={openExport}
+          onUndo={() => editorRef.current?.commands.undo()}
+          onRedo={() => editorRef.current?.commands.redo()}
+          canUndo={canUndo}
+          canRedo={canRedo}
+          onGroup={handleGroup}
+          onUngroup={handleUngroup}
+          canGroup={canGroup}
+          canUngroup={canUngroup}
+          zoomPercent={zoomPercent}
+          onZoomIn={() => editorRef.current?.zoomIn()}
+          onZoomOut={() => editorRef.current?.zoomOut()}
+          onResetZoom={() => editorRef.current?.resetView()}
+          onFitToContent={() => editorRef.current?.fitToContent()}
+          onOpenFind={openFind}
+          onOpenCommandPalette={openPalette}
+          onInsert={handleInsert}
+          themePreference={themeKind}
+          onThemeChange={() => {
+            /* VS Code drives theme; see useVsCodeTheme.ts. */
+          }}
+        />
+
+        <main className="icad-body" aria-label="Diagram editor">
+          <h1 className="icad-visually-hidden">ICAD — IBM Cloud Architecture Diagrams</h1>
+          <LibraryPanel
+            catalog={catalog}
+            activePlacement={activePlacement}
+            onChoose={handleChooseFromLibrary}
+          />
+          <div className="icad-canvas-region">
+            <div
+              className="icad-canvas"
+              ref={canvasRef}
+              data-placement-active={activePlacement ? "true" : "false"}
+              onMouseMove={handleCanvasMouseMove}
+              onMouseDown={handleCanvasMouseDown}
+              onMouseUp={handleCanvasMouseUp}
+              onClick={(event) => {
+                const editor = editorRef.current;
+                const svg = canvasRef.current?.querySelector("svg");
+                if (!editor || !svg) return;
+                // A drag-to-connect gesture already handled this interaction on mouseup.
+                if (event.target instanceof Element && event.target.closest("[data-icad-port]")) return;
+
+                if (connectingFromId !== undefined) {
+                  const clicked = event.target instanceof Element ? event.target.closest<SVGElement>("[data-icad-id]") : null;
+                  const clickedId = clicked?.dataset.icadId;
+                  if (clickedId && clickedId !== connectingFromId) connectAndAnnounce(connectingFromId, clickedId);
+                  editor.clearConnectorDraft();
+                  editor.setHoveredElement(undefined);
+                  setConnectingFromId(undefined);
+                  return;
+                }
+
+                if (activePlacement) {
+                  const point = clientPointToCanvas(svg, event.clientX, event.clientY);
+                  if (!point) return;
+                  const id = placeLibraryItem(editor, activePlacement, point);
+                  editor.selection.set([id]);
+                  editor.focusElement(id);
+                  setActivePlacement(undefined);
+                  return;
+                }
+
+                const target = event.target instanceof Element ? event.target.closest<SVGElement>("[data-icad-id]") : null;
+                const id = target?.dataset.icadId;
+                if (!id) {
+                  editor.selection.clear();
+                } else if (event.shiftKey) {
+                  editor.selection.toggle(id);
+                  editor.focusElement(id);
+                } else {
+                  editor.selection.set([id]);
+                  editor.focusElement(id);
+                }
+              }}
+            />
+            <FindBar
+              open={findOpen}
+              query={findQuery}
+              matches={findMatchesList}
+              activeIndex={findActiveIndex}
+              onQueryChange={setFindQuery}
+              onNext={findNext}
+              onPrevious={findPrevious}
+              onClose={closeFind}
+            />
+            {connectingFromId !== undefined && (
+              <div className="icad-connect-hint" role="status">
+                Connecting from <strong>{elementDisplayName(elements.find((el) => el.id === connectingFromId)!)}</strong> —
+                Tab to a target, Enter to confirm, Esc to cancel.
+              </div>
+            )}
+          </div>
+          <InspectorPanel
+            elements={elements}
+            selectedIds={selectedIds}
+            validationCount={diagnostics.length}
+            frames={frames}
+            presentingFrameId={presentingFrameId}
+            onJumpToFrame={onJumpToFrame}
+            onTogglePresent={onTogglePresent}
+            onPresentStep={stepPresentation}
+            onSelect={(id) => editorRef.current?.selection.set([id])}
+            onUpdate={(id: ElementId, patch: ElementPropertiesPatch) =>
+              editorRef.current?.updateElementProperties(id, patch)
+            }
+            onReparent={(id, parentId) => editorRef.current?.setElementParent(id, parentId)}
+            validationContent={
+              <>
+                <div className="icad-validation-heading">
+                  <h2>Validation</h2>
+                  <span aria-label={`${diagnostics.length} issues`}>{diagnostics.length}</span>
+                </div>
+                {diagnostics.length === 0 && <p className="icad-muted">No conformance issues found.</p>}
+                {groupedDiagnostics.map(
+                  ({ severity, items }) =>
+                    items.length > 0 && (
+                      <section className="icad-diagnostic-group" key={severity}>
+                        <h3>
+                          {severity} <span>{items.length}</span>
+                        </h3>
+                        <ul>
+                          {items.map((diagnostic) => (
+                            <li key={diagnostic.id}>
+                              <Tag
+                                type={severity === "error" ? "red" : severity === "warn" ? "warm-gray" : "blue"}
+                              >
+                                {diagnostic.ruleId}
+                              </Tag>
+                              <button
+                                className="icad-diagnostic-target"
+                                type="button"
+                                disabled={!diagnostic.elementId}
+                                onClick={() => {
+                                  if (diagnostic.elementId) editorRef.current?.selection.set([diagnostic.elementId]);
+                                }}
+                              >
+                                {diagnostic.message}
+                              </button>
+                              {diagnostic.quickFix && (
+                                <div className="icad-fix-actions">
+                                  <Button
+                                    kind="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      editorRef.current?.applyQuickFix(diagnostic);
+                                      setDiagnostics(editorRef.current?.lint() ?? []);
+                                      announce(`Fixed: ${diagnostic.message}`);
+                                    }}
+                                  >
+                                    {diagnostic.quickFixLabel ?? "Fix"}
+                                  </Button>
+                                  {(fixableByRule.get(diagnostic.ruleId) ?? 0) > 1 && (
+                                    <Button
+                                      kind="ghost"
+                                      size="sm"
+                                      onClick={() => {
+                                        const count = editorRef.current?.applyQuickFixes(diagnostic.ruleId) ?? 0;
+                                        setDiagnostics(editorRef.current?.lint() ?? []);
+                                        announce(`Fixed ${count} issue${count === 1 ? "" : "s"} of this type`);
+                                      }}
+                                    >
+                                      Fix all of this type
+                                    </Button>
+                                  )}
+                                </div>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      </section>
+                    )
+                )}
+                <details className="icad-rule-settings">
+                  <summary>Rule settings</summary>
+                  <p className="icad-muted">Overrides are saved in this .icad document.</p>
+                  {ruleMetadata.map((rule) => (
+                    <Select
+                      key={rule.id}
+                      id={`icad-rule-${rule.id}`}
+                      size="sm"
+                      labelText={rule.title}
+                      value={editorRef.current?.scene.conformance.ruleSeverities[rule.id] ?? "default"}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        editorRef.current?.setRuleSeverity(
+                          rule.id,
+                          value === "default" ? undefined : (value as ConformanceSeverity)
+                        );
+                        setDiagnostics(editorRef.current?.lint() ?? []);
+                      }}
+                    >
+                      <SelectItem value="default" text={`Default (${rule.defaultSeverity})`} />
+                      <SelectItem value="error" text="Error" />
+                      <SelectItem value="warn" text="Warning" />
+                      <SelectItem value="info" text="Info" />
+                      <SelectItem value="off" text="Off" />
+                    </Select>
+                  ))}
+                </details>
+              </>
+            }
+          />
+        </main>
+
+        <Modal
+          open={exportOpen}
+          size="sm"
+          modalLabel="Export"
+          modalHeading="Export SVG"
+          primaryButtonText={exportBlocked ? "Resolve errors to export" : "Export"}
+          primaryButtonDisabled={exportBlocked}
+          secondaryButtonText="Cancel"
+          onRequestClose={() => setExportOpen(false)}
+          onRequestSubmit={handleExportSvg}
+        >
+          <div className="icad-export-summary">
+            <p>IBM conformance summary</p>
+            <div className="icad-summary-counts">
+              <Tag type="red">{counts.error} errors</Tag>
+              <Tag type="warm-gray">{counts.warn} warnings</Tag>
+              <Tag type="blue">{counts.info} info</Tag>
+            </div>
+            {diagnostics.length === 0 && <p className="icad-muted">Ready to export with no known issues.</p>}
+            {diagnostics.length > 0 && exportGate === "warn" && (
+              <p className="icad-muted">Advisory mode: export remains available with validation issues.</p>
+            )}
+            {exportBlocked && (
+              <p className="icad-export-blocked">
+                Export is blocked because the diagram has error-level diagnostics.
+              </p>
+            )}
+            <Select
+              id="icad-export-gate"
+              labelText="Export gate"
+              value={exportGate}
+              onChange={(event) => {
+                const gate = event.target.value as ExportGate;
+                setExportGateState(gate);
+                editorRef.current?.setExportGate(gate);
+                setDiagnostics(editorRef.current?.lint() ?? []);
+              }}
+            >
+              <SelectItem value="warn" text="Warn (advisory)" />
+              <SelectItem value="block" text="Block on errors" />
+            </Select>
+          </div>
+        </Modal>
+        <NewDiagramDialog
+          open={newDiagramOpen}
+          hasExistingContent={elements.length > 0}
+          onClose={() => setNewDiagramOpen(false)}
+          onCreate={handleCreateDiagram}
+        />
+        <CommandPalette open={paletteOpen} commands={commands} onClose={() => setPaletteOpen(false)} />
+      </div>
+    </Theme>
+  );
+}

@@ -1,0 +1,61 @@
+{
+  "name": "icad-vscode",
+  "publisher": "icad",
+  "displayName": "ICAD — IBM Cloud Architecture Diagrams",
+  "description": "Edit .icad IBM Cloud architecture diagrams next to your code.",
+  "private": true,
+  "version": "0.0.0",
+  "license": "UNLICENSED",
+  "type": "module",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Visualization"
+  ],
+  "activationEvents": [
+    "onCustomEditor:icad.editor"
+  ],
+  "main": "./dist/extension.cjs",
+  "contributes": {
+    "customEditors": [
+      {
+        "viewType": "icad.editor",
+        "displayName": "ICAD Diagram",
+        "selector": [
+          {
+            "filenamePattern": "*.icad"
+          }
+        ],
+        "priority": "default"
+      }
+    ]
+  },
+  "scripts": {
+    "build:host": "node esbuild.mjs",
+    "build:webview": "vite build --config webview/vite.config.ts",
+    "build": "pnpm run build:host && pnpm run build:webview",
+    "lint": "eslint src webview/src shared",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p webview/tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@icad/core": "workspace:*",
+    "@icad/ui-web": "workspace:*",
+    "@carbon/react": "^1.112.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@types/vscode": "^1.90.0",
+    "@vitejs/plugin-react": "^6.0.4",
+    "esbuild": "^0.24.0",
+    "sass": "^1.101.6",
+    "typescript": "^5.9.3",
+    "vite": "^8.1.5",
+    "vitest": "^3.2.7"
+  }
+}

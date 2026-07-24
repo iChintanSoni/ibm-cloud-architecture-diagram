@@ -390,7 +390,78 @@ documentation-and-tooling change can self-verify. Tracked as follow-up before th
 edits") are called met.
 
 #### M10 — `apps/vscode`
-⬜ **Not started** — custom editor for `.icad`, diagrams-in-repo next to code.
+🟡 **Built and tested; interactive F5 sign-off pending** (2026-07-24) — custom editor for `.icad`,
+diagrams-in-repo next to code.
+
+A new `apps/vscode` package: a VS Code `CustomEditorProvider` (own `CustomDocument`, not
+`CustomTextEditorProvider`) registered for `*.icad`, per [Architecture](02-architecture.md#shells):
+*"core runs in the webview, the extension host handles file I/O."*
+
+1. **Two bundles.** `src/` is the extension host (plain Node, bundled with esbuild to
+   `dist/extension.cjs`) — a thin file-I/O and undo/redo relay that never touches `.icad` semantics
+   itself. `webview/` is the actual editor (Vite-built, `base: "./"` for the
+   `vscode-webview:`-origin CSP), mounting the real `@icad/core` `Editor` + every `@icad/ui-web`
+   Carbon component unchanged (Library/Properties/Layers/Validation panels, Find, Command Palette,
+   New Diagram dialog, live-region announcements) — confirmed via direct reading that neither
+   package has a browser-storage dependency, so only `apps/web`'s persistence layer (File System
+   Access API, IndexedDB autosave, `localStorage` theme) needed replacing, not the editor itself.
+2. **Undo/redo bridged to VS Code's own stack, not reimplemented.** The webview posts `{type:
+   "edit", content, label}` on `commands.onDispatch` — which never fires during `commands.undo()/
+   redo()` replay (`packages/core/src/commands/commandBus.ts`) — so the host's
+   `onDidChangeCustomDocument` bridge and the engine's own `CommandBus` stay in exact 1:1 sync with
+   no feedback loop; a separate `{type: "sync"}` message reports post-undo/redo content back to the
+   host without pushing a spurious second stack entry. Ctrl+Z/Ctrl+Shift+Z are handled by VS Code
+   natively, not by a second in-webview keybinding.
+3. **Hot exit replaces autosave/crash-recovery outright** ([D10](00-decision-log.md#d10--autosave-draft--crash-recovery--locked))
+   — `backupCustomDocument` writes the working copy to VS Code's own backup URI; no IndexedDB draft
+   store or recovery banner was ported, since VS Code's tab dirty-dot and hot exit already cover
+   that job for a custom editor.
+4. **Theme follows VS Code**, not a manual light/dark/auto picker — the host pushes
+   `{type: "themeKind"}` on webview-ready and on every `onDidChangeActiveColorTheme`.
+5. SVG export relays `{type: "exportSvg"}` to the host, which shows a native Save dialog and writes
+   via `vscode.workspace.fs`. `.icad`'s existing migration/repair pass runs unchanged inside
+   `editor.loadIcad()` — no new validation code needed for hand-edited or stale files.
+6. Tested with a hand-rolled fake of the `vscode` namespace slice touched (`Uri`, `EventEmitter`,
+   `workspace.fs`, a fake `WebviewPanel`), the same reasoning `packages/mcp/vitest.config.ts` uses
+   for staying off `jsdom` — 15 tests covering open/edit/save/save-as/revert/backup and, critically,
+   that a `"sync"` message does **not** re-fire `onDidChangeCustomDocument` (the anti-feedback-loop
+   guarantee the whole undo bridge depends on). Both bundles build cleanly; the whole workspace
+   (`pnpm -r typecheck && pnpm -r lint && pnpm -r test`) passes with the new package included.
+7. **Two real defects unit tests couldn't have caught, found by actually loading the extension**
+   in an isolated VS Code instance (own `--user-data-dir`/`--extensions-dir`, never the user's live
+   session) and reading its extension-host logs: (a) `package.json`'s `name` originally followed
+   this repo's own `@icad/*` pnpm-workspace convention, but a VS Code extension identifier is
+   `<publisher>.<name>` and rejects `@`/`/` — the manifest parsed but every declarative contribution
+   (including `customEditors`) silently failed to register. Fixed by renaming to the bare
+   `"icad-vscode"` plus an explicit `"publisher": "icad"`. (b) `activationEvents` was entirely
+   absent from VS Code's parsed copy of the manifest even though `contributes.customEditors` was
+   present — added an explicit `"onCustomEditor:icad.editor"` activation event rather than rely on
+   implicit inference. Both are one-line manifest fixes with no code-path changes.
+
+**Remaining for M10:** confirmed via extension-host logs that the corrected manifest loads with
+zero errors and `contributes.customEditors` parses correctly, but did **not** reach a fully
+conclusive confirmation that opening a `.icad` file actually resolves to our custom editor in
+normal interactive use — every CLI-driven attempt to force that specific check hit VS Code
+multi-instance/file-argument-timing quirks (a file passed as a CLI argument at cold start resolves
+to the default text editor before extension scanning finishes; `--reuse-window` against an isolated
+instance didn't reliably force a fresh open) that are about the *test harness*, not the extension
+code — no error ever appeared for our code specifically across any of these attempts. An actual
+interactive F5 ("Run ICAD Extension", `.vscode/launch.json`) pass in a real VS Code window — open a
+`.icad` file by double-clicking it, place/connect/group elements, Ctrl+Z/Ctrl+Shift+Z, Save, and a
+simulated-crash hot-exit recovery — is still needed, and matters more here than a formality: it's
+the one check that would have caught both defects above just as fast as the log-diffing did, and
+it's the only way to confirm the canvas itself renders and is interactive — the same kind of live
+sign-off M8.3 called out as distinct from what an automated suite can confirm. This environment can
+build and unit-test the extension and inspect a real (isolated) instance's logs, but has no
+GUI/display access to drive a native VS Code window interactively (unlike a web page, there's no
+devtools-style automation surface available here).
+
+**Deferred, explicitly** (not silently dropped, same posture as M9.1's PNG-export deferral):
+- Real `@vscode/test-electron` integration tests / browser E2E parity with `apps/web/e2e/`.
+- External file-change live-reload (e.g. a git checkout while the editor is open).
+- PNG export from the webview — it has a real `<canvas>` so `exportPng` should work, but SVG export
+  shipped first and PNG wasn't exercised in this pass.
+- Marketplace publishing polish (icon, README, publisher id, categories beyond the minimum).
 
 **v2 exit criteria:** an agent generates a valid, non-trivial topology from a paragraph a human
 accepts with minor edits; `.icad` opens identically in web and VS Code.

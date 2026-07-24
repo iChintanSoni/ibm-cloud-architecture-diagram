@@ -15,7 +15,10 @@ file, and — from v2 — can be driven by AI agents through an MCP server and A
 > presentation navigation, followed by the full Carbon editor chrome and persisted theme
 > preferences. Placed elements are editable through Properties, navigable through Layers, and new
 > diagrams can start from Blank, System context, High-level, or Detailed IBM templates
-> ([M7.3](docs/09-roadmap.md#m73--ibm-level-templates-and-frame-authoring)).
+> ([M7.3](docs/09-roadmap.md#m73--ibm-level-templates-and-frame-authoring)). A new `apps/vscode`
+> package ([M10](docs/09-roadmap.md#m10--appsvscode)) brings the same engine and Carbon chrome into
+> a VS Code custom editor for `.icad`; it builds, unit-tests, and loads cleanly in an isolated VS
+> Code instance, with an interactive sign-off pass still pending.
 
 > **Positioning:** official IBM-internal tool. Uses the sanctioned
 > [IBM Cloud architecture icons](https://github.com/IBM-Cloud/architecture-icons); releases are
@@ -55,7 +58,7 @@ ICAD fixes all four. See [Vision & Scope](docs/01-vision-and-scope.md).
 | Templates | System context / high-level / detailed + frames | More templates |
 | Themes | Auto / light / dark | — |
 | Agents | *(designed for)* | MCP server + Agent Skills (v2) |
-| Surfaces | Web app | VS Code (v2), Desktop/Tauri (v3) |
+| Surfaces | Web app, VS Code (interactive sign-off pending) | Desktop/Tauri (v3) |
 
 ## Documentation
 
@@ -83,7 +86,7 @@ packages/catalog-build  build-time IBM stencil → catalog converter
 packages/ui-web      Carbon + IBM Plex app chrome (React)
 packages/mcp         (v2) MCP server wrapping core/api
 apps/web             v1 web shell (Vite)
-apps/vscode          (v2) VS Code custom editor for .icad
+apps/vscode          VS Code custom editor for .icad (M10, interactive sign-off pending)
 apps/desktop         (v3) Tauri shell
 ```
 
