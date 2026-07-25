@@ -15,7 +15,9 @@ Ship a usable, on-spec human editor in the browser.
 #### M2 — Icon catalog pipeline
 ✅ **Done** (2026-07-23)
 - `packages/catalog-build` converts a pinned IBM stencils commit → `packages/catalog` (manifest +
-  SVGs): 207 icons across 10 categories. See [Icon Catalog](04-icon-catalog.md).
+  SVGs): 242 icons across 11 categories (a `groups` category and 35 icons added per
+  [D23](00-decision-log.md#d23--catalog-gains-a-groups-icon-category-narrowing-d21--locked)). See
+  [Icon Catalog](04-icon-catalog.md).
 - `core/catalog` runtime search/resolve.
 
 #### M3 — Semantic elements & containers
@@ -79,7 +81,8 @@ Ship a usable, on-spec human editor in the browser.
   panel, catalog search/category browsing, click-to-place icons and native containers, automatic
   containment with the prescribed 16px inset, and the four container presets confirmed by IBM
   worked examples (IBM Cloud, Public Network, OpenShift, Availability zone). Inferred presets
-  remain withheld pending IBM Design confirmation.
+  remain withheld pending IBM Design confirmation. **Region and VPC added as a fifth/sixth
+  confirmed preset per [D24](00-decision-log.md#d24--regionvpcsubnet-are-box-only-availability-zoneon-prem-are-boundary--locked).**
 
 ##### M7.1 — Published-guidance conformance alignment
 ✅ **Done** (2026-07-23)

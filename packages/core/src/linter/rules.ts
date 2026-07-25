@@ -10,6 +10,7 @@ import type {
   SceneElement,
   Semantic
 } from "../scene/types.js";
+import { PRIMARY_TO_SECONDARY_FILL, SECONDARY_TO_PRIMARY_FILL } from "../theme/colorPalette.js";
 import type { Diagnostic, Rule, RuleMetadata, Severity } from "./types.js";
 
 const LABELED_TYPES = new Set(["box", "group", "zone", "actor"]);
@@ -27,20 +28,6 @@ const VALID_CONNECTOR_TYPES = new Set<ConnectorType>([
   "implementation",
   "extends"
 ]);
-
-const PRIMARY_TO_SECONDARY: Record<string, string> = {
-  "#fa4d56": "#fff1f1",
-  "#ee5396": "#fff0f7",
-  "#a56eff": "#f6f2ff",
-  "#0f62fe": "#edf5ff",
-  "#1192e8": "#e5f6ff",
-  "#009d9a": "#d9fbfb",
-  "#198038": "#defbe6",
-  "#878d96": "#f2f4f8"
-};
-const SECONDARY_TO_PRIMARY = Object.fromEntries(
-  Object.entries(PRIMARY_TO_SECONDARY).map(([primary, secondary]) => [secondary, primary])
-);
 
 function colorKey(color: string): string {
   return color.trim().toLowerCase();
@@ -222,7 +209,7 @@ export const primaryFillRule: Rule = (scene): Diagnostic[] => {
   for (const el of scene.all()) {
     const fill = el.style?.fill;
     if (!fill) continue;
-    const secondary = PRIMARY_TO_SECONDARY[colorKey(fill)];
+    const secondary = PRIMARY_TO_SECONDARY_FILL[colorKey(fill)];
     if (!secondary) continue;
     diagnostics.push(
       diagnostic(
@@ -245,7 +232,7 @@ export const secondaryStrokeRule: Rule = (scene): Diagnostic[] => {
   for (const el of scene.all()) {
     const stroke = el.style?.stroke;
     if (!stroke) continue;
-    const primary = SECONDARY_TO_PRIMARY[colorKey(stroke)];
+    const primary = SECONDARY_TO_PRIMARY_FILL[colorKey(stroke)];
     if (!primary) continue;
     diagnostics.push(
       diagnostic(

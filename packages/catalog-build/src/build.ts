@@ -3,7 +3,8 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { optimize } from "svgo";
-import { CATEGORY_BY_FOLDER, SKIPPED_FOLDERS, SKIPPED_SUBPATHS } from "./categories.js";
+import { CATEGORY_BY_FOLDER, GROUPS_CATEGORY, SKIPPED_FOLDERS, SKIPPED_SUBPATHS } from "./categories.js";
+import { extractDrawioLibraryIcons } from "./extractDrawioLibrary.js";
 import { normalizeIcon } from "./extract.js";
 import { slugify } from "./slug.js";
 
@@ -154,9 +155,53 @@ function main() {
     }
   }
 
+  // Second extraction source (D23, docs/00-decision-log.md): icons embedded in the "IBM Not
+  // Released In Drawio" stencil library, which has no `svg/<folder>` counterpart. Shares
+  // `seenSlugs` with the pass above so a Groups-category glyph never shadows/duplicates an
+  // already-emitted icon of the same slug.
+  const drawioLibraryPath = path.join(CACHE_DIR, "drawio", "stencils", "2.0", "not_released_in_drawio.xml");
+  let skippedGroupsDuped = 0;
+  if (existsSync(drawioLibraryPath)) {
+    for (const { title, normalized } of extractDrawioLibraryIcons(drawioLibraryPath)) {
+      const slug = slugify(title);
+      if (!slug || seenSlugs.has(slug)) {
+        skippedGroupsDuped++;
+        continue;
+      }
+      seenSlugs.set(slug, drawioLibraryPath);
+
+      const optimized = optimizeFragment(normalized.fragment, slug);
+      const assetRelPath = path.posix.join("icons", GROUPS_CATEGORY.id, `${slug}.svg`);
+      const outPath = path.join(CATALOG_ROOT, assetRelPath);
+      mkdirSync(path.dirname(outPath), { recursive: true });
+      writeFileSync(outPath, `${SVG_OPEN_TAG}${optimized}</svg>\n`);
+
+      const keywords = [...new Set(title.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 1))];
+
+      icons.push({
+        id: `ibm-cloud/${slug}`,
+        name: title,
+        category: GROUPS_CATEGORY.id,
+        semantic: normalized.rounded ? "actor" : "node",
+        container: normalized.rounded ? "rounded" : "square",
+        asset: assetRelPath,
+        tier: "ibm-cloud",
+        ...(normalized.color ? { color: normalized.color } : {}),
+        ...(keywords.length ? { keywords } : {})
+      });
+    }
+  } else {
+    console.warn(
+      `"not_released_in_drawio.xml" not found at ${drawioLibraryPath} — skipping Groups category extraction (D23).`
+    );
+  }
+
   const categories = Object.values(CATEGORY_BY_FOLDER)
     .filter((cat, i, arr) => arr.findIndex((c) => c.id === cat.id) === i)
     .filter((cat) => icons.some((icon) => icon.category === cat.id));
+  if (icons.some((icon) => icon.category === GROUPS_CATEGORY.id)) {
+    categories.push(GROUPS_CATEGORY);
+  }
 
   const manifest = {
     id: "ibm-cloud",
@@ -180,7 +225,10 @@ function main() {
   }
 
   console.log(`Wrote ${manifest.icons.length} icons across ${categories.length} categories to ${CATALOG_ROOT}`);
-  console.log(`Skipped: ${skippedNoBg} without a detectable background tile, ${skippedDuped} duplicate slugs.`);
+  console.log(
+    `Skipped: ${skippedNoBg} without a detectable background tile, ${skippedDuped} duplicate slugs, ` +
+      `${skippedGroupsDuped} Groups-category duplicate slugs.`
+  );
 }
 
 main();

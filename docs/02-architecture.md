@@ -55,7 +55,7 @@ An in-memory document: an ordered element list plus indexes. Elements are discri
 - `IconNode` — an IBM catalog icon (node/device). Square container per spec.
 - `Box` — a `deployedOn` container (solid border).
 - `Group` — a `deployedTo` container (dashed border).
-- `Zone` — region/location boundary.
+- `Zone` — availability-zone/on-premises geographic boundary (dotted; D24).
 - `Actor` — role/user (rounded).
 - `Connector` — a routed edge with an IBM connector type, endpoints bound to ports.
 - `Text` / `Label`, `Frame` (sectioning + presentation).

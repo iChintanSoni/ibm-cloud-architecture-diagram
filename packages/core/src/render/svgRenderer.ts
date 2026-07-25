@@ -5,6 +5,7 @@ import { accessibleName, accessibleRole } from "../scene/accessibleName.js";
 import type { Scene } from "../scene/scene.js";
 import type { ConnectorElement, ConnectorType, SceneElement } from "../scene/types.js";
 import { connectorPathPoints } from "../routing/routeConnector.js";
+import { PRIMARY_TO_SECONDARY_FILL } from "../theme/colorPalette.js";
 import { createSvgElement, setAttrs } from "./dom.js";
 import { portPoint, type Point } from "./port.js";
 import type { ViewportState } from "./viewport.js";
@@ -16,6 +17,17 @@ const ICON_CONTAINER = 48;
 const ICON_GLYPH = 20;
 const ICON_OFFSET = (ICON_CONTAINER - ICON_GLYPH) / 2;
 
+/**
+ * Box (deployedOn) containers carry a short colored accent bar flush on the left edge, next
+ * to the icon/label — confirmed in not_released_in_drawio.xml's own Group stencil defs (a
+ * 4-wide rect drawn before the icon, filled the same color as the container's own stroke) and
+ * visually in images/DeployedTo.png / the IKS/ROKS reference renders (D24). The stencil's own
+ * geometry (4x48 within a 220x140 library-thumbnail tile) is a preview-tile constant, not
+ * proportional to a real box's height, so this is a fixed height clamped to short boxes.
+ */
+const SIDEBAR_TAB_WIDTH = 4;
+const SIDEBAR_TAB_HEIGHT = 32;
+
 export type ResolvedTheme = "light" | "dark";
 
 interface Palette {
@@ -24,40 +36,41 @@ interface Palette {
   frame: string;
 }
 
-const PRIMARY_TO_LIGHT_FILL: Record<string, string> = {
-  "#fa4d56": "#fff1f1",
-  "#ee5396": "#fff0f7",
-  "#a56eff": "#f6f2ff",
-  "#0f62fe": "#edf5ff",
-  "#1192e8": "#e5f6ff",
-  "#009d9a": "#d9fbfb",
-  "#198038": "#defbe6",
-  "#878d96": "#f2f4f8",
-  "#8d8d8d": "#f4f4f4"
-};
-
 const PALETTES: Record<ResolvedTheme, Palette> = {
   light: { stroke: "#161616", zone: "#8d8d8d", frame: "#a8a8a8" },
   dark: { stroke: "#f4f4f4", zone: "#a8a8a8", frame: "#6f6f6f" }
 };
 
-/** Independent of connectorType (docs/05-ibm-spec-conformance.md#connector-nomenclature). */
-const FLOW_COLORS = { private: "#198038", public: "#0f62fe" } as const;
+/**
+ * Independent of connectorType (docs/05-ibm-spec-conformance.md#connector-nomenclature).
+ * Public's `#4376BB` is a distinct "link blue" from IBM's own Connectors.drawio reference —
+ * not one of the 9 category colors (which is why it doesn't match Blue 60 `#0f62fe`).
+ */
+const FLOW_COLORS = { private: "#198038", public: "#4376BB" } as const;
 
 type MarkerId =
   | "icad-dot"
   | "icad-arrow"
   | "icad-arrow-hollow"
   | "icad-diamond-open"
-  | "icad-diamond-filled";
-type MarkerKind = "none" | "dot" | "arrow" | "arrow-hollow" | "diamond-open" | "diamond-filled";
+  | "icad-diamond-filled"
+  | "icad-box";
+type MarkerKind =
+  | "none"
+  | "dot"
+  | "arrow"
+  | "arrow-hollow"
+  | "diamond-open"
+  | "diamond-filled"
+  | "box";
 
 const MARKER_IDS: Record<Exclude<MarkerKind, "none">, MarkerId> = {
   dot: "icad-dot",
   arrow: "icad-arrow",
   "arrow-hollow": "icad-arrow-hollow",
   "diamond-open": "icad-diamond-open",
-  "diamond-filled": "icad-diamond-filled"
+  "diamond-filled": "icad-diamond-filled",
+  box: "icad-box"
 };
 
 interface ConnectorStyleSpec {
@@ -84,7 +97,7 @@ const CONNECTION_TYPES = new Set<ConnectorType>([
 const CONNECTOR_STYLE: Record<ConnectorType, ConnectorStyleSpec> = {
   "logical-connection": { dash: "6 3 1 3", endMarker: "arrow" },
   connection: { endMarker: "arrow" },
-  "physical-connection": { doubleLine: true, endMarker: "arrow" },
+  "physical-connection": { doubleLine: true, startMarker: "box", endMarker: "box" },
   "tunneling-connection": { band: 1, endMarker: "arrow" },
   "traffic-through-double-tunnel": { band: 2, endMarker: "arrow" },
   dependency: { dash: "4 3", endMarker: "arrow" },
@@ -179,7 +192,9 @@ const MARKER_DEFS: Array<{
   { id: "icad-arrow", d: "M0,0 L10,5 L0,10 z", colorAttr: "fill" },
   { id: "icad-arrow-hollow", d: "M0,0 L10,5 L0,10 z", colorAttr: "stroke", fixedFill: "none" },
   { id: "icad-diamond-open", d: "M0,5 L5,0 L10,5 L5,10 z", colorAttr: "stroke", fixedFill: "white" },
-  { id: "icad-diamond-filled", d: "M0,5 L5,0 L10,5 L5,10 z", colorAttr: "fill" }
+  { id: "icad-diamond-filled", d: "M0,5 L5,0 L10,5 L5,10 z", colorAttr: "fill" },
+  // Hollow square end-cap for "physical connection" (Connectors.drawio: shape=link;endArrow=box;endFill=0).
+  { id: "icad-box", d: "M1,1 L9,1 L9,9 L1,9 Z", colorAttr: "stroke", fixedFill: "none" }
 ];
 
 /**
@@ -375,16 +390,13 @@ export class SvgRenderer {
     g.innerHTML = "";
 
     switch (el.type) {
-      case "box":
-        g.appendChild(
-          this.rect(el, {
-            stroke: this.palette.stroke,
-            dashed: false,
-            fill: this.containerFill(el, scene)
-          })
-        );
+      case "box": {
+        const stroke = el.style?.stroke ?? this.palette.stroke;
+        g.appendChild(this.rect(el, { stroke, dashed: false, fill: this.containerFill(el, scene) }));
+        g.appendChild(this.sidebarTab(el, stroke));
         if (el.catalogRef) g.appendChild(this.containerCornerGlyph(el));
         break;
+      }
       case "group":
         g.appendChild(
           this.rect(el, {
@@ -396,10 +408,13 @@ export class SvgRenderer {
         if (el.catalogRef) g.appendChild(this.containerCornerGlyph(el));
         break;
       case "zone":
+        // Fine-dotted (vs Group's coarser dash) per D24 — geographic boundary (availability
+        // zone / on-prem) only; Region/VPC/Subnet are Box, not Zone, as of D24.
         g.appendChild(
           this.rect(el, {
             stroke: this.palette.zone,
             dashed: true,
+            dashArray: "2 2",
             strokeWidth: 2,
             fill: this.containerFill(el, scene)
           })
@@ -461,7 +476,7 @@ export class SvgRenderer {
 
   private rect(
     el: SceneElement,
-    opts: { stroke: string; dashed: boolean; strokeWidth?: number; fill?: string }
+    opts: { stroke: string; dashed: boolean; strokeWidth?: number; fill?: string; dashArray?: string }
   ): SVGRectElement {
     const rect = createSvgElement("rect");
     setAttrs(rect, {
@@ -472,9 +487,22 @@ export class SvgRenderer {
       fill: el.style?.fill ?? opts.fill ?? "none",
       stroke: el.style?.stroke ?? opts.stroke,
       "stroke-width": el.style?.strokeWidth ?? opts.strokeWidth ?? 1,
-      "stroke-dasharray": (el.style?.dashed ?? opts.dashed) ? "6 4" : undefined
+      "stroke-dasharray": (el.style?.dashed ?? opts.dashed) ? (opts.dashArray ?? "6 4") : undefined
     });
     return rect;
+  }
+
+  /** See SIDEBAR_TAB_WIDTH/HEIGHT above — Box-only, colored to match the box's own stroke. */
+  private sidebarTab(el: SceneElement, color: string): SVGRectElement {
+    const tab = createSvgElement("rect");
+    setAttrs(tab, {
+      x: el.x,
+      y: el.y,
+      width: SIDEBAR_TAB_WIDTH,
+      height: Math.min(SIDEBAR_TAB_HEIGHT, el.h),
+      fill: color
+    });
+    return tab;
   }
 
   /**
@@ -506,7 +534,7 @@ export class SvgRenderer {
       ).length;
     if (containerDepth % 2 === 1) return "white";
     const stroke = (el.style?.stroke ?? "").toLowerCase();
-    return PRIMARY_TO_LIGHT_FILL[stroke] ?? "#f4f4f4";
+    return PRIMARY_TO_SECONDARY_FILL[stroke] ?? "#f4f4f4";
   }
 
   private iconGlyph(el: SceneElement & { catalogRef?: string }): SVGSVGElement {
@@ -576,9 +604,15 @@ export class SvgRenderer {
     }
 
     const isConnection = CONNECTION_TYPES.has(el.connectorType);
-    const startMarker: MarkerKind = isConnection ? "dot" : (style.startMarker ?? "none");
+    // Physical connection's hollow box caps (both ends, per Connectors.drawio's symmetric
+    // startArrow=box/endArrow=box) override the generic connection dot-start convention.
+    const startMarker: MarkerKind = style.startMarker ?? (isConnection ? "dot" : "none");
     const endMarker: MarkerKind =
-      isConnection && el.direction === "bidirectional" ? "dot" : style.endMarker;
+      style.endMarker === "box"
+        ? "box"
+        : isConnection && el.direction === "bidirectional"
+          ? "dot"
+          : style.endMarker;
 
     const line = createSvgElement("polyline");
     setAttrs(line, {

@@ -24,17 +24,28 @@ Per IBM's guidance, shapes carry meaning, not just geometry:
 
 | Element | IBM semantic | Visual convention |
 |---|---|---|
-| **Box** | `deployedOn` — a location (logical/virtual/physical) that platforms, infra, network, services are deployed **on** | **Solid** border container |
-| **Group** | `deployedTo` — grouping of services/apps deployed **to** a box | **Dashed** border container |
+| **Box** | `deployedOn` — a location (logical/virtual/physical) that platforms, infra, network, services are deployed **on** | **Solid** border container, colored left sidebar accent |
+| **Group** | `deployedTo` — grouping of services/apps deployed **to** a box | **Dashed** border container, no sidebar |
 | **Node** | Standalone component/device | **Square** container, IBM icon (20×20 glyph in 48×48, 1px outline) |
 | **Actor** | Role/user | **Rounded** shape |
-| **Boundary** (`zone` internally) | Region / availability zone / VPC / subnet boundary | Labeled boundary; ICAD convenience primitive pending IBM Design confirmation |
+| **Boundary** (`zone` internally) | Geographic/organizational boundary — availability zone, on-premises | **Fine-dotted** border, no sidebar, muted gray |
 | **Connector** | Relationship / flow | IBM connector nomenclature (below) |
+
+**Region, VPC, and Subnet are Box** (`deployedOn`), not Boundary — resolved by
+[D24](00-decision-log.md#d24--regionvpcsubnet-are-box-only-availability-zoneon-prem-are-boundary--locked)
+against direct evidence: the sidebar-tab rect present in every Box-style stencil in
+`not_released_in_drawio.xml`, and the kit's own worked examples (`images/DeployedTo.png`; the
+`IKS_SR_MZ_VPC`/`ROKS_SR_MZ_VPC`/`*_Classic` reference diagrams) — all render Region/VPC/Subnet as
+solid-border boxes with a sidebar accent. Only availability zone (and, by the same logic,
+on-premises) renders as the dotted Boundary primitive. This is direct-evidence confirmation, not a
+substitute for the [D17](00-decision-log.md#d17--official--ibm-internal-tool--locked) IBM Design
+sign-off gate.
 
 Example the IBM docs give: *a virtual server instance is `deployedOn` a subnet and `deployedTo` a
 security group.* ICAD models both meanings, but the published guidance does not require every
 Group to be a child of a Box. Whether `deployedTo` can be multi-valued remains an IBM Design
-follow-up before any `.icad` schema change.
+follow-up before any `.icad` schema change. The same worked example (`images/DeployedTo.png`)
+confirms Security Group itself renders as a dashed **Group**, not a dotted Boundary — see D24.
 
 ## Color usage
 
@@ -89,15 +100,17 @@ unidirectional variant (arrowhead on one end vs. both):
 |---|---|---|
 | Logical Connection / Link | dash-dot | Logical message exchanged between elements |
 | Connection | solid | Network connection |
-| Physical Connection | double line | Physical/cabled connection |
+| Physical Connection | double line, hollow square end-caps | Physical/cabled connection |
 | Tunneling Connection | solid, on a highlighted band | Traffic through a tunnel/encapsulation |
 | Traffic Through Double Tunnel | solid, on a double-highlighted band | Traffic through nested tunnels |
 
 Connection endpoints follow the published IBM reference: bidirectional connections use dots at
 both ends; unidirectional connections use a source dot and destination arrow.
 
-**Color coding** (independent of the type above): green = private connection, blue = public
-connection.
+**Color coding** (independent of the type above): green `#198038` = private connection, blue
+`#4376BB` = public connection. `#4376BB` is a distinct "link blue" from `Connectors.drawio`'s own
+color-code legend — not the Data & Storage category's Blue 60 (`#0f62fe`) from the [Color
+usage](#color-usage) table below; don't conflate the two.
 
 **Labels** follow `[Protocol/Application NAME] [Encryption/Security]:[PORT]`, e.g.
 `HTTPS TLS1.3:443`.
@@ -123,7 +136,7 @@ Source: *IBM_IT Architecture diagrams kit* v1.1, "Connectors" slide.
 
 The catalog schema is designed for IBM's tiers — IBM (Core), IBM Cloud, IBM Domains/Industries,
 3rd Party — as well as functional category (compute, network, storage, security, data, devops, ai,
-actors, applications). Today's generated catalog tags all 207 icons under a single tier
+actors, applications, groups). Today's generated catalog tags all 242 icons under a single tier
 (`ibm-cloud`); the tier taxonomy isn't populated yet, so the Library panel currently groups by
 category only. See [Icon Catalog](04-icon-catalog.md).
 

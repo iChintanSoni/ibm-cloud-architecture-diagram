@@ -1,3 +1,5 @@
+import type { ZoneKind } from "@icad/core";
+
 export type ContainerKind = "box" | "group" | "zone";
 export type PrimitiveKind = ContainerKind | "frame";
 
@@ -13,7 +15,7 @@ export interface ContainerPreset {
   kind: ContainerKind;
   color: string;
   cornerIcon?: string;
-  zoneKind?: "region" | "az" | "vpc" | "subnet" | "on-prem";
+  zoneKind?: ZoneKind;
 }
 
 /**
@@ -48,5 +50,20 @@ export const confirmedContainerPresets: readonly ContainerPreset[] = [
     kind: "zone",
     color: "#8d8d8d",
     zoneKind: "az"
+  },
+  // Region/VPC newly confirmed by D24 (docs/00-decision-log.md) — Box, not Boundary/Zone.
+  {
+    id: "region",
+    name: "Region",
+    kind: "box",
+    color: "#878d96",
+    cornerIcon: "ibm-cloud/location"
+  },
+  {
+    id: "vpc",
+    name: "VPC",
+    kind: "box",
+    color: "#1192e8",
+    cornerIcon: "ibm-cloud/vpc"
   }
 ];

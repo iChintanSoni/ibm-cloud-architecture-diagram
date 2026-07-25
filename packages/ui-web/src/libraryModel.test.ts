@@ -47,12 +47,14 @@ describe("library model", () => {
     expect(groups[0]?.icons.map((icon) => icon.id)).toEqual(["test/server"]);
   });
 
-  it("ships only the four presets confirmed by IBM worked examples", () => {
+  it("ships only the presets confirmed by IBM worked examples (D24)", () => {
     expect(confirmedContainerPresets.map((preset) => preset.id)).toEqual([
       "ibm-cloud",
       "public-network",
       "open-shift",
-      "availability-zone"
+      "availability-zone",
+      "region",
+      "vpc"
     ]);
   });
 

@@ -191,6 +191,56 @@ describe("IBM published visual golden fixtures", () => {
     });
   });
 
+  it("renders a colored sidebar tab on Box containers, but not on Group or Zone", () => {
+    scene._put({
+      id: "box",
+      type: "box",
+      semantic: "deployedOn",
+      x: 0,
+      y: 0,
+      w: 200,
+      h: 100,
+      style: { stroke: "#1192e8" }
+    });
+    scene._put({
+      id: "group",
+      type: "group",
+      semantic: "deployedTo",
+      x: 0,
+      y: 0,
+      w: 200,
+      h: 100,
+      style: { stroke: "#198038" }
+    });
+    scene._put({
+      id: "zone",
+      type: "zone",
+      semantic: "boundary",
+      zoneKind: "az",
+      x: 0,
+      y: 0,
+      w: 200,
+      h: 100
+    });
+    renderer.render(scene);
+
+    const boxRects = renderer.nodeFor("box")?.querySelectorAll(":scope > rect");
+    expect(boxRects).toHaveLength(2);
+    expect(attributes(boxRects![1] as Element)).toMatchObject({
+      x: "0",
+      y: "0",
+      width: "4",
+      height: "32",
+      fill: "#1192e8"
+    });
+
+    expect(renderer.nodeFor("group")?.querySelectorAll(":scope > rect")).toHaveLength(1);
+
+    const zoneRect = renderer.nodeFor("zone")?.querySelector(":scope > rect");
+    expect(attributes(zoneRect)).toMatchObject({ "stroke-dasharray": "2 2" });
+    expect(renderer.nodeFor("zone")?.querySelectorAll(":scope > rect")).toHaveLength(1);
+  });
+
   it("renders reference-backed public/private and bidirectional/unidirectional endpoints", () => {
     for (const y of [40, 120]) {
       scene._put({
@@ -225,12 +275,41 @@ describe("IBM published visual golden fixtures", () => {
     expect(attributes(renderer.nodeFor("public-bidirectional")?.querySelector("polyline"))).toMatchObject({
       "marker-end": "url(#icad-dot)",
       "marker-start": "url(#icad-dot)",
-      stroke: "#0f62fe"
+      stroke: "#4376BB"
     });
     expect(attributes(renderer.nodeFor("private-unidirectional")?.querySelector("polyline"))).toMatchObject({
       "marker-end": "url(#icad-arrow)",
       "marker-start": "url(#icad-dot)",
       stroke: "#198038"
+    });
+  });
+
+  it("renders physical connections with hollow box end-caps on both ends", () => {
+    scene._put({ id: "phys-from", type: "box", semantic: "deployedOn", x: 0, y: 0, w: 48, h: 48 });
+    scene._put({ id: "phys-to", type: "box", semantic: "deployedOn", x: 240, y: 0, w: 48, h: 48 });
+    scene._put({
+      id: "phys",
+      type: "connector",
+      semantic: "node",
+      x: 0,
+      y: 0,
+      w: 0,
+      h: 0,
+      from: { elementId: "phys-from", port: "e" },
+      to: { elementId: "phys-to", port: "w" },
+      connectorType: "physical-connection",
+      routing: "manual",
+      waypoints: []
+    });
+    renderer.render(scene);
+
+    expect(attributes(renderer.svg.querySelector("#icad-box path"))).toMatchObject({
+      stroke: "context-stroke",
+      fill: "none"
+    });
+    expect(attributes(renderer.nodeFor("phys")?.querySelector("polyline"))).toMatchObject({
+      "marker-start": "url(#icad-box)",
+      "marker-end": "url(#icad-box)"
     });
   });
 });

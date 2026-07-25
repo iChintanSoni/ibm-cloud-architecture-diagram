@@ -43,7 +43,8 @@ export const cardinalitySchema = z.object({
   to: z.string().optional()
 });
 
-export const zoneKindSchema = z.enum(["region", "az", "vpc", "subnet", "on-prem"]);
+/** D24 (docs/00-decision-log.md): Region/VPC/Subnet are Box, not Zone — only az/on-prem remain. */
+export const zoneKindSchema = z.enum(["az", "on-prem"]);
 
 export const diagramTemplateIdSchema = z.enum(["blank", "system-context", "high-level", "detailed"]);
 

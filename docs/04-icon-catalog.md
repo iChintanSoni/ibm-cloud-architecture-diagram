@@ -4,10 +4,10 @@ The catalog is the bundled, offline, versioned set of IBM icons the editor draws
 **generated at build time** from IBM's published stencils ([D11](00-decision-log.md#d11--build-time-icon-conversion-bundled-offline-catalog--locked)).
 
 > **Status:** implemented ([Roadmap M2](09-roadmap.md#m2--icon-catalog-pipeline)).
-> `packages/catalog-build` has generated `packages/catalog/2.0.0` — 207 icons across 10 categories
+> `packages/catalog-build` has generated `packages/catalog/2.0.0` — 242 icons across 11 categories
 > (`ai`, `actors`, `applications`, `compute`, `data`, `devops`, `network`, `observability`,
-> `security`, `storage`), pinned at upstream commit `32d9c311b`. A few details below differ from
-> the original design once real icon data was in hand — noted inline.
+> `security`, `storage`, `groups`), pinned at upstream commit `32d9c311b`. A few details below
+> differ from the original design once real icon data was in hand — noted inline.
 
 ## Source of truth
 
@@ -30,7 +30,9 @@ reproducible and `.icad` files that reference `catalog.version` always resolve.
 ```mermaid
 flowchart LR
   src[IBM stencils + SVG<br/>pinned upstream] --> extract[Extract + parse]
+  src2["not_released_in_drawio.xml<br/>(Groups library, D23)"] --> extract2[Extract embedded glyphs]
   extract --> normalize[Normalize<br/>viewBox, colors, sizing]
+  extract2 --> normalize
   normalize --> optimize[SVGO optimize]
   optimize --> meta[Derive metadata<br/>id, category, semantic, color, aliases]
   meta --> emit[Emit packages/catalog<br/>index.json + /icons/*.svg]
@@ -39,20 +41,36 @@ flowchart LR
 
 Steps:
 
-1. **Extract** shapes from the upstream `svg/` set (the draw.io stencil XML turned out to be
-   redundant — the SVG export already carries every icon, including the "not released in draw.io"
-   complementary set, and is far simpler to parse than mxGraph XML).
+1. **Extract**, from two sources:
+   - The upstream `svg/` set (plain files, one icon each) — covers `ai` through `storage`
+     (`packages/catalog-build/src/extract.ts`).
+   - `drawio/stencils/2.0/not_released_in_drawio.xml`, the "IBM Not Released In Drawio" stencil
+     library — covers the `groups` category (`packages/catalog-build/src/extractDrawioLibrary.ts`).
+     An earlier version of this doc claimed the `svg/` set alone was sufficient and the draw.io
+     stencil XML was redundant; that held for every category except this one — a full decode found
+     35 Groups-family icons (corner glyphs for container presets like Region/VPC/Availability
+     Zone/Security Group) with no `svg/`-tree equivalent under any name (see
+     [D23](00-decision-log.md#d23--catalog-gains-a-groups-icon-category-narrowing-d21--locked)).
+     Each entry is a JSON blob (`{ xml, title, ... }`) with the real glyph as a base64
+     `data:image/svg+xml` URI buried inside its HTML-entity-escaped `xml` field; most decode to a
+     flat, already-colored glyph with their own `viewBox` (no 48×48 tile to strip), though a
+     minority still use the old tile format and are normalized the same way as source 1.
 2. **Normalize**: each upstream file is a 48×48 colored tile with a white glyph on top. We strip
    that background tile (recording its color as the icon's accent), recolor the now-exposed white
    glyph to that accent color, and re-frame the glyph into the 20×20 viewBox `core/render` expects
    for its own white 48×48 container — reading the glyph's local size/offset from its
    `_Transparent_Rectangle_` hit-area rect when present, with a sensible default otherwise (see
-   `packages/catalog-build/src/extract.ts`).
+   `packages/catalog-build/src/extract.ts`). Flat glyphs from source 2 skip the tile-stripping step
+   (there's no tile) and instead reframe from their own declared `viewBox`.
 3. **Optimize** each SVG (SVGO) for crisp, small, inlineable assets; ids are namespaced per icon so
    the handful of icons using `clipPath`/`mask` don't collide when several share a canvas.
 4. **Derive metadata** per icon: stable `id`, display `name`, `category`, default `semantic`,
    `color`, search `keywords`. (`aliases`, for old→new ID migration, will start being populated the
-   first time the catalog version is bumped — nothing to alias from yet on the first cut.)
+   first time the catalog version is bumped — nothing to alias from yet on the first cut.) A slug
+   already emitted by source 1 is never re-emitted by source 2, even under a same-titled Groups
+   entry — IBM's own kit deliberately double-lists many concepts (once under their native category,
+   once again here for the container-corner-glyph use case), so a same-named entry existing
+   elsewhere isn't itself evidence of redundancy; only an identical slug is skipped.
 5. **Emit** `packages/catalog/<version>/` = an `index.json` manifest + individual optimized SVGs.
 6. **Verify**: no duplicate IDs, every icon has an accessible name, every referenced asset file
    exists.
@@ -133,7 +151,7 @@ draft, not a spec citation; confirm against IBM Design before shipping ([D17](00
 |---|---|---|---|
 | Cloud Services | Box | Network (blue) | — |
 | Enterprise | Box | Generic (gray) | `ibm-cloud/enterprise` |
-| Data Center | Box | Generic (gray) | — |
+| Data Center | Box | Generic (gray) | `ibm-cloud/data-center` |
 | Cloud Point of Presence | Box | Network (blue) | — |
 | Virtual Server | Box | Compute (green) | `ibm-cloud/virtual-server` |
 | Physical Server | Box | Compute (green) | `ibm-cloud/physical-server` |
@@ -141,7 +159,8 @@ draft, not a spec citation; confirm against IBM Design before shipping ([D17](00
 | Overlay Network | Box | Network (blue) | `ibm-cloud/network-overlay` |
 | Public Network | Box ✓ | Network (blue) | `ibm-cloud/public-network` |
 | VLAN | Box | Network (blue) | `ibm-cloud/vlan` |
-| VPC | Box | Network (blue) | `ibm-cloud/vpc` |
+| VPC | Box ✓ | Network (blue) | `ibm-cloud/vpc` |
+| Subnet | Box ✓ | Network (blue) | `ibm-cloud/subnet` |
 | Internet | Box | Network (blue) | `ibm-cloud/internet` |
 | Subnet: ACL | Box | Network (blue) | `ibm-cloud/subnet-acl-rules` |
 | OpenShift | Group ✓ | Compute (green) | `ibm-cloud/open-shift` |
@@ -161,14 +180,21 @@ draft, not a spec citation; confirm against IBM Design before shipping ([D17](00
 | IBM Subnet: ACL | Box | Network (blue) | `ibm-cloud/subnet-acl-rules` |
 | IBM Classic VLAN | Box | Network (blue) | `ibm-cloud/vlan-ibm` |
 | IBM VPC | Box | Network (blue) | `ibm-cloud/ibm-cloud-vpc` |
-| Account group | Boundary | Security (red) | — |
-| Security group | Boundary | Security (red) | `ibm-cloud/group-security` |
-| Access group | Boundary | Security (red) | — |
-| Resource group | Boundary | Security (red) | — |
+| Account group | Group | Security (red) | — |
+| Security group | Group ✓ | Security (red) | `ibm-cloud/group-security` |
+| Access group | Group | Security (red) | — |
+| Resource group | Group | Security (red) | — |
 
 Rows with no corner icon have no matching glyph in the upstream `svg/` set as of the pinned
-catalog version — ship them as a colored, labeled boundary with no icon, or pick a placeholder at
+catalog version — ship them as a colored, labeled container with no icon, or pick a placeholder at
 implementation time.
+
+**Security/Access/Resource/Account Group are `Group` (dashed, `deployedTo`), not `Boundary`** —
+an earlier draft of this table guessed Boundary from the stencil legend alone. `images/DeployedTo.png`
+(App SG/Data SG/Maint SG render as dashed red containers) and
+[docs/05](05-ibm-spec-conformance.md#element-semantics)'s own worked-example text both confirm
+Security Group is `Group`; Access/Resource/Account Group are updated to match for consistency,
+though no worked example confirms those three specifically ([D24](00-decision-log.md#d24--regionvpcsubnet-are-box-only-availability-zoneon-prem-are-boundary--locked)).
 
 Source: *IBM_IT Architecture diagrams kit* v1.1, "Groups" slides, cross-checked against
 [IBM-Cloud/architecture-icons](https://github.com/IBM-Cloud/architecture-icons)'s `svg/` tree and

@@ -229,7 +229,7 @@ describe("createEditor", () => {
     );
 
     const line = container.querySelector(`[data-icad-id="${connId}"] polyline`);
-    expect(line?.getAttribute("stroke")).toBe("#0f62fe");
+    expect(line?.getAttribute("stroke")).toBe("#4376BB");
   });
 
   it("renders IBM endpoint dots at both ends of a bidirectional connection", () => {

@@ -61,7 +61,7 @@ Type-specific additions:
 | `iconNode` | `catalogRef: "ibm-cloud/vpc"` | Standalone component/device (square container, 1px outline) |
 | `box` | — (solid border) | `deployedOn` location (logical/virtual/physical) |
 | `group` | — (dashed border) | `deployedTo` grouping of services/apps |
-| `zone` | `zoneKind: "region"\|"az"\|"vpc"…` | Boundary/location |
+| `zone` | `zoneKind: "az"\|"on-prem"` | Geographic boundary (dotted; D24 — region/VPC/subnet are `box`) |
 | `actor` | `catalogRef?` | Role/user (rounded) |
 | `connector` | `from`, `to` (port refs), `connectorType`, `waypoints[]`, `routing?`, `direction?`, `flowColor?`, `cardinality?` | IBM connector nomenclature |
 | `text` | `text`, typography | Free annotation |

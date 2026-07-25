@@ -24,3 +24,10 @@ export const CATEGORY_BY_FOLDER: Record<string, { id: string; name: string }> = 
  */
 export const SKIPPED_FOLDERS = new Set(["Extra Storage 2", "Sketch Files"]);
 export const SKIPPED_SUBPATHS = ["DevOps/Network"];
+
+/**
+ * Not part of `CATEGORY_BY_FOLDER` because it has no corresponding `svg/<folder>` — its
+ * icons come from a second extraction source, `drawio/stencils/2.0/not_released_in_drawio.xml`
+ * (see `extractDrawioLibrary.ts` and D23 in docs/00-decision-log.md).
+ */
+export const GROUPS_CATEGORY = { id: "groups", name: "Groups" };

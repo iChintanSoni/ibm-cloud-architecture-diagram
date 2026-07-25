@@ -217,7 +217,7 @@ function ElementProperties({
           value={element.zoneKind}
           onChange={(event) => onUpdate(element.id, { zoneKind: event.target.value as ZoneKind })}
         >
-          {(["region", "az", "vpc", "subnet", "on-prem"] as const).map((kind) => (
+          {(["az", "on-prem"] as const).map((kind) => (
             <SelectItem key={kind} value={kind} text={kind} />
           ))}
         </Select>

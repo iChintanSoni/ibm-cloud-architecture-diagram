@@ -101,7 +101,12 @@ export interface GroupElement extends BaseElement {
   catalogRef?: string;
 }
 
-export type ZoneKind = "region" | "az" | "vpc" | "subnet" | "on-prem";
+/**
+ * D24 (docs/00-decision-log.md): only availability-zone/on-prem geographic boundaries render
+ * as the dotted Boundary primitive. Region, VPC, and Subnet are Box (`deployedOn`, solid,
+ * sidebar tab) — see BoxElement / templates.ts.
+ */
+export type ZoneKind = "az" | "on-prem";
 
 export interface ZoneElement extends BaseElement {
   type: "zone";

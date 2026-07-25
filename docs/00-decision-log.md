@@ -184,6 +184,10 @@ icon}`) that the library panel offers as one-click, pre-styled inserts.
   [Icon Catalog → Container presets](04-icon-catalog.md#container-presets); several entries are
   inferred from the kit's stencil legend rather than confirmed by a worked example, so IBM Design
   sign-off ([D17](#d17--official--ibm-internal-tool--locked)) applies before the table ships.
+  **Narrowed by [D23](#d23--catalog-gains-a-groups-icon-category-narrowing-d21--locked)**: the "no
+  catalog `groups` category" ruling turned out too broad once 4 icons with no existing-category
+  home were found; the "not 30 element types" ruling stands. The Box/Boundary/Group assignments
+  below are resolved by [D24](#d24--regionvpcsubnet-are-box-only-availability-zoneon-prem-are-boundary--locked).
 
 ### D22 — Desktop shell reuses web's File System Access + autosave layer, unlike VS Code · Locked (v3)
 `apps/desktop` (Tauri) does **not** replace `apps/web`'s persistence layer the way
@@ -203,3 +207,57 @@ macOS/Linux uses the system WebKit/WebKitGTK engine, not Chromium, so `showOpenF
   dialog/fs calls, a file-association open-event listener), but the File System Access/
   download-fallback and autosave/recovery logic itself stays untouched. See
   [Roadmap M11](09-roadmap.md#m11--appsdesktop-tauri-shell).
+
+### D23 — Catalog gains a `groups` icon category, narrowing D21 · Locked
+[D21](#d21--container-presets-are-a-named-shortcut-layer-not-new-element-types--locked) ruled out
+a catalog `groups` category on the assumption that every named-container icon could live in an
+existing category. Running a full extraction over every stencil in the upstream repo's
+`drawio/stencils/2.0/not_released_in_drawio.xml` (the "IBM Not Released In Drawio" library) —
+132 titled stencils, cross-checked by slug against the existing 207-icon catalog — found that
+assumption doesn't hold: **35 are genuinely new** (Cloud, Data Center, Endpoint Gateway, Network
+ACL Rules, Key Protect, API, Collaboration, Meeting, 5 watsonx Governance/Launch/Model/Prompt
+variants, Code Engine, Blob, Data Stage, Build, IBM Cloud Schematics, Production Regulated Env.,
+Backend Switch/Router, CDN, Load Balancer Listener, Voice Router, Alerting, Auditing, Logging,
+Service Management, Fingerprint, Intrusion Prevention-Detection, Security Group, Session Border
+Control, Wifi Secured, Object Storage Accessor/Slicestor — see `extractDrawioLibraryIcons()`'s
+output for the authoritative list). This is far more than initial manual sampling suggested; per
+`Index.tsv`, IBM's own kit deliberately double-lists many of these — once under their native
+category (e.g. Security's "Key Protect" node icon) and again here under Groups (a
+container-corner-glyph-oriented listing) — so a same-named entry already existing elsewhere in the
+catalog is not evidence of redundancy on its own; only an exact-slug match is treated as a true
+duplicate and skipped.
+
+- **Why:** Forcing 35 icons into ill-fitting existing categories would misfile them in the library
+  panel; a `groups` category is a one-line catalog-schema addition, not the "30 element types" fork
+  D21 was actually guarding against. D21's core ruling — presets are a named-shortcut *layer* over
+  the three structural primitives (Box/Group/Boundary), not a fork of element types — still stands
+  unchanged.
+- **Consequence:** `packages/catalog-build` gains a second extraction source
+  (`extractDrawioLibrary.ts`, parsing `not_released_in_drawio.xml`'s embedded base64 SVG glyphs)
+  alongside the existing plain-`svg/`-tree pipeline. See
+  [Icon Catalog → Build pipeline](04-icon-catalog.md#build-pipeline).
+
+### D24 — Region/VPC/Subnet are Box; only Availability Zone/on-prem are Boundary · Locked
+Resolves the "pending IBM Design confirmation" hedge D21 flagged for the
+[Container presets](04-icon-catalog.md#container-presets) table. Direct evidence — the sidebar-tab
+rect present in every Box-style stencil in `not_released_in_drawio.xml`, and the kit's own worked
+examples (`images/DeployedTo.png`; the `IKS_SR_MZ_VPC`/`ROKS_SR_MZ_VPC`/`*_Classic` reference
+diagrams) — confirms Region, VPC, and Subnet all render as solid-border Boxes (`deployedOn`) with
+a colored sidebar tab, not dashed/dotted boundaries. Only Availability Zone (and, by the same
+geographic-boundary logic, on-premises) renders as the fine-dotted Boundary primitive, with no
+sidebar tab. Separately, `DeployedTo.png` — the same worked example — settles a second open
+question: Security Group renders as a dashed `Group` (`deployedTo`), matching
+[docs/05](05-ibm-spec-conformance.md#element-semantics)'s own worked-example text ("a virtual
+server instance is `deployedOn` a subnet and `deployedTo` a security group"), not the `Boundary`
+kind the container-preset table had guessed. Access/Resource/Account Group are updated to `Group`
+for consistency, though no worked example confirms those three specifically.
+
+- **Why:** The scene model's `ZoneKind` union (`region | az | vpc | subnet | on-prem`) treated
+  region/vpc/subnet as the same dashed-boundary primitive as availability zone, which doesn't match
+  IBM's own convention once checked against a real worked example instead of inferred from the
+  stencil legend alone.
+- **Consequence:** `ZoneKind` narrows to `az | on-prem`; `packages/core/src/templates/templates.ts`'s
+  region/vpc/subnet elements move from `zone` to `box`; the renderer's `"box"` case gains a colored
+  sidebar-tab accent (previously drawn identically to a plain bordered rect). This is direct
+  evidence, not a substitute for the D17 IBM Design sign-off gate — see
+  [Element semantics](05-ibm-spec-conformance.md#element-semantics).

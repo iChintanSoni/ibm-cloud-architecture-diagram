@@ -271,7 +271,7 @@ export class Editor {
       id,
       type: "zone",
       semantic: "boundary",
-      zoneKind: opts.zoneKind ?? "region",
+      zoneKind: opts.zoneKind ?? "az",
       x: opts.at.x,
       y: opts.at.y,
       w: opts.w ?? DEFAULT_CONTAINER_SIZE.w,
