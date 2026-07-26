@@ -1,10 +1,12 @@
 import type { Catalog } from "../catalog/catalog.js";
+import { RESIZE_HANDLES, resizeCursor, type ResizeHandle } from "../interaction/resize.js";
 import { computeTabOrder } from "../interaction/tabOrder.js";
 import type { Diagnostic, Severity } from "../linter/types.js";
 import { accessibleName, accessibleRole } from "../scene/accessibleName.js";
 import { formatConnectorAnnotation } from "../scene/connectorAnnotation.js";
 import type { Scene } from "../scene/scene.js";
 import type { ConnectorAnnotation, ConnectorElement, ConnectorType, SceneElement } from "../scene/types.js";
+import type { Rect } from "../routing/orthogonalRouter.js";
 import { connectorPathPoints } from "../routing/routeConnector.js";
 import { PRIMARY_TO_SECONDARY_FILL } from "../theme/colorPalette.js";
 import { createSvgElement, setAttrs } from "./dom.js";
@@ -233,6 +235,15 @@ function toPointsAttr(points: Point[]): string {
   return points.map((p) => `${p.x},${p.y}`).join(" ");
 }
 
+/** Scene-space position of a resize handle on `el`'s own bbox (M16.2). */
+function resizeHandlePoint(el: Rect, handle: ResizeHandle): Point {
+  const cx = el.x + el.w / 2;
+  const cy = el.y + el.h / 2;
+  const x = handle.includes("w") ? el.x : handle.includes("e") ? el.x + el.w : cx;
+  const y = handle.includes("n") ? el.y : handle.includes("s") ? el.y + el.h : cy;
+  return { x, y };
+}
+
 /**
  * Recolors a catalog glyph fragment's white fills to `color` — used only for the container
  * corner glyph (containerCornerGlyph), which sits directly on a container's own light fill with
@@ -288,6 +299,10 @@ export class SvgRenderer {
   private hoveredPortsId: string | undefined;
   private draftConnector: { from: Point; to: Point } | undefined;
   private currentScene?: Scene;
+  /** Live resize preview geometry (M16.2, docs/10-canvas-parity-plan.md), keyed by element id —
+   * checked by renderOverlays() so the selection outline/handles track the previewed bbox rather
+   * than the last-committed one. Empty outside an in-progress resize gesture. */
+  private previewGeometry = new Map<string, Rect>();
   /** Guards syncDomOrder's reorder walk (C10, docs/10-canvas-parity-plan.md) — the id sequence
    * last reconciled into the DOM, so an unchanged z-order costs one string comparison, not an
    * O(n) appendChild-as-move-to-end pass on every render. */
@@ -512,6 +527,32 @@ export class SvgRenderer {
         else outline.removeAttribute("transform");
       }
     }
+  }
+
+  /**
+   * Live resize preview (M16.2, docs/10-canvas-parity-plan.md): re-renders a single element at a
+   * candidate `{x,y,w,h}` without touching the scene, the command bus, or the linter — resize
+   * changes intrinsic geometry `renderElement` reads directly off the element, so (unlike
+   * `previewTransform`'s translate) this rebuilds the node rather than just moving it. Pass `null`
+   * to restore the last-committed geometry. Also redraws overlays so the selection outline and
+   * resize handles track the previewed bbox. Connectors attached to the resized element are left
+   * unrouted until commit — the same accepted simplification `previewTransform` documents for move.
+   */
+  previewResize(id: string, geometry: Rect | null): void {
+    if (!this.currentScene) return;
+    const committed = this.currentScene.get(id);
+    if (!committed) return;
+    if (geometry) this.previewGeometry.set(id, geometry);
+    else this.previewGeometry.delete(id);
+    const merged = geometry ? ({ ...committed, ...geometry } as SceneElement) : committed;
+    this.nodes.set(id, this.renderElement(merged, this.currentScene));
+    this.renderOverlays(this.currentScene);
+  }
+
+  /** Overrides an element's geometry with its in-progress resize preview, if any (M16.2). */
+  private geometryOf(el: SceneElement): SceneElement {
+    const preview = this.previewGeometry.get(el.id);
+    return preview ? ({ ...el, ...preview } as SceneElement) : el;
   }
 
   /** Shows (or clears, when either point is omitted) a rubber-band preview line while drawing a connector. */
@@ -903,9 +944,10 @@ export class SvgRenderer {
   private renderOverlays(scene: Scene): void {
     this.overlayLayer.innerHTML = "";
 
-    for (const id of this.selectedIds) {
-      const el = scene.get(id);
-      if (!el) continue;
+    for (const rawId of this.selectedIds) {
+      const raw = scene.get(rawId);
+      if (!raw) continue;
+      const el = this.geometryOf(raw);
       if (el.type === "connector") {
         const highlight = createSvgElement("polyline");
         setAttrs(highlight, {
@@ -921,7 +963,7 @@ export class SvgRenderer {
         // Tagged so previewTransform() (a live drag preview) can move this outline in lockstep
         // with its element — both are flat siblings in the DOM, not nested, so an element's own
         // transform never carries its selection outline along for free.
-        outline.setAttribute("data-icad-id", id);
+        outline.setAttribute("data-icad-id", el.id);
         setAttrs(outline, {
           x: el.x - 3,
           y: el.y - 3,
@@ -936,13 +978,42 @@ export class SvgRenderer {
       }
     }
 
+    // 8-handle resize (M16.2, docs/10-canvas-parity-plan.md): only for a single non-connector,
+    // non-frame selection — Frame is excluded everywhere else a pointer directly manipulates an
+    // element (drag, hover-ports, connect-mode; see CanvasController), and multi-element
+    // proportional resize isn't something IBM's own prescribed gesture (single inside-shape,
+    // corner-drag) covers, so it's out of scope here rather than a gap.
+    if (this.selectedIds.size === 1) {
+      const raw = scene.get([...this.selectedIds][0]!);
+      if (raw && raw.type !== "connector" && raw.type !== "frame") {
+        const el = this.geometryOf(raw);
+        for (const handle of RESIZE_HANDLES) {
+          const point = resizeHandlePoint(el, handle);
+          const marker = createSvgElement("rect");
+          setAttrs(marker, {
+            x: point.x - 4,
+            y: point.y - 4,
+            width: 8,
+            height: 8,
+            fill: "#ffffff",
+            stroke: "#0f62fe",
+            "stroke-width": 1.5,
+            cursor: resizeCursor(handle),
+            "pointer-events": "all",
+            "data-icad-resize-handle": handle
+          });
+          this.overlayLayer.appendChild(marker);
+        }
+      }
+    }
+
     const byElement = new Map<string, Diagnostic[]>();
     for (const item of this.diagnostics) {
       if (!item.elementId || !scene.has(item.elementId)) continue;
       byElement.set(item.elementId, [...(byElement.get(item.elementId) ?? []), item]);
     }
     for (const [id, diagnostics] of byElement) {
-      const el = scene.get(id)!;
+      const el = this.geometryOf(scene.get(id)!);
       const severity = highestSeverity(diagnostics.map((item) => item.severity));
       const at =
         el.type === "connector"
@@ -978,7 +1049,8 @@ export class SvgRenderer {
     }
 
     if (this.focusedId) {
-      const el = scene.get(this.focusedId);
+      const raw = scene.get(this.focusedId);
+      const el = raw ? this.geometryOf(raw) : undefined;
       if (el && el.type !== "connector") {
         const ring = createSvgElement("rect");
         setAttrs(ring, {

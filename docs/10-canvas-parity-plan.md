@@ -286,7 +286,42 @@ realistic diagram.
   ~40-element subtree: the linter now runs exactly once for the whole gesture, and the existing
   dispatch/undo/redo benchmark dropped roughly 20-40x). Keyboard parity for this gesture needed no
   new code — arrow-key nudge (M8) already covers it.
-- ⬜ 8-handle resize — 4 corner, 4 mid-edge — with Shift for aspect lock and Alt to resize from center.
+- ✅ **8-handle resize** — 4 corner, 4 mid-edge — with Shift for aspect lock (corner handles only)
+  and Alt to resize from center. Added a `resizing` mode alongside `dragging` on the same
+  `CanvasController`, armed by a pointerdown on a handle rather than a hit-test: the handles
+  themselves (rendered in `SvgRenderer.renderOverlays()`, `pointer-events: all` inside the
+  otherwise-inert overlay layer, same trick as the existing port markers) only ever render for a
+  single non-connector, non-frame selection — Frame stays excluded here for the same reason it's
+  excluded from drag, hover-ports, and connect-mode elsewhere in this class. No drag threshold —
+  grabbing a handle is unambiguous, unlike mousedown-on-an-element which could still be a plain
+  click.
+
+  The geometry itself is a new pure module, `interaction/resize.ts`'s `resizeBounds()`: given a
+  handle and a scene-space delta it returns a candidate `{x,y,w,h}`, anchoring whichever
+  corner/edge the dragged handle doesn't touch (or the original center, for Alt), clamped to a
+  1px floor matching the Properties panel's own W/H minimum. Unit-tested standalone
+  (`resize.test.ts`), independent of the renderer or `CanvasController`.
+
+  Live preview needed a genuinely new primitive, not a reuse of D26's move preview: dragging
+  translates via a CSS `transform`, which can't express a width/height change, so resize instead
+  re-renders the one element from an ephemeral `{...committed, ...preview}` merge
+  (`SvgRenderer.previewResize()`) and redraws the selection outline, the resize handles themselves,
+  and any validation badge to track the previewed bbox rather than the last-committed one — all
+  three read a new `previewGeometry` override alongside `scene.get()`. Connectors attached to the
+  resized element are left unrouted until commit, the same accepted simplification
+  `previewTransform` documents for move.
+
+  Deliberately **not** move-with: `Editor.beginResizeInteraction()` commits via a bare
+  `updateElement` patch (only the resized element's own fields), not `moveElements` — an
+  edge/corner handle that shifts the element's own x or y (e.g. dragging the west edge) must not
+  cascade that shift onto descendants the way a real move does, or shrinking a container from the
+  left would drag its contents sideways with it. Children escaping/reflowing on a container resize
+  is explicitly M17's "container resize reflows children," not this milestone's. No
+  grid/sibling/16px-inset snapping either, per M17's own "live 16px buffer enforcement... rather
+  than the pad applying only at group creation" — this milestone only does the plain geometry.
+  Keyboard parity needed no new code: the Properties panel's typed X/Y/W/H fields
+  (`InspectorPanel.tsx`, already fully keyboard-operable since M8) predate this gesture and already
+  cover it, the same way M16.1 found arrow-key nudge already covered drag-to-move.
 - ⬜ Marquee selection (fully-enclosed only, per Decisions taken) and Ctrl/Cmd+A.
 - ⬜ **Double-click to drill into a nested container**, Escape to step back out, with **both bounding
   boxes rendered** — the parent faint, the child active (IBM's prescribed model).

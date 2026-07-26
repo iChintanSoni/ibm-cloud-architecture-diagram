@@ -754,7 +754,7 @@ exactly one undo entry, and runs the linter exactly once; all three shells drive
 the same `CanvasController` with no shell-local interaction code.
 
 #### M16 — The core loop
-🟡 **In progress** — the first slice landed as M16.1; see
+🟡 **In progress** — M16.1 (drag-to-move) and M16.2 (8-handle resize) have landed; see
 [Canvas parity plan → M16](10-canvas-parity-plan.md#m16--the-core-loop).
 
 Drag-to-move, 8-handle resize, marquee (fully-enclosed), select-all, clipboard
@@ -777,7 +777,20 @@ follow-up.
    order) instead of the whole scene for a position-only change — see C13 in the
    [canvas parity plan](10-canvas-parity-plan.md#confirmed-defects), now resolved. Keyboard parity
    for this gesture was already satisfied by M8's arrow-key nudge; no new keyboard code was needed.
-2. ⬜ 8-handle resize (Shift aspect-lock, Alt resize-from-center).
+2. ✅ **8-handle resize** (Shift aspect-lock, Alt resize-from-center). `CanvasController` gained a
+   `resizing` mode alongside `dragging`, on the same Pointer Events/`setPointerCapture` plumbing;
+   unlike drag there's no threshold (grabbing a handle is unambiguous) and no move-with — an
+   edge/corner handle that shifts the element's own x/y (e.g. the west edge) must not cascade that
+   shift onto descendants the way a real move does, so `Editor.beginResizeInteraction()` dispatches
+   a bare `updateElement` patch, not `moveElements`. The geometry math itself
+   (`interaction/resize.ts`'s `resizeBounds()`) is pure and unit-tested standalone. Live preview
+   reuses D26's ephemeral-gesture pattern but needed a new `SvgRenderer.previewResize()`, since
+   resize changes intrinsic w/h that `previewTransform`'s translate-only preview can't express —
+   it re-renders the one element (and redraws the selection outline/handles/validation-badge
+   position to match) without touching the scene. No grid/sibling/16px-inset snapping yet, per
+   M17's own "live 16px buffer enforcement... rather than the pad applying only at group creation."
+   Keyboard parity needed no new code: the Properties panel's typed X/Y/W/H fields already covered
+   it, mirroring how M16.1 found arrow-key nudge already covered drag-to-move.
 3. ⬜ Marquee selection (fully-enclosed) and Ctrl/Cmd+A.
 4. ⬜ Double-click to drill into a nested container, both bounding boxes shown, Escape to step out.
 5. ⬜ Clipboard: copy/cut/paste/duplicate, Alt-drag clone, paste-at-cursor.

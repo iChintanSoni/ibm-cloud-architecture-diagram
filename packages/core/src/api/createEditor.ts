@@ -107,6 +107,16 @@ export interface Interaction {
   abort(): void;
 }
 
+/** An in-progress ephemeral resize gesture returned by `Editor.beginResizeInteraction` (M16.2). */
+export interface ResizeInteraction {
+  /** Applies a candidate scene-space bbox as a live preview. Call repeatedly, e.g. once per pointer-move. */
+  update(geometry: Rect): void;
+  /** Dispatches the last-previewed geometry as one undoable command; no-ops if nothing changed. */
+  commit(): void;
+  /** Discards the preview and restores the pre-interaction visual state. Never touches the scene. */
+  abort(): void;
+}
+
 /** Editable element fields exposed to UI shells and future agent surfaces. */
 export interface ElementPropertiesPatch {
   x?: number;
@@ -689,6 +699,40 @@ export class Editor {
       },
       abort: () => {
         this.renderer.previewTransform(previewIds, 0, 0);
+      }
+    };
+  }
+
+  /**
+   * Begins an ephemeral resize interaction (M16.2, docs/10-canvas-parity-plan.md) — a live
+   * preview via `SvgRenderer.previewResize()` that bypasses the scene, the command bus, and the
+   * linter until `commit()`. Unlike `beginInteraction()`'s move, this deliberately does **not**
+   * use move-with/`moveElements`: an edge/corner handle that shifts the element's own x or y (e.g.
+   * dragging the west edge) must not cascade that shift onto descendants the way a real move does
+   * — only the resized element's own geometry changes, so this dispatches a bare `updateElement`
+   * patch instead. Children reflowing to stay inside a resized container is explicitly deferred to
+   * M17 ("container resize reflows children").
+   */
+  beginResizeInteraction(id: ElementId): ResizeInteraction {
+    const original = this.scene.get(id);
+    let latest: Rect | undefined;
+    return {
+      update: (geometry) => {
+        latest = geometry;
+        this.renderer.previewResize(id, geometry);
+      },
+      commit: () => {
+        this.renderer.previewResize(id, null);
+        if (
+          original &&
+          latest &&
+          (latest.x !== original.x || latest.y !== original.y || latest.w !== original.w || latest.h !== original.h)
+        ) {
+          this.commands.dispatch(updateElement(this.scene, id, latest));
+        }
+      },
+      abort: () => {
+        this.renderer.previewResize(id, null);
       }
     };
   }

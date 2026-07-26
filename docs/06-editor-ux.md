@@ -44,7 +44,8 @@ custom SVG engine ([D3](00-decision-log.md#d3--svg-dom-rendering--locked)). Ever
   in Properties.
 - **Selection:** click, shift-click, or keyboard Enter/Shift+Enter. No marquee selection, no
   Ctrl/Cmd+select-all, and no align/distribute/z-order commands yet.
-- **Snapping:** connector ports only — no grid or alignment-guide snapping.
+- **Snapping:** connector ports, plus grid/sibling-edge/16px-inset snapping live during a
+  drag-to-move (M16.1) — alignment guide lines aren't drawn yet (M17). Resize doesn't snap yet either.
 - **Undo/redo:** unlimited within a session, backed by the command bus.
 
 ## Nesting & spacing
@@ -54,8 +55,9 @@ custom SVG engine ([D3](00-decision-log.md#d3--svg-dom-rendering--locked)). Ever
   not a general snap/pad rule enforced on every container edit.
 - Alternate white and light-tint fills between nesting levels (parent vs. child container) for
   readability, using the category's secondary color ([Spec Conformance → Color usage](05-ibm-spec-conformance.md#color-usage)).
-- There's no drag-to-resize yet — width and height are set via typed W/H fields in the Properties
-  tab, and resizing a container doesn't reflow its children.
+- **Resizing:** drag any of a selected element's 8 handles (Shift for aspect lock on a corner
+  handle, Alt to resize from center), or type exact W/H (and X/Y) into the Properties tab.
+  Resizing a container doesn't reflow its children yet (M17).
 
 Source: *IBM_IT Architecture diagrams kit* v1.1, "Prescribed location / Scaling elements" slide.
 

@@ -306,6 +306,131 @@ describe("CanvasController", () => {
     });
   });
 
+  describe("8-handle resize (M16.2, docs/10-canvas-parity-plan.md)", () => {
+    function resizeHandle(handleId: string): Element {
+      const el = container.querySelector(`[data-icad-resize-handle="${handleId}"]`);
+      if (!el) throw new Error(`resize handle "${handleId}" is not rendered`);
+      return el;
+    }
+
+    /** Drags a resize handle from (x1,y1) to (x2,y2) — no threshold to clear, unlike drag-to-move. */
+    function resizeDrag(
+      handleId: string,
+      x1: number,
+      y1: number,
+      x2: number,
+      y2: number,
+      opts: Partial<PointerEventInit> = {}
+    ): void {
+      pointerEvent("pointerdown", resizeHandle(handleId), x1, y1, opts);
+      pointerEvent("pointermove", container, x2, y2, opts);
+      pointerEvent("pointerup", container, x2, y2, opts);
+    }
+
+    it("renders all 8 handles for a single non-connector, non-frame selection, none otherwise", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
+      const b = editor.addBox({ at: { x: 100, y: 0 }, w: 50, h: 50, label: "b" });
+      expect(container.querySelectorAll("[data-icad-resize-handle]")).toHaveLength(0);
+
+      editor.selection.set([a]);
+      expect(container.querySelectorAll("[data-icad-resize-handle]")).toHaveLength(8);
+
+      editor.selection.set([a, b]);
+      expect(container.querySelectorAll("[data-icad-resize-handle]")).toHaveLength(0);
+
+      editor.selection.clear();
+      expect(container.querySelectorAll("[data-icad-resize-handle]")).toHaveLength(0);
+    });
+
+    it("dragging the 'e' handle grows width only, landing one undo entry", () => {
+      const a = editor.addBox({ at: { x: 10, y: 10 }, w: 50, h: 50, label: "a" });
+      editor.selection.set([a]);
+
+      resizeDrag("e", 60, 35, 90, 35); // dx=30
+
+      expect(controller.getMode()).toEqual({ kind: "idle" });
+      expect(editor.scene.get(a)).toMatchObject({ x: 10, y: 10, w: 80, h: 50 });
+
+      // One undo reverts just the resize; a second removes the box's own add — proving the
+      // resize landed as exactly one distinct undo step.
+      expect(editor.commands.undo()).toBe(true);
+      expect(editor.scene.get(a)).toMatchObject({ x: 10, y: 10, w: 50, h: 50 });
+      expect(editor.commands.undo()).toBe(true);
+      expect(editor.scene.get(a)).toBeUndefined();
+      expect(editor.commands.canUndo()).toBe(false);
+    });
+
+    it("dragging the 'nw' handle keeps the bottom-right corner fixed and does not move-with children", () => {
+      const parent = editor.addBox({ at: { x: 0, y: 0 }, w: 100, h: 100, label: "parent" });
+      const child = editor.addIcon("test/vpc", { at: { x: 40, y: 40 }, parentId: parent });
+      editor.selection.set([parent]);
+
+      resizeDrag("nw", 0, 0, 20, 10); // dx=20, dy=10
+
+      const after = editor.scene.get(parent)!;
+      expect(after).toMatchObject({ x: 20, y: 10, w: 80, h: 90 });
+      expect(after.x + after.w).toBe(100); // bottom-right corner unchanged
+      expect(after.y + after.h).toBe(100);
+      // Resize never cascades to descendants — only the resized element's own geometry changes.
+      expect(editor.scene.get(child)).toMatchObject({ x: 40, y: 40 });
+    });
+
+    it("Shift locks the aspect ratio on a corner handle", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 200, h: 100, label: "a" });
+      editor.selection.set([a]);
+
+      resizeDrag("se", 200, 100, 240, 105, { shiftKey: true }); // dx=40 dominates dy=5
+
+      expect(editor.scene.get(a)).toMatchObject({ x: 0, y: 0, w: 240, h: 120 }); // 240 / (200/100)
+    });
+
+    it("Alt resizes symmetrically from the original center", () => {
+      const a = editor.addBox({ at: { x: 100, y: 100 }, w: 100, h: 100, label: "a" });
+      editor.selection.set([a]);
+
+      resizeDrag("e", 200, 150, 220, 150, { altKey: true }); // dx=20
+
+      const after = editor.scene.get(a)!;
+      expect(after.w).toBe(140);
+      expect(after.x + after.w / 2).toBe(150); // original center's x unchanged
+    });
+
+    it("Escape mid-resize aborts: no command dispatched, preview geometry cleared", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
+      editor.selection.set([a]);
+
+      pointerEvent("pointerdown", resizeHandle("e"), 50, 25);
+      pointerEvent("pointermove", container, 90, 25);
+      expect(controller.getMode()).toEqual({ kind: "resizing" });
+
+      keydown(window, "Escape");
+
+      expect(controller.getMode()).toEqual({ kind: "idle" });
+      expect(editor.scene.get(a)).toMatchObject({ x: 0, y: 0, w: 50, h: 50 });
+
+      // Abort pushed nothing on top of the box's own add: one undo removes the box itself.
+      expect(editor.commands.undo()).toBe(true);
+      expect(editor.scene.get(a)).toBeUndefined();
+      expect(editor.commands.canUndo()).toBe(false);
+
+      // A trailing pointerup after an aborted resize (as a real browser still sends) is a no-op.
+      pointerEvent("pointerup", container, 90, 25);
+      expect(editor.scene.get(a)).toBeUndefined();
+    });
+
+    it("the trailing click after a real resize does not re-select at the release point", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
+      editor.selection.set([a]);
+
+      // Release lands over empty space — an unsuppressed click here would clear the selection.
+      resizeDrag("se", 50, 50, 500, 500);
+      click(container, 500, 500);
+
+      expect(editor.selection.get()).toEqual([a]);
+    });
+
+  });
+
   describe("keyboard operability (docs/07-accessibility.md#canvas-the-hard-20)", () => {
     it("Enter selects the currently focused element", () => {
       const id = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "box" });

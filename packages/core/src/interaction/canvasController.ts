@@ -1,17 +1,20 @@
-import type { Editor, Interaction } from "../api/createEditor.js";
+import type { Editor, Interaction, ResizeInteraction } from "../api/createEditor.js";
 import { clientPointToCanvas } from "../render/dom.js";
 import type { Point } from "../render/port.js";
 import { portPoint } from "../render/port.js";
+import type { Rect } from "../routing/orthogonalRouter.js";
 import type { ElementId, PortSide, SceneElement } from "../scene/types.js";
 import { Emitter } from "../util/emitter.js";
 import { hitTest } from "./hitTest.js";
+import { resizeBounds, type ResizeHandle } from "./resize.js";
 import { snapMove } from "./snapping.js";
 
 export type CanvasMode =
   | { kind: "idle" }
   | { kind: "connecting"; fromId: ElementId }
   | { kind: "placing" }
-  | { kind: "dragging" };
+  | { kind: "dragging" }
+  | { kind: "resizing" };
 
 /** Client-space (zoom-independent) pixels the pointer must move before a mousedown-on-an-element
  * becomes a drag rather than a click. */
@@ -24,6 +27,15 @@ interface DragState {
   startClient: Point;
   startScenePoint: Point;
   moved: boolean;
+}
+
+interface ResizeState {
+  pointerId: number;
+  id: ElementId;
+  handle: ResizeHandle;
+  interaction: ResizeInteraction;
+  startBounds: Rect;
+  startScenePoint: Point;
 }
 
 export interface CanvasControllerOptions {
@@ -46,11 +58,15 @@ function parsePortAttr(value: string): { elementId: ElementId; side: PortSide } 
  * docs/00-decision-log.md) — previously ~250 lines duplicated near-identically between
  * `apps/web` and `apps/vscode`'s own `App.tsx` (docs/10-canvas-parity-plan.md's de-fork item).
  * Owns: wheel pan/zoom, click-to-select, drag-to-move (with a drag threshold, Shift axis-lock,
- * snapping, and Escape-to-abort), drag-to-connect via ports, keyboard connect-mode ("c", Tab,
- * Enter, Escape), and the canvas's own keyboard operability (Tab/Shift+Tab focus, Enter/Space
- * select, arrow-key nudge — drag-to-move's own keyboard equivalent, Delete/Backspace) — see
+ * snapping, and Escape-to-abort), 8-handle resize (Shift aspect-lock, Alt resize-from-center,
+ * Escape-to-abort — M16.2), drag-to-connect via ports, keyboard connect-mode ("c", Tab, Enter,
+ * Escape), and the canvas's own keyboard operability (Tab/Shift+Tab focus, Enter/Space select,
+ * arrow-key nudge — drag-to-move's own keyboard equivalent, Delete/Backspace) — see
  * docs/07-accessibility.md#canvas-the-hard-20, a hard requirement this class must keep meeting,
- * not just replicate incidentally.
+ * not just replicate incidentally. Resize's own keyboard equivalent is the Properties panel's
+ * typed X/Y/W/H fields (`InspectorPanel.tsx`), which predate this gesture and already cover it —
+ * mirroring how M16.1 found arrow-key nudge already covered drag-to-move; no new keyboard code
+ * was needed for resize either.
  *
  * Built on Pointer Events with `setPointerCapture` (D27, docs/00-decision-log.md) so a drag
  * survives the cursor leaving the container.
@@ -65,9 +81,10 @@ export class CanvasController {
   private modeEmitter = new Emitter<{ change: CanvasMode }>();
   private draggingPort: { elementId: ElementId; side: PortSide } | undefined;
   private dragState: DragState | undefined;
-  /** A completed element drag still fires a trailing native `click` on release — this swallows
-   * exactly that one, so it doesn't re-hit-test at the (now-moved-to) release point and stomp the
-   * selection the drag itself already settled. */
+  private resizeState: ResizeState | undefined;
+  /** A completed element drag or resize still fires a trailing native `click` on release — this
+   * swallows exactly that one, so it doesn't re-hit-test at the (now-moved-to/resized-to) release
+   * point and stomp the selection the gesture itself already settled. */
   private suppressNextClick = false;
   private onPlace: ((point: Point) => void) | undefined;
   private suspended = false;
@@ -206,6 +223,11 @@ export class CanvasController {
     const point = this.toScenePoint(event.clientX, event.clientY);
     if (!point) return;
 
+    if (this.resizeState) {
+      this.updateResize(event, point);
+      return;
+    }
+
     if (this.dragState) {
       this.updateDrag(event, point);
       return;
@@ -229,6 +251,31 @@ export class CanvasController {
   // multi-selection is preserved so the group drags together; Shift-clicking an already-selected
   // target is left for handleClick's own toggle-off, not armed as a drag at all.
   private handlePointerDown = (event: PointerEvent): void => {
+    const resizeHandle =
+      event.target instanceof Element
+        ? event.target.closest<SVGElement>("[data-icad-resize-handle]")?.getAttribute("data-icad-resize-handle")
+        : null;
+    // A resize handle only ever renders for the single currently-selected element
+    // (svgRenderer.ts's renderOverlays), so that's its unambiguous target — no need to hit-test.
+    if (resizeHandle && this.mode.kind === "idle") {
+      const id = this.editor.selection.get()[0];
+      const el = id ? this.editor.scene.get(id) : undefined;
+      const point = this.toScenePoint(event.clientX, event.clientY);
+      if (!id || !el || !point) return;
+      event.preventDefault();
+      this.resizeState = {
+        pointerId: event.pointerId,
+        id,
+        handle: resizeHandle as ResizeHandle,
+        interaction: this.editor.beginResizeInteraction(id),
+        startBounds: { x: el.x, y: el.y, w: el.w, h: el.h },
+        startScenePoint: point
+      };
+      this.capturePointer(event.pointerId);
+      this.setMode({ kind: "resizing" });
+      return;
+    }
+
     const portAttr =
       event.target instanceof Element
         ? event.target.closest<SVGElement>("[data-icad-port]")?.getAttribute("data-icad-port")
@@ -308,8 +355,34 @@ export class CanvasController {
     drag.interaction.update(finalDx, finalDy);
   }
 
+  // 8-handle resize (M16.2, docs/10-canvas-parity-plan.md): unlike drag-to-move there's no
+  // threshold — grabbing a handle is unambiguous, so this is "resizing" from the first pointermove.
+  // No grid/sibling/inset snapping (M17's own item, "live 16px buffer enforcement... rather than
+  // the pad applying only at group creation") and no move-with — resizeBounds/beginResizeInteraction
+  // only ever touch the one resized element, not its descendants.
+  private updateResize(event: PointerEvent, point: Point): void {
+    const resize = this.resizeState;
+    if (!resize) return;
+    const dx = point.x - resize.startScenePoint.x;
+    const dy = point.y - resize.startScenePoint.y;
+    const bounds = resizeBounds(resize.startBounds, resize.handle, dx, dy, {
+      aspectLock: event.shiftKey,
+      fromCenter: event.altKey
+    });
+    resize.interaction.update(bounds);
+  }
+
   private handlePointerUp = (event: PointerEvent): void => {
     this.releasePointer(event.pointerId);
+
+    if (this.resizeState) {
+      const { interaction } = this.resizeState;
+      this.resizeState = undefined;
+      interaction.commit();
+      this.suppressNextClick = true;
+      this.setMode({ kind: "idle" });
+      return;
+    }
 
     if (this.dragState) {
       const { interaction, moved } = this.dragState;
@@ -397,6 +470,14 @@ export class CanvasController {
   // works in other direct-manipulation editors.
   private handleGlobalKeyDown = (event: KeyboardEvent): void => {
     if (event.key !== "Escape") return;
+    if (this.resizeState) {
+      const { interaction, pointerId } = this.resizeState;
+      this.resizeState = undefined;
+      interaction.abort();
+      this.releasePointer(pointerId);
+      this.setMode({ kind: "idle" });
+      return;
+    }
     if (this.dragState) {
       const { interaction, pointerId } = this.dragState;
       this.dragState = undefined;
