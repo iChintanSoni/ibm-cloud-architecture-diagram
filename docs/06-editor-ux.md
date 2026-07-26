@@ -42,8 +42,9 @@ custom SVG engine ([D3](00-decision-log.md#d3--svg-dom-rendering--locked)). Ever
   press `c`, Tab to a target, and press Enter. Orthogonal auto-routing with obstacle avoidance;
   there's no gesture for manually editing a connector's waypoints yet. Pick the IBM connector type
   in Properties.
-- **Selection:** click, shift-click, or keyboard Enter/Shift+Enter. No marquee selection, no
-  Ctrl/Cmd+select-all, and no align/distribute/z-order commands yet.
+- **Selection:** click, shift-click, keyboard Enter/Shift+Enter, drag a marquee over empty canvas
+  or a Frame's background (fully-enclosed elements only; Shift adds to the existing selection), or
+  Ctrl/Cmd+A to select everything. No align/distribute/z-order commands yet.
 - **Snapping:** connector ports, plus grid/sibling-edge/16px-inset snapping live during a
   drag-to-move (M16.1) — alignment guide lines aren't drawn yet (M17). Resize doesn't snap yet either.
 - **Undo/redo:** unlimited within a session, backed by the command bus.

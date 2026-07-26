@@ -347,6 +347,7 @@ export class SvgRenderer {
   private focusedId: string | undefined;
   private hoveredPortsId: string | undefined;
   private draftConnector: { from: Point; to: Point } | undefined;
+  private marqueeRect: Rect | undefined;
   private currentScene?: Scene;
   /** Live resize preview geometry (M16.2, docs/10-canvas-parity-plan.md), keyed by element id —
    * checked by renderOverlays() so the selection outline/handles track the previewed bbox rather
@@ -615,6 +616,14 @@ export class SvgRenderer {
   /** Shows (or clears, when either point is omitted) a rubber-band preview line while drawing a connector. */
   setConnectorDraft(from?: Point, to?: Point): void {
     this.draftConnector = from && to ? { from, to } : undefined;
+    if (this.currentScene) this.renderOverlays(this.currentScene);
+  }
+
+  /** Rubber-band rectangle preview for marquee selection (M16.3, docs/10-canvas-parity-plan.md), or
+   * clears it when passed `undefined`. The actual selection is computed by the caller
+   * (`hitTestRect` + `selection.set()`) on every move — this only draws the drag rectangle itself. */
+  setMarqueeRect(rect: Rect | undefined): void {
+    this.marqueeRect = rect;
     if (this.currentScene) this.renderOverlays(this.currentScene);
   }
 
@@ -1295,6 +1304,22 @@ export class SvgRenderer {
         "stroke-dasharray": "4 3",
       });
       this.overlayLayer.appendChild(line);
+    }
+
+    if (this.marqueeRect) {
+      const rect = createSvgElement("rect");
+      setAttrs(rect, {
+        x: this.marqueeRect.x,
+        y: this.marqueeRect.y,
+        width: this.marqueeRect.w,
+        height: this.marqueeRect.h,
+        fill: "#0f62fe",
+        "fill-opacity": 0.1,
+        stroke: "#0f62fe",
+        "stroke-width": 1,
+        "stroke-dasharray": "4 3",
+      });
+      this.overlayLayer.appendChild(rect);
     }
   }
 }

@@ -789,7 +789,8 @@ the same `CanvasController` with no shell-local interaction code.
 
 #### M16 — The core loop
 
-🟡 **In progress** — M16.1 (drag-to-move) and M16.2 (8-handle resize) have landed; see
+🟡 **In progress** — M16.1 (drag-to-move), M16.2 (8-handle resize), and M16.3 (marquee selection +
+Ctrl/Cmd+A) have landed; see
 [Canvas parity plan → M16](10-canvas-parity-plan.md#m16--the-core-loop).
 
 Drag-to-move, 8-handle resize, marquee (fully-enclosed), select-all, clipboard
@@ -826,7 +827,14 @@ follow-up.
    M17's own "live 16px buffer enforcement... rather than the pad applying only at group creation."
    Keyboard parity needed no new code: the Properties panel's typed X/Y/W/H fields already covered
    it, mirroring how M16.1 found arrow-key nudge already covered drag-to-move.
-3. ⬜ Marquee selection (fully-enclosed) and Ctrl/Cmd+A.
+3. ✅ **Marquee selection (fully-enclosed) and Ctrl/Cmd+A.** A new `marquee` mode on
+   `CanvasController`, armed by a pointerdown on empty canvas or a Frame's own background (a Frame
+   has no drag semantics and typically spans most of the canvas, so treating it like any other
+   selectable element would make its interior impossible to rubber-band). No separate commit step
+   like drag/resize — `hitTestRect` + `selection.set()` run live on every move, Shift unions with
+   the pre-drag selection instead of replacing it, and Escape restores that snapshot. Ctrl/Cmd+A
+   is genuinely new keyboard code (unlike M16.1/M16.2's nudge/Properties-panel reuse) since nothing
+   pre-existing covered "select everything."
 4. ⬜ Double-click to drill into a nested container, both bounding boxes shown, Escape to step out.
 5. ⬜ Clipboard: copy/cut/paste/duplicate, Alt-drag clone, paste-at-cursor.
 6. ⬜ Right-click context menus.

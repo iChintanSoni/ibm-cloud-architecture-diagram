@@ -323,7 +323,21 @@ realistic diagram.
   (`InspectorPanel.tsx`, already fully keyboard-operable since M8) predate this gesture and already
   cover it, the same way M16.1 found arrow-key nudge already covered drag-to-move.
 
-- ⬜ Marquee selection (fully-enclosed only, per Decisions taken) and Ctrl/Cmd+A.
+- ✅ **Marquee selection** (fully-enclosed only, per Decisions taken) **and Ctrl/Cmd+A** — a new
+  `marquee` mode on `CanvasController`, armed by a pointerdown on empty canvas or a **Frame's own
+  background** rather than any selectable element: a Frame has no drag semantics (D25) and
+  typically spans most of the canvas in its presentation-sectioning role, so treating a press-drag
+  starting on one as a move-arm candidate (like every other element) would make it impossible to
+  rubber-band anything inside it. A connector's degenerate hit-region is left alone, matching its
+  pre-existing click-only selection. Unlike drag/resize there's no separate commit step:
+  `hitTestRect` + `selection.set()` run live on every pointermove (cheap — only repaints overlays,
+  not the scene/linter), Shift unions the enclosed set with the pre-drag selection instead of
+  replacing it, and Escape restores a snapshot of that pre-drag selection rather than undoing a
+  command, since nothing was ever dispatched. `SvgRenderer.setMarqueeRect()` draws the rubber-band
+  rectangle itself, mirroring the existing connector-draft preview line. Keyboard parity is
+  Ctrl/Cmd+A (selects every scene element, connectors and Frames included, matching what a click or
+  marquee can already reach) — genuinely new code, unlike M16.1/M16.2's nudge/Properties-panel
+  reuse, since nothing pre-existing covered "select everything."
 - ⬜ **Double-click to drill into a nested container**, Escape to step back out, with **both bounding
   boxes rendered** — the parent faint, the child active (IBM's prescribed model).
 - ⬜ Clipboard: copy / cut / paste / duplicate, Alt+drag to clone, paste-at-cursor.

@@ -530,6 +530,136 @@ describe("CanvasController", () => {
     });
   });
 
+  describe("marquee selection (M16.3, docs/10-canvas-parity-plan.md)", () => {
+    it("selects only elements fully enclosed by the dragged rectangle", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
+      const b = editor.addBox({
+        at: { x: 100, y: 0 },
+        w: 50,
+        h: 50,
+        label: "b",
+      });
+
+      // Fully encloses both a (0,0)-(50,50) and b (100,0)-(150,50).
+      drag(container, -10, -10, 200, 100);
+
+      expect(controller.getMode()).toEqual({ kind: "idle" });
+      expect(editor.selection.get().sort()).toEqual([a, b].sort());
+    });
+
+    it("excludes an element only partially inside the rectangle (fully-enclosed only)", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
+      const b = editor.addBox({
+        at: { x: 100, y: 0 },
+        w: 50,
+        h: 50,
+        label: "b",
+      });
+
+      // Encloses a entirely but only clips the left edge of b.
+      drag(container, -10, -10, 120, 100);
+
+      expect(editor.selection.get()).toEqual([a]);
+      expect(editor.selection.isSelected(b)).toBe(false);
+    });
+
+    it("updates the selection live during the drag, before pointerup", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
+      pointerEvent("pointerdown", container, -10, -10);
+      pointerEvent("pointermove", container, 60, 60);
+
+      expect(controller.getMode()).toEqual({ kind: "marquee" });
+      expect(editor.selection.get()).toEqual([a]);
+
+      pointerEvent("pointerup", container, 60, 60);
+      expect(editor.selection.get()).toEqual([a]);
+    });
+
+    it("Shift-drag unions the enclosed set with the pre-existing selection", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
+      const b = editor.addBox({
+        at: { x: 100, y: 0 },
+        w: 50,
+        h: 50,
+        label: "b",
+      });
+      editor.selection.set([a]);
+
+      // Encloses only b — without Shift this would drop a from the selection.
+      drag(container, 90, -10, 160, 60, { shiftKey: true });
+
+      expect(editor.selection.get().sort()).toEqual([a, b].sort());
+    });
+
+    it("a drag below the threshold arms nothing: the trailing click on empty space still clears", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
+      editor.selection.set([a]);
+      drag(container, 500, 500, 501, 500); // dx=1 — short of DRAG_THRESHOLD
+      click(container, 501, 500);
+
+      expect(controller.getMode()).toEqual({ kind: "idle" });
+      expect(editor.selection.get()).toEqual([]);
+    });
+
+    it("Escape mid-marquee restores the pre-marquee selection", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
+      const b = editor.addBox({
+        at: { x: 100, y: 0 },
+        w: 50,
+        h: 50,
+        label: "b",
+      });
+      editor.selection.set([a]);
+
+      pointerEvent("pointerdown", container, 90, -10);
+      pointerEvent("pointermove", container, 160, 60);
+      expect(controller.getMode()).toEqual({ kind: "marquee" });
+      expect(editor.selection.get()).toEqual([b]); // live preview already swapped it out
+
+      keydown(window, "Escape");
+
+      expect(controller.getMode()).toEqual({ kind: "idle" });
+      expect(editor.selection.get()).toEqual([a]); // restored, not left at the live preview
+
+      // The pointerup that (in a real browser) still follows an aborted marquee must be a no-op.
+      pointerEvent("pointerup", container, 160, 60);
+      expect(editor.selection.get()).toEqual([a]);
+    });
+
+    it("the trailing click after a real marquee does not re-select at the release point", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
+      // Release lands over empty space — an unsuppressed click here would clear the selection.
+      drag(container, -10, -10, 60, 60);
+      click(container, 60, 60);
+
+      expect(editor.selection.get()).toEqual([a]);
+    });
+
+    it("starts a marquee on a Frame's own background, not just empty canvas", () => {
+      editor.addFrame({ at: { x: 0, y: 0 }, name: "Section" });
+      const child = editor.addBox({
+        at: { x: 300, y: 300 },
+        w: 50,
+        h: 50,
+        label: "child",
+      });
+
+      // (10,10) is inside the 800x500 frame's bbox but clear of the child.
+      drag(container, 10, 10, 360, 360);
+
+      expect(editor.selection.get()).toEqual([child]);
+    });
+
+    it("does not arm a marquee while connecting or placing", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
+      controller.startConnecting(a);
+
+      drag(container, 500, 500, 600, 600);
+
+      expect(controller.getMode()).toEqual({ kind: "connecting", fromId: a });
+    });
+  });
+
   describe("keyboard operability (docs/07-accessibility.md#canvas-the-hard-20)", () => {
     it("Enter selects the currently focused element", () => {
       const id = editor.addBox({
@@ -569,6 +699,38 @@ describe("CanvasController", () => {
       expect(editor.scene.get(id)).toMatchObject({ x: 11, y: 10 });
       keydown(container, "ArrowDown", { shiftKey: true });
       expect(editor.scene.get(id)).toMatchObject({ x: 11, y: 18 });
+    });
+
+    it("Ctrl/Cmd+A selects every element in the scene, including frames and connectors", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
+      const b = editor.addBox({
+        at: { x: 100, y: 0 },
+        w: 50,
+        h: 50,
+        label: "b",
+      });
+      const frame = editor.addFrame({ at: { x: 0, y: 200 }, name: "Section" });
+      const connectorId = editor.connectNearest(a, b);
+      expect(connectorId).toBeDefined();
+
+      keydown(container, "a", { ctrlKey: true });
+
+      expect(editor.selection.get().sort()).toEqual(
+        [a, b, frame, connectorId!].sort(),
+      );
+    });
+
+    it("Cmd+A (metaKey) also selects all, and does not trigger while connect-mode is active", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
+      editor.addBox({ at: { x: 100, y: 0 }, w: 50, h: 50, label: "b" });
+      controller.startConnecting(a);
+
+      keydown(container, "a", { metaKey: true });
+
+      // Every other key is swallowed while connecting (handleKeyDown's own documented behavior),
+      // so selection must stay untouched rather than jumping to select-all mid-gesture.
+      expect(editor.selection.get()).toEqual([]);
+      expect(controller.getMode()).toEqual({ kind: "connecting", fromId: a });
     });
 
     it("Delete removes the selection and calls onDeleted with the full elements, captured before removal", () => {

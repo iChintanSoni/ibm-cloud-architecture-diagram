@@ -9,7 +9,7 @@ import { portPoint } from "../render/port.js";
 import type { Rect } from "../routing/orthogonalRouter.js";
 import type { ElementId, PortSide, SceneElement } from "../scene/types.js";
 import { Emitter } from "../util/emitter.js";
-import { hitTest } from "./hitTest.js";
+import { hitTest, hitTestRect } from "./hitTest.js";
 import { resizeBounds, type ResizeHandle } from "./resize.js";
 import { snapMove } from "./snapping.js";
 
@@ -18,7 +18,8 @@ export type CanvasMode =
   | { kind: "connecting"; fromId: ElementId }
   | { kind: "placing" }
   | { kind: "dragging" }
-  | { kind: "resizing" };
+  | { kind: "resizing" }
+  | { kind: "marquee" };
 
 /** Client-space (zoom-independent) pixels the pointer must move before a mousedown-on-an-element
  * becomes a drag rather than a click. */
@@ -40,6 +41,28 @@ interface ResizeState {
   interaction: ResizeInteraction;
   startBounds: Rect;
   startScenePoint: Point;
+}
+
+interface MarqueeState {
+  pointerId: number;
+  startClient: Point;
+  startScenePoint: Point;
+  /** Selection as it was before the marquee started — restored verbatim on Escape, and unioned
+   * with the enclosed set on every move when the gesture started with Shift held. */
+  preSelection: ElementId[];
+  additive: boolean;
+  moved: boolean;
+}
+
+/** Scene-space rect spanning two arbitrary points, normalized to a non-negative x/y/w/h regardless
+ * of which corner the drag started from. */
+function rectFromPoints(a: Point, b: Point): Rect {
+  return {
+    x: Math.min(a.x, b.x),
+    y: Math.min(a.y, b.y),
+    w: Math.abs(a.x - b.x),
+    h: Math.abs(a.y - b.y),
+  };
 }
 
 export interface CanvasControllerOptions {
@@ -70,13 +93,14 @@ function parsePortAttr(value: string): {
  * Owns: wheel pan/zoom, click-to-select, drag-to-move (with a drag threshold, Shift axis-lock,
  * snapping, and Escape-to-abort), 8-handle resize (Shift aspect-lock, Alt resize-from-center,
  * Escape-to-abort — M16.2), drag-to-connect via ports, keyboard connect-mode ("c", Tab, Enter,
- * Escape), and the canvas's own keyboard operability (Tab/Shift+Tab focus, Enter/Space select,
- * arrow-key nudge — drag-to-move's own keyboard equivalent, Delete/Backspace) — see
- * docs/07-accessibility.md#canvas-the-hard-20, a hard requirement this class must keep meeting,
- * not just replicate incidentally. Resize's own keyboard equivalent is the Properties panel's
- * typed X/Y/W/H fields (`InspectorPanel.tsx`), which predate this gesture and already cover it —
- * mirroring how M16.1 found arrow-key nudge already covered drag-to-move; no new keyboard code
- * was needed for resize either.
+ * Escape), marquee selection (fully-enclosed only, Escape-to-abort — M16.3), and the canvas's own
+ * keyboard operability (Tab/Shift+Tab focus, Enter/Space select, arrow-key nudge — drag-to-move's
+ * own keyboard equivalent, Delete/Backspace, Ctrl/Cmd+A select-all — marquee's own keyboard
+ * equivalent) — see docs/07-accessibility.md#canvas-the-hard-20, a hard requirement this class
+ * must keep meeting, not just replicate incidentally. Resize's own keyboard equivalent is the
+ * Properties panel's typed X/Y/W/H fields (`InspectorPanel.tsx`), which predate this gesture and
+ * already cover it — mirroring how M16.1 found arrow-key nudge already covered drag-to-move; no
+ * new keyboard code was needed for resize either.
  *
  * Built on Pointer Events with `setPointerCapture` (D27, docs/00-decision-log.md) so a drag
  * survives the cursor leaving the container.
@@ -92,6 +116,7 @@ export class CanvasController {
   private draggingPort: { elementId: ElementId; side: PortSide } | undefined;
   private dragState: DragState | undefined;
   private resizeState: ResizeState | undefined;
+  private marqueeState: MarqueeState | undefined;
   /** A completed element drag or resize still fires a trailing native `click` on release — this
    * swallows exactly that one, so it doesn't re-hit-test at the (now-moved-to/resized-to) release
    * point and stomp the selection the gesture itself already settled. */
@@ -249,6 +274,11 @@ export class CanvasController {
       return;
     }
 
+    if (this.marqueeState) {
+      this.updateMarquee(event, point);
+      return;
+    }
+
     if (this.draggingPort) {
       const source = this.editor.scene.get(this.draggingPort.elementId);
       if (source)
@@ -325,7 +355,26 @@ export class CanvasController {
     const point = this.toScenePoint(event.clientX, event.clientY);
     if (!point) return;
     const hit = hitTest(this.editor.scene, point);
-    if (!hit || hit.type === "connector" || hit.type === "frame") return;
+    // A connector has no drag semantics and no drag-arm-able background either — leave it to the
+    // trailing click, same as before marquee existed.
+    if (hit && hit.type === "connector") return;
+
+    if (!hit || hit.type === "frame") {
+      // Empty canvas, or a Frame's own background: Frame has no drag semantics (D25) so a
+      // press-drag starting on one is unambiguously a marquee, not a move — otherwise a Frame
+      // spanning most of the canvas (its usual presentation-sectioning role) would make it
+      // impossible to rubber-band select anything inside it.
+      this.marqueeState = {
+        pointerId: event.pointerId,
+        startClient: { x: event.clientX, y: event.clientY },
+        startScenePoint: point,
+        preSelection: this.editor.selection.get(),
+        additive: event.shiftKey,
+        moved: false,
+      };
+      this.capturePointer(event.pointerId);
+      return;
+    }
 
     const alreadySelected = this.editor.selection.isSelected(hit.id);
     if (event.shiftKey) {
@@ -353,6 +402,36 @@ export class CanvasController {
     };
     this.capturePointer(event.pointerId);
   };
+
+  // Marquee selection (M16.3, docs/10-canvas-parity-plan.md): armed by a pointerdown on empty
+  // canvas or a Frame's background, becomes real once past the same DRAG_THRESHOLD drag-to-move
+  // uses. Unlike drag/resize there's no separate commit step — `selection.set()` is applied live
+  // on every move (cheap: it only repaints overlays, not the scene/linter), and Escape restores
+  // the pre-marquee snapshot rather than undoing a command, since nothing was ever dispatched.
+  private updateMarquee(event: PointerEvent, point: Point): void {
+    const marquee = this.marqueeState;
+    if (!marquee) return;
+
+    if (!marquee.moved) {
+      const clientDx = event.clientX - marquee.startClient.x;
+      const clientDy = event.clientY - marquee.startClient.y;
+      if (Math.hypot(clientDx, clientDy) < DRAG_THRESHOLD) return;
+      marquee.moved = true;
+      this.setMode({ kind: "marquee" });
+    }
+
+    const rect = rectFromPoints(marquee.startScenePoint, point);
+    this.editor.setMarqueeRect(rect);
+    // Fully-enclosed only (Decisions taken, docs/10-canvas-parity-plan.md), matching draw.io and
+    // Excalidraw — safest in dense nested diagrams where intersect-mode would constantly grab the
+    // enclosing Box/Zone instead of what's inside it.
+    const enclosedIds = hitTestRect(this.editor.scene, rect).map((el) => el.id);
+    this.editor.selection.set(
+      marquee.additive
+        ? [...new Set([...marquee.preSelection, ...enclosedIds])]
+        : enclosedIds,
+    );
+  }
 
   private updateDrag(event: PointerEvent, point: Point): void {
     const drag = this.dragState;
@@ -425,6 +504,19 @@ export class CanvasController {
       } else {
         interaction.abort();
       }
+      this.setMode({ kind: "idle" });
+      return;
+    }
+
+    if (this.marqueeState) {
+      const { moved } = this.marqueeState;
+      this.marqueeState = undefined;
+      this.editor.setMarqueeRect(undefined);
+      // The selection was already applied live on every move; a moved marquee just needs to keep
+      // it and swallow the trailing click so it doesn't re-hit-test at the release point. An
+      // unmoved one (a plain click on empty space or a Frame) never touched selection at all —
+      // the trailing click still runs normally and clears/selects as it always did.
+      if (moved) this.suppressNextClick = true;
       this.setMode({ kind: "idle" });
       return;
     }
@@ -531,6 +623,17 @@ export class CanvasController {
       this.setMode({ kind: "idle" });
       return;
     }
+    if (this.marqueeState) {
+      // Unlike drag/resize, a moved marquee already mutated `selection` live (no command was ever
+      // dispatched) — Escape must restore the pre-marquee snapshot itself, not just drop a preview.
+      const { pointerId, preSelection } = this.marqueeState;
+      this.marqueeState = undefined;
+      this.editor.setMarqueeRect(undefined);
+      this.editor.selection.set(preSelection);
+      this.releasePointer(pointerId);
+      this.setMode({ kind: "idle" });
+      return;
+    }
     if (this.mode.kind === "placing") this.cancelPlacement();
   };
 
@@ -615,6 +718,15 @@ export class CanvasController {
       if (!el || el.type === "connector" || el.type === "frame") return;
       event.preventDefault();
       this.startConnecting(el.id);
+      return;
+    }
+
+    // Ctrl/Cmd+A (M16.3): the keyboard equivalent of marquee-selecting the entire canvas — every
+    // scene element, matching what a click/marquee can already select (connectors and Frames
+    // included).
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "a") {
+      event.preventDefault();
+      this.editor.selection.set(this.editor.scene.all().map((el) => el.id));
       return;
     }
 

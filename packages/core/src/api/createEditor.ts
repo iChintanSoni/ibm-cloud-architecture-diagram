@@ -954,6 +954,11 @@ export class Editor {
     this.renderer.setConnectorDraft(undefined, undefined);
   }
 
+  /** Rubber-band preview for marquee selection (M16.3) — pass `undefined` to hide it. */
+  setMarqueeRect(rect: Rect | undefined): void {
+    this.renderer.setMarqueeRect(rect);
+  }
+
   destroy(): void {
     this.resizeObserver?.disconnect();
     this.renderer.destroy();
