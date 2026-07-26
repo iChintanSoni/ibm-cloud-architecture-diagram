@@ -9,7 +9,7 @@ import { portPoint } from "../render/port.js";
 import type { Rect } from "../routing/orthogonalRouter.js";
 import type { ElementId, PortSide, SceneElement } from "../scene/types.js";
 import { Emitter } from "../util/emitter.js";
-import { hitTest, hitTestRect } from "./hitTest.js";
+import { hitTest, hitTestAll, hitTestRect } from "./hitTest.js";
 import { resizeBounds, type ResizeHandle } from "./resize.js";
 import { snapMove } from "./snapping.js";
 
@@ -145,6 +145,10 @@ function parsePortAttr(value: string): {
  * selection, one already part of a multi-selection leaves it alone — and reports only *where* via
  * `onContextMenu`; *what* the menu shows and does is entirely `@icad/ui-web`'s `ContextMenu` and
  * whichever shell wires it, the same split `armPlacement`'s opaque callback already uses.
+ * Alt+click (M16.7) cycles to the next element in the full occluded stack at that point
+ * (`hitTestAll`'s own order) instead of always landing on the same "best" one a plain click picks
+ * — no new keyboard code needed, since Tab/Shift+Tab's tab order (M8) already reaches every
+ * element regardless of visual overlap.
  *
  * Built on Pointer Events with `setPointerCapture` (D27, docs/00-decision-log.md) so a drag
  * survives the cursor leaving the container.
@@ -170,6 +174,12 @@ export class CanvasController {
    * cursor" target. Not reset on pointer-leave: a keyboard-only paste shortly after the mouse was
    * last over the canvas landing near there is more useful than falling back to an offset paste. */
   private lastPointerScenePoint: Point | undefined;
+  /** Alt+click select-through (M16.7): the client point and stack index of the last Alt+click, so
+   * a second one at (near enough) the same spot advances to the next occluded element there
+   * instead of restarting at the top — client space, not scene space, since it's comparing "did
+   * the same pixel get clicked again," independent of pan/zoom between clicks. */
+  private altClickCycle:
+    { clientX: number; clientY: number; index: number } | undefined;
   /** A completed element drag or resize still fires a trailing native `click` on release — this
    * swallows exactly that one, so it doesn't re-hit-test at the (now-moved-to/resized-to) release
    * point and stomp the selection the gesture itself already settled. */
@@ -776,6 +786,8 @@ export class CanvasController {
 
     if (!hit) {
       this.editor.selection.clear();
+    } else if (event.altKey) {
+      this.selectThrough(event.clientX, event.clientY, point!);
     } else if (event.shiftKey) {
       this.editor.selection.toggle(hit.id);
       this.editor.focusElement(hit.id);
@@ -784,6 +796,31 @@ export class CanvasController {
       this.editor.focusElement(hit.id);
     }
   };
+
+  // Alt+click select-through (M16.7, docs/10-canvas-parity-plan.md): cycles to the next element in
+  // the full occluded stack at this point (hitTestAll's own deepest-then-topmost order) rather than
+  // always landing on the same "best" one a plain click picks. Alt+click always replaces the
+  // selection outright — it's a reveal tool for reaching one specific occluded element, not a
+  // multi-select gesture like Shift-click. No new keyboard code needed: Tab/Shift+Tab's tab order
+  // (M8) already reaches every element regardless of visual overlap, the same "already covered"
+  // finding M16.1/M16.2 made for nudge/Properties respectively.
+  private selectThrough(clientX: number, clientY: number, point: Point): void {
+    const stack = hitTestAll(this.editor.scene, point);
+    if (stack.length === 0) {
+      this.editor.selection.clear();
+      this.altClickCycle = undefined;
+      return;
+    }
+    const previous = this.altClickCycle;
+    const samePoint =
+      previous !== undefined &&
+      Math.hypot(clientX - previous.clientX, clientY - previous.clientY) < 2;
+    const index = samePoint ? (previous!.index + 1) % stack.length : 0;
+    this.altClickCycle = { clientX, clientY, index };
+    const target = stack[index]!;
+    this.editor.selection.set([target.id]);
+    this.editor.focusElement(target.id);
+  }
 
   // Escape cancels an armed placement, or aborts an in-progress drag, from anywhere — not just
   // canvas focus. Placement's "armed" affordance is an app-wide modal state (pre-M15 behavior); a

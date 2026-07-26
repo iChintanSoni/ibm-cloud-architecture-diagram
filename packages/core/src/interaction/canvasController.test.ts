@@ -1154,6 +1154,92 @@ describe("CanvasController", () => {
     });
   });
 
+  describe("Alt+click select-through (M16.7, docs/10-canvas-parity-plan.md)", () => {
+    it("a plain click always lands on the deepest element, same as before", () => {
+      const box = editor.addBox({
+        at: { x: 0, y: 0 },
+        w: 100,
+        h: 100,
+        label: "box",
+      });
+      const icon = editor.addIcon("test/vpc", {
+        at: { x: 20, y: 20 },
+        parentId: box,
+      });
+
+      click(container, 40, 40); // inside both box and icon
+
+      expect(editor.selection.get()).toEqual([icon]);
+    });
+
+    it("repeated Alt+clicks at the same point cycle deeper, then wrap back to the top", () => {
+      const box = editor.addBox({
+        at: { x: 0, y: 0 },
+        w: 100,
+        h: 100,
+        label: "box",
+      });
+      const icon = editor.addIcon("test/vpc", {
+        at: { x: 20, y: 20 },
+        parentId: box,
+      });
+
+      click(container, 40, 40, { altKey: true }); // 1st: deepest (icon)
+      expect(editor.selection.get()).toEqual([icon]);
+
+      click(container, 40, 40, { altKey: true }); // 2nd: next down the stack (box)
+      expect(editor.selection.get()).toEqual([box]);
+
+      click(container, 40, 40, { altKey: true }); // 3rd: wraps back to icon
+      expect(editor.selection.get()).toEqual([icon]);
+    });
+
+    it("Alt+clicking a different point resets the cycle to that point's own deepest element", () => {
+      const box = editor.addBox({
+        at: { x: 0, y: 0 },
+        w: 100,
+        h: 100,
+        label: "box",
+      });
+      editor.addIcon("test/vpc", { at: { x: 20, y: 20 }, parentId: box });
+
+      click(container, 40, 40, { altKey: true }); // icon
+      click(container, 40, 40, { altKey: true }); // box (cycled)
+
+      click(container, 5, 5, { altKey: true }); // a different point, clear of the icon
+      expect(editor.selection.get()).toEqual([box]); // only box covers (5,5) — index resets to 0
+    });
+
+    it("Alt+clicking empty canvas clears the selection", () => {
+      const box = editor.addBox({
+        at: { x: 0, y: 0 },
+        w: 50,
+        h: 50,
+        label: "box",
+      });
+      editor.selection.set([box]);
+
+      click(container, 500, 500, { altKey: true });
+
+      expect(editor.selection.get()).toEqual([]);
+    });
+
+    it("Alt+click always replaces the selection outright, not a multi-select toggle", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
+      const b = editor.addBox({
+        at: { x: 100, y: 0 },
+        w: 50,
+        h: 50,
+        label: "b",
+      });
+      editor.selection.set([a]);
+
+      click(container, 125, 25, { altKey: true }); // b, clear of a
+
+      expect(editor.selection.get()).toEqual([b]);
+    });
+  });
+
   describe("keyboard operability (docs/07-accessibility.md#canvas-the-hard-20)", () => {
     it("Enter selects the currently focused element", () => {
       const id = editor.addBox({

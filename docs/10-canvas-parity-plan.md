@@ -260,7 +260,7 @@ realistic diagram.
 
 ## M16 — The core loop
 
-🟡 **In progress.** The first milestone a user can feel.
+✅ **Done.** The first milestone a user can feel — all 7 items below have landed.
 
 - ✅ **Drag-to-move**, with a drag threshold, Shift to axis-lock, Escape to abort, and move-with
   semantics (`moveElements`, unchanged). `CanvasController` moved from mouse events to Pointer
@@ -412,7 +412,16 @@ realistic diagram.
   surfaces, not duplicated between them. "Paste" passes the exact scene point the menu opened at,
   so it lands where you actually right-clicked (or where the keyboard equivalent last focused/
   selected something), not wherever the pointer happens to be once the item runs.
-- ⬜ Alt+click to select through to an occluded element.
+- ✅ **Alt+click to select through to an occluded element.** A plain click already always lands on
+  the deepest element at a point (M15's C9 fix), so Alt+click's own job is reaching every _other_
+  element sharing that point — it cycles through `hitTestAll`'s full ordered stack there (a new
+  `altClickCycle` tracking the last Alt+click's client point and stack index), advancing one step
+  deeper each repeated Alt+click at the same spot and wrapping back to the top once exhausted;
+  Alt+clicking a different point resets to that point's own deepest element. Always replaces the
+  selection outright, matching Shift-click's own precedent that Alt is a reveal tool for one
+  specific occluded element, not a multi-select gesture. No new keyboard code needed — Tab/
+  Shift+Tab's tab order (M8) already reaches every element regardless of visual overlap, the same
+  "already covered" finding M16.1/M16.2 made for nudge/Properties respectively.
 
 Every gesture ships with its keyboard equivalent in the same PR — [D19](00-decision-log.md#d19--full-ibm-equal-access--wcag-21-aa--locked)
 is a requirement, not a follow-up.

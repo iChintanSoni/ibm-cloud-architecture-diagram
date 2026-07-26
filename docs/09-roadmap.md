@@ -789,9 +789,9 @@ the same `CanvasController` with no shell-local interaction code.
 
 #### M16 — The core loop
 
-🟡 **In progress** — M16.1 (drag-to-move), M16.2 (8-handle resize), M16.3 (marquee selection +
-Ctrl/Cmd+A), M16.4 (double-click to drill into a nested container), M16.5 (clipboard), and M16.6
-(right-click context menus) have landed; see
+✅ **Done** — all 7 items have landed: M16.1 (drag-to-move), M16.2 (8-handle resize), M16.3
+(marquee selection + Ctrl/Cmd+A), M16.4 (double-click to drill into a nested container), M16.5
+(clipboard), M16.6 (right-click context menus), and M16.7 (Alt+click select-through); see
 [Canvas parity plan → M16](10-canvas-parity-plan.md#m16--the-core-loop).
 
 Drag-to-move, 8-handle resize, marquee (fully-enclosed), select-all, clipboard
@@ -876,7 +876,14 @@ follow-up.
    new optional `danger` field renders Delete in Carbon's destructive styling) so every action —
    Cut/Copy/Paste/Duplicate/Delete/Group/Ungroup/Select All — is defined once per shell. Paste
    passes the exact scene point the menu opened at, landing where you actually right-clicked.
-7. ⬜ Alt+click select-through to an occluded element.
+7. ✅ **Alt+click select-through to an occluded element.** A plain click already always lands on
+   the deepest element at a point (M15's C9), so Alt+click's job is reaching every _other_ element
+   sharing it: a new `altClickCycle` tracks the last Alt+click's client point and stack index,
+   cycling one step deeper through `hitTestAll`'s full ordered stack each repeated Alt+click at the
+   same spot and wrapping back to the top once exhausted; a different point resets to that point's
+   own deepest element. Always replaces the selection outright — a reveal tool for one specific
+   occluded element, not a multi-select gesture. No new keyboard code needed: Tab/Shift+Tab's tab
+   order (M8) already reaches every element regardless of visual overlap.
 
 #### M17 — The feedback layer
 
