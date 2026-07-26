@@ -579,4 +579,55 @@ describe("IBM published visual golden fixtures", () => {
     expect(texts[0]?.textContent).toBe("HTTPS TLS1.3:443");
     expect(attributes(texts[0])).toMatchObject({ x: "144", y: "44", "text-anchor": "middle" });
   });
+
+  function domOrder(): (string | null)[] {
+    const layer = renderer.svg.querySelector('[data-icad-layer="elements"]')!;
+    return [...layer.children].map((child) => child.getAttribute("data-icad-id"));
+  }
+
+  it("reorders existing DOM nodes when z-order changes, not just repainting them in place (C10)", () => {
+    scene._put({ id: "a", type: "box", semantic: "deployedOn", x: 0, y: 0, w: 40, h: 40, z: 1 });
+    scene._put({ id: "b", type: "box", semantic: "deployedOn", x: 0, y: 0, w: 40, h: 40, z: 2 });
+    scene._put({ id: "c", type: "box", semantic: "deployedOn", x: 0, y: 0, w: 40, h: 40, z: 3 });
+    renderer.render(scene);
+    expect(domOrder()).toEqual(["a", "b", "c"]);
+
+    // "a" jumps to the front — the DOM order must follow, not just its own repainted content.
+    scene._put({ ...(scene.get("a") as SceneElement), z: 5 }, "update");
+    renderer.render(scene);
+    expect(domOrder()).toEqual(["b", "c", "a"]);
+  });
+
+  it("skips the reorder walk when the id sequence is unchanged, but still applies on add/remove", () => {
+    scene._put({ id: "a", type: "box", semantic: "deployedOn", x: 0, y: 0, w: 40, h: 40 });
+    scene._put({ id: "b", type: "box", semantic: "deployedOn", x: 0, y: 0, w: 40, h: 40 });
+    renderer.render(scene);
+    const bNodeBefore = renderer.nodeFor("b");
+
+    // An unrelated property edit, same id set/order: re-rendering must not disturb DOM identity.
+    scene._put({ ...(scene.get("a") as SceneElement), label: { text: "renamed" } }, "update");
+    renderer.render(scene);
+    expect(renderer.nodeFor("b")).toBe(bNodeBefore);
+    expect(domOrder()).toEqual(["a", "b"]);
+
+    // A genuinely new element (default z) still lands in the right place via the same mechanism.
+    scene._put({ id: "c", type: "box", semantic: "deployedOn", x: 0, y: 0, w: 40, h: 40, z: -1 });
+    renderer.render(scene);
+    expect(domOrder()).toEqual(["c", "a", "b"]);
+  });
+
+  it("renderElements re-renders only the given ids from current scene state, leaving others untouched", () => {
+    scene._put({ id: "a", type: "box", semantic: "deployedOn", x: 0, y: 0, w: 40, h: 40, label: { text: "A" } });
+    scene._put({ id: "b", type: "box", semantic: "deployedOn", x: 0, y: 0, w: 40, h: 40, label: { text: "B" } });
+    renderer.render(scene);
+    const bNodeBefore = renderer.nodeFor("b");
+
+    // Mutate the scene directly (bypassing commands, as a live-preview caller would) and ask for
+    // a targeted re-render — no full render() call in between.
+    scene._put({ ...(scene.get("a") as SceneElement), w: 90 }, "update");
+    renderer.renderElements(["a"]);
+
+    expect(attributes(renderer.nodeFor("a")?.querySelector(":scope > rect"))).toMatchObject({ width: "90" });
+    expect(renderer.nodeFor("b")).toBe(bNodeBefore); // untouched: same DOM node, never re-rendered
+  });
 });

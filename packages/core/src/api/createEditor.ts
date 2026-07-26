@@ -97,6 +97,16 @@ export interface ComplianceSummary {
   blocked: boolean;
 }
 
+/** An in-progress ephemeral gesture returned by `Editor.beginInteraction` (D26). */
+export interface Interaction {
+  /** Applies a scene-space delta as a live preview. Call repeatedly, e.g. once per pointer-move. */
+  update(dx: number, dy: number): void;
+  /** Dispatches the accumulated delta as one undoable command; no-ops if nothing moved. */
+  commit(): void;
+  /** Discards the preview and restores the pre-interaction visual state. Never touches the scene. */
+  abort(): void;
+}
+
 /** Editable element fields exposed to UI shells and future agent surfaces. */
 export interface ElementPropertiesPatch {
   x?: number;
@@ -633,6 +643,45 @@ export class Editor {
     const existing = ids.filter((id) => this.scene.has(id));
     if (existing.length === 0 || (dx === 0 && dy === 0)) return;
     this.commands.dispatch(moveElements(this.scene, existing, dx, dy));
+  }
+
+  /**
+   * Begins an ephemeral move interaction — a live drag preview (D26, docs/00-decision-log.md)
+   * that bypasses the scene, the command bus, and the linter until `commit()`. Every `update()`
+   * call is a plain SVG attribute write (`SvgRenderer.previewTransform`), so a gesture never
+   * floods undo history or re-runs the linter per pointer-move; `commit()` collapses the whole
+   * gesture into the exact same `moveElements` command `nudgeElements` above already uses, so
+   * move-with and connector-reroute-on-commit semantics are identical, not reimplemented.
+   * `ids` may be a partial selection (e.g. just a dragged container) — descendants are resolved
+   * and previewed too, since elements are flat DOM siblings that don't inherit a parent's
+   * transform (see `previewTransform`'s own doc comment).
+   */
+  beginInteraction(ids: ElementId[]): Interaction {
+    const existing = ids.filter((id) => this.scene.has(id));
+    const targets = new Set(existing);
+    for (const id of existing) {
+      for (const descendant of this.scene.descendantsOf(id)) targets.add(descendant.id);
+    }
+    const previewIds = [...targets];
+    let dx = 0;
+    let dy = 0;
+
+    return {
+      update: (nextDx, nextDy) => {
+        dx = nextDx;
+        dy = nextDy;
+        this.renderer.previewTransform(previewIds, dx, dy);
+      },
+      commit: () => {
+        this.renderer.previewTransform(previewIds, 0, 0);
+        if (existing.length > 0 && (dx !== 0 || dy !== 0)) {
+          this.commands.dispatch(moveElements(this.scene, existing, dx, dy));
+        }
+      },
+      abort: () => {
+        this.renderer.previewTransform(previewIds, 0, 0);
+      }
+    };
   }
 
   /** Deletes the given elements — and everything nested inside them — as one undoable step. */

@@ -22,7 +22,7 @@ export { CommandBus } from "./commands/commandBus.js";
 
 // Interaction
 export { SelectionManager } from "./interaction/selection.js";
-export { hitTest } from "./interaction/hitTest.js";
+export { hitTest, hitTestAll, hitTestRect, type HitTestOptions } from "./interaction/hitTest.js";
 export { computeTabOrder } from "./interaction/tabOrder.js";
 
 // Rendering
@@ -90,5 +90,6 @@ export {
   type ComplianceSummary,
   type CreateEditorOptions,
   type ElementPropertiesPatch,
-  type ExportOptions
+  type ExportOptions,
+  type Interaction
 } from "./api/createEditor.js";

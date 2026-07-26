@@ -553,6 +553,98 @@ describe("createEditor", () => {
     });
   });
 
+  describe("beginInteraction (ephemeral drag preview, D26)", () => {
+    it("previews a move as a DOM transform without touching the scene, then commits as one command", () => {
+      const id = editor.addBox({ at: { x: 10, y: 10 }, label: "box" });
+      const node = () => container.querySelector(`[data-icad-id="${id}"]`);
+
+      const interaction = editor.beginInteraction([id]);
+      interaction.update(5, -5);
+
+      // Preview only: the scene (and thus the box's rendered x/y) is untouched.
+      expect(editor.scene.get(id)).toMatchObject({ x: 10, y: 10 });
+      expect(node()?.getAttribute("transform")).toBe("translate(5, -5)");
+
+      interaction.commit();
+
+      // Committed: the scene reflects the real move and the preview transform is cleared.
+      expect(editor.scene.get(id)).toMatchObject({ x: 15, y: 5 });
+      expect(node()?.getAttribute("transform")).toBeNull();
+
+      // The whole gesture collapsed into exactly one undo step on top of the box's own add: one
+      // undo reverts just the move, a second reverts the add itself — not a third, orphaned step.
+      editor.commands.undo();
+      expect(editor.scene.get(id)).toMatchObject({ x: 10, y: 10 });
+      editor.commands.undo();
+      expect(editor.scene.get(id)).toBeUndefined();
+      expect(editor.commands.canUndo()).toBe(false);
+    });
+
+    it("previews move-with: a container's descendants get the same live transform", () => {
+      const parent = editor.addBox({ at: { x: 0, y: 0 }, w: 200, h: 200, label: "parent" });
+      const child = editor.addIcon("test/vpc", { at: { x: 20, y: 20 }, parentId: parent });
+
+      const interaction = editor.beginInteraction([parent]);
+      interaction.update(10, 10);
+
+      expect(container.querySelector(`[data-icad-id="${parent}"]`)?.getAttribute("transform")).toBe(
+        "translate(10, 10)"
+      );
+      expect(container.querySelector(`[data-icad-id="${child}"]`)?.getAttribute("transform")).toBe(
+        "translate(10, 10)"
+      );
+
+      interaction.commit();
+      expect(editor.scene.get(child)).toMatchObject({ x: 30, y: 30 });
+    });
+
+    it("abort discards the preview without dispatching any command", () => {
+      const id = editor.addBox({ at: { x: 10, y: 10 }, label: "box" });
+      const interaction = editor.beginInteraction([id]);
+      interaction.update(50, 50);
+
+      interaction.abort();
+
+      expect(editor.scene.get(id)).toMatchObject({ x: 10, y: 10 });
+      expect(container.querySelector(`[data-icad-id="${id}"]`)?.getAttribute("transform")).toBeNull();
+
+      // A single undo removes the box's own add — proving abort() pushed nothing on top of it.
+      editor.commands.undo();
+      expect(editor.scene.get(id)).toBeUndefined();
+      expect(editor.commands.canUndo()).toBe(false);
+    });
+
+    it("commit is a no-op when the delta never left zero, or the id list was empty/unknown", () => {
+      const id = editor.addBox({ at: { x: 10, y: 10 }, label: "box" });
+
+      const noMove = editor.beginInteraction([id]);
+      noMove.commit();
+
+      const unknown = editor.beginInteraction(["missing"]);
+      unknown.update(5, 5);
+      unknown.commit();
+
+      // Neither commit() pushed a command: one undo removes only the box's own original add.
+      editor.commands.undo();
+      expect(editor.scene.get(id)).toBeUndefined();
+      expect(editor.commands.canUndo()).toBe(false);
+    });
+
+    it("also moves the element's own selection outline in lockstep during the preview", () => {
+      const id = editor.addBox({ at: { x: 10, y: 10 }, label: "box" });
+      editor.selection.set([id]);
+
+      const interaction = editor.beginInteraction([id]);
+      interaction.update(7, 3);
+
+      // Both the element's own <g> and its selection-outline overlay share data-icad-id, and
+      // both must carry the same live transform or the outline visibly desyncs from the shape.
+      const withThatId = container.querySelectorAll(`[data-icad-id="${id}"]`);
+      expect(withThatId.length).toBeGreaterThanOrEqual(2);
+      withThatId.forEach((el) => expect(el.getAttribute("transform")).toBe("translate(7, 3)"));
+    });
+  });
+
   describe("group / ungroup", () => {
     it("groups two elements into a new Group container sized to their bounds, and selects it", () => {
       const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });

@@ -920,13 +920,20 @@ export function App() {
                 const editor = editorRef.current;
                 const svg = canvasRef.current?.querySelector("svg");
                 if (!editor || !svg) return;
-                // A drag-to-connect gesture already handled this interaction on mouseup.
+                // A drag-to-connect gesture already handled this interaction on mouseup. Ports are
+                // hover-only DOM decorations, not scene elements, so this stays DOM-based — it
+                // isn't the divergent hit-test path M15 unifies (docs/10-canvas-parity-plan.md#c9).
                 if (event.target instanceof Element && event.target.closest("[data-icad-port]")) return;
 
+                // One geometric hit-test for the whole handler, replacing the separate
+                // event.target.closest("[data-icad-id]") DOM walk this used to do per branch —
+                // the two could disagree (e.g. a just-grouped container sitting in front of its
+                // own child in z-order), and hitTest() is now containment-aware (C9).
+                const point = clientPointToCanvas(svg, event.clientX, event.clientY);
+                const hit = point ? hitTest(editor.scene, point) : undefined;
+
                 if (connectingFromId !== undefined) {
-                  const clicked = event.target instanceof Element ? event.target.closest<SVGElement>("[data-icad-id]") : null;
-                  const clickedId = clicked?.dataset.icadId;
-                  if (clickedId && clickedId !== connectingFromId) connectAndAnnounce(connectingFromId, clickedId);
+                  if (hit && hit.id !== connectingFromId) connectAndAnnounce(connectingFromId, hit.id);
                   editor.clearConnectorDraft();
                   editor.setHoveredElement(undefined);
                   setConnectingFromId(undefined);
@@ -934,7 +941,6 @@ export function App() {
                 }
 
                 if (activePlacement) {
-                  const point = clientPointToCanvas(svg, event.clientX, event.clientY);
                   if (!point) return;
                   const id = placeLibraryItem(editor, activePlacement, point);
                   editor.selection.set([id]);
@@ -943,16 +949,14 @@ export function App() {
                   return;
                 }
 
-                const target = event.target instanceof Element ? event.target.closest<SVGElement>("[data-icad-id]") : null;
-                const id = target?.dataset.icadId;
-                if (!id) {
+                if (!hit) {
                   editor.selection.clear();
                 } else if (event.shiftKey) {
-                  editor.selection.toggle(id);
-                  editor.focusElement(id);
+                  editor.selection.toggle(hit.id);
+                  editor.focusElement(hit.id);
                 } else {
-                  editor.selection.set([id]);
-                  editor.focusElement(id);
+                  editor.selection.set([hit.id]);
+                  editor.focusElement(hit.id);
                 }
               }}
             />

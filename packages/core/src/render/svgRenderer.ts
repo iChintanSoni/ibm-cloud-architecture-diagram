@@ -288,6 +288,10 @@ export class SvgRenderer {
   private hoveredPortsId: string | undefined;
   private draftConnector: { from: Point; to: Point } | undefined;
   private currentScene?: Scene;
+  /** Guards syncDomOrder's reorder walk (C10, docs/10-canvas-parity-plan.md) — the id sequence
+   * last reconciled into the DOM, so an unchanged z-order costs one string comparison, not an
+   * O(n) appendChild-as-move-to-end pass on every render. */
+  private lastOrderSignature = "";
 
   constructor(
     private container: HTMLElement,
@@ -378,8 +382,45 @@ export class SvgRenderer {
         if (this.focusedId === id) this.focusedId = undefined;
       }
     }
+    this.syncDomOrder(elements);
     this.renderOverlays(scene);
     this.syncTabIndexes(scene);
+  }
+
+  /**
+   * Re-renders only the given elements from the scene's current committed state — e.g. after a
+   * targeted mutation where re-running full render()'s per-element pass over the whole scene
+   * would be wasteful. Skips add/remove reconciliation, DOM reordering, overlays, and tab-index
+   * sync, all of which full render() already owns; callers that also touch containment, z-order,
+   * or selection should call render() instead. A live (uncommitted) resize preview along these
+   * lines is left for M16 to design against this primitive, not solved here (C10,
+   * docs/10-canvas-parity-plan.md) — M15 is foundation-only.
+   */
+  renderElements(ids: string[]): void {
+    if (!this.currentScene) return;
+    for (const id of ids) {
+      const el = this.currentScene.get(id);
+      if (!el) continue;
+      this.nodes.set(id, this.renderElement(el, this.currentScene));
+    }
+  }
+
+  /**
+   * Reorders existing DOM nodes to match scene.all()'s z-order (paint order doubles as SVG
+   * stacking order, docs/07-accessibility.md#canvas-the-hard-20) — previously never happened
+   * (C10, docs/10-canvas-parity-plan.md): a z-order change repainted the element in place but
+   * never actually moved it in the DOM. Guarded by lastOrderSignature so the common case (no
+   * element added/removed/re-ordered since the last render) costs one string comparison, not an
+   * O(n) appendChild-as-move-to-end walk.
+   */
+  private syncDomOrder(elements: SceneElement[]): void {
+    const signature = elements.map((el) => el.id).join(" ");
+    if (signature === this.lastOrderSignature) return;
+    this.lastOrderSignature = signature;
+    for (const el of elements) {
+      const node = this.nodes.get(el.id);
+      if (node) this.layer.appendChild(node);
+    }
   }
 
   nodeFor(id: string): SVGElement | undefined {
@@ -417,6 +458,34 @@ export class SvgRenderer {
     if (!this.currentScene) return;
     this.syncTabIndexes(this.currentScene);
     this.renderOverlays(this.currentScene);
+  }
+
+  /**
+   * Live drag preview (D26, docs/00-decision-log.md): sets — or clears, at `dx === dy === 0` — a
+   * CSS-style `transform` directly on each id's own `<g>` node (and its selection outline, if
+   * selected), bypassing `render()`/the linter/the scene entirely. Elements are flat DOM siblings,
+   * not nested SVG groups (docs/07-accessibility.md#canvas-the-hard-20's `aria-owns` tree exists
+   * precisely because containment isn't expressed via DOM nesting), so moving a container this way
+   * does *not* carry its children — callers must pass every id that should visually move,
+   * descendants included. Connectors are deliberately left untransformed and out of sync with a
+   * live move; they re-route correctly once the caller commits a real command and `render()` runs
+   * again — an accepted simplification, not an oversight, matching this file's other documented
+   * trade-offs (see `offsetRectilinear`).
+   */
+  previewTransform(ids: string[], dx: number, dy: number): void {
+    const transform = dx === 0 && dy === 0 ? null : `translate(${dx}, ${dy})`;
+    for (const id of ids) {
+      const node = this.nodes.get(id);
+      if (node) {
+        if (transform) node.setAttribute("transform", transform);
+        else node.removeAttribute("transform");
+      }
+      const outline = this.overlayLayer.querySelector(`[data-icad-id="${id}"]`);
+      if (outline) {
+        if (transform) outline.setAttribute("transform", transform);
+        else outline.removeAttribute("transform");
+      }
+    }
   }
 
   /** Shows (or clears, when either point is omitted) a rubber-band preview line while drawing a connector. */
@@ -817,6 +886,10 @@ export class SvgRenderer {
         this.overlayLayer.appendChild(highlight);
       } else {
         const outline = createSvgElement("rect");
+        // Tagged so previewTransform() (a live drag preview) can move this outline in lockstep
+        // with its element — both are flat siblings in the DOM, not nested, so an element's own
+        // transform never carries its selection outline along for free.
+        outline.setAttribute("data-icad-id", id);
         setAttrs(outline, {
           x: el.x - 3,
           y: el.y - 3,

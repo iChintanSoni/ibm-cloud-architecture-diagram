@@ -713,18 +713,28 @@ fill, glyph color, connector markers, dash patterns, stroke width, and container
 connector types round-trip through `.icad`, the linter, and MCP with corrected display labels.
 
 #### M15 — Interaction foundations
-⬜ **Not started**
+🟡 **In progress** — the ephemeral gesture layer, ordered rendering, and unified hit-testing are
+done; the `CanvasController` migration, snapping engine, VS Code de-fork, and benchmark remain.
 
-No user-visible features; everything after this depends on it. Ships the ephemeral gesture layer
-([D26](00-decision-log.md#d26--gestures-are-ephemeral-commits-are-commands--locked)), partial and
-order-correct rendering, unified hit-testing, the `CanvasController` pointer state machine moved
-into core ([D27](00-decision-log.md#d27--the-interaction-state-machine-lives-in-core-not-the-shells--locked)),
-the snapping engine, and the frame-time benchmark M12 also needs.
+No user-visible features; everything after this depends on it. Full detail in
+[Canvas parity plan → M15](10-canvas-parity-plan.md#m15--interaction-foundations).
 
-Also **de-forks `apps/vscode`'s `webview/src`** onto `@icad/ui-web` and `CanvasController`, as
-`apps/web` and `apps/desktop` already are. Done here because this is the milestone restructuring
-the interaction layer; deferring it means hand-porting five milestones of gestures into a fork that
-has drifted before.
+1. ✅ Ephemeral gesture layer ([D26](00-decision-log.md#d26--gestures-are-ephemeral-commits-are-commands--locked)):
+   `Editor.beginInteraction()`, `SvgRenderer.previewTransform()`.
+2. ✅ Partial + order-correct rendering: `render()` now reconciles DOM order to z-order (previously
+   never happened), plus `renderElements()` for targeted re-renders.
+3. ✅ Unified hit-testing: `hitTest`/`hitTestAll`/`hitTestRect`, connectors hit via real polyline
+   distance instead of their degenerate bbox, containment-aware instead of an incidental z-order
+   heuristic. Both `apps/web` and `apps/vscode`'s divergent DOM-based click-selection path are
+   replaced with it.
+4. ⬜ The `CanvasController` pointer state machine moved into core
+   ([D27](00-decision-log.md#d27--the-interaction-state-machine-lives-in-core-not-the-shells--locked)).
+5. ⬜ The snapping engine.
+6. ⬜ De-forking `apps/vscode`'s `webview/src` onto `@icad/ui-web` and `CanvasController`, as
+   `apps/web` and `apps/desktop` already are — done in this milestone rather than later, since
+   deferring it means hand-porting several more milestones of gestures into a fork that has
+   drifted before.
+7. ⬜ The frame-time benchmark M12 also needs.
 
 **Done when:** a scripted 200-frame drag of a 40-element subtree holds frame budget, produces
 exactly one undo entry, and runs the linter exactly once; all three shells drive the canvas through

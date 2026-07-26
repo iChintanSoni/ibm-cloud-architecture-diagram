@@ -148,19 +148,38 @@ labels; the uncommitted `groupLabelText` work is landed with it.
 
 ## M15 — Interaction foundations
 
-⬜ **Not started.** No user-visible features. Everything after this depends on it.
+🟡 **In progress** — steps 1–3 landed and tested; steps 4–7 remain. No user-visible features yet.
+Everything after this depends on it.
 
-1. **Ephemeral interaction layer (D26, C12).** `Editor.beginInteraction(ids)` returns a handle with
-   `update(delta)` / `commit()` / `abort()`. `update()` writes a `transform="translate(dx,dy)"` onto
-   the affected `<g>` nodes — one attribute per node, no `innerHTML` rebuild, no lint run. `commit()`
-   dispatches a single command. `abort()` (Escape) discards.
-2. **Partial + ordered rendering (C10).** Add `renderer.renderElements(ids)` for resize previews,
-   and make `render()` reorder existing nodes to match `scene.all()` — guarded by a cached order
-   signature so the common case stays O(1) in DOM writes.
-3. **Unified hit-testing (C9).** One module serving `hitTest(point)`, `hitTestAll(point)` (for
-   alt-click cycling), and `hitTestRect(rect)` (for marquee). Connectors get real polyline geometry
-   with a zoom-scaled tolerance band; containment resolution prefers the deepest child over its
-   container. Deletes the divergent DOM-based path in `App.tsx`.
+1. ✅ **Ephemeral interaction layer (D26, C12).** `Editor.beginInteraction(ids)` returns an
+   `Interaction` with `update(dx, dy)` / `commit()` / `abort()`. `update()` calls
+   `SvgRenderer.previewTransform()`, which writes a plain `transform="translate(dx,dy)"` directly
+   onto each affected `<g>` node (and its selection-outline overlay, tagged with the same
+   `data-icad-id` so it tracks in lockstep) — no scene mutation, no `innerHTML` rebuild, no lint
+   run. `commit()` clears the preview and dispatches the exact same `moveElements` command
+   `nudgeElements` already uses, so move-with/reroute-on-commit semantics aren't reimplemented.
+   Elements are flat DOM siblings, not nested SVG groups, so `beginInteraction` expands `ids` to
+   every descendant itself (mirroring `moveElements`' own expansion) rather than relying on a
+   parent transform to carry children along.
+2. ✅ **Partial + ordered rendering (C10).** `render()` now reconciles DOM order to
+   `scene.all()`'s z-order via a new `syncDomOrder()` — previously a z-order change repainted the
+   element in place but never actually moved it in the DOM. Guarded by a cached id-sequence
+   signature so the common case (nothing added/removed/reordered) costs one string comparison, not
+   an O(n) `appendChild`-as-move-to-end walk. Also adds `renderer.renderElements(ids)`, a partial
+   re-render primitive for future callers (e.g. M16's resize gesture) that need to repaint a few
+   known elements without the full per-element pass over the whole scene.
+3. ✅ **Unified hit-testing (C9).** `hitTest`/`hitTestAll`/`hitTestRect` in one module. Connectors
+   are tested against their real rendered polyline (point-to-segment distance) with a tolerance,
+   not their degenerate 0×0 declared bbox. Containment resolution explicitly prefers the deepest
+   element in the scene's parentId hierarchy over its ancestors — replacing a z-order-only
+   heuristic that only happened to prefer children in the common case because the editor's own
+   placement/grouping flow tends to add a child after its container, not a rule the engine
+   actually enforced (confirmed broken for a freshly-grouped container, fixed by a live
+   browser check: clicking the bounding-box center of an outer Box now correctly selects the
+   nested icon inside it, not the Box). The divergent `event.target.closest("[data-icad-id]")`
+   DOM-walk in both `apps/web` and `apps/vscode`'s `App.tsx` click handlers is replaced with one
+   `hitTest()` call each — the port-hover exclusion stays DOM-based since ports are decorations
+   with no scene element to hit-test against, not part of the divergent path this closes.
 4. **Pointer state machine (D27).** `core/interaction/CanvasController` on Pointer Events with
    `setPointerCapture`, so a drag survives leaving the canvas and touch/pen work for free. Modes:
    idle, pan, marquee, drag, resize, rotate, connect, place. `App.tsx` shrinks to wiring.
