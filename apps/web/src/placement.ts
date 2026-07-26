@@ -1,4 +1,6 @@
-import { isContainer, type Editor, type Point, type SceneElement } from "@icad/core";
+import { clientPointToCanvas, isContainer, type Editor, type Point, type SceneElement } from "@icad/core";
+
+export { clientPointToCanvas };
 import type { LibraryPlacement } from "@icad/ui-web";
 
 const ICON_SIZE = 48;
@@ -97,12 +99,3 @@ export function viewportCenter(editor: Editor, canvasEl: HTMLElement): Point {
   return { x: x + rect.width / (2 * scale), y: y + rect.height / (2 * scale) };
 }
 
-export function clientPointToCanvas(svg: SVGSVGElement, clientX: number, clientY: number): Point | undefined {
-  const matrix = svg.getScreenCTM();
-  if (!matrix) return undefined;
-  const point = svg.createSVGPoint();
-  point.x = clientX;
-  point.y = clientY;
-  const transformed = point.matrixTransform(matrix.inverse());
-  return { x: transformed.x, y: transformed.y };
-}

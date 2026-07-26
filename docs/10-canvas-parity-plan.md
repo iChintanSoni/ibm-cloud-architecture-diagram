@@ -148,7 +148,7 @@ labels; the uncommitted `groupLabelText` work is landed with it.
 
 ## M15 — Interaction foundations
 
-🟡 **In progress** — steps 1–3 landed and tested; steps 4–7 remain. No user-visible features yet.
+🟡 **In progress** — steps 1–4 landed and tested; steps 5–7 remain. No user-visible features yet.
 Everything after this depends on it.
 
 1. ✅ **Ephemeral interaction layer (D26, C12).** `Editor.beginInteraction(ids)` returns an
@@ -180,18 +180,30 @@ Everything after this depends on it.
    DOM-walk in both `apps/web` and `apps/vscode`'s `App.tsx` click handlers is replaced with one
    `hitTest()` call each — the port-hover exclusion stays DOM-based since ports are decorations
    with no scene element to hit-test against, not part of the divergent path this closes.
-4. **Pointer state machine (D27).** `core/interaction/CanvasController` on Pointer Events with
-   `setPointerCapture`, so a drag survives leaving the canvas and touch/pen work for free. Modes:
-   idle, pan, marquee, drag, resize, rotate, connect, place. `App.tsx` shrinks to wiring.
+4. ✅ **Interaction state machine (D27).** `core/interaction/CanvasController` owns wheel pan/zoom,
+   click/shift-click select, keyboard nav (Tab/Enter/arrows/nudge/Delete), and both mouse
+   (drag-a-port) and keyboard (`c` + Tab + Enter) connect flows as one class attached to the
+   canvas container — modes are `idle` / `connecting` / `placing`, faithfully consolidating what
+   `apps/web`'s and `apps/vscode`'s `App.tsx` each independently hand-rolled (confirmed
+   byte-for-byte identical before the migration). `armPlacement(onPlace)` and the
+   `onConnected`/`onDeleted` callbacks keep shell-only concerns (which `LibraryPlacement` is armed,
+   announcement text) out of core; `onModeChange` lets shells mirror mode into their own render.
+   `setSuspended()` lets a shell (e.g. during presentation mode) disable canvas keyboard handling
+   from outside without `CanvasController` knowing why. Both `apps/web/src/App.tsx` and
+   `apps/vscode/webview/src/App.tsx` are migrated — their canvas `<div>`s no longer carry any
+   mouse/keyboard handlers directly. The remaining direct-manipulation modes this milestone's
+   original scope named (pan drag, marquee, drag-to-move, resize, rotate) are net-new gestures that
+   don't exist anywhere yet, not a migration of existing code — they're
+   [M16](#m16--the-core-loop)'s job, and will land as new `CanvasMode` variants on this same class.
 5. **Snapping engine.** `core/interaction/snapping.ts`: grid snap against the live
    `scene.canvas.grid` (finally reading C11's dead field), the 16px parent inset as a hard
    constraint, and sibling edge/center alignment candidates. Returns an adjusted delta plus the
    guide segments for the overlay to draw.
 6. **De-fork `apps/vscode` (D27).** Its `webview/src` currently duplicates the web shell and has
    drifted before. It moves onto `@icad/ui-web` and `CanvasController` directly, as `apps/web` and
-   `apps/desktop` already do. Done here rather than later: this is the milestone already
-   restructuring the interaction layer, and deferring it means hand-porting five milestones of
-   gestures into a fork.
+   `apps/desktop` already do. The interaction layer itself is unified as of step 4 above; what
+   remains is confirming no other forked logic (beyond what's already shared via `@icad/ui-web`)
+   still exists between the two `App.tsx` files.
 7. **Benchmark harness.** Frame-time guard for drag/resize at 500/1000/2000 elements, absorbing the
    intent of [M12](09-roadmap.md#m12--performance-at-scale) so performance is measured before it
    regresses rather than after.

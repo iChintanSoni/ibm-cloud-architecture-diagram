@@ -713,8 +713,9 @@ fill, glyph color, connector markers, dash patterns, stroke width, and container
 connector types round-trip through `.icad`, the linter, and MCP with corrected display labels.
 
 #### M15 — Interaction foundations
-🟡 **In progress** — the ephemeral gesture layer, ordered rendering, and unified hit-testing are
-done; the `CanvasController` migration, snapping engine, VS Code de-fork, and benchmark remain.
+🟡 **In progress** — the ephemeral gesture layer, ordered rendering, unified hit-testing, and the
+`CanvasController` migration are done; the snapping engine, VS Code de-fork confirmation, and
+benchmark remain.
 
 No user-visible features; everything after this depends on it. Full detail in
 [Canvas parity plan → M15](10-canvas-parity-plan.md#m15--interaction-foundations).
@@ -727,13 +728,16 @@ No user-visible features; everything after this depends on it. Full detail in
    distance instead of their degenerate bbox, containment-aware instead of an incidental z-order
    heuristic. Both `apps/web` and `apps/vscode`'s divergent DOM-based click-selection path are
    replaced with it.
-4. ⬜ The `CanvasController` pointer state machine moved into core
-   ([D27](00-decision-log.md#d27--the-interaction-state-machine-lives-in-core-not-the-shells--locked)).
+4. ✅ The `CanvasController` interaction state machine moved into core
+   ([D27](00-decision-log.md#d27--the-interaction-state-machine-lives-in-core-not-the-shells--locked)):
+   click/shift-click select, keyboard nav/nudge/delete, and mouse + keyboard connect flows, wired
+   into both `apps/web` and `apps/vscode`, whose `App.tsx` canvas elements no longer carry any
+   interaction handlers of their own. Pan/marquee/drag/resize/rotate modes are new gestures for
+   [M16](#m16--the-core-loop) to add to this same class, not something this step migrated.
 5. ⬜ The snapping engine.
-6. ⬜ De-forking `apps/vscode`'s `webview/src` onto `@icad/ui-web` and `CanvasController`, as
-   `apps/web` and `apps/desktop` already are — done in this milestone rather than later, since
-   deferring it means hand-porting several more milestones of gestures into a fork that has
-   drifted before.
+6. ⬜ Confirming no forked interaction logic remains between `apps/vscode`'s `webview/src` and
+   `apps/web` beyond what's already shared via `@icad/ui-web` — the interaction layer itself is
+   unified as of step 4.
 7. ⬜ The frame-time benchmark M12 also needs.
 
 **Done when:** a scripted 200-frame drag of a 40-element subtree holds frame budget, produces

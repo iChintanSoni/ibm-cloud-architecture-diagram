@@ -1,10 +1,10 @@
 import { Button, Modal, Select, SelectItem, Tag, Theme } from "@carbon/react";
 import {
+  CanvasController,
   createEditor,
-  hitTest,
   isContainer,
-  portPoint,
   ruleMetadata,
+  type CanvasMode,
   type ConformanceSeverity,
   type Diagnostic,
   type DiagramTemplateId,
@@ -13,7 +13,6 @@ import {
   type Editor,
   type ExportGate,
   type FrameElement,
-  type PortSide,
   type SceneElement
 } from "@icad/core";
 import {
@@ -30,9 +29,9 @@ import {
   type InsertKind,
   type LibraryPlacement
 } from "@icad/ui-web";
-import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createIbmCloudCatalog } from "./catalog";
-import { clientPointToCanvas, placeLibraryItem, viewportCenter } from "./placement";
+import { placeLibraryItem, viewportCenter } from "./placement";
 import { onHostMessage, postToHost } from "./vscodeApi";
 import { useVsCodeTheme } from "./useVsCodeTheme";
 import { buildValidationView } from "./validation";
@@ -46,10 +45,16 @@ function isEditableTarget(target: EventTarget | null): boolean {
 export function App() {
   const canvasRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<Editor | null>(null);
+  const controllerRef = useRef<CanvasController | null>(null);
   const [catalog] = useState(createIbmCloudCatalog);
 
   const { kind: themeKind, carbonTheme } = useVsCodeTheme();
-  const [activePlacement, setActivePlacement] = useState<LibraryPlacement>();
+  // Mirrors CanvasController's own mode (D27, docs/00-decision-log.md) for rendering only —
+  // CanvasController is the source of truth, this is just what triggers a re-render. The
+  // *specific* LibraryPlacement being armed is a ui-web concept core's controller can't know
+  // about, so it's tracked separately, only for the Library panel's "armed" highlight.
+  const [canvasMode, setCanvasMode] = useState<CanvasMode>({ kind: "idle" });
+  const [activeLibraryPlacement, setActiveLibraryPlacement] = useState<LibraryPlacement>();
   const [diagnostics, setDiagnostics] = useState<Diagnostic[]>([]);
   const [elements, setElements] = useState<SceneElement[]>([]);
   const [selectedIds, setSelectedIds] = useState<ElementId[]>([]);
@@ -58,7 +63,6 @@ export function App() {
   const [exportGate, setExportGateState] = useState<ExportGate>("warn");
   const [zoomPercent, setZoomPercent] = useState(100);
   const [presentingFrameId, setPresentingFrameId] = useState<ElementId>();
-  const [connectingFromId, setConnectingFromId] = useState<ElementId>();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [findOpen, setFindOpen] = useState(false);
   const [findQuery, setFindQuery] = useState("");
@@ -105,6 +109,31 @@ export function App() {
     const editor = createEditor({ container: canvasRef.current, catalog });
     editorRef.current = editor;
 
+    // The canvas's own pointer + keyboard interaction, as one state machine (D27,
+    // docs/00-decision-log.md) — wheel pan/zoom, click-to-select, drag-to-connect, and the
+    // canvas's own keyboard operability all live here now, not as separate listeners in this
+    // component. This shell's job shrinks to wiring: mirroring mode changes into React state for
+    // rendering, and formatting announcement text core can't own (it stays string-agnostic).
+    const controller = new CanvasController(editor, canvasRef.current, {
+      onConnected: (_id, fromId, toId) => {
+        const from = editor.scene.get(fromId);
+        const to = editor.scene.get(toId);
+        if (from && to) announce(`Connected ${elementDisplayName(from)} to ${elementDisplayName(to)}`);
+      },
+      onDeleted: (deletedElements) => {
+        const names = deletedElements.map(elementDisplayName);
+        announce(names.length === 1 ? `${names[0]} deleted` : `${names.length} elements deleted`);
+      }
+    });
+    controllerRef.current = controller;
+    const unsubscribeMode = controller.onModeChange((mode) => {
+      setCanvasMode(mode);
+      // The Library panel's "armed" highlight is a ui-web-only concept, so it isn't part of
+      // CanvasController's own mode — clear it in lockstep whenever placement mode ends, however
+      // it ended (a completed click, or Escape from anywhere).
+      if (mode.kind !== "placing") setActiveLibraryPlacement(undefined);
+    });
+
     const unsubscribeChange = editor.on(() => {
       setElements(editor.scene.all());
       setDiagnostics(editor.lint());
@@ -126,7 +155,7 @@ export function App() {
         setDiagnostics(editor.lint());
         setElements(editor.scene.all());
         setPresentingFrameId(undefined);
-        setActivePlacement(undefined);
+        controller.cancelPlacement();
       } else if (message.type === "undo") {
         editor.commands.undo();
         postToHost({ type: "sync", content: JSON.stringify(editor.toIcad()) });
@@ -147,6 +176,9 @@ export function App() {
       unsubscribeViewport();
       unsubscribeDispatch();
       unsubscribeHost();
+      unsubscribeMode();
+      controller.destroy();
+      controllerRef.current = null;
       editor.destroy();
       editorRef.current = null;
     };
@@ -156,36 +188,6 @@ export function App() {
   useEffect(() => {
     editorRef.current?.setTheme(themeKind);
   }, [themeKind]);
-
-  useEffect(() => {
-    const cancelPlacement = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setActivePlacement(undefined);
-    };
-    window.addEventListener("keydown", cancelPlacement);
-    return () => window.removeEventListener("keydown", cancelPlacement);
-  }, []);
-
-  // Scroll pans, Ctrl/Cmd+scroll zooms toward the cursor (docs/06-editor-ux.md#core-interactions).
-  // Attached as a native, non-passive listener so preventDefault actually stops page scroll.
-  useEffect(() => {
-    const node = canvasRef.current;
-    if (!node) return;
-    const onWheel = (event: WheelEvent) => {
-      const editor = editorRef.current;
-      const svg = node.querySelector("svg");
-      if (!editor || !svg) return;
-      event.preventDefault();
-      if (event.ctrlKey || event.metaKey) {
-        const focal = clientPointToCanvas(svg, event.clientX, event.clientY);
-        editor.viewport.zoomBy(Math.exp(-event.deltaY * 0.01), focal);
-      } else {
-        const { scale } = editor.viewport.get();
-        editor.viewport.panBy(event.deltaX / scale, event.deltaY / scale);
-      }
-    };
-    node.addEventListener("wheel", onWheel, { passive: false });
-    return () => node.removeEventListener("wheel", onWheel);
-  }, []);
 
   // Global command palette / find / zoom shortcuts (docs/06-editor-ux.md#keyboard-first).
   // Deliberately excludes Ctrl/Cmd+Z / Shift+Z / Y: VS Code owns undo/redo for the active custom
@@ -245,115 +247,12 @@ export function App() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [presentingFrameId, frames]);
 
-  // Keyboard-operable canvas (docs/07-accessibility.md#canvas-the-hard-20). Tab/Shift+Tab move
-  // keyboard focus only — wrapping is disabled at the boundary so Tab can still exit to
-  // surrounding chrome (no keyboard trap) — Enter/Space select the focused element (Shift+ toggles
-  // it into/out of a multi-selection, so a multi-element selection is fully keyboard-buildable for
-  // Group), arrow keys nudge the current selection, Delete/Backspace removes it, and "C" starts
-  // keyboard connect mode (Tab to a target, Enter to confirm, Escape to cancel). Scoped to the
-  // canvas element itself so it never fires while typing elsewhere (Properties fields, Find, the
-  // command palette, ...).
+  // Presentation mode owns the keyboard while active (docs/06-editor-ux.md#frames-sections--
+  // presentation, handled by the effect above) — an app-level concern CanvasController doesn't
+  // know about, so it's suspended from outside rather than checking presentingFrameId itself.
   useEffect(() => {
-    const node = canvasRef.current;
-    if (!node) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      const editor = editorRef.current;
-      if (!editor || presentingFrameId !== undefined) return;
-
-      // Sync from wherever real DOM focus actually is: handles the bootstrap case where the
-      // very first Tab into the canvas lands natively on the roving tabindex="0" element,
-      // before any editor.focusElement() call has run.
-      const targetId = event.target instanceof Element ? event.target.getAttribute("data-icad-id") : null;
-      if (targetId && editor.focusedElement() !== targetId) editor.focusElement(targetId);
-      const focusedId = editor.focusedElement();
-
-      if (connectingFromId !== undefined) {
-        if (event.key === "Escape") {
-          event.preventDefault();
-          editor.clearConnectorDraft();
-          editor.setHoveredElement(undefined);
-          setConnectingFromId(undefined);
-        } else if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          if (focusedId && focusedId !== connectingFromId) connectAndAnnounce(connectingFromId, focusedId);
-          editor.clearConnectorDraft();
-          editor.setHoveredElement(undefined);
-          setConnectingFromId(undefined);
-        } else if (event.key === "Tab") {
-          const order = editor.tabOrder();
-          const currentIndex = focusedId ? order.indexOf(focusedId) : -1;
-          if (currentIndex === -1) return;
-          const atBoundary = event.shiftKey ? currentIndex === 0 : currentIndex === order.length - 1;
-          if (atBoundary) return;
-          event.preventDefault();
-          if (event.shiftKey) editor.focusPrevious();
-          else editor.focusNext();
-          const nextId = editor.focusedElement();
-          if (nextId && nextId !== connectingFromId) editor.previewConnectorBetween(connectingFromId, nextId);
-        }
-        return; // swallow every other key (e.g. arrows) while connecting
-      }
-
-      if (event.key === "Tab") {
-        const order = editor.tabOrder();
-        const currentIndex = focusedId ? order.indexOf(focusedId) : -1;
-        if (currentIndex === -1) return; // nothing focused yet: let Tab enter natively
-        const atBoundary = event.shiftKey ? currentIndex === 0 : currentIndex === order.length - 1;
-        if (atBoundary) return; // let Tab exit to surrounding chrome instead of wrapping
-        event.preventDefault();
-        if (event.shiftKey) editor.focusPrevious();
-        else editor.focusNext();
-        return;
-      }
-
-      if (event.key === "Enter" || event.key === " ") {
-        if (!focusedId) return;
-        event.preventDefault();
-        if (event.shiftKey) editor.selection.toggle(focusedId);
-        else editor.selection.set([focusedId]);
-        return;
-      }
-
-      if (event.key.toLowerCase() === "c" && !event.metaKey && !event.ctrlKey && !event.altKey) {
-        const source = focusedId ?? editor.selection.get()[0];
-        const el = source ? editor.scene.get(source) : undefined;
-        if (!el || el.type === "connector" || el.type === "frame") return;
-        event.preventDefault();
-        setConnectingFromId(el.id);
-        editor.setHoveredElement(el.id);
-        return;
-      }
-
-      let selected = editor.selection.get();
-      if (selected.length === 0 && focusedId) {
-        editor.selection.set([focusedId]);
-        selected = [focusedId];
-      }
-      if (selected.length === 0) return;
-
-      const nudge = event.shiftKey ? 8 : 1;
-      if (event.key === "ArrowUp") {
-        event.preventDefault();
-        editor.nudgeElements(selected, 0, -nudge);
-      } else if (event.key === "ArrowDown") {
-        event.preventDefault();
-        editor.nudgeElements(selected, 0, nudge);
-      } else if (event.key === "ArrowLeft") {
-        event.preventDefault();
-        editor.nudgeElements(selected, -nudge, 0);
-      } else if (event.key === "ArrowRight") {
-        event.preventDefault();
-        editor.nudgeElements(selected, nudge, 0);
-      } else if (event.key === "Delete" || event.key === "Backspace") {
-        event.preventDefault();
-        const names = selected.map((deleteId) => elementDisplayName(editor.scene.get(deleteId)!));
-        editor.deleteElements(selected);
-        announce(names.length === 1 ? `${names[0]} deleted` : `${names.length} elements deleted`);
-      }
-    };
-    node.addEventListener("keydown", onKeyDown);
-    return () => node.removeEventListener("keydown", onKeyDown);
-  }, [presentingFrameId, connectingFromId]);
+    controllerRef.current?.setSuspended(presentingFrameId !== undefined);
+  }, [presentingFrameId]);
 
   // Find jumps the viewport to the active match as the query or selection changes.
   useEffect(() => {
@@ -391,7 +290,7 @@ export function App() {
     const editor = editorRef.current;
     if (!editor) return;
     editor.newDocument(templateId);
-    setActivePlacement(undefined);
+    controllerRef.current?.cancelPlacement();
     setExportGateState(editor.scene.conformance.exportGate);
     setDiagnostics(editor.lint());
     setNewDiagramOpen(false);
@@ -476,8 +375,17 @@ export function App() {
   // at the viewport center instead of entering that mouse-only aiming mode (docs/07-accessibility.md#canvas-the-hard-20).
   const handleChooseFromLibrary = (placement: LibraryPlacement, immediate?: boolean) => {
     const editor = editorRef.current;
-    if (!immediate || !editor || !canvasRef.current) {
-      setActivePlacement(placement);
+    const controller = controllerRef.current;
+    if (!editor || !controller || !canvasRef.current) return;
+
+    if (!immediate) {
+      setActiveLibraryPlacement(placement);
+      controller.armPlacement((point) => {
+        const id = placeLibraryItem(editor, placement, point);
+        editor.selection.set([id]);
+        editor.focusElement(id);
+        announce(`${elementDisplayName(editor.scene.get(id)!)} added`);
+      });
       return;
     }
     const id = placeLibraryItem(editor, placement, viewportCenter(editor, canvasRef.current));
@@ -505,89 +413,6 @@ export function App() {
     const name = elementDisplayName(element);
     editor.ungroupElement(id);
     announce(`Ungrouped ${name}`);
-  };
-
-  /** Connects two elements and announces it (docs/07-accessibility.md#canvas-the-hard-20). */
-  const connectAndAnnounce = (fromId: ElementId, toId: ElementId, exact?: { fromPort: PortSide; toPort: PortSide }) => {
-    const editor = editorRef.current;
-    const from = editor?.scene.get(fromId);
-    const to = editor?.scene.get(toId);
-    if (!editor || !from || !to) return;
-    const id = exact
-      ? editor.connect({ elementId: fromId, port: exact.fromPort }, { elementId: toId, port: exact.toPort })
-      : editor.connectNearest(fromId, toId);
-    if (!id) return;
-    editor.selection.set([id]);
-    announce(`Connected ${elementDisplayName(from)} to ${elementDisplayName(to)}`);
-  };
-
-  // Mouse drag-to-connect (docs/06-editor-ux.md#core-interactions): hover a shape to reveal its
-  // ports (SvgRenderer draws them), mousedown on one starts a rubber-band drag; dropping on
-  // another element's port uses that exact port, dropping anywhere else on it auto-picks a
-  // reasonable pair (connectNearest); dropping on empty canvas cancels.
-  const draggingPortRef = useRef<{ elementId: ElementId; side: PortSide } | undefined>(undefined);
-
-  const parsePortAttr = (value: string): { elementId: ElementId; side: PortSide } => {
-    const separator = value.lastIndexOf(":");
-    return { elementId: value.slice(0, separator), side: value.slice(separator + 1) as PortSide };
-  };
-
-  const handleCanvasMouseMove = (event: ReactMouseEvent<HTMLDivElement>) => {
-    const editor = editorRef.current;
-    const svg = canvasRef.current?.querySelector("svg");
-    if (!editor || !svg || activePlacement) return;
-    const point = clientPointToCanvas(svg, event.clientX, event.clientY);
-    if (!point) return;
-
-    if (draggingPortRef.current) {
-      const source = editor.scene.get(draggingPortRef.current.elementId);
-      if (source) editor.setConnectorDraftPoints(portPoint(source, draggingPortRef.current.side), point);
-    }
-
-    const hit = hitTest(editor.scene, point);
-    editor.setHoveredElement(hit && hit.type !== "connector" && hit.type !== "frame" ? hit.id : undefined);
-  };
-
-  const handleCanvasMouseDown = (event: ReactMouseEvent<HTMLDivElement>) => {
-    const editor = editorRef.current;
-    const portAttr =
-      event.target instanceof Element
-        ? event.target.closest<SVGElement>("[data-icad-port]")?.getAttribute("data-icad-port")
-        : null;
-    if (!editor || !portAttr) return;
-    const { elementId, side } = parsePortAttr(portAttr);
-    draggingPortRef.current = { elementId, side };
-    const source = editor.scene.get(elementId);
-    if (source) editor.setConnectorDraftPoints(portPoint(source, side), portPoint(source, side));
-  };
-
-  const handleCanvasMouseUp = (event: ReactMouseEvent<HTMLDivElement>) => {
-    const editor = editorRef.current;
-    const dragging = draggingPortRef.current;
-    draggingPortRef.current = undefined;
-    editor?.clearConnectorDraft();
-    editor?.setHoveredElement(undefined);
-    if (!editor || !dragging) return;
-
-    const targetPortAttr =
-      event.target instanceof Element
-        ? event.target.closest<SVGElement>("[data-icad-port]")?.getAttribute("data-icad-port")
-        : null;
-    if (targetPortAttr) {
-      const target = parsePortAttr(targetPortAttr);
-      if (target.elementId !== dragging.elementId) {
-        connectAndAnnounce(dragging.elementId, target.elementId, { fromPort: dragging.side, toPort: target.side });
-      }
-      return;
-    }
-
-    const svg = canvasRef.current?.querySelector("svg");
-    const point = svg ? clientPointToCanvas(svg, event.clientX, event.clientY) : undefined;
-    if (!point) return;
-    const target = hitTest(editor.scene, point);
-    if (target && target.id !== dragging.elementId && target.type !== "connector") {
-      connectAndAnnounce(dragging.elementId, target.id);
-    }
   };
 
   const commands: CommandItem[] = [
@@ -690,60 +515,14 @@ export function App() {
           <h1 className="icad-visually-hidden">ICAD — IBM Cloud Architecture Diagrams</h1>
           <LibraryPanel
             catalog={catalog}
-            activePlacement={activePlacement}
+            activePlacement={activeLibraryPlacement}
             onChoose={handleChooseFromLibrary}
           />
           <div className="icad-canvas-region">
             <div
               className="icad-canvas"
               ref={canvasRef}
-              data-placement-active={activePlacement ? "true" : "false"}
-              onMouseMove={handleCanvasMouseMove}
-              onMouseDown={handleCanvasMouseDown}
-              onMouseUp={handleCanvasMouseUp}
-              onClick={(event) => {
-                const editor = editorRef.current;
-                const svg = canvasRef.current?.querySelector("svg");
-                if (!editor || !svg) return;
-                // A drag-to-connect gesture already handled this interaction on mouseup. Ports are
-                // hover-only DOM decorations, not scene elements, so this stays DOM-based — it
-                // isn't the divergent hit-test path M15 unifies (docs/10-canvas-parity-plan.md#c9).
-                if (event.target instanceof Element && event.target.closest("[data-icad-port]")) return;
-
-                // One geometric hit-test for the whole handler, replacing the separate
-                // event.target.closest("[data-icad-id]") DOM walk this used to do per branch —
-                // the two could disagree (e.g. a just-grouped container sitting in front of its
-                // own child in z-order), and hitTest() is now containment-aware (C9).
-                const point = clientPointToCanvas(svg, event.clientX, event.clientY);
-                const hit = point ? hitTest(editor.scene, point) : undefined;
-
-                if (connectingFromId !== undefined) {
-                  if (hit && hit.id !== connectingFromId) connectAndAnnounce(connectingFromId, hit.id);
-                  editor.clearConnectorDraft();
-                  editor.setHoveredElement(undefined);
-                  setConnectingFromId(undefined);
-                  return;
-                }
-
-                if (activePlacement) {
-                  if (!point) return;
-                  const id = placeLibraryItem(editor, activePlacement, point);
-                  editor.selection.set([id]);
-                  editor.focusElement(id);
-                  setActivePlacement(undefined);
-                  return;
-                }
-
-                if (!hit) {
-                  editor.selection.clear();
-                } else if (event.shiftKey) {
-                  editor.selection.toggle(hit.id);
-                  editor.focusElement(hit.id);
-                } else {
-                  editor.selection.set([hit.id]);
-                  editor.focusElement(hit.id);
-                }
-              }}
+              data-placement-active={canvasMode.kind === "placing" ? "true" : "false"}
             />
             <FindBar
               open={findOpen}
@@ -755,9 +534,9 @@ export function App() {
               onPrevious={findPrevious}
               onClose={closeFind}
             />
-            {connectingFromId !== undefined && (
+            {canvasMode.kind === "connecting" && (
               <div className="icad-connect-hint" role="status">
-                Connecting from <strong>{elementDisplayName(elements.find((el) => el.id === connectingFromId)!)}</strong> —
+                Connecting from <strong>{elementDisplayName(elements.find((el) => el.id === canvasMode.fromId)!)}</strong> —
                 Tab to a target, Enter to confirm, Esc to cancel.
               </div>
             )}
