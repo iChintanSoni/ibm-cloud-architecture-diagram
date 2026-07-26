@@ -36,8 +36,9 @@ ICAD fixes all four. See [Vision & Scope](docs/01-vision-and-scope.md).
 
 - **Spec-aware, not generic.** Shapes carry IBM meaning; an advisory **linter** with quick-fixes
   keeps diagrams on-spec. → [Spec Conformance](docs/05-ibm-spec-conformance.md)
-- **Crisp & on-brand.** Exact IBM icons (20×20 glyph in 48×48, 1px outline), orthogonal
-  connectors, Carbon + IBM Plex chrome — no hand-drawn look. → [The web editor](docs/guide/02-web-editor.md)
+- **Crisp & on-brand.** Exact IBM icons (a solid category-color 48×48 tile with a 24×24 white
+  glyph, matching IBM's own construction), orthogonal connectors, Carbon + IBM Plex chrome — no
+  hand-drawn look. → [The web editor](docs/guide/02-web-editor.md)
 - **Files-first & git-friendly.** Local-first single-file JSON `.icad`; SVGs embed a re-editable
   copy. → [File Format](docs/03-file-format.md)
 - **Machine-authorable.** One headless engine drives both the human editor and an MCP server, so
@@ -86,7 +87,8 @@ SVG-only. Full detail in each guide doc's own Limitations section, linked above.
 [Architecture](docs/02-architecture.md) ·
 [Icon Catalog pipeline](docs/04-icon-catalog.md) ·
 [Accessibility plan](docs/07-accessibility.md) ·
-[Agent integration spec](docs/08-agent-integration.md)
+[Agent integration spec](docs/08-agent-integration.md) ·
+[Canvas parity plan](docs/10-canvas-parity-plan.md)
 
 ## Architecture at a glance
 

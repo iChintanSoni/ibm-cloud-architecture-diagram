@@ -58,8 +58,13 @@ function listSvgFiles(dir: string, relativeTo: string, out: { abs: string; rel: 
   return out;
 }
 
+// Must agree with extract.ts/extractDrawioLibrary.ts's GLYPH_VIEWBOX (D25) — every emitted file's
+// own declared viewBox has to match the coordinate space its glyph content was actually reframed
+// into, so the file stays a valid, correctly-cropped standalone SVG on its own (each in-app
+// consumer strips this wrapper and supplies its own viewBox, but the file on disk should still be
+// self-consistent for anyone/anything that opens it directly).
 const SVG_OPEN_TAG =
-  '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 20 20">';
+  '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 24 24">';
 
 function wrapForSvgo(fragment: string): string {
   return `${SVG_OPEN_TAG}${fragment}</svg>`;

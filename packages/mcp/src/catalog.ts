@@ -13,7 +13,7 @@ import { Catalog, type CatalogManifest } from "@icad/core";
  */
 const CATALOG_DIR = fileURLToPath(new URL("../../catalog/2.0.0", import.meta.url));
 
-// Catalog assets on disk are full, standalone SVGs (viewBox 0 0 20 20); `Catalog` expects inner
+// Catalog assets on disk are full, standalone SVGs (viewBox 0 0 24 24); `Catalog` expects inner
 // fragments (see packages/core/src/catalog/catalog.ts), so strip the outer <svg> tag at load time.
 function stripSvgWrapper(svg: string): string {
   return svg.replace(/^<svg[^>]*>/, "").replace(/<\/svg>\s*$/, "");

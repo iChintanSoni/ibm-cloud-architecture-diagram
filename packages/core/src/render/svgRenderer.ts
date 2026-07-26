@@ -3,7 +3,7 @@ import { computeTabOrder } from "../interaction/tabOrder.js";
 import type { Diagnostic, Severity } from "../linter/types.js";
 import { accessibleName, accessibleRole } from "../scene/accessibleName.js";
 import type { Scene } from "../scene/scene.js";
-import type { ConnectorElement, ConnectorType, SceneElement } from "../scene/types.js";
+import type { ConnectorElement, ConnectorType, GroupElement, SceneElement } from "../scene/types.js";
 import { connectorPathPoints } from "../routing/routeConnector.js";
 import { PRIMARY_TO_SECONDARY_FILL } from "../theme/colorPalette.js";
 import { createSvgElement, setAttrs } from "./dom.js";
@@ -14,16 +14,48 @@ import type { ViewportState } from "./viewport.js";
 const FALLBACK_VIEWPORT_SIZE = { w: 800, h: 600 };
 
 const ICON_CONTAINER = 48;
-const ICON_GLYPH = 20;
-const ICON_OFFSET = (ICON_CONTAINER - ICON_GLYPH) / 2;
+/**
+ * Every catalog asset's glyph is normalized (packages/catalog-build/src/extract.ts's
+ * GLYPH_VIEWBOX) to fill a 0..24 coordinate space — IBM's own real glyph box (confirmed against
+ * upstream source, e.g. load-balancer--local.svg's `<g transform="translate(12, 12)">` wrapping a
+ * 24x24 glyph), not the 0..20 space ICAD previously assumed (D25, docs/00-decision-log.md). Both
+ * glyph use-sites below must declare this same viewBox so the shared asset isn't misframed —
+ * their on-screen *display* size (width/height) is independent and differs per use-site.
+ */
+const GLYPH_VIEWBOX_SIZE = 24;
+
+/** IBM's own icon glyph renders at 24x24, inset 12px within the 48x48 tile — 1:1 with GLYPH_VIEWBOX_SIZE. */
+const NODE_GLYPH_SIZE = 24;
+const NODE_GLYPH_INSET = (ICON_CONTAINER - NODE_GLYPH_SIZE) / 2;
 
 /**
- * Box (deployedOn) containers carry a short colored accent bar flush on the left edge, next
- * to the icon/label — confirmed in not_released_in_drawio.xml's own Group stencil defs (a
+ * Inset and on-screen size of a container's (box/group/zone) corner glyph from its own top-left
+ * corner — an ICAD affordance for confirmed presets (packages/ui-web/src/presets.ts), not a
+ * full-tile IBM node icon: IBM's own worked examples render container tabs with no corner icon at
+ * all, so this display size isn't itself IBM-specified and is kept at its pre-existing 20x20
+ * (scaled down from the shared GLYPH_VIEWBOX_SIZE coordinate space) rather than matched to
+ * NODE_GLYPH_SIZE.
+ */
+const CONTAINER_GLYPH_INSET = 12;
+const CONTAINER_GLYPH_SIZE = 20;
+/**
+ * Horizontal gap between a Group's corner icon and its own label, rendered beside it —
+ * confirmed by IBM's own worked examples (IKS_SR_MZ_Classic.svg: Region/Zone/Kubernetes
+ * boundary labels sit to the right of their corner glyph, baseline-aligned, not below the
+ * boundary), consistent with D24's Box/Boundary corner-glyph convention.
+ */
+const CONTAINER_LABEL_GAP = 8;
+
+/**
+ * Every container (Box/Group/Zone) carries a short colored accent bar flush on the left edge,
+ * next to the icon/label — confirmed in not_released_in_drawio.xml's own Group stencil defs (a
  * 4-wide rect drawn before the icon, filled the same color as the container's own stroke) and
- * visually in images/DeployedTo.png / the IKS/ROKS reference renders (D24). The stencil's own
- * geometry (4x48 within a 220x140 library-thumbnail tile) is a preview-tile constant, not
- * proportional to a real box's height, so this is a fixed height clamped to short boxes.
+ * visually in images/DeployedTo.png / the IKS/ROKS reference renders (D24), and directly in the
+ * kit's own worked example (Public Network, IBM Cloud, Region, OpenShift, Zone all carry one —
+ * canvas-parity-plan.md's C7). The stencil's own geometry (4x48 within a 220x140
+ * library-thumbnail tile) is a preview-tile constant, not proportional to a real container's
+ * height, so this is a fixed height clamped to short containers. Frame is the one container type
+ * that deliberately has no tab — it's an ICAD-only presentation affordance with no IBM semantic.
  */
 const SIDEBAR_TAB_WIDTH = 4;
 const SIDEBAR_TAB_HEIGHT = 32;
@@ -48,9 +80,22 @@ const PALETTES: Record<ResolvedTheme, Palette> = {
  */
 const FLOW_COLORS = { private: "#198038", public: "#4376BB" } as const;
 
+/**
+ * Tunnel-band colors (D-level fidelity fix): `single` is `Connectors.drawio`'s own literal
+ * `fillColor=#FFD7D9` (confirmed directly against the vector source — not derived from the
+ * connector's own stroke color, unlike ICAD's previous opacity-based approximation). The
+ * double-tunnel variant's second/outer band has no literal fillColor anywhere in
+ * `Connectors.drawio` — it renders via a proprietary `mxgraph.ibm2mondrian` shape not resolvable
+ * from the stencil's plain style strings — so `double` uses Carbon's own Yellow 30 (`#f1c21b`) as
+ * a reasoned, real-IBM-palette placeholder pending direct IBM Design confirmation, the same
+ * posture D21 takes for other unconfirmed specifics.
+ */
+const TUNNEL_BAND_COLORS = { single: "#FFD7D9", double: "#f1c21b" } as const;
+
 type MarkerId =
   | "icad-dot"
   | "icad-arrow"
+  | "icad-arrow-open"
   | "icad-arrow-hollow"
   | "icad-diamond-open"
   | "icad-diamond-filled"
@@ -59,6 +104,7 @@ type MarkerKind =
   | "none"
   | "dot"
   | "arrow"
+  | "arrow-open"
   | "arrow-hollow"
   | "diamond-open"
   | "diamond-filled"
@@ -67,6 +113,7 @@ type MarkerKind =
 const MARKER_IDS: Record<Exclude<MarkerKind, "none">, MarkerId> = {
   dot: "icad-dot",
   arrow: "icad-arrow",
+  "arrow-open": "icad-arrow-open",
   "arrow-hollow": "icad-arrow-hollow",
   "diamond-open": "icad-diamond-open",
   "diamond-filled": "icad-diamond-filled",
@@ -93,17 +140,26 @@ const CONNECTION_TYPES = new Set<ConnectorType>([
   "traffic-through-double-tunnel"
 ]);
 
-/** Line style + arrowheads per docs/05-ibm-spec-conformance.md#connector-nomenclature. */
+/**
+ * Line style + arrowheads per docs/05-ibm-spec-conformance.md#connector-nomenclature, confirmed
+ * against `Connectors.drawio`'s own style strings. Relationships (dependency/association/
+ * aggregation/composition) use the open-V `endArrow=open` marker there, distinct from
+ * implementation/extends's hollow *closed* triangle (`endArrow=block;endFill=0`) — the two are
+ * visually different arrowheads in IBM's own reference, not the same marker reused.
+ * "tunneling-connection" renders what `Connectors.drawio` actually labels "Traffic Through
+ * Tunnel/Encapsulation" — "Tunneling Connection" itself is a caption cell with no edge behind it,
+ * not a distinct line style (see InspectorPanel's CONNECTOR_TYPE_LABELS for the display-name fix).
+ */
 const CONNECTOR_STYLE: Record<ConnectorType, ConnectorStyleSpec> = {
-  "logical-connection": { dash: "6 3 1 3", endMarker: "arrow" },
+  "logical-connection": { dash: "4 3", endMarker: "arrow" },
   connection: { endMarker: "arrow" },
   "physical-connection": { doubleLine: true, startMarker: "box", endMarker: "box" },
   "tunneling-connection": { band: 1, endMarker: "arrow" },
   "traffic-through-double-tunnel": { band: 2, endMarker: "arrow" },
-  dependency: { dash: "4 3", endMarker: "arrow" },
-  association: { endMarker: "arrow" },
-  aggregation: { endMarker: "arrow", startMarker: "diamond-open" },
-  composition: { endMarker: "arrow", startMarker: "diamond-filled" },
+  dependency: { dash: "4 3", endMarker: "arrow-open" },
+  association: { endMarker: "arrow-open" },
+  aggregation: { endMarker: "arrow-open", startMarker: "diamond-open" },
+  composition: { endMarker: "arrow-open", startMarker: "diamond-filled" },
   implementation: { dash: "4 3", endMarker: "arrow-hollow" },
   extends: { endMarker: "arrow-hollow" }
 };
@@ -176,6 +232,18 @@ function toPointsAttr(points: Point[]): string {
   return points.map((p) => `${p.x},${p.y}`).join(" ");
 }
 
+/**
+ * Recolors a catalog glyph fragment's white fills to `color` — used only for the container
+ * corner glyph (containerCornerGlyph), which sits directly on a container's own light fill with
+ * no tile behind it (unlike a full node/actor icon, D25's white-on-tile stays white). Every
+ * catalog asset's glyph paths are white per extract.ts's normalizeIcon(), so a plain string
+ * replace on that literal is sufficient — no SVG parsing needed for an already-normalized,
+ * build-time-controlled asset.
+ */
+function recolorGlyph(fragment: string, color: string): string {
+  return fragment.replace(/fill="(#fff(?:fff)?|white)"/gi, `fill="${color}"`);
+}
+
 const MARKER_DEFS: Array<{
   id: MarkerId;
   d: string;
@@ -190,6 +258,9 @@ const MARKER_DEFS: Array<{
     refX: 5
   },
   { id: "icad-arrow", d: "M0,0 L10,5 L0,10 z", colorAttr: "fill" },
+  // Open chevron, no closing base line — IBM's relationship arrowhead (Connectors.drawio:
+  // endArrow=open), distinct from the closed hollow triangle below (endArrow=block;endFill=0).
+  { id: "icad-arrow-open", d: "M1,1 L9,5 L1,9", colorAttr: "stroke", fixedFill: "none" },
   { id: "icad-arrow-hollow", d: "M0,0 L10,5 L0,10 z", colorAttr: "stroke", fixedFill: "none" },
   { id: "icad-diamond-open", d: "M0,5 L5,0 L10,5 L5,10 z", colorAttr: "stroke", fixedFill: "white" },
   { id: "icad-diamond-filled", d: "M0,5 L5,0 L10,5 L5,10 z", colorAttr: "fill" },
@@ -397,35 +468,34 @@ export class SvgRenderer {
         if (el.catalogRef) g.appendChild(this.containerCornerGlyph(el));
         break;
       }
-      case "group":
-        g.appendChild(
-          this.rect(el, {
-            stroke: this.palette.stroke,
-            dashed: true,
-            fill: this.containerFill(el, scene)
-          })
-        );
+      case "group": {
+        // Sidebar tab on every container, not Box alone (C7, docs/10-canvas-parity-plan.md) — IBM's
+        // own worked examples (Public Network, IBM Cloud, Region, OpenShift, Zone) all carry one.
+        const stroke = el.style?.stroke ?? this.palette.stroke;
+        g.appendChild(this.rect(el, { stroke, dashed: true, fill: this.containerFill(el, scene) }));
+        g.appendChild(this.sidebarTab(el, stroke));
         if (el.catalogRef) g.appendChild(this.containerCornerGlyph(el));
         break;
-      case "zone":
+      }
+      case "zone": {
         // Fine-dotted (vs Group's coarser dash) per D24 — geographic boundary (availability
         // zone / on-prem) only; Region/VPC/Subnet are Box, not Zone, as of D24.
+        const stroke = el.style?.stroke ?? this.palette.zone;
         g.appendChild(
-          this.rect(el, {
-            stroke: this.palette.zone,
-            dashed: true,
-            dashArray: "2 2",
-            strokeWidth: 2,
-            fill: this.containerFill(el, scene)
-          })
+          this.rect(el, { stroke, dashed: true, dashArray: "2 2", strokeWidth: 2, fill: this.containerFill(el, scene) })
         );
+        g.appendChild(this.sidebarTab(el, stroke));
         if (el.catalogRef) g.appendChild(this.containerCornerGlyph(el));
         break;
+      }
       case "frame":
         g.appendChild(this.rect(el, { stroke: this.palette.frame, dashed: true, strokeWidth: 1 }));
         break;
       case "actor": {
-        const rect = this.rect(el, { stroke: this.palette.stroke, dashed: false, fill: "white" });
+        // Solid black circle + white glyph is the IBM Actor spec itself (D25, not
+        // theme-dependent) — falls back to IBM's own default black when no catalogRef is set
+        // (e.g. a generic Actor placed without a specific icon) or it can't be resolved.
+        const rect = this.rect(el, { stroke: "none", dashed: false, fill: this.tileColor(el.catalogRef, "#000000") });
         rect.setAttribute("rx", String(el.h / 2));
         rect.setAttribute("ry", String(el.h / 2));
         g.appendChild(rect);
@@ -433,19 +503,11 @@ export class SvgRenderer {
         break;
       }
       case "iconNode": {
-        // White fill + dark outline is part of the IBM icon spec itself
-        // (docs/05-ibm-spec-conformance.md), not theme-dependent.
-        const rect = createSvgElement("rect");
-        setAttrs(rect, {
-          x: el.x,
-          y: el.y,
-          width: el.w,
-          height: el.h,
-          fill: el.style?.fill ?? "white",
-          stroke: el.style?.stroke ?? "#161616",
-          "stroke-width": el.style?.strokeWidth ?? 1
-        });
-        g.appendChild(rect);
+        // Solid category-color tile + white glyph is the IBM icon spec itself (D25,
+        // docs/00-decision-log.md), not theme-dependent. Falls back to a neutral gray if the
+        // catalogRef can't be resolved (e.g. a stale reference against a since-changed catalog
+        // version — Roadmap M13) rather than rendering a blank/black tile.
+        g.appendChild(this.rect(el, { stroke: "none", dashed: false, fill: this.tileColor(el.catalogRef, "#8d8d8d") }));
         g.appendChild(this.iconGlyph(el));
         break;
       }
@@ -467,6 +529,8 @@ export class SvgRenderer {
       setAttrs(title, { x: el.x + 8, y: el.y + 18, fill: this.labelStroke(el, scene) });
       title.textContent = el.name;
       g.appendChild(title);
+    } else if (el.type === "group" && el.label?.text) {
+      g.appendChild(this.groupLabelText(el));
     } else if ("label" in el && el.label?.text && el.type !== "text" && el.type !== "connector") {
       g.appendChild(this.labelText(el, scene));
     }
@@ -537,15 +601,23 @@ export class SvgRenderer {
     return PRIMARY_TO_SECONDARY_FILL[stroke] ?? "#f4f4f4";
   }
 
+  /** The icon's own category-tile color from the catalog manifest (D25) — `fallback` covers both
+   * a missing catalogRef and one that can't be resolved against the loaded catalog version. */
+  private tileColor(catalogRef: string | undefined, fallback: string): string {
+    const meta = catalogRef ? this.catalog.resolve(catalogRef) : undefined;
+    return meta?.color ?? fallback;
+  }
+
   private iconGlyph(el: SceneElement & { catalogRef?: string }): SVGSVGElement {
     const nested = createSvgElement("svg");
     setAttrs(nested, {
-      x: el.x + ICON_OFFSET,
-      y: el.y + ICON_OFFSET,
-      width: ICON_GLYPH,
-      height: ICON_GLYPH,
-      viewBox: `0 0 ${ICON_GLYPH} ${ICON_GLYPH}`
+      x: el.x + NODE_GLYPH_INSET,
+      y: el.y + NODE_GLYPH_INSET,
+      width: NODE_GLYPH_SIZE,
+      height: NODE_GLYPH_SIZE,
+      viewBox: `0 0 ${GLYPH_VIEWBOX_SIZE} ${GLYPH_VIEWBOX_SIZE}`
     });
+    // Stays white-on-tile (D25) — no recolor, unlike containerCornerGlyph below.
     const fragment = el.catalogRef ? this.catalog.svg(el.catalogRef) : undefined;
     nested.innerHTML = fragment ?? "";
     return nested;
@@ -554,14 +626,39 @@ export class SvgRenderer {
   private containerCornerGlyph(el: SceneElement & { catalogRef?: string }): SVGSVGElement {
     const nested = createSvgElement("svg");
     setAttrs(nested, {
-      x: el.x + 12,
-      y: el.y + 12,
-      width: ICON_GLYPH,
-      height: ICON_GLYPH,
-      viewBox: `0 0 ${ICON_GLYPH} ${ICON_GLYPH}`
+      x: el.x + CONTAINER_GLYPH_INSET,
+      y: el.y + CONTAINER_GLYPH_INSET,
+      width: CONTAINER_GLYPH_SIZE,
+      height: CONTAINER_GLYPH_SIZE,
+      // The asset's own coordinate space (GLYPH_VIEWBOX_SIZE), not the smaller on-screen display
+      // size above — this is what scales the shared 24-unit glyph down to fit a 20px corner icon,
+      // rather than cropping it.
+      viewBox: `0 0 ${GLYPH_VIEWBOX_SIZE} ${GLYPH_VIEWBOX_SIZE}`
     });
-    nested.innerHTML = el.catalogRef ? (this.catalog.svg(el.catalogRef) ?? "") : "";
+    // No tile sits behind a corner glyph, so the now-always-white catalog asset (D25) is
+    // recolored to the container's own accent — the same color as its sidebar tab/border —
+    // rather than staying invisible-white on the container's own light fill.
+    const fragment = el.catalogRef ? this.catalog.svg(el.catalogRef) : undefined;
+    const color = el.style?.stroke ?? this.palette.stroke;
+    nested.innerHTML = fragment ? recolorGlyph(fragment, color) : "";
     return nested;
+  }
+
+  /**
+   * A Group's own label sits beside its corner glyph, top-left, baseline-aligned with the icon —
+   * not centered below the whole boundary — matching IBM's worked examples (see
+   * CONTAINER_LABEL_GAP above). It always renders on the group's own fill (containerFill, which
+   * D24 keeps hardcoded light regardless of theme), so the text stays dark unconditionally rather
+   * than following labelStroke's parent-based theme check.
+   */
+  private groupLabelText(el: GroupElement): SVGTextElement {
+    const text = createSvgElement("text");
+    const hasIcon = Boolean(el.catalogRef);
+    const x = el.x + CONTAINER_GLYPH_INSET + (hasIcon ? CONTAINER_GLYPH_SIZE + CONTAINER_LABEL_GAP : 0);
+    const y = el.y + CONTAINER_GLYPH_INSET + CONTAINER_GLYPH_SIZE / 2 + 5;
+    setAttrs(text, { x, y, fill: "#161616" });
+    text.textContent = el.label?.text ?? "";
+    return text;
   }
 
   private labelText(el: SceneElement, scene: Scene): SVGTextElement {
@@ -587,16 +684,19 @@ export class SvgRenderer {
     const style =
       (CONNECTOR_STYLE as Record<string, ConnectorStyleSpec>)[el.connectorType] ?? CONNECTOR_STYLE.association;
     const stroke = el.style?.stroke ?? (el.flowColor ? FLOW_COLORS[el.flowColor] : this.palette.stroke);
-    const strokeWidth = el.style?.strokeWidth ?? 1.5;
+    const strokeWidth = el.style?.strokeWidth ?? 2;
 
     if (style.band) {
+      // Fixed IBM band colors (TUNNEL_BAND_COLORS), not derived from the connector's own stroke —
+      // the pink/yellow highlight is the tunnel indicator itself, independent of flow color.
+      // Drawn outermost (i=2, wider) first so the innermost (i=1, narrower) paints on top, per
+      // the reference: a single tunnel band, or two concentric bands for the double variant.
       for (let i = style.band; i >= 1; i -= 1) {
         const band = createSvgElement("polyline");
         setAttrs(band, {
           points: pointsAttr,
           fill: "none",
-          stroke,
-          "stroke-opacity": 0.18,
+          stroke: i === 2 ? TUNNEL_BAND_COLORS.double : TUNNEL_BAND_COLORS.single,
           "stroke-width": strokeWidth + i * 6
         });
         g.appendChild(band);

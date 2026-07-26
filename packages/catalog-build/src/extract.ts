@@ -1,6 +1,10 @@
 import { JSDOM } from "jsdom";
 
-const GLYPH_VIEWBOX = 20;
+// IBM's own glyph occupies a 24x24 local box (D25, docs/00-decision-log.md) — matching
+// DEFAULT_LOCAL_SIZE below, so the common case reframes at scale(1) rather than shrinking to fit
+// an arbitrary smaller box. packages/core/src/render/svgRenderer.ts's glyph viewBoxes must agree
+// with this constant, since both draw the same normalized asset into their own coordinate space.
+const GLYPH_VIEWBOX = 24;
 const SHAPE_TAGS = new Set(["rect", "polygon"]);
 const DRAWABLE_TAGS = new Set(["path", "rect", "circle", "ellipse", "polygon", "polyline", "line"]);
 
@@ -82,14 +86,6 @@ function parseTranslate(transform: string | null): { x: number; y: number } | un
   return { x: parseFloat(m[1]!), y: parseFloat(m[2]!) };
 }
 
-function recolorWhite(root: Element, accent: string): void {
-  for (const el of Array.from(root.querySelectorAll("*")) as Element[]) {
-    for (const attr of ["fill", "stroke"]) {
-      if (isWhite(el.getAttribute(attr))) el.setAttribute(attr, accent);
-    }
-  }
-}
-
 // Every ancestor between `frame` and the icon's outer style group exists only to
 // position content within the original 48x48 Sketch/Figma artboard (often as a
 // translate(-a,-b)/translate(a,b) pair that cancels to zero). Once `frame` gets its
@@ -146,9 +142,12 @@ function reframeGlyph(svg: Element): void {
 }
 
 /**
- * Converts one upstream IBM icon SVG (48x48 container, colored tile + white glyph)
- * into a 20x20 glyph fragment recolored to render on ICAD's white icon container
- * (packages/core/src/render/svgRenderer.ts always draws a white 48x48 box).
+ * Converts one upstream IBM icon SVG (48x48 canvas: a colored background tile plus a white
+ * glyph) into a 20x20 white glyph fragment, plus the tile's own accent color as separate
+ * metadata. The glyph is deliberately left white rather than recolored — per D25
+ * (docs/00-decision-log.md), ICAD's renderer paints the solid category tile (or, for a rounded/
+ * actor tile, a solid circle) behind the glyph itself, matching how IBM's own icon is
+ * constructed, rather than inlining a colored glyph onto a white host container.
  *
  * Returns undefined for files with no detectable background tile (non-icon artifacts).
  */
@@ -176,7 +175,6 @@ export function normalizeIcon(xml: string): NormalizedIcon | undefined {
   reframeGlyph(svg);
 
   const color = rawColor && !isWhite(rawColor) ? rawColor.toUpperCase() : undefined;
-  if (color) recolorWhite(svg, color);
 
   // Serialize the whole <svg> (so it emits exactly one xmlns declaration) and strip
   // the outer tag, rather than serializing each child separately — which would force

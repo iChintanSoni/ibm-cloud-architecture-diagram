@@ -49,6 +49,26 @@ const RELATIONSHIP_TYPES: ConnectorType[] = [
 
 const CONNECTOR_TYPES = [...CONNECTION_TYPES, ...RELATIONSHIP_TYPES];
 
+/**
+ * IBM's own connector names (docs/05-ibm-spec-conformance.md#connector-nomenclature), not the
+ * raw kebab-case schema value. "tunneling-connection" is labeled "Traffic Through Tunnel/
+ * Encapsulation" — what `Connectors.drawio` actually names that line; "Tunneling Connection" is
+ * a caption in IBM's own stencil with no edge/line style of its own, not a distinct connector.
+ */
+const CONNECTOR_TYPE_LABELS: Record<ConnectorType, string> = {
+  "logical-connection": "Logical Connection / Link",
+  connection: "Connection",
+  "physical-connection": "Physical Connection",
+  "tunneling-connection": "Traffic Through Tunnel/Encapsulation",
+  "traffic-through-double-tunnel": "Traffic Through DoubleTunnel/Encapsulation",
+  dependency: "Dependency",
+  association: "Association",
+  aggregation: "Aggregation",
+  composition: "Composition",
+  implementation: "Implementation",
+  extends: "Extends"
+};
+
 export interface InspectorPanelProps {
   elements: SceneElement[];
   selectedIds: ElementId[];
@@ -247,7 +267,7 @@ function ElementProperties({
             }
           >
             {CONNECTOR_TYPES.map((type) => (
-              <SelectItem key={type} value={type} text={type} />
+              <SelectItem key={type} value={type} text={CONNECTOR_TYPE_LABELS[type]} />
             ))}
           </Select>
           {CONNECTION_TYPES.includes(element.connectorType) && (

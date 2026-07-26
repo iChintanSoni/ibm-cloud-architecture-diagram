@@ -28,6 +28,20 @@ const elements: SceneElement[] = [
     w: 48,
     h: 48,
     label: { text: "Application" }
+  },
+  {
+    id: "conn",
+    type: "connector",
+    semantic: "node",
+    x: 0,
+    y: 0,
+    w: 0,
+    h: 0,
+    from: { elementId: "vpc", port: "e" },
+    to: { elementId: "app", port: "w" },
+    connectorType: "tunneling-connection",
+    routing: "manual",
+    waypoints: []
   }
 ];
 
@@ -94,6 +108,33 @@ describe("InspectorPanel", () => {
     act(() => label.dispatchEvent(new FocusEvent("focusout", { bubbles: true })));
 
     expect(onUpdate).toHaveBeenCalledWith("vpc", { label: { text: "Production VPC" } });
+  });
+
+  it("shows IBM's own connector names in the type selector, not the raw kebab-case schema value", () => {
+    act(() => {
+      root.render(
+        <InspectorPanel
+          elements={elements}
+          selectedIds={["conn"]}
+          validationCount={0}
+          validationContent={<p>No issues</p>}
+          frames={[]}
+          onJumpToFrame={vi.fn()}
+          onTogglePresent={vi.fn()}
+          onPresentStep={vi.fn()}
+          onSelect={vi.fn()}
+          onUpdate={vi.fn()}
+          onReparent={vi.fn()}
+        />
+      );
+    });
+
+    const select = container.querySelector<HTMLSelectElement>("#icad-property-connector-type-conn")!;
+    const optionText = [...select.options].map((option) => option.textContent);
+    expect(optionText).toContain("Traffic Through Tunnel/Encapsulation");
+    expect(optionText).toContain("Logical Connection / Link");
+    expect(optionText).not.toContain("tunneling-connection");
+    expect(select.value).toBe("tunneling-connection");
   });
 
   it("shows nested layers, reflects selection, and selects a layer row", () => {

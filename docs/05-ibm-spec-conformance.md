@@ -26,8 +26,8 @@ Per IBM's guidance, shapes carry meaning, not just geometry:
 |---|---|---|
 | **Box** | `deployedOn` — a location (logical/virtual/physical) that platforms, infra, network, services are deployed **on** | **Solid** border container, colored left sidebar accent |
 | **Group** | `deployedTo` — grouping of services/apps deployed **to** a box | **Dashed** border container, no sidebar |
-| **Node** | Standalone component/device | **Square** container, IBM icon (20×20 glyph in 48×48, 1px outline) |
-| **Actor** | Role/user | **Rounded** shape |
+| **Node** | Standalone component/device | **Square** container — a solid category-color 48×48 tile with a 24×24 white glyph, no outline ([D25](00-decision-log.md#d25--icons-render-as-ibm-authors-them-solid-tile-white-glyph--locked)) |
+| **Actor** | Role/user | **Rounded** shape — a solid black circle with a 24×24 white glyph, no outline |
 | **Boundary** (`zone` internally) | Geographic/organizational boundary — availability zone, on-premises | **Fine-dotted** border, no sidebar, muted gray |
 | **Connector** | Relationship / flow | IBM connector nomenclature (below) |
 

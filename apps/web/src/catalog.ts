@@ -18,7 +18,7 @@ const assetModules = import.meta.glob("../../../packages/catalog/2.0.0/icons/**/
   import: "default"
 }) as Record<string, string>;
 
-// Catalog assets on disk are full, standalone SVGs (viewBox 0 0 20 20); `Catalog`
+// Catalog assets on disk are full, standalone SVGs (viewBox 0 0 24 24); `Catalog`
 // expects inner fragments (see packages/core/src/catalog/catalog.ts), so strip the
 // outer <svg> tag here at load time.
 function stripSvgWrapper(svg: string): string {

@@ -84,12 +84,12 @@ const NO_BACKGROUND_ARTIFACT = `<?xml version="1.0" encoding="UTF-8"?>
 </svg>`;
 
 describe("normalizeIcon", () => {
-  it("extracts the tile color and recolors the white glyph so it renders on a white container", () => {
+  it("extracts the tile color as metadata but leaves the glyph white (D25 — the renderer paints the tile, not the glyph)", () => {
     const result = normalizeIcon(COLORED_SQUARE_TILE);
     expect(result?.color).toBe("#198038");
     expect(result?.rounded).toBe(false);
-    expect(result?.fragment).not.toContain("#FFFFFF");
-    expect(result?.fragment).toContain("#198038");
+    expect(result?.fragment).toContain("#FFFFFF");
+    expect(result?.fragment).not.toContain("#198038");
   });
 
   it("strips the invisible hit-area rect", () => {
@@ -97,9 +97,9 @@ describe("normalizeIcon", () => {
     expect(result?.fragment).not.toContain("_Transparent_Rectangle_");
   });
 
-  it("re-frames the hit-area rect's parent to fill the 0..20 viewBox instead of leaving it at the original 48-canvas offset", () => {
+  it("re-frames the hit-area rect's parent to fill the 0..24 viewBox instead of leaving it at the original 48-canvas offset", () => {
     const result = normalizeIcon(COLORED_SQUARE_TILE);
-    expect(result?.fragment).toContain(`transform="scale(${20 / 24})"`);
+    expect(result?.fragment).toContain(`transform="scale(1)"`);
     expect(result?.fragment).not.toContain("translate(12, 12)");
   });
 
@@ -111,18 +111,18 @@ describe("normalizeIcon", () => {
 
   it("discards a real positioning translate even without a hit-area rect to size it from", () => {
     const result = normalizeIcon(NO_HITBOX_REAL_OFFSET);
-    expect(result?.fragment).toContain(`transform="scale(${20 / 24})"`);
+    expect(result?.fragment).toContain(`transform="scale(1)"`);
     expect(result?.fragment).not.toContain("translate(12");
   });
 
   it("compensates for an offset baked directly into path coordinates when no wrapper carries it", () => {
     const result = normalizeIcon(BAKED_OFFSET_NO_WRAPPER);
-    expect(result?.fragment).toContain(`transform="scale(${20 / 24}) translate(-12, -12)"`);
+    expect(result?.fragment).toContain(`transform="scale(1) translate(-12, -12)"`);
   });
 
   it("compensates for a hit-area rect offset within its own parent, and clears cancelling ancestor translates that would otherwise shift it off-canvas", () => {
     const result = normalizeIcon(HITBOX_OFFSET_WITH_CANCELLING_ANCESTORS);
-    expect(result?.fragment).toContain(`transform="scale(${20 / 24}) translate(-12, -12)"`);
+    expect(result?.fragment).toContain(`transform="scale(1) translate(-12, -12)"`);
     expect(result?.fragment).not.toContain("translate(-670");
     expect(result?.fragment).not.toContain("translate(670");
   });

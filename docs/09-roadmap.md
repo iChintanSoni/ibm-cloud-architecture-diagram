@@ -582,7 +582,11 @@ Same "core runs in the webview, the host handles file I/O" split as
 natively; the app runs fully offline post-install.
 
 #### M12 — Performance at scale
-⬜ **Not started**
+⬜ **Not started** — **overlaps [M15](#m15--interaction-foundations); do not build independently.**
+M15 needs a frame-time benchmark before it can safely land the ephemeral gesture layer
+([D26](00-decision-log.md#d26--gestures-are-ephemeral-commits-are-commands--locked)), and builds
+the same harness this milestone describes. Land the benchmark once, in whichever milestone runs
+first; M12 then reduces to the virtualization decision that benchmark informs.
 
 [D3](00-decision-log.md#d3--svg-dom-rendering--locked) flagged viewport virtualization as something
 "very large diagrams may need... later" — benchmark first, build only if the benchmark demands it:
@@ -632,8 +636,124 @@ now-missing icon.
 
 **v3 exit criteria:** `apps/desktop` ships with native `.icad` file associations on macOS, Windows,
 and Linux, and opens a document identically to web and VS Code; a documented performance benchmark
-exists for large diagrams, with virtualization shipped only if it was actually needed; the catalog
-refresh process has been exercised at least once end-to-end with a defined missing-icon story.
+exists for large diagrams (or is inherited from M15, per M12's note), with virtualization shipped
+only if it was actually needed; the catalog refresh process has been exercised at least once
+end-to-end with a defined missing-icon story.
+
+## v4 — Canvas parity
+
+Make the canvas render what IBM actually specifies, and make it directly manipulable. Full plan,
+audit evidence, and per-defect provenance in
+[Canvas parity plan](10-canvas-parity-plan.md); decisions in
+[D25–D28](00-decision-log.md#canvas--direct-manipulation). This is the largest single body of work
+in the project and the one a first-time user notices first — today the canvas has no drag, no
+resize, no marquee, and no clipboard, and its icons render inverted against the IBM source.
+
+**Sequencing note:** M14 fixes a live correctness defect against
+[D5](00-decision-log.md#d5--crisp--professional-visual-style--locked)/[D17](00-decision-log.md#d17--official--ibm-internal-tool--locked)
+— the shipped icon set is visually wrong — so it is a reasonable candidate to pull ahead of M12/M13
+rather than waiting for v3 to close. M15–M20 genuinely depend on v3-era stability and should not be.
+
+#### M14 — IBM visual conformance
+⬜ **Not started**
+
+Renderer and catalog only; no interaction changes. Audited against the *IT architecture diagrams
+kit* v1.1 deck and the IBM 2.0 `.drawio` stencils vendored in
+`packages/catalog-build/.cache/architecture-icons/`.
+
+1. **Icon tiles.** IBM's icon is a 48×48 solid category tile with a 24×24 white glyph inset by 12
+   (actors: solid black circle). `extract.ts` currently strips that tile and repaints the glyph in
+   the tile's color for a white host container, inverting every icon
+   ([D25](00-decision-log.md#d25--icons-render-as-ibm-authors-them-solid-tile-white-glyph--locked)).
+   `index.json` already carries `color` and `container`, so the fix is contained — but it
+   regenerates all 242 icons, rebases every visual baseline, and retakes every screenshot in
+   `docs/guide/images/`. No `.icad` migration: icons are referenced by `catalogRef`.
+2. **Connector markers.** Add an open-V arrowhead (`endArrow=open`, per `Connectors.drawio`) for
+   dependency/association/aggregation/composition, which currently use a filled block. Fix
+   `logical-connection`'s dash pattern (dash-dot → even), default stroke width to 2, and set tunnel
+   bands to `#FFD7D9` with yellow for the double variant. Physical connection's hollow box caps are
+   already correct and are not touched.
+3. **Connector type display name.** No new type: `Connectors.drawio` stores "Tunneling Connection"
+   as a caption cell with no edge behind it, not a distinct line style — the schema's existing
+   `tunneling-connection` type already renders correctly (band + solid line + arrow) as what IBM
+   actually labels "Traffic Through Tunnel/Encapsulation". Fix the Properties/docs display label
+   only; no schema or `.icad` change.
+4. **Container sidebar tab** on Group and Zone, not Box alone — IBM's worked examples draw it on
+   every container.
+5. **Sequencing badge** (circled `#`) at the connector midpoint.
+6. **Structured connector labels** — IBM's `[Protocol/Application NAME · Encryption/Security:PORT]`
+   and encapsulation conventions as typed optional fields with a formatter, plus a linter rule for
+   malformed annotations.
+7. **Golden fixtures** — the four IBM-authored templates (`iks_sr_mz_vpc.drawio` and siblings)
+   become the visual regression suite, so IBM's own diagrams verify our renderer.
+
+Steps 3, 5, and 6 all add schema fields and share one `.icad` migration, one linter pass, one
+Properties update, and one MCP enum update.
+
+**Done when:** a side-by-side render of `iks_sr_mz_vpc` against IBM's own export matches on icon
+fill, glyph color, connector markers, dash patterns, stroke width, and container tabs; all 11
+connector types round-trip through `.icad`, the linter, and MCP with corrected display labels.
+
+#### M15 — Interaction foundations
+⬜ **Not started**
+
+No user-visible features; everything after this depends on it. Ships the ephemeral gesture layer
+([D26](00-decision-log.md#d26--gestures-are-ephemeral-commits-are-commands--locked)), partial and
+order-correct rendering, unified hit-testing, the `CanvasController` pointer state machine moved
+into core ([D27](00-decision-log.md#d27--the-interaction-state-machine-lives-in-core-not-the-shells--locked)),
+the snapping engine, and the frame-time benchmark M12 also needs.
+
+Also **de-forks `apps/vscode`'s `webview/src`** onto `@icad/ui-web` and `CanvasController`, as
+`apps/web` and `apps/desktop` already are. Done here because this is the milestone restructuring
+the interaction layer; deferring it means hand-porting five milestones of gestures into a fork that
+has drifted before.
+
+**Done when:** a scripted 200-frame drag of a 40-element subtree holds frame budget, produces
+exactly one undo entry, and runs the linter exactly once; all three shells drive the canvas through
+the same `CanvasController` with no shell-local interaction code.
+
+#### M16 — The core loop
+⬜ **Not started**
+
+Drag-to-move, 8-handle resize, marquee (fully-enclosed), select-all, clipboard
+(copy/cut/paste/duplicate/Alt-drag clone), context menus, Alt+click select-through, and
+double-click to drill into a nested container with both bounding boxes shown — the last three
+straight from the kit's own "Prescribed location / Scaling elements" instructions to IBM users.
+Every gesture ships with its keyboard equivalent in the same PR;
+[D19](00-decision-log.md#d19--full-ibm-equal-access--wcag-21-aa--locked) is a requirement, not a
+follow-up.
+
+#### M17 — The feedback layer
+⬜ **Not started**
+
+Rendered grid and snapping, alignment guides with spacing hints, drop-target highlight, live 16px
+buffer enforcement, containers that auto-grow rather than let children escape, child reflow on
+container resize, alternating fills re-derived on reparent, live dimension readout, and
+space-drag/middle-drag panning.
+
+#### M18 — Arrangement
+⬜ **Not started** — blocked on M15's DOM reordering.
+
+Z-order, 6-way align, distribute, lock/hide, and an interactive Layers tab.
+
+#### M19 — Connector editing
+⬜ **Not started**
+
+Waypoint drag handles (`setConnectorWaypoints` already exists in core, merely unexposed), endpoint
+retargeting, reset-to-auto-routing, and in-place label editing on the line.
+
+#### M20 — Full range on demand
+⬜ **Not started**
+
+Last, because rotation is the most invasive change in the plan. Rotation handle with 15°
+Shift-snapping plus rotation-aware hit-testing, handles, ports, and bounds; a color picker beyond
+the 9 IBM pairs; and two new linter rules flagging non-zero rotation and off-palette color as
+off-spec ([D28](00-decision-log.md#d28--constrained-defaults-full-range-on-demand--locked)).
+
+**v4 exit criteria:** a render of an IBM-authored template is visually indistinguishable from IBM's
+own export; an architect builds a nested multi-zone diagram end to end using only the mouse, and
+again using only the keyboard, with drag, resize, marquee, clipboard, alignment, and connector
+editing throughout; every new capability is reachable from the MCP surface; AA re-verified.
 
 ## Explicitly deferred / revisit later
 
@@ -647,3 +767,10 @@ refresh process has been exercised at least once end-to-end with a defined missi
 - IBM Design sign-off gates each release ([D17](00-decision-log.md#d17--official--ibm-internal-tool--locked)).
 - Tests grow with features: Vitest (core), Playwright (web + keyboard E2E), CI a11y.
 - Every human-editor capability lands as a **command** so the v2 MCP server inherits it for free.
+  From v4 on, a *gesture* is ephemeral and a *commit* is the command
+  ([D26](00-decision-log.md#d26--gestures-are-ephemeral-commits-are-commands--locked)) — in-flight
+  drag state is deliberately not part of the document, the undo history, or the MCP surface, but
+  every committed mutation still is.
+- From v4 on, interaction lives in `packages/core`, not the shells
+  ([D27](00-decision-log.md#d27--the-interaction-state-machine-lives-in-core-not-the-shells--locked)),
+  so a new gesture reaches web, VS Code, and desktop in one change rather than three.

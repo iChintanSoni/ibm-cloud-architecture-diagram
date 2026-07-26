@@ -261,3 +261,74 @@ for consistency, though no worked example confirms those three specifically.
   sidebar-tab accent (previously drawn identically to a plain bordered rect). This is direct
   evidence, not a substitute for the D17 IBM Design sign-off gate — see
   [Element semantics](05-ibm-spec-conformance.md#element-semantics).
+
+## Canvas & Direct Manipulation
+
+Adopted while planning [Canvas parity](10-canvas-parity-plan.md), after auditing the engine against
+draw.io, Excalidraw, and IBM's own *IT architecture diagrams kit* v1.1.
+
+### D25 — Icons render as IBM authors them: solid tile, white glyph · Locked
+An IBM source icon is a **48×48 solid category-color tile with a 24×24 white glyph inset by 12**
+(`<rect fill="#1192E8" width="48" height="48"/>` + `<path fill="#FFFFFF">`); actors are the same
+with `rx="24"`, i.e. a solid black circle. `packages/catalog-build`'s `normalizeIcon()` currently
+strips that tile and repaints the white glyph in the tile's color, so `svgRenderer` can draw it on
+a white outlined box — its own comment states the intent. The result inverts every icon: ICAD
+renders a **blue glyph on white** where IBM renders a **white glyph on blue**. Confirmed against
+the kit's slide-4 worked example and against `iks_sr_mz_vpc.drawio`, which embeds icons as whole
+48×48 tiles (`shape=image;…viewBox="0 0 48 48"`).
+
+- **Why:** [D5](#d5--crisp--professional-visual-style--locked) commits to IBM-Design-faithful
+  rendering and [D17](#d17--official--ibm-internal-tool--locked) to an officially sanctioned tool.
+  A systematically inverted icon set is incompatible with both, and the correction is contained:
+  `packages/catalog/2.0.0/index.json` already stores `color` and `container: "square" | "rounded"`
+  per icon, so the renderer has everything it needs.
+- **Consequence:** `extract.ts` stops calling `recolorWhite()`; glyphs stay white; the renderer
+  paints the tile and drops the `#161616` 1px outline; glyph geometry moves to IBM's 24@12 from the
+  current 20@14. All 242 icons regenerate, every visual baseline rebases, and every screenshot in
+  `docs/guide/images/` is retaken. Existing `.icad` files need no migration — icons are referenced
+  by `catalogRef`, so this is purely a rendering change.
+
+### D26 — Gestures are ephemeral; commits are commands · Locked
+A live drag or resize mutates renderer-only state and never the scene, then dispatches exactly one
+command on release. `Editor.beginInteraction(ids)` returns an `update`/`commit`/`abort` handle;
+`update()` writes a transform onto the affected `<g>` nodes rather than rebuilding them.
+
+- **Why:** Every scene change currently triggers a full renderer pass (`g.innerHTML = ""` per
+  element) *and* a full linter run *and* a React `setState` *and* an autosave debounce. Driving
+  that per pointer-move is unusable at any realistic diagram size. Independently, `CommandBus` has
+  no coalescing, so a per-frame command would put hundreds of entries on the undo stack for one
+  drag. One mechanism fixes both, and it keeps one gesture equal to one undo entry.
+- **Consequence:** Narrows, but does not break, the "every mutation is a command" rule that
+  [D15](#d15--mcp-full-authoring-toolset--locked-v2)'s MCP server depends on — the *committed*
+  mutation is still a command, so agents inherit every capability. In-flight gesture state is
+  explicitly not part of the document, the undo history, or the MCP surface.
+
+### D27 — The interaction state machine lives in core, not the shells · Locked
+Pointer and canvas-keyboard handling moves out of `apps/web/src/App.tsx` (~250 lines today) into
+`packages/core/src/interaction` behind a `CanvasController`, built on Pointer Events with
+`setPointerCapture`. Shells attach it to a container and wire chrome.
+
+- **Why:** [D2](#d2--framework-agnostic-typescript-core--thin-shells--locked) makes the core
+  framework-agnostic and the shells thin, but the canvas interaction layer violated that from the
+  start. As written, VS Code and desktop cannot inherit drag, resize, marquee, or clipboard without
+  reimplementing them. Pointer Events additionally buys touch and pen support, and pointer capture
+  is what keeps a drag alive when the cursor leaves the canvas.
+- **Consequence:** `apps/vscode`'s forked `webview/src` is de-forked as part of the same milestone
+  and made to consume `@icad/ui-web` and `CanvasController` directly, as `apps/web` and
+  `apps/desktop` already do. Deferring that would mean hand-porting five milestones of gestures
+  into a fork that has already drifted once.
+
+### D28 — Constrained defaults, full range on demand · Locked
+Grid snapping, the 16px nesting buffer, containment behavior, and the 9-pair IBM palette are the
+default path and the happy path. Rotation and arbitrary color exist for users who deliberately
+reach for them, and the linter flags both as off-spec.
+
+- **Why:** Nothing in the kit's worked examples is rotated or off-palette, and
+  [D12](#d12--advisory-linter--quick-fixes--optional-export-gate--locked) makes the linter
+  advisory by default — so an unconstrained canvas would let a user drift off-spec with only a
+  warning. Equally, a tool that makes a legitimate one-off impossible pushes people back to
+  draw.io. Constrained defaults with an explicit escape hatch satisfies both.
+- **Consequence:** `rotation` and `canvas.grid` stop being dead schema fields. Rotation lands last
+  in the plan because it is the most invasive item in the engine — inverse-transform hit-testing,
+  rotated resize handles, rotated port positions, and rotated bounds all follow from it. Two new
+  linter rules are added for non-zero rotation and off-palette color.

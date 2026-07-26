@@ -34,14 +34,14 @@ describe("extractDrawioLibraryIcons", () => {
     return file;
   }
 
-  it("extracts a titled flat-glyph entry, reframed into the 20x20 glyph viewBox", () => {
+  it("extracts a titled flat-glyph entry, reframed into the 24x24 glyph viewBox", () => {
     const file = writeFixture(library([{ title: "Cloud" }]));
     const icons = extractDrawioLibraryIcons(file);
 
     expect(icons).toHaveLength(1);
     expect(icons[0]!.title).toBe("Cloud");
     expect(icons[0]!.normalized.color).toBe("#1192E8");
-    expect(icons[0]!.normalized.fragment).toContain("scale(0.625)"); // 20 / 32
+    expect(icons[0]!.normalized.fragment).toContain("scale(0.75)"); // 24 / 32
   });
 
   it("skips untitled entries", () => {
