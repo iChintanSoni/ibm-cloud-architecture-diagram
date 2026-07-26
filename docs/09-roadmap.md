@@ -714,8 +714,8 @@ connector types round-trip through `.icad`, the linter, and MCP with corrected d
 
 #### M15 — Interaction foundations
 🟡 **In progress** — the ephemeral gesture layer, ordered rendering, unified hit-testing, the
-`CanvasController` migration, and the snapping engine are done; the VS Code de-fork confirmation
-and benchmark remain.
+`CanvasController` migration, the snapping engine, and the VS Code de-fork confirmation are done;
+the benchmark remains.
 
 No user-visible features; everything after this depends on it. Full detail in
 [Canvas parity plan → M15](10-canvas-parity-plan.md#m15--interaction-foundations).
@@ -737,9 +737,11 @@ No user-visible features; everything after this depends on it. Full detail in
 5. ✅ The snapping engine (`snapMove()`): grid snap, sibling edge/center alignment, and the 16px
    parent inset as a hard constraint. Not yet wired into a live drag gesture — that lands with
    [M16](#m16--the-core-loop)'s drag-to-move.
-6. ⬜ Confirming no forked interaction logic remains between `apps/vscode`'s `webview/src` and
-   `apps/web` beyond what's already shared via `@icad/ui-web` — the interaction layer itself is
-   unified as of step 4.
+6. ✅ Confirmed no forked interaction logic remains between `apps/vscode`'s `webview/src` and
+   `apps/web`: every shared file (`placement.ts`, `validation.ts`, `main.tsx`) is identical or
+   differs only in import-path depth (`catalog.ts`); `App.tsx`'s remaining differences are
+   genuinely host-specific (file persistence, theme sourcing, PNG export); both import the same
+   symbol set from `@icad/ui-web`.
 7. ⬜ The frame-time benchmark M12 also needs.
 
 **Done when:** a scripted 200-frame drag of a 40-element subtree holds frame budget, produces

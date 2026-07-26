@@ -148,7 +148,7 @@ labels; the uncommitted `groupLabelText` work is landed with it.
 
 ## M15 — Interaction foundations
 
-🟡 **In progress** — steps 1–5 landed and tested; steps 6–7 remain. No user-visible features yet.
+🟡 **In progress** — steps 1–6 landed and tested; step 7 remains. No user-visible features yet.
 Everything after this depends on it.
 
 1. ✅ **Ephemeral interaction layer (D26, C12).** `Editor.beginInteraction(ids)` returns an
@@ -206,11 +206,19 @@ Everything after this depends on it.
    command. Not yet wired into a live gesture, since dragging doesn't exist yet — that's
    [M16](#m16--the-core-loop)'s `Interaction.update()` caller to build; this ships the engine
    ahead of it, tested standalone (`snapping.test.ts`).
-6. **De-fork `apps/vscode` (D27).** Its `webview/src` currently duplicates the web shell and has
-   drifted before. It moves onto `@icad/ui-web` and `CanvasController` directly, as `apps/web` and
-   `apps/desktop` already do. The interaction layer itself is unified as of step 4 above; what
-   remains is confirming no other forked logic (beyond what's already shared via `@icad/ui-web`)
-   still exists between the two `App.tsx` files.
+6. ✅ **De-fork `apps/vscode` (D27), confirmed.** Every non-host-specific file in
+   `apps/vscode/webview/src` was diffed line-by-line against `apps/web/src`:
+   `placement.ts`, `validation.ts`, and `main.tsx` are byte-identical; `catalog.ts` differs only
+   in relative import-glob depth (`../../../` vs `../../../../`, since the webview sits one
+   directory deeper) and comment wording, not logic; `App.tsx`'s only remaining differences are
+   genuinely host-specific concerns `CanvasController` was never meant to own — file persistence
+   (File System Access/Tauri vs. the extension host owning save/open/undo-bridging), theme
+   sourcing (`useResolvedTheme` vs. `useVsCodeTheme`), and the export dialog's format/scale
+   options (`apps/web` supports PNG export via canvas rasterization; the webview's sandboxed
+   `<canvas>` access made that not worth doing yet, so it offers SVG only) — and both `App.tsx`
+   files import the identical symbol set from `@icad/ui-web`
+   (`CommandPalette`/`FindBar`/`InspectorPanel`/`LibraryPanel`/`LiveRegion`/`NewDiagramDialog`/`TopBar`/`elementDisplayName`/`findMatches`).
+   No forked interaction logic remains anywhere in the shell.
 7. **Benchmark harness.** Frame-time guard for drag/resize at 500/1000/2000 elements, absorbing the
    intent of [M12](09-roadmap.md#m12--performance-at-scale) so performance is measured before it
    regresses rather than after.
