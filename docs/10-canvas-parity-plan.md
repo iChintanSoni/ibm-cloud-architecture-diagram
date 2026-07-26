@@ -148,7 +148,7 @@ labels; the uncommitted `groupLabelText` work is landed with it.
 
 ## M15 — Interaction foundations
 
-🟡 **In progress** — steps 1–4 landed and tested; steps 5–7 remain. No user-visible features yet.
+🟡 **In progress** — steps 1–5 landed and tested; steps 6–7 remain. No user-visible features yet.
 Everything after this depends on it.
 
 1. ✅ **Ephemeral interaction layer (D26, C12).** `Editor.beginInteraction(ids)` returns an
@@ -195,10 +195,17 @@ Everything after this depends on it.
    original scope named (pan drag, marquee, drag-to-move, resize, rotate) are net-new gestures that
    don't exist anywhere yet, not a migration of existing code — they're
    [M16](#m16--the-core-loop)'s job, and will land as new `CanvasMode` variants on this same class.
-5. **Snapping engine.** `core/interaction/snapping.ts`: grid snap against the live
-   `scene.canvas.grid` (finally reading C11's dead field), the 16px parent inset as a hard
-   constraint, and sibling edge/center alignment candidates. Returns an adjusted delta plus the
-   guide segments for the overlay to draw.
+5. ✅ **Snapping engine.** `core/interaction/snapMove()`: grid snap against the live
+   `scene.canvas.grid` (finally reading C11's dead field), sibling edge/center alignment
+   candidates scoped to elements sharing the same `parentId`, and the 16px `PARENT_INSET` clamp —
+   a hard constraint that always wins over a snap candidate, dropping that axis's guide rather
+   than reporting a line the clamp then overrode. For each axis independently, every candidate
+   (grid line, and each sibling's near/far edge and center) is compared and the single nearest one
+   within `tolerance` wins, returning one adjusted delta and up to one guide per axis — not one
+   candidate per feature. Pure and scene-only: it never touches the renderer or dispatches a
+   command. Not yet wired into a live gesture, since dragging doesn't exist yet — that's
+   [M16](#m16--the-core-loop)'s `Interaction.update()` caller to build; this ships the engine
+   ahead of it, tested standalone (`snapping.test.ts`).
 6. **De-fork `apps/vscode` (D27).** Its `webview/src` currently duplicates the web shell and has
    drifted before. It moves onto `@icad/ui-web` and `CanvasController` directly, as `apps/web` and
    `apps/desktop` already do. The interaction layer itself is unified as of step 4 above; what

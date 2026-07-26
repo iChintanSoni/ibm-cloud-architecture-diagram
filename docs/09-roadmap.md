@@ -713,9 +713,9 @@ fill, glyph color, connector markers, dash patterns, stroke width, and container
 connector types round-trip through `.icad`, the linter, and MCP with corrected display labels.
 
 #### M15 — Interaction foundations
-🟡 **In progress** — the ephemeral gesture layer, ordered rendering, unified hit-testing, and the
-`CanvasController` migration are done; the snapping engine, VS Code de-fork confirmation, and
-benchmark remain.
+🟡 **In progress** — the ephemeral gesture layer, ordered rendering, unified hit-testing, the
+`CanvasController` migration, and the snapping engine are done; the VS Code de-fork confirmation
+and benchmark remain.
 
 No user-visible features; everything after this depends on it. Full detail in
 [Canvas parity plan → M15](10-canvas-parity-plan.md#m15--interaction-foundations).
@@ -734,7 +734,9 @@ No user-visible features; everything after this depends on it. Full detail in
    into both `apps/web` and `apps/vscode`, whose `App.tsx` canvas elements no longer carry any
    interaction handlers of their own. Pan/marquee/drag/resize/rotate modes are new gestures for
    [M16](#m16--the-core-loop) to add to this same class, not something this step migrated.
-5. ⬜ The snapping engine.
+5. ✅ The snapping engine (`snapMove()`): grid snap, sibling edge/center alignment, and the 16px
+   parent inset as a hard constraint. Not yet wired into a live drag gesture — that lands with
+   [M16](#m16--the-core-loop)'s drag-to-move.
 6. ⬜ Confirming no forked interaction logic remains between `apps/vscode`'s `webview/src` and
    `apps/web` beyond what's already shared via `@icad/ui-web` — the interaction layer itself is
    unified as of step 4.

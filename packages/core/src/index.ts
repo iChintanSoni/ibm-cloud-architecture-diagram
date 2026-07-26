@@ -25,6 +25,7 @@ export { SelectionManager } from "./interaction/selection.js";
 export { hitTest, hitTestAll, hitTestRect, type HitTestOptions } from "./interaction/hitTest.js";
 export { computeTabOrder } from "./interaction/tabOrder.js";
 export { CanvasController, type CanvasMode, type CanvasControllerOptions } from "./interaction/canvasController.js";
+export { snapMove, PARENT_INSET, type SnapGuide, type SnapResult, type SnapOptions } from "./interaction/snapping.js";
 
 // Rendering
 export { SvgRenderer, type ResolvedTheme } from "./render/svgRenderer.js";
