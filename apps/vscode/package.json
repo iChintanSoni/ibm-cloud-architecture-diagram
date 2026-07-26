@@ -13,9 +13,6 @@
   "categories": [
     "Visualization"
   ],
-  "activationEvents": [
-    "onCustomEditor:icad.editor"
-  ],
   "main": "./dist/extension.cjs",
   "contributes": {
     "customEditors": [
