@@ -40,6 +40,7 @@ competitor and must not regress.
 | C10 | Renderer never reorders existing DOM nodes, so `z` changes cannot repaint correctly | [`svgRenderer.ts` `render()`](../packages/core/src/render/svgRenderer.ts) |
 | C11 | `rotation` and `canvas.grid` are dead fields — declared, never read | [`types.ts`](../packages/core/src/scene/types.ts) |
 | C12 | `CommandBus` has no coalescing, so any per-frame gesture would flood the undo stack | [`commandBus.ts`](../packages/core/src/commands/commandBus.ts) |
+| C13 | Every `Scene` change — including a single-element `dispatch()`/`undo()`/`redo()` — re-runs a full-scene `SvgRenderer.render()` **and** a full-scene `Linter.run()`, not just for the changed ids. Cost scales with total diagram size, not gesture size: on the benchmark below, nudging 10 of 2000 elements and undoing it costs ~2s each, roughly what re-rendering the whole diagram from scratch costs. The ephemeral preview path (D26) avoids this during a drag itself, but `Interaction.commit()` still dispatches through this same full-scene path once at the end — [M16](#m16--the-core-loop)'s drag-to-move should budget for a multi-second freeze on commit at realistic diagram sizes unless render/lint are made incremental (scoped to the changed ids) before or during that milestone. *(Found while building M15.7's benchmark harness, not in the original audit.)* | [`createEditor.ts`](../packages/core/src/api/createEditor.ts) constructor's `scene.on()` subscription; [`benchmark.test.ts`](../packages/core/src/perf/benchmark.test.ts) |
 
 ### Missing vs. both competitors
 
@@ -148,8 +149,8 @@ labels; the uncommitted `groupLabelText` work is landed with it.
 
 ## M15 — Interaction foundations
 
-🟡 **In progress** — steps 1–6 landed and tested; step 7 remains. No user-visible features yet.
-Everything after this depends on it.
+✅ **Done** — all 7 steps landed and tested. No user-visible features yet; everything after this
+depends on it, and M16 is next.
 
 1. ✅ **Ephemeral interaction layer (D26, C12).** `Editor.beginInteraction(ids)` returns an
    `Interaction` with `update(dx, dy)` / `commit()` / `abort()`. `update()` calls
@@ -219,13 +220,41 @@ Everything after this depends on it.
    files import the identical symbol set from `@icad/ui-web`
    (`CommandPalette`/`FindBar`/`InspectorPanel`/`LibraryPanel`/`LiveRegion`/`NewDiagramDialog`/`TopBar`/`elementDisplayName`/`findMatches`).
    No forked interaction logic remains anywhere in the shell.
-7. **Benchmark harness.** Frame-time guard for drag/resize at 500/1000/2000 elements, absorbing the
-   intent of [M12](09-roadmap.md#m12--performance-at-scale) so performance is measured before it
-   regresses rather than after.
+7. ✅ **Benchmark harness**, absorbing the intent of [M12](09-roadmap.md#m12--performance-at-scale)
+   so performance is measured before it regresses rather than after. There's no drag/resize
+   gesture to time yet (that's M16), so `packages/core/src/perf/benchmark.test.ts` instead measures
+   the primitives that exist today against synthetic 500/1,000/2,000-element diagrams
+   (`syntheticDiagram.ts`: repeating Box-with-icons-and-connectors units, the same shape as the
+   `iks_sr_mz_vpc` golden fixture): initial load (`loadIcad`), 200 `hitTestAll` samples, a `lint()`
+   pass, pan + zoom, and a committed 10-element move + undo + redo. Budgets are regression guards,
+   not real-browser targets — jsdom is far slower than a real browser at SVG DOM churn, so each
+   budget is a generous (~2-5x) multiple of the observed baseline on this test environment, meant
+   to catch an accidental new O(n) rather than assert absolute speed. Observed baseline (this
+   environment, jsdom, single run):
+
+   | Elements | Load (render+lint) | 200 hit-tests | `lint()` | pan+zoom | nudge+undo+redo |
+   |---|---|---|---|---|---|
+   | 500 | 83ms | 12ms | 7ms | <1ms | 887ms |
+   | 1,000 | 149ms | 24ms | 17ms | <1ms | 2,192ms |
+   | 2,000 | 382ms | 46ms | 47ms | <1ms | 6,018ms |
+
+   Pan/zoom stay sub-millisecond regardless of size — confirms `ViewportController` never touches
+   the scene, exactly D3's design. Everything else scales with total diagram size, which is
+   expected for load/hit-test/lint alone, but **not** for a single 10-element move: that's C13, a
+   defect this benchmark surfaced rather than the original audit — dispatch, undo, and redo each
+   run the same full-scene render+lint pass the initial load does, so a small edit on a large
+   diagram costs what a full re-render costs. No virtualization decision follows from this data
+   (500-2,000 elements render and hit-test comfortably fast); C13 is a real finding but a different
+   problem than the one M12 was checking for, and is flagged there for M16 to account for rather
+   than fixed here, since fixing it means making render/lint incremental — a larger change than
+   "add a benchmark."
 
 **Done when:** a scripted 200-frame drag of a 40-element subtree holds frame budget, produces
 exactly one undo entry, and runs the linter exactly once; and all three shells drive the canvas
-through the same `CanvasController` with no shell-local interaction code.
+through the same `CanvasController` with no shell-local interaction code. The `CanvasController`
+and shell-unification half of this is done (steps 4 and 6); the drag itself is M16's, at which
+point it should also confirm C13 doesn't turn "one undo entry" into "one multi-second freeze" on a
+realistic diagram.
 
 ---
 

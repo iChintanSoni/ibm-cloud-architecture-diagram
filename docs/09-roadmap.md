@@ -582,19 +582,17 @@ Same "core runs in the webview, the host handles file I/O" split as
 natively; the app runs fully offline post-install.
 
 #### M12 — Performance at scale
-⬜ **Not started** — **overlaps [M15](#m15--interaction-foundations); do not build independently.**
-M15 needs a frame-time benchmark before it can safely land the ephemeral gesture layer
-([D26](00-decision-log.md#d26--gestures-are-ephemeral-commits-are-commands--locked)), and builds
-the same harness this milestone describes. Land the benchmark once, in whichever milestone runs
-first; M12 then reduces to the virtualization decision that benchmark informs.
+🟡 **In progress** — the benchmark landed as [M15 step 7](#m15--interaction-foundations)
+(`packages/core/src/perf/benchmark.test.ts`), per the overlap note this section used to carry.
+What remains here is purely the virtualization decision that benchmark informs.
 
 [D3](00-decision-log.md#d3--svg-dom-rendering--locked) flagged viewport virtualization as something
 "very large diagrams may need... later" — benchmark first, build only if the benchmark demands it:
 
-1. Generate synthetic large diagrams (e.g. 500 / 1,000 / 2,000+ elements and connectors) and
-   measure, headlessly in `packages/core` (the same jsdom setup `packages/mcp` already proves out):
-   initial render time, pan/zoom frame time, hit-testing, lint pass time, and command-bus
-   undo/redo time.
+1. ✅ Generate synthetic large diagrams (500 / 1,000 / 2,000 elements and connectors) and measure,
+   headlessly in `packages/core` under its own jsdom Vitest environment: initial load, hit-testing,
+   lint pass time, pan/zoom, and command-bus dispatch/undo/redo. Results and budgets in
+   [Canvas parity plan → M15 step 7](10-canvas-parity-plan.md#m15--interaction-foundations).
 2. Only if a real threshold is breached, add viewport virtualization to the SVG renderer: cull
    off-screen elements from the live DOM while keeping them in the scene model and hit-testing
    index. This touches several things M8 built on the assumption of a fully-materialized DOM —
@@ -602,13 +600,15 @@ first; M12 then reduces to the virtualization decision that benchmark informs.
    ([M8.2](#m82--connectgroup-interactions-nested-object-tree-live-regions-real-browser-ci)), and
    keyboard tab order ([M8.1](#m81--baseline-canvas-keyboard-operation-rolesnames-ci-a11y-checks))
    — all need re-verification against a partially-virtualized DOM, not just the renderer itself.
-3. If the benchmark doesn't show a real problem at realistic diagram sizes, don't build
-   virtualization — document the benchmark result instead and revisit if a real diagram ever
-   breaches it.
+3. ✅ The benchmark doesn't show a real rendering/hit-test/lint problem at 500-2,000 elements —
+   documented instead of building virtualization, which stays un-started unless a real diagram
+   breaches it. It did surface a different, real problem (C13: dispatch/undo/redo cost scales with
+   total diagram size, not gesture size, because they re-run a full-scene render+lint pass) — not
+   a virtualization question, and tracked separately for [M16](#m16--the-core-loop) to account for.
 
 **Done when:** a documented benchmark exists for render/pan/zoom/hit-test/lint at defined element
-counts; virtualization ships only if that benchmark demanded it, with a11y/keyboard coverage
-re-verified against the virtualized DOM.
+counts (✅); virtualization ships only if that benchmark demanded it (it didn't, so this stays
+un-started), with a11y/keyboard coverage re-verified against the virtualized DOM if it ever does.
 
 #### M13 — Catalog refresh cadence + migration tooling
 ⬜ **Not started**
@@ -713,9 +713,7 @@ fill, glyph color, connector markers, dash patterns, stroke width, and container
 connector types round-trip through `.icad`, the linter, and MCP with corrected display labels.
 
 #### M15 — Interaction foundations
-🟡 **In progress** — the ephemeral gesture layer, ordered rendering, unified hit-testing, the
-`CanvasController` migration, the snapping engine, and the VS Code de-fork confirmation are done;
-the benchmark remains.
+✅ **Done.**
 
 No user-visible features; everything after this depends on it. Full detail in
 [Canvas parity plan → M15](10-canvas-parity-plan.md#m15--interaction-foundations).
@@ -742,7 +740,14 @@ No user-visible features; everything after this depends on it. Full detail in
    differs only in import-path depth (`catalog.ts`); `App.tsx`'s remaining differences are
    genuinely host-specific (file persistence, theme sourcing, PNG export); both import the same
    symbol set from `@icad/ui-web`.
-7. ⬜ The frame-time benchmark M12 also needs.
+7. ✅ The benchmark M12 also needs (`packages/core/src/perf/benchmark.test.ts`): synthetic
+   500/1,000/2,000-element diagrams timing load, hit-test, lint, pan/zoom, and dispatch/undo/redo.
+   Pan/zoom stay sub-millisecond at every size; everything else scales with diagram size as
+   expected — except a single 10-element move, which costs roughly a full re-render (~2s at 2,000
+   elements) because dispatch/undo/redo each re-run the full-scene render+lint pass, not just the
+   changed ids. That's a new finding (C13 in the
+   [canvas parity plan](10-canvas-parity-plan.md#confirmed-defects)), not the virtualization
+   question this milestone was checking for — full detail and the observed numbers are there.
 
 **Done when:** a scripted 200-frame drag of a 40-element subtree holds frame budget, produces
 exactly one undo entry, and runs the linter exactly once; all three shells drive the canvas through
