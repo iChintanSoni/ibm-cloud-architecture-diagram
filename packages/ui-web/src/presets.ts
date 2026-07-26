@@ -49,7 +49,8 @@ export const confirmedContainerPresets: readonly ContainerPreset[] = [
     name: "Availability zone",
     kind: "zone",
     color: "#8d8d8d",
-    zoneKind: "az"
+    zoneKind: "az",
+    cornerIcon: "ibm-cloud/data-center"
   },
   // Region/VPC newly confirmed by D24 (docs/00-decision-log.md) — Box, not Boundary/Zone.
   {

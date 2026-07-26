@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { Catalog, createEditor, type CatalogManifest, type Editor } from "@icad/core";
-import type { LibraryPlacement } from "@icad/ui-web";
+import { confirmedContainerPresets, type LibraryPlacement } from "@icad/ui-web";
 import { placeLibraryItem } from "./placement";
 
 const manifest: CatalogManifest = {
@@ -121,5 +121,16 @@ describe("library placement", () => {
     );
 
     expect(editor.scene.get(id)).toMatchObject({ parentId: frameId, x: 36, y: 36 });
+  });
+
+  // Regression test: "Availability zone" was the one confirmed preset missing a `cornerIcon` —
+  // every sibling preset (IBM Cloud, Public Network, OpenShift, Region, VPC) has one, so it silently
+  // placed with no corner glyph at all instead of an oversight anyone would notice from the data
+  // alone. Asserting this over the whole list, not just availability-zone, so any future preset
+  // added without an icon fails loudly instead of shipping invisible.
+  it("gives every confirmed container preset a corner icon", () => {
+    for (const preset of confirmedContainerPresets) {
+      expect(preset.cornerIcon, `expected "${preset.id}" to have a cornerIcon`).toBeTruthy();
+    }
   });
 });
