@@ -7,7 +7,9 @@ import type { CatalogManifest, IconMeta } from "./types.js";
  * decides which catalog version to load.
  *
  * Each asset is an SVG *fragment* (inner shape markup, no outer <svg>),
- * normalized to a 20x20 viewBox by the catalog-build pipeline.
+ * normalized to a 24x24 viewBox by the catalog-build pipeline (GLYPH_VIEWBOX
+ * in packages/catalog-build/src/extract.ts, GLYPH_VIEWBOX_SIZE in
+ * packages/core/src/render/svgRenderer.ts — all three must agree).
  */
 export class Catalog {
   constructor(

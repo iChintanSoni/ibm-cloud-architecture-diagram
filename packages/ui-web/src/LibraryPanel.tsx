@@ -115,8 +115,23 @@ export function LibraryPanel({ catalog, activePlacement, onChoose }: LibraryPane
                     aria-pressed={activeKey === placementKey(item)}
                     onClick={(event) => onChoose(item, event.detail === 0)}
                   >
-                    <svg viewBox="0 0 20 20" aria-hidden="true">
-                      <g dangerouslySetInnerHTML={{ __html: catalog.svg(icon.id) ?? "" }} />
+                    {/* Mirrors SvgRenderer's iconNode/actor tile (packages/core/src/render/svgRenderer.ts):
+                        a solid category-color tile (square, or a circle for "rounded"/actor-style
+                        icons) with the catalog's white glyph inset on top — the glyph asset is always
+                        white by design (D25, docs/00-decision-log.md), so without a tile behind it
+                        here it was rendering invisibly on the panel's own light background. viewBox is
+                        24 (GLYPH_VIEWBOX_SIZE in svgRenderer.ts), not 20 — a stale leftover from before
+                        M14 moved glyph geometry to a 24x24 frame; declaring 20 clipped the outer few
+                        units of any glyph that actually uses them. */}
+                    <svg viewBox="0 0 48 48" aria-hidden="true">
+                      {icon.container === "rounded" ? (
+                        <circle cx={24} cy={24} r={24} fill={icon.color ?? "#000000"} />
+                      ) : (
+                        <rect width={48} height={48} fill={icon.color ?? "#8d8d8d"} />
+                      )}
+                      <svg x={12} y={12} width={24} height={24} viewBox="0 0 24 24">
+                        <g dangerouslySetInnerHTML={{ __html: catalog.svg(icon.id) ?? "" }} />
+                      </svg>
                     </svg>
                     <span>{icon.name}</span>
                   </button>

@@ -19,7 +19,7 @@ const DEFAULT_OFFSET = 12;
 const REAL_OFFSET_THRESHOLD = 5;
 
 export interface NormalizedIcon {
-  /** SVG fragment (no outer <svg>), scaled into a 0..20 viewBox, ready to inline. */
+  /** SVG fragment (no outer <svg>), scaled into a 0..24 viewBox (GLYPH_VIEWBOX), ready to inline. */
   fragment: string;
   /** Accent color extracted from the icon's background tile, if any. */
   color?: string;
@@ -102,8 +102,8 @@ function clearAncestorTransforms(from: Element, root: Element): void {
 }
 
 /**
- * Re-frames the glyph so it fills the 0..20 viewBox core's renderer expects, replacing
- * whatever transform positioned it inside the original 48x48 canvas.
+ * Re-frames the glyph so it fills the 0..24 viewBox (GLYPH_VIEWBOX) core's renderer expects,
+ * replacing whatever transform positioned it inside the original 48x48 canvas.
  */
 function reframeGlyph(svg: Element): void {
   const hitbox = collectInOrder(svg, new Set(["rect"])).find(isTransparentHitbox);
@@ -143,7 +143,7 @@ function reframeGlyph(svg: Element): void {
 
 /**
  * Converts one upstream IBM icon SVG (48x48 canvas: a colored background tile plus a white
- * glyph) into a 20x20 white glyph fragment, plus the tile's own accent color as separate
+ * glyph) into a 24x24 white glyph fragment, plus the tile's own accent color as separate
  * metadata. The glyph is deliberately left white rather than recolored — per D25
  * (docs/00-decision-log.md), ICAD's renderer paints the solid category tile (or, for a rounded/
  * actor tile, a solid circle) behind the glyph itself, matching how IBM's own icon is
