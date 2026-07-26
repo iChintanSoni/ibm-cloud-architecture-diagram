@@ -14,7 +14,11 @@ test.describe("keyboard-only authoring", () => {
     await runCommand(page, "Insert Box");
     await runCommand(page, "Insert Box");
 
-    const canvasElements = page.locator(".icad-canvas [data-icad-id]");
+    // Scoped to the elements layer, not just `.icad-canvas [data-icad-id]` — the selected
+    // element's outline overlay (a sibling layer, moved in lockstep by previewTransform, D26)
+    // carries the same data-icad-id, so the broader selector double-counts whichever element is
+    // currently selected.
+    const canvasElements = page.locator('.icad-canvas [data-icad-layer="elements"] > [data-icad-id]');
     await expect(canvasElements).toHaveCount(2);
     const first = canvasElements.nth(0);
     const second = canvasElements.nth(1);
@@ -74,7 +78,7 @@ test.describe("keyboard-only authoring", () => {
     await runCommand(page, "Insert Box");
     await runCommand(page, "Insert Box");
 
-    const canvasElements = page.locator(".icad-canvas [data-icad-id]");
+    const canvasElements = page.locator('.icad-canvas [data-icad-layer="elements"] > [data-icad-id]');
     const first = canvasElements.nth(0);
 
     await first.focus();
@@ -90,7 +94,7 @@ test.describe("keyboard-only authoring", () => {
     await startBlankDiagram(page);
     await runCommand(page, "Insert Box");
 
-    const box = page.locator(".icad-canvas [data-icad-id]").first();
+    const box = page.locator('.icad-canvas [data-icad-layer="elements"] > [data-icad-id]').first();
     await box.focus();
     await expect(box).toBeFocused();
 
