@@ -49,6 +49,22 @@ body,
   outline: none;
 }
 
+/* Floats over .icad-canvas-region (position: relative, above) instead of taking its own row in
+   .icad-shell's flex column, which used to push the whole library/canvas/inspector layout down by
+   its height. Scoped to the canvas region specifically, not the viewport, so it can never overlap
+   the Library or Inspector side panels — and bottom rather than top, since every template's
+   diagram content starts near the top-left of the canvas (see templates.ts), where a top-anchored
+   toast would sit directly on top of it. */
+.icad-recovered-notification {
+  position: absolute;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  /* width: min(28rem, calc(100% - 2rem)); */
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
 .icad-connect-hint {
   position: absolute;
   top: 0.75rem;

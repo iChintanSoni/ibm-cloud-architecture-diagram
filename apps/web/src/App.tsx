@@ -713,19 +713,6 @@ export function App() {
           }}
         />
 
-        {recoveredDraft && (
-          <ActionableNotification
-            inline
-            kind="info"
-            lowContrast
-            title="Recovered unsaved changes"
-            subtitle="Restored automatically from your last session."
-            actionButtonLabel="Discard"
-            onActionButtonClick={handleDiscardDraft}
-            onCloseButtonClick={() => setRecoveredDraft(false)}
-          />
-        )}
-
         <main className="icad-body" aria-label="Diagram editor">
           <h1 className="icad-visually-hidden">ICAD — IBM Cloud Architecture Diagrams</h1>
           <LibraryPanel
@@ -739,6 +726,19 @@ export function App() {
               ref={canvasRef}
               data-placement-active={canvasMode.kind === "placing" ? "true" : "false"}
             />
+            {recoveredDraft && (
+              <div className="icad-recovered-notification">
+                <ActionableNotification
+                  kind="info"
+                  lowContrast
+                  title="Recovered unsaved changes"
+                  subtitle="Restored automatically from your last session."
+                  actionButtonLabel="Discard"
+                  onActionButtonClick={handleDiscardDraft}
+                  onCloseButtonClick={() => setRecoveredDraft(false)}
+                />
+              </div>
+            )}
             <FindBar
               open={findOpen}
               query={findQuery}
