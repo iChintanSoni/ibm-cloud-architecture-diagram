@@ -646,16 +646,17 @@ Make the canvas render what IBM actually specifies, and make it directly manipul
 audit evidence, and per-defect provenance in
 [Canvas parity plan](10-canvas-parity-plan.md); decisions in
 [D25–D28](00-decision-log.md#canvas--direct-manipulation). This is the largest single body of work
-in the project and the one a first-time user notices first — today the canvas has no drag, no
-resize, no marquee, and no clipboard, and its icons render inverted against the IBM source.
+in the project. M14 (visual conformance — icons, connectors, container tabs) is done; M15–M20
+(direct manipulation) remain and are what a first-time user notices most — today the canvas has no
+drag, no resize, no marquee, and no clipboard.
 
-**Sequencing note:** M14 fixes a live correctness defect against
+**Sequencing note:** M14 fixed a live correctness defect against
 [D5](00-decision-log.md#d5--crisp--professional-visual-style--locked)/[D17](00-decision-log.md#d17--official--ibm-internal-tool--locked)
-— the shipped icon set is visually wrong — so it is a reasonable candidate to pull ahead of M12/M13
-rather than waiting for v3 to close. M15–M20 genuinely depend on v3-era stability and should not be.
+— the shipped icon set was visually wrong — so it was pulled ahead of M12/M13 rather than waiting
+for v3 to close. M15–M20 genuinely depend on v3-era stability and should not be.
 
 #### M14 — IBM visual conformance
-🟡 **In progress** — steps 1–6 landed; step 7 (golden fixtures) remains.
+✅ **Done**
 
 Renderer and catalog only; no interaction changes. Audited against the *IT architecture diagrams
 kit* v1.1 deck and the IBM 2.0 `.drawio` stencils vendored in
@@ -695,8 +696,17 @@ kit* v1.1 deck and the IBM 2.0 `.drawio` stencils vendored in
    "Encapsulation name" based on the connector's own type. A new linter rule flags a security/port
    set with no name, and a non-numeric port. Both additions are purely additive optional fields —
    neither needed a `.icad` version bump or migration entry.
-7. ⬜ **Golden fixtures** — the four IBM-authored templates (`iks_sr_mz_vpc.drawio` and siblings)
-   become the visual regression suite, so IBM's own diagrams verify our renderer.
+7. ✅ **Golden fixtures.** Not a `.drawio` parser — building one, even test-only, would cut against
+   [D7](00-decision-log.md#d7--export-only-interop-svgpng-no-drawio-import--locked)'s locked
+   "no `.drawio` import," which exists precisely because a full mxGraph mapping surface is large
+   and fragile; that reasoning doesn't stop applying just because the importer is dev-only.
+   Instead, `svgRenderer.goldenFixtures.test.ts` hand-reproduces the `iks_sr_mz_vpc` reference
+   diagram's structure (Client → IBM Cloud → Region → OpenShift → Zone → Subnet → NLB/ALB/Worker
+   Nodes) using ICAD's own authoring API against the real bundled catalog — not synthetic fixture
+   icons — and asserts the M14 fixes directly: solid actor/icon tiles with white glyphs, a colored
+   sidebar tab at every nesting depth, corner glyphs recolored to each container's own accent, and
+   correct connector flow colors/stroke width. Rendered and rasterized for a final visual check
+   against the original reference image during development.
 
 **Done when:** a side-by-side render of `iks_sr_mz_vpc` against IBM's own export matches on icon
 fill, glyph color, connector markers, dash patterns, stroke width, and container tabs; all 11

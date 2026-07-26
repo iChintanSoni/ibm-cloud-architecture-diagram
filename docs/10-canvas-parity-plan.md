@@ -90,8 +90,7 @@ into a nested container**, **both bounding boxes visible at once**, corner-drag-
 
 ## M14 — IBM visual conformance
 
-🟡 **In progress** — steps 1–6 landed and tested; step 7 (golden fixtures) remains. Renderer +
-catalog only; no interaction changes.
+✅ **Done.** Renderer + catalog only; no interaction changes.
 
 1. ✅ **Icon tiles (C1).** `extract.ts` stops calling `recolorWhite()` and stops assuming a white
    host container; glyphs stay `#FFFFFF`. `svgRenderer.ts` paints a filled tile from the manifest's
@@ -125,8 +124,15 @@ catalog only; no interaction changes.
    "Protocol/Application name" and "Encapsulation name" based on the connector's own type. New
    `connector-annotation-incomplete`/`connector-annotation-invalid-port` linter rules flag a
    security/port set with no name, and a non-numeric port.
-7. ⬜ **Golden fixtures.** Import the four IBM-authored templates (`iks_sr_mz_vpc.drawio` and
-   siblings) as reference renders, so IBM's own diagrams become the visual regression suite.
+7. ✅ **Golden fixtures.** Not a `.drawio` parser — building one, even test-only, would cut against
+   [D7](00-decision-log.md#d7--export-only-interop-svgpng-no-drawio-import--locked)'s locked "no
+   `.drawio` import," whose rationale (a full mxGraph mapping surface is large and fragile) doesn't
+   stop applying just because the importer is dev-only. `svgRenderer.goldenFixtures.test.ts`
+   instead hand-reproduces the `iks_sr_mz_vpc` reference diagram's structure (Client → IBM Cloud →
+   Region → OpenShift → Zone → Subnet → NLB/ALB/Worker Nodes) using ICAD's own authoring API
+   against the real bundled catalog, and asserts the fixes directly: solid tiles with white glyphs,
+   a colored sidebar tab at every nesting depth, recolored corner glyphs, and correct connector
+   flow colors/stroke width. Rendered and rasterized for a final visual check during development.
 
 Steps 5 and 6 each add schema fields — both purely additive optional fields, so (unlike a rename)
 neither needs a `.icad` version bump or migration entry; an older document simply loads without
