@@ -313,6 +313,42 @@ export const standardConnectorTypeRule: Rule = (scene): Diagnostic[] => {
   return diagnostics;
 };
 
+/**
+ * IBM's structured protocol/encapsulation annotation (docs/05-ibm-spec-conformance.md#connector-
+ * nomenclature) only makes sense with a name — a security/port descriptor with nothing to
+ * describe is incomplete — and its PORT segment is always a network port number.
+ */
+export const connectorAnnotationRule: Rule = (scene): Diagnostic[] => {
+  const diagnostics: Diagnostic[] = [];
+  for (const el of scene.all()) {
+    if (el.type !== "connector" || !el.annotation) continue;
+    const { name, port } = el.annotation;
+    if (!name.trim()) {
+      diagnostics.push(
+        diagnostic(
+          "connector-annotation-incomplete",
+          "warn",
+          "connectors",
+          el.id,
+          `Connector "${el.id}" has a protocol/encapsulation annotation with no name.`
+        )
+      );
+    }
+    if (port?.trim() && !/^\d+$/.test(port.trim())) {
+      diagnostics.push(
+        diagnostic(
+          "connector-annotation-invalid-port",
+          "warn",
+          "connectors",
+          el.id,
+          `Connector "${el.id}"'s annotation port "${port}" is not a plain port number.`
+        )
+      );
+    }
+  }
+  return diagnostics;
+};
+
 function nearestPort(source: SceneElement, target: SceneElement): PortSide {
   const dx = target.x + target.w / 2 - (source.x + source.w / 2);
   const dy = target.y + target.h / 2 - (source.y + source.h / 2);
@@ -455,6 +491,18 @@ export const ruleMetadata: RuleMetadata[] = [
     category: "connectors",
     defaultSeverity: "warn"
   },
+  {
+    id: "connector-annotation-incomplete",
+    title: "Annotation name",
+    category: "connectors",
+    defaultSeverity: "warn"
+  },
+  {
+    id: "connector-annotation-invalid-port",
+    title: "Annotation port",
+    category: "connectors",
+    defaultSeverity: "warn"
+  },
   { id: "west-east-flow-reversal", title: "West-east flow", category: "layout", defaultSeverity: "warn" },
   { id: "icon-geometry", title: "Icon geometry", category: "layout", defaultSeverity: "warn" }
 ];
@@ -472,6 +520,7 @@ export const defaultRules: Rule[] = [
   standardConnectorTypeRule,
   connectorPortRule,
   connectorCrossesObstacleRule,
+  connectorAnnotationRule,
   westEastFlowRule,
   iconGeometryRule
 ];

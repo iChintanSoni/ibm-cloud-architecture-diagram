@@ -38,6 +38,9 @@ const CONNECTION_TYPES: ConnectorType[] = [
   "traffic-through-double-tunnel"
 ];
 
+/** The annotation's name field reads "Encapsulation NAME" for these, "Protocol/Application NAME" otherwise (docs/05-ibm-spec-conformance.md#connector-nomenclature). */
+const TUNNEL_TYPES: ConnectorType[] = ["tunneling-connection", "traffic-through-double-tunnel"];
+
 const RELATIONSHIP_TYPES: ConnectorType[] = [
   "dependency",
   "association",
@@ -163,6 +166,12 @@ function ElementProperties({
     if (element.type === "text") onUpdate(element.id, { text: value });
     else if (element.type === "frame") onUpdate(element.id, { name: value });
     else onUpdate(element.id, { label: { ...element.label, text: value } });
+  };
+
+  const commitAnnotation = (field: "name" | "security" | "port", value: string) => {
+    if (element.type !== "connector") return;
+    const current = element.annotation ?? { name: "" };
+    onUpdate(element.id, { annotation: { ...current, [field]: value } });
   };
 
   return (
@@ -298,8 +307,45 @@ function ElementProperties({
                 <SelectItem value="private" text="Private" />
                 <SelectItem value="public" text="Public" />
               </Select>
+              <TextInput
+                key={`${element.id}:annotation-name:${element.annotation?.name ?? ""}`}
+                id={`icad-property-annotation-name-${element.id}`}
+                size="sm"
+                labelText={TUNNEL_TYPES.includes(element.connectorType) ? "Encapsulation name" : "Protocol/Application name"}
+                defaultValue={element.annotation?.name ?? ""}
+                onBlur={(event) => commitAnnotation("name", event.target.value)}
+              />
+              <div className="icad-property-grid">
+                <TextInput
+                  key={`${element.id}:annotation-security:${element.annotation?.security ?? ""}`}
+                  id={`icad-property-annotation-security-${element.id}`}
+                  size="sm"
+                  labelText="Encryption/Security"
+                  placeholder="e.g. TLS1.3"
+                  defaultValue={element.annotation?.security ?? ""}
+                  onBlur={(event) => commitAnnotation("security", event.target.value)}
+                />
+                <TextInput
+                  key={`${element.id}:annotation-port:${element.annotation?.port ?? ""}`}
+                  id={`icad-property-annotation-port-${element.id}`}
+                  size="sm"
+                  labelText="Port"
+                  placeholder="e.g. 443"
+                  defaultValue={element.annotation?.port ?? ""}
+                  onBlur={(event) => commitAnnotation("port", event.target.value)}
+                />
+              </div>
             </>
           )}
+          <TextInput
+            key={`${element.id}:sequence:${element.sequence ?? ""}`}
+            id={`icad-property-sequence-${element.id}`}
+            size="sm"
+            labelText="Sequence"
+            placeholder="e.g. 1, 2a"
+            defaultValue={element.sequence ?? ""}
+            onBlur={(event) => onUpdate(element.id, { sequence: event.target.value })}
+          />
         </>
       )}
 

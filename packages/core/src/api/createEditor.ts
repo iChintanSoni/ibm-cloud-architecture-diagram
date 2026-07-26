@@ -32,6 +32,7 @@ import {
   type ActorElement,
   type BoxElement,
   type CanvasSettings,
+  type ConnectorAnnotation,
   type ConnectorDirection,
   type ConnectorElement,
   type ConnectorType,
@@ -112,6 +113,8 @@ export interface ElementPropertiesPatch {
   connectorType?: ConnectorType;
   direction?: ConnectorDirection;
   flowColor?: FlowColor;
+  sequence?: string;
+  annotation?: ConnectorAnnotation;
 }
 
 export class ExportBlockedError extends Error {
@@ -371,6 +374,8 @@ export class Editor {
       direction?: ConnectorDirection;
       flowColor?: FlowColor;
       cardinality?: EndpointLabels;
+      sequence?: string;
+      annotation?: ConnectorAnnotation;
       label?: string;
       id?: ElementId;
     } = {}
@@ -391,6 +396,8 @@ export class Editor {
       ...(opts.direction ? { direction: opts.direction } : {}),
       ...(opts.flowColor ? { flowColor: opts.flowColor } : {}),
       ...(opts.cardinality ? { cardinality: opts.cardinality } : {}),
+      ...(opts.sequence ? { sequence: opts.sequence } : {}),
+      ...(opts.annotation ? { annotation: opts.annotation } : {}),
       ...(opts.label ? { label: { text: opts.label } } : {})
     };
     const element: ConnectorElement = { ...base, waypoints: routeConnectorInScene(this.scene, base) };
@@ -726,6 +733,8 @@ export class Editor {
       direction?: ConnectorDirection;
       flowColor?: FlowColor;
       cardinality?: EndpointLabels;
+      sequence?: string;
+      annotation?: ConnectorAnnotation;
       label?: string;
     } = {}
   ): ElementId | undefined {

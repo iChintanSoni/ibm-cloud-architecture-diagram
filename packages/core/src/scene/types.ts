@@ -68,6 +68,19 @@ export interface EndpointLabels {
   to?: string;
 }
 
+/**
+ * IBM's structured connector annotation (docs/05-ibm-spec-conformance.md#connector-nomenclature):
+ * `name` is "Protocol/Application NAME" for a connection/physical-connection, or "Encapsulation
+ * NAME" for a tunnel type — which reading applies is inferred from the connector's own
+ * `connectorType`, not stored separately. Rendered via `formatConnectorAnnotation`.
+ */
+export interface ConnectorAnnotation {
+  name: string;
+  /** "Encryption/Security" descriptor, e.g. "TLS1.3". */
+  security?: string;
+  port?: string;
+}
+
 interface BaseElement {
   id: ElementId;
   x: number;
@@ -134,6 +147,14 @@ export interface ConnectorElement extends BaseElement {
   flowColor?: FlowColor;
   /** "0..N"-style cardinality labels; only meaningful for RelationshipType connectors. */
   cardinality?: EndpointLabels;
+  /**
+   * Short sequencing/numbering badge rendered at the connector's midpoint (e.g. "1", "2a") — IBM's
+   * kit captions this "Sequencing or numbering for flowcharts or use cases". Free text rather than
+   * a strict number so lettered sub-steps stay possible; unset renders no badge.
+   */
+  sequence?: string;
+  /** Structured protocol/encapsulation annotation; only meaningful for ConnectionType connectors. */
+  annotation?: ConnectorAnnotation;
   waypoints?: Array<{ x: number; y: number }>;
   /** Defaults to "auto". See RoutingMode. */
   routing?: RoutingMode;

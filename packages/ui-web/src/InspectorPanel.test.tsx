@@ -137,6 +137,65 @@ describe("InspectorPanel", () => {
     expect(select.value).toBe("tunneling-connection");
   });
 
+  it("commits a connector's sequence badge from the Properties tab on blur", () => {
+    const onUpdate = vi.fn();
+    act(() => {
+      root.render(
+        <InspectorPanel
+          elements={elements}
+          selectedIds={["conn"]}
+          validationCount={0}
+          validationContent={<p>No issues</p>}
+          frames={[]}
+          onJumpToFrame={vi.fn()}
+          onTogglePresent={vi.fn()}
+          onPresentStep={vi.fn()}
+          onSelect={vi.fn()}
+          onUpdate={onUpdate}
+          onReparent={vi.fn()}
+        />
+      );
+    });
+
+    const sequence = container.querySelector<HTMLInputElement>("#icad-property-sequence-conn")!;
+    sequence.value = "2a";
+    act(() => sequence.dispatchEvent(new FocusEvent("focusout", { bubbles: true })));
+
+    expect(onUpdate).toHaveBeenCalledWith("conn", { sequence: "2a" });
+  });
+
+  it("labels the annotation name field for a tunnel type, and merges partial edits into the existing annotation", () => {
+    const onUpdate = vi.fn();
+    act(() => {
+      root.render(
+        <InspectorPanel
+          elements={elements}
+          selectedIds={["conn"]}
+          validationCount={0}
+          validationContent={<p>No issues</p>}
+          frames={[]}
+          onJumpToFrame={vi.fn()}
+          onTogglePresent={vi.fn()}
+          onPresentStep={vi.fn()}
+          onSelect={vi.fn()}
+          onUpdate={onUpdate}
+          onReparent={vi.fn()}
+        />
+      );
+    });
+
+    // "conn" is a tunneling-connection — the name field reads "Encapsulation name", not
+    // "Protocol/Application name".
+    const nameField = container.querySelector("#icad-property-annotation-name-conn");
+    expect(nameField?.closest(".cds--form-item")?.querySelector("label")?.textContent).toBe("Encapsulation name");
+
+    const port = container.querySelector<HTMLInputElement>("#icad-property-annotation-port-conn")!;
+    port.value = "4789";
+    act(() => port.dispatchEvent(new FocusEvent("focusout", { bubbles: true })));
+
+    expect(onUpdate).toHaveBeenCalledWith("conn", { annotation: { name: "", port: "4789" } });
+  });
+
   it("shows nested layers, reflects selection, and selects a layer row", () => {
     const onSelect = vi.fn();
 

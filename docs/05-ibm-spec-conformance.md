@@ -98,39 +98,56 @@ unidirectional variant (arrowhead on one end vs. both):
 
 | Type | Line style | Meaning |
 |---|---|---|
-| Logical Connection / Link | dash-dot | Logical message exchanged between elements |
+| Logical Connection / Link | even dash | Logical message exchanged between elements |
 | Connection | solid | Network connection |
 | Physical Connection | double line, hollow square end-caps | Physical/cabled connection |
-| Tunneling Connection | solid, on a highlighted band | Traffic through a tunnel/encapsulation |
-| Traffic Through Double Tunnel | solid, on a double-highlighted band | Traffic through nested tunnels |
+| Tunneling Connection (schema: `tunneling-connection`) | solid, on a `#FFD7D9` highlighted band | Traffic through a tunnel/encapsulation — what IBM's own `Connectors.drawio` actually labels "Traffic Through Tunnel/Encapsulation"; "Tunneling Connection" itself is a caption in that stencil with no edge behind it, not a distinct line style |
+| Traffic Through Double Tunnel | solid, on a `#FFD7D9` + Carbon Yellow 30 (`#f1c21b`) double band | Traffic through nested tunnels |
 
 Connection endpoints follow the published IBM reference: bidirectional connections use dots at
-both ends; unidirectional connections use a source dot and destination arrow.
+both ends; unidirectional connections use a source dot and destination arrow. Stroke width is 2px
+by default, confirmed against `Connectors.drawio`'s own style strings. The double-tunnel's second
+band color has no literal value anywhere in that stencil — it renders via a proprietary
+`mxgraph.ibm2mondrian` shape — so Carbon Yellow 30 is a reasoned placeholder pending direct IBM
+Design confirmation, the same posture [D21](00-decision-log.md#d21--container-presets-are-a-named-shortcut-layer-not-new-element-types--locked)
+takes for other unconfirmed specifics.
 
 **Color coding** (independent of the type above): green `#198038` = private connection, blue
 `#4376BB` = public connection. `#4376BB` is a distinct "link blue" from `Connectors.drawio`'s own
 color-code legend — not the Data & Storage category's Blue 60 (`#0f62fe`) from the [Color
 usage](#color-usage) table below; don't conflate the two.
 
-**Labels** follow `[Protocol/Application NAME] [Encryption/Security]:[PORT]`, e.g.
-`HTTPS TLS1.3:443`.
+**Structured annotations.** A connection/physical-connection carries a "Protocol/Application
+NAME" annotation; a tunnel type carries an "Encapsulation NAME" one instead — which reading
+applies is inferred from the connector's own type. Each has an optional Encryption/Security
+descriptor and port, formatted as `NAME SECURITY:PORT`, e.g. `HTTPS TLS1.3:443` — IBM's kit shows
+this wrapped in a literal `[...]` bracket, treated here as template placeholder notation (the same
+convention `[PORT]` itself uses) rather than literal punctuation to render, following this same
+worked example. The linter flags a security/port set with no name, and a non-numeric port.
+
+**Sequencing.** Connectors may carry a short sequencing/numbering badge (e.g. "1", "2a"), rendered
+as a small circle at the connector's midpoint — IBM's kit captions this "Sequencing or numbering
+for flowcharts or use cases".
 
 ### Relationships
 
-Logical relationships between elements — not network traffic:
+Logical relationships between elements — not network traffic. IBM's own arrowhead
+(`Connectors.drawio`: `endArrow=open`) is an open chevron with no closing base line, distinct from
+implementation/extends's closed hollow triangle (`endArrow=block;endFill=0`):
 
 | Type | Line style | Meaning |
 |---|---|---|
-| Dependency | dashed arrow | Standard — used ~99% of the time, with a description label |
-| Association | solid arrow | Standard |
-| Aggregation | open-diamond + arrow | UML — "has-a," part can outlive the whole |
-| Composition | filled-diamond + arrow | UML — "owns-a," part's lifetime bound to the whole |
-| Implementation | dashed + hollow arrow | UML — realizes an interface |
-| Extends | solid + hollow arrow | UML — inheritance |
+| Dependency | dashed, open-chevron arrow | Standard — used ~99% of the time, with a description label |
+| Association | solid, open-chevron arrow | Standard |
+| Aggregation | open-diamond + open-chevron arrow | UML — "has-a," part can outlive the whole |
+| Composition | filled-diamond + open-chevron arrow | UML — "owns-a," part's lifetime bound to the whole |
+| Implementation | dashed + closed hollow triangle | UML — realizes an interface |
+| Extends | solid + closed hollow triangle | UML — inheritance |
 
 Association/Aggregation/Composition edges may carry `0..N`-style cardinality labels at each end.
 
-Source: *IBM_IT Architecture diagrams kit* v1.1, "Connectors" slide.
+Source: *IBM_IT Architecture diagrams kit* v1.1, "Connectors" slide, cross-checked against
+`Connectors.drawio`'s own style strings where the two disagreed.
 
 ## Categories & tiers
 
@@ -164,6 +181,7 @@ human explanation, and — where possible — an automatic **quick-fix** command
 4. **Connectors**
    - Non-standard connector type; endpoints not bound to ports; dangling connector.
    - Crossing/overlapping routes where a clean orthogonal route exists → quick-fix: re-route.
+   - Structured annotation with a security/port descriptor but no name; a non-numeric port.
 5. **Layout**
    - Gross west→east flow reversal (public entry on the right).
    - Icon sizing/outline drift from the 48×48 / 1px spec.
@@ -190,7 +208,7 @@ Rule severities are configurable per document (with an IBM-default preset). Team
 output can turn the export gate to **block**; ideation-heavy users can keep everything advisory.
 The default is IBM-recommended with the gate set to **warn**.
 
-The current implementation ships 14 rules across semantics, containment, labels, connectors, and
+The current implementation ships 16 rules across semantics, containment, labels, connectors, and
 layout. The location-context check applies to high-level/detailed diagrams (system-context and
 blank diagrams intentionally allow standalone nodes), and west→east reversal checks target public
 connections. Per-rule overrides and the export gate are stored in `.icad`; validation fixes and

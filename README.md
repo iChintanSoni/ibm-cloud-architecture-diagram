@@ -51,7 +51,7 @@ ICAD fixes all four. See [Vision & Scope](docs/01-vision-and-scope.md).
 - **Semantic elements & containers** — Box (`deployedOn`), Group (`deployedTo`), Zone/Boundary,
   Actor, Icon, Text, Frame, with move-with/cascade-delete containment and 11 IBM connector types.
 - **242 bundled IBM icons** across 11 categories — searchable, offline, no network dependency.
-- **Advisory linter** — 14 rules, one-click quick-fixes, a configurable export gate.
+- **Advisory linter** — 16 rules, one-click quick-fixes, a configurable export gate.
 - **Four starting templates** — Blank, System context, High-level, Detailed — all pre-built and
   spec-conformant.
 - **Find on canvas**, a full command palette, and Auto/Light/Dark themes.

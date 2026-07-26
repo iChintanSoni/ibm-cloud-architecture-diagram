@@ -90,38 +90,48 @@ into a nested container**, **both bounding boxes visible at once**, corner-drag-
 
 ## M14 — IBM visual conformance
 
-⬜ **Not started.** Renderer + catalog only; no interaction changes.
+🟡 **In progress** — steps 1–6 landed and tested; step 7 (golden fixtures) remains. Renderer +
+catalog only; no interaction changes.
 
-1. **Icon tiles (C1).** `extract.ts` stops calling `recolorWhite()` and stops assuming a white host
-   container; glyphs stay `#FFFFFF` (or `currentColor`). `svgRenderer.ts` paints a filled tile from
-   the manifest's `color`, using `container: "rounded"` to pick a circle for actors, and drops the
-   `#161616` 1px outline. Glyph geometry moves to IBM's **24×24 at inset 12** from the current
-   20×20 at inset 14. Regenerate all 242 icons; rebase visual baselines; retake the doc screenshots
-   in `docs/guide/images/`.
-2. **Connector markers (C2–C5).** Add an `arrow-open` marker (open-V, `endSize=12`) and route
-   `dependency`, `association`, `aggregation`, and `composition` to it. `implementation`/`extends`
-   keep the hollow closed triangle (already correct). Change `logical-connection` to an even dash,
-   default `strokeWidth` to 2, and set the tunnel band to `#FFD7D9` with the yellow second band for
-   the double variant.
-3. **Connector type display name (C6).** No new type — rename the `tunneling-connection` type's
-   *display label* (Properties selector, docs) from "Tunneling Connection" to "Traffic Through
-   Tunnel/Encapsulation" to match the line IBM's stencil actually labels; the internal schema key,
-   `.icad` representation, and rendering (band + solid line + arrow) are already correct and stay
-   unchanged. No migration needed.
-4. **Container sidebar tab (C7).** Move `sidebarTab()` from the Box-only branch so Group and Zone
-   render it too, colored to each container's own stroke.
-5. **Sequencing badge (C8).** The circled `#` for flowchart/use-case ordering, as an optional
-   connector field rendered at the path midpoint.
-6. **Structured connector labels.** IBM's `[Protocol/Application NAME · Encryption/Security:PORT]`
-   and `[Encapsulation NAME · Encryption/Security:PORT]` conventions, as optional typed fields with
-   a formatter — not a free-text string users have to punctuate by hand. Adds a linter rule for
-   malformed annotations.
-7. **Golden fixtures.** Import the four IBM-authored templates (`iks_sr_mz_vpc.drawio` and
+1. ✅ **Icon tiles (C1).** `extract.ts` stops calling `recolorWhite()` and stops assuming a white
+   host container; glyphs stay `#FFFFFF`. `svgRenderer.ts` paints a filled tile from the manifest's
+   `color`, using `container: "rounded"` to pick a circle for actors, and drops the `#161616` 1px
+   outline. Glyph geometry moved to IBM's **24×24 at inset 12** from the old 20×20 at inset 14; all
+   242 icons regenerated. Two bugs caught before shipping: both extraction paths (`extract.ts` and
+   the independent `extractDrawioLibrary.ts`, feeding the 35-icon Groups category) still framed
+   glyphs into a 0..20 space against the renderer's new 0..24 expectation, and the on-disk SVG
+   files kept a stale `viewBox="0 0 20 20"` wrapper independent of the three runtime loaders that
+   strip it. Doc screenshot retakes still outstanding (tracked, not blocking).
+2. ✅ **Connector markers (C2–C5).** Added an `arrow-open` marker (open-V, `endSize=12`), routed
+   `dependency`/`association`/`aggregation`/`composition` to it; `implementation`/`extends` keep
+   the hollow closed triangle. `logical-connection` now an even dash, default `strokeWidth` 2,
+   tunnel band fixed to `#FFD7D9` (confirmed directly in the vector source) with Carbon Yellow 30
+   as a flagged placeholder for the double variant's second band (no literal value exists for it in
+   `Connectors.drawio`). Added a `CONNECTOR_TYPE_LABELS` map to the Properties panel, which
+   previously showed the raw kebab-case value with no label at all.
+3. ✅ **Connector type display name (C6).** No new type — the `tunneling-connection` type's
+   *display label* now reads "Traffic Through Tunnel/Encapsulation" to match the line IBM's stencil
+   actually labels; the internal schema key, `.icad` representation, and rendering (band + solid
+   line + arrow) were already correct and stayed unchanged. No migration needed.
+4. ✅ **Container sidebar tab (C7).** `sidebarTab()` now also renders on Group and Zone, colored to
+   each container's own resolved stroke. Frame excluded (no IBM semantic).
+5. ✅ **Sequencing badge (C8).** `ConnectorElement.sequence?: string`, rendered as a small circled
+   badge straddling the connector's midpoint; editable via the Properties panel and MCP
+   (`connect`/`connect_nearest`/`element_update`).
+6. ✅ **Structured connector labels.** `ConnectorElement.annotation?: ConnectorAnnotation { name,
+   security?, port? }`, formatted via the new `formatConnectorAnnotation` (exported from
+   `@icad/core`) as `NAME SECURITY:PORT` (e.g. `HTTPS TLS1.3:443`) — not a free-text string users
+   punctuate by hand. The Properties panel switches the name field's label between
+   "Protocol/Application name" and "Encapsulation name" based on the connector's own type. New
+   `connector-annotation-incomplete`/`connector-annotation-invalid-port` linter rules flag a
+   security/port set with no name, and a non-numeric port.
+7. ⬜ **Golden fixtures.** Import the four IBM-authored templates (`iks_sr_mz_vpc.drawio` and
    siblings) as reference renders, so IBM's own diagrams become the visual regression suite.
 
-Steps 5 and 6 each add schema fields, so they share one `.icad` migration, one pass over the linter
-rules, one Properties-panel update, and one MCP enum update. Physical connection is explicitly
-unchanged (see Decisions taken).
+Steps 5 and 6 each add schema fields — both purely additive optional fields, so (unlike a rename)
+neither needs a `.icad` version bump or migration entry; an older document simply loads without
+them. Both share one linter-rule pass, one Properties-panel update, and one MCP schema update.
+Physical connection is explicitly unchanged (see Decisions taken).
 
 **Done when:** a side-by-side render of `iks_sr_mz_vpc` against IBM's own export matches on icon
 fill, glyph color, connector markers, dash patterns, stroke width, and container tabs; all 11

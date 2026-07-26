@@ -3,6 +3,7 @@ export * from "./scene/types.js";
 export { Scene, type SceneChangeEvent } from "./scene/scene.js";
 export { boundsOf } from "./scene/bounds.js";
 export { accessibleName, accessibleRole, type AccessibleRole } from "./scene/accessibleName.js";
+export { formatConnectorAnnotation } from "./scene/connectorAnnotation.js";
 
 // Commands
 export type { Command } from "./commands/types.js";
@@ -60,6 +61,7 @@ export {
   standardConnectorTypeRule,
   connectorPortRule,
   connectorCrossesObstacleRule,
+  connectorAnnotationRule,
   nodeWithoutLocationRule,
   westEastFlowRule,
   iconGeometryRule

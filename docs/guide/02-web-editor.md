@@ -76,8 +76,10 @@ Pick the exact connector type, direction (unidirectional/bidirectional), and flo
 (public/private) in the Properties tab once a connector is selected — there are 11 IBM connector
 types in total, covering both **connections** (association, data flow, sync/async call, public,
 private) and **relationships** (dependency, aggregation, composition, implementation, extension,
-inheritance). Routing is orthogonal and automatic; there's no gesture for manually editing a
-connector's waypoints today.
+inheritance). A connection also takes a structured protocol annotation (Name, Encryption/Security,
+Port — rendered as `HTTPS TLS1.3:443`; a tunnel type reads "Encapsulation name" instead), and any
+connector can carry a short sequencing badge (e.g. "1", "2a") shown at its midpoint. Routing is
+orthogonal and automatic; there's no gesture for manually editing a connector's waypoints today.
 
 ## Templates
 
@@ -109,10 +111,10 @@ rotation isn't implemented in the UI.
 
 ## The linter
 
-ICAD ships an advisory linter (`core/linter`, 14 rules) covering container semantics, IBM color
+ICAD ships an advisory linter (`core/linter`, 16 rules) covering container semantics, IBM color
 usage, missing/duplicate labels, connector correctness (dangling connectors, unbound ports,
-non-standard types), and west→east layout. Each diagnostic is `error`/`warn`/`info`, targets a
-specific element, and — where possible — offers a one-click fix.
+non-standard types, malformed protocol annotations), and west→east layout. Each diagnostic is
+`error`/`warn`/`info`, targets a specific element, and — where possible — offers a one-click fix.
 
 ![Validation tab showing a "missing-label" warning on an unlabeled box, with an "Add label" quick-fix link, and the corresponding warning badge on the canvas element](images/validation-tab.png)
 

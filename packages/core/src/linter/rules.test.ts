@@ -11,6 +11,7 @@ import type {
 } from "../scene/types.js";
 import {
   catalogIconRule,
+  connectorAnnotationRule,
   connectorCrossesObstacleRule,
   connectorPortRule,
   containerBorderRule,
@@ -110,10 +111,10 @@ function catalog(): Catalog {
 }
 
 describe("default conformance rules", () => {
-  it("publishes a unique IBM-default metadata entry for all 14 supported rules", () => {
+  it("publishes a unique IBM-default metadata entry for all 16 supported rules", () => {
     const ids = ruleMetadata.map((rule) => rule.id);
-    expect(ids).toHaveLength(14);
-    expect(new Set(ids).size).toBe(14);
+    expect(ids).toHaveLength(16);
+    expect(new Set(ids).size).toBe(16);
     expect(ids).toEqual(
       expect.arrayContaining([
         "container-semantic",
@@ -128,6 +129,8 @@ describe("default conformance rules", () => {
         "non-standard-connector",
         "connector-not-bound-to-port",
         "connector-crosses-obstacle",
+        "connector-annotation-incomplete",
+        "connector-annotation-invalid-port",
         "west-east-flow-reversal",
         "icon-geometry"
       ])
@@ -282,6 +285,22 @@ describe("default conformance rules", () => {
 
     expect(standardConnectorTypeRule(scene)).toHaveLength(0);
     expect(connectorPortRule(scene)).toHaveLength(0);
+  });
+
+  it("flags a connector annotation with no name, or a non-numeric port, but accepts a well-formed one", () => {
+    const scene = new Scene();
+    scene._put(box("a"));
+    scene._put(box("b", 200));
+    scene._put(connector("well-formed", "a", "b", { annotation: { name: "HTTPS", security: "TLS1.3", port: "443" } }));
+    scene._put(connector("no-name", "a", "b", { annotation: { name: "  ", port: "443" } }));
+    scene._put(connector("bad-port", "a", "b", { annotation: { name: "HTTPS", port: "https" } }));
+    scene._put(connector("no-annotation", "a", "b"));
+
+    const diagnostics = connectorAnnotationRule(scene);
+    expect(diagnostics.map((d) => [d.elementId, d.ruleId])).toEqual([
+      ["no-name", "connector-annotation-incomplete"],
+      ["bad-port", "connector-annotation-invalid-port"]
+    ]);
   });
 
   it("binds invalid endpoints to the nearest vertical ports", () => {

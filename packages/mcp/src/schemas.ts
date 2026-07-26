@@ -43,6 +43,15 @@ export const cardinalitySchema = z.object({
   to: z.string().optional()
 });
 
+/** "Protocol/Application NAME" for connection/physical-connection, or "Encapsulation NAME" for a
+ * tunnel type — which reading applies is inferred from the connector's own type, not stored here.
+ * Formatted for display via @icad/core's formatConnectorAnnotation, e.g. "HTTPS TLS1.3:443". */
+export const connectorAnnotationSchema = z.object({
+  name: z.string(),
+  security: z.string().optional().describe("Encryption/Security descriptor, e.g. TLS1.3"),
+  port: z.string().optional()
+});
+
 /** D24 (docs/00-decision-log.md): Region/VPC/Subnet are Box, not Zone — only az/on-prem remain. */
 export const zoneKindSchema = z.enum(["az", "on-prem"]);
 
@@ -108,7 +117,9 @@ export const elementPropertiesPatchSchema = z.object({
   order: z.number().optional(),
   connectorType: connectorTypeSchema.optional(),
   direction: connectorDirectionSchema.optional(),
-  flowColor: flowColorSchema.optional()
+  flowColor: flowColorSchema.optional(),
+  sequence: z.string().optional(),
+  annotation: connectorAnnotationSchema.optional()
 });
 
 const severitySchema = z.enum(["error", "warn", "info"]);

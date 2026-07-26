@@ -2,8 +2,9 @@ import type { Catalog } from "../catalog/catalog.js";
 import { computeTabOrder } from "../interaction/tabOrder.js";
 import type { Diagnostic, Severity } from "../linter/types.js";
 import { accessibleName, accessibleRole } from "../scene/accessibleName.js";
+import { formatConnectorAnnotation } from "../scene/connectorAnnotation.js";
 import type { Scene } from "../scene/scene.js";
-import type { ConnectorElement, ConnectorType, GroupElement, SceneElement } from "../scene/types.js";
+import type { ConnectorAnnotation, ConnectorElement, ConnectorType, GroupElement, SceneElement } from "../scene/types.js";
 import { connectorPathPoints } from "../routing/routeConnector.js";
 import { PRIMARY_TO_SECONDARY_FILL } from "../theme/colorPalette.js";
 import { createSvgElement, setAttrs } from "./dom.js";
@@ -748,6 +749,28 @@ export class SvgRenderer {
 
     if (el.cardinality?.from) g.appendChild(this.cardinalityLabel(points, 0.1, el.cardinality.from));
     if (el.cardinality?.to) g.appendChild(this.cardinalityLabel(points, 0.9, el.cardinality.to));
+    if (el.sequence) g.appendChild(this.sequenceBadge(points, el.sequence));
+    if (el.annotation) g.appendChild(this.annotationLabel(points, el.annotation));
+  }
+
+  /**
+   * IBM's structured protocol/encapsulation annotation (docs/05-ibm-spec-conformance.md#connector-
+   * nomenclature), formatted via formatConnectorAnnotation and rendered below the connector's
+   * midpoint — clear of the label above it (label sits at mid.y-4) and the sequence badge
+   * straddling the line (radius 9, so it spans mid.y-9..mid.y+9).
+   */
+  private annotationLabel(points: Point[], annotation: ConnectorAnnotation): SVGTextElement {
+    const mid = pointAtFraction(points, 0.5);
+    const text = createSvgElement("text");
+    setAttrs(text, {
+      x: mid.x,
+      y: mid.y + 20,
+      fill: this.palette.stroke,
+      "text-anchor": "middle",
+      "font-size": 11
+    });
+    text.textContent = formatConnectorAnnotation(annotation);
+    return text;
   }
 
   private cardinalityLabel(points: Point[], t: number, text: string): SVGTextElement {
@@ -756,6 +779,24 @@ export class SvgRenderer {
     setAttrs(el, { x: at.x, y: at.y - 4, fill: this.palette.stroke, "text-anchor": "middle", "font-size": 11 });
     el.textContent = text;
     return el;
+  }
+
+  /**
+   * IBM's "sequencing or numbering for flowcharts or use cases" badge (docs/05-ibm-spec-
+   * conformance.md#connector-nomenclature) — a small circled label straddling the connector's
+   * midpoint, distinct from the connector's own text label (which floats above the line).
+   */
+  private sequenceBadge(points: Point[], text: string): SVGGElement {
+    const at = pointAtFraction(points, 0.5);
+    const badge = createSvgElement("g");
+    const circle = createSvgElement("circle");
+    setAttrs(circle, { cx: at.x, cy: at.y, r: 9, fill: "white", stroke: this.palette.stroke });
+    const label = createSvgElement("text");
+    setAttrs(label, { x: at.x, y: at.y + 3, fill: this.palette.stroke, "text-anchor": "middle", "font-size": 10 });
+    label.textContent = text;
+    badge.appendChild(circle);
+    badge.appendChild(label);
+    return badge;
   }
 
   private renderOverlays(scene: Scene): void {

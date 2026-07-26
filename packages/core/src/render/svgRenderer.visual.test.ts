@@ -498,4 +498,85 @@ describe("IBM published visual golden fixtures", () => {
     expect(attributes(doubleBands![0] as Element)).toMatchObject({ stroke: "#f1c21b" });
     expect(attributes(doubleBands![1] as Element)).toMatchObject({ stroke: "#FFD7D9" });
   });
+
+  it("renders a circled sequence badge at the connector's midpoint, distinct from its text label", () => {
+    scene._put({ id: "seq-from", type: "box", semantic: "deployedOn", x: 0, y: 0, w: 48, h: 48 });
+    scene._put({ id: "seq-to", type: "box", semantic: "deployedOn", x: 240, y: 0, w: 48, h: 48 });
+    scene._put({
+      id: "seq",
+      type: "connector",
+      semantic: "node",
+      x: 0,
+      y: 0,
+      w: 0,
+      h: 0,
+      from: { elementId: "seq-from", port: "e" },
+      to: { elementId: "seq-to", port: "w" },
+      connectorType: "association",
+      label: { text: "calls" },
+      sequence: "2a",
+      routing: "manual",
+      waypoints: [
+        { x: 48, y: 24 },
+        { x: 240, y: 24 }
+      ]
+    });
+    renderer.render(scene);
+
+    const badgeCircle = renderer.nodeFor("seq")?.querySelector("circle");
+    expect(attributes(badgeCircle)).toMatchObject({ cx: "144", cy: "24", r: "9" });
+    const texts = [...(renderer.nodeFor("seq")?.querySelectorAll("text") ?? [])].map((t) => t.textContent);
+    expect(texts).toEqual(["calls", "2a"]);
+  });
+
+  it("omits the sequence badge entirely when unset", () => {
+    scene._put({ id: "noseq-from", type: "box", semantic: "deployedOn", x: 0, y: 0, w: 48, h: 48 });
+    scene._put({ id: "noseq-to", type: "box", semantic: "deployedOn", x: 240, y: 0, w: 48, h: 48 });
+    scene._put({
+      id: "noseq",
+      type: "connector",
+      semantic: "node",
+      x: 0,
+      y: 0,
+      w: 0,
+      h: 0,
+      from: { elementId: "noseq-from", port: "e" },
+      to: { elementId: "noseq-to", port: "w" },
+      connectorType: "association",
+      routing: "manual",
+      waypoints: []
+    });
+    renderer.render(scene);
+
+    expect(renderer.nodeFor("noseq")?.querySelector("circle")).toBeNull();
+  });
+
+  it("renders a structured protocol annotation formatted per IBM's worked example, below the line", () => {
+    scene._put({ id: "ann-from", type: "box", semantic: "deployedOn", x: 0, y: 0, w: 48, h: 48 });
+    scene._put({ id: "ann-to", type: "box", semantic: "deployedOn", x: 240, y: 0, w: 48, h: 48 });
+    scene._put({
+      id: "ann",
+      type: "connector",
+      semantic: "node",
+      x: 0,
+      y: 0,
+      w: 0,
+      h: 0,
+      from: { elementId: "ann-from", port: "e" },
+      to: { elementId: "ann-to", port: "w" },
+      connectorType: "connection",
+      annotation: { name: "HTTPS", security: "TLS1.3", port: "443" },
+      routing: "manual",
+      waypoints: [
+        { x: 48, y: 24 },
+        { x: 240, y: 24 }
+      ]
+    });
+    renderer.render(scene);
+
+    const texts = [...(renderer.nodeFor("ann")?.querySelectorAll("text") ?? [])];
+    expect(texts).toHaveLength(1);
+    expect(texts[0]?.textContent).toBe("HTTPS TLS1.3:443");
+    expect(attributes(texts[0])).toMatchObject({ x: "144", y: "44", "text-anchor": "middle" });
+  });
 });

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireOpenDocument, ToolError, type ServerState } from "../state.js";
 import {
   cardinalitySchema,
+  connectorAnnotationSchema,
   connectorDirectionSchema,
   connectorTypeSchema,
   containerPlacementSchema,
@@ -22,6 +23,8 @@ const connectOptsSchema = {
   direction: connectorDirectionSchema.optional(),
   flowColor: flowColorSchema.optional(),
   cardinality: cardinalitySchema.optional(),
+  sequence: z.string().optional().describe("Short sequencing/numbering badge shown at the connector's midpoint, e.g. \"1\", \"2a\""),
+  annotation: connectorAnnotationSchema.optional().describe("Structured protocol/encapsulation annotation, e.g. { name: \"HTTPS\", security: \"TLS1.3\", port: \"443\" }"),
   label: z.string().optional()
 };
 

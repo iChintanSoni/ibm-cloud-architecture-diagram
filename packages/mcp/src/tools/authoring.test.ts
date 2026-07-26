@@ -57,6 +57,60 @@ describe("authoring tools", () => {
     expect(nonContainer.isError).toBe(true);
   });
 
+  it("sets a connector's sequence badge at creation and updates it afterward", async () => {
+    const box = await client.callTool({ name: "element_add_box", arguments: { at: { x: 0, y: 0 } } });
+    const actor = await client.callTool({ name: "element_add_actor", arguments: { at: { x: 400, y: 0 } } });
+    const boxId = (box.structuredContent as { id: string }).id;
+    const actorId = (actor.structuredContent as { id: string }).id;
+
+    const connected = await client.callTool({
+      name: "connect_nearest",
+      arguments: { fromId: boxId, toId: actorId, sequence: "1" }
+    });
+    const connId = (connected.structuredContent as { id: string }).id;
+
+    const doc = await client.callTool({ name: "doc_get", arguments: {} });
+    const element = (doc.structuredContent as { document: { elements: Array<{ id: string; sequence?: string }> } })
+      .document.elements.find((el) => el.id === connId)!;
+    expect(element.sequence).toBe("1");
+
+    await client.callTool({ name: "element_update", arguments: { id: connId, patch: { sequence: "2a" } } });
+    const docAfter = await client.callTool({ name: "doc_get", arguments: {} });
+    const updated = (docAfter.structuredContent as { document: { elements: Array<{ id: string; sequence?: string }> } })
+      .document.elements.find((el) => el.id === connId)!;
+    expect(updated.sequence).toBe("2a");
+  });
+
+  it("sets a structured protocol annotation at creation and updates it afterward", async () => {
+    const box = await client.callTool({ name: "element_add_box", arguments: { at: { x: 0, y: 0 } } });
+    const actor = await client.callTool({ name: "element_add_actor", arguments: { at: { x: 400, y: 0 } } });
+    const boxId = (box.structuredContent as { id: string }).id;
+    const actorId = (actor.structuredContent as { id: string }).id;
+
+    const connected = await client.callTool({
+      name: "connect_nearest",
+      arguments: { fromId: boxId, toId: actorId, annotation: { name: "HTTPS", security: "TLS1.3", port: "443" } }
+    });
+    const connId = (connected.structuredContent as { id: string }).id;
+
+    type AnnotationEl = { id: string; annotation?: { name: string; security?: string; port?: string } };
+    const doc = await client.callTool({ name: "doc_get", arguments: {} });
+    const element = (doc.structuredContent as { document: { elements: AnnotationEl[] } }).document.elements.find(
+      (el) => el.id === connId
+    )!;
+    expect(element.annotation).toEqual({ name: "HTTPS", security: "TLS1.3", port: "443" });
+
+    await client.callTool({
+      name: "element_update",
+      arguments: { id: connId, patch: { annotation: { name: "VXLAN" } } }
+    });
+    const docAfter = await client.callTool({ name: "doc_get", arguments: {} });
+    const updated = (docAfter.structuredContent as { document: { elements: AnnotationEl[] } }).document.elements.find(
+      (el) => el.id === connId
+    )!;
+    expect(updated.annotation).toEqual({ name: "VXLAN" });
+  });
+
   it("connect_nearest errors clearly instead of returning undefined for an invalid pair", async () => {
     const box = await client.callTool({ name: "element_add_box", arguments: { at: { x: 0, y: 0 } } });
     const boxId = (box.structuredContent as { id: string }).id;
