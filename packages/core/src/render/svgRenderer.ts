@@ -348,6 +348,11 @@ export class SvgRenderer {
   private hoveredPortsId: string | undefined;
   private draftConnector: { from: Point; to: Point } | undefined;
   private marqueeRect: Rect | undefined;
+  /** Ancestor-to-innermost chain of containers currently "drilled into" (M16.4,
+   * docs/10-canvas-parity-plan.md) — rendered as a faint outline each, distinct from the active
+   * selection's dashed one, so both are visible at once per IBM's prescribed model. Empty outside
+   * a drill scope. */
+  private drillPath: string[] = [];
   private currentScene?: Scene;
   /** Live resize preview geometry (M16.2, docs/10-canvas-parity-plan.md), keyed by element id —
    * checked by renderOverlays() so the selection outline/handles track the previewed bbox rather
@@ -624,6 +629,17 @@ export class SvgRenderer {
    * (`hitTestRect` + `selection.set()`) on every move — this only draws the drag rectangle itself. */
   setMarqueeRect(rect: Rect | undefined): void {
     this.marqueeRect = rect;
+    if (this.currentScene) this.renderOverlays(this.currentScene);
+  }
+
+  /**
+   * Faint bounding-box context for the container(s) currently drilled into (M16.4,
+   * docs/10-canvas-parity-plan.md), outermost first — draws alongside, not instead of, the normal
+   * active-selection outline so both render at once (IBM's own prescribed model: "make sure the
+   * inside bounding box is highlighted"). Pass `[]` to clear.
+   */
+  setDrillPath(ids: string[]): void {
+    this.drillPath = ids;
     if (this.currentScene) this.renderOverlays(this.currentScene);
   }
 
@@ -1136,6 +1152,29 @@ export class SvgRenderer {
 
   private renderOverlays(scene: Scene): void {
     this.overlayLayer.innerHTML = "";
+
+    // Drill scope (M16.4): a faint, undashed outline per entered container — deliberately a
+    // different style from the active-selection outline below (solid vs. dashed, low opacity, no
+    // inset) so a container that's also the current selection shows both without either reading
+    // as a duplicate.
+    for (const id of this.drillPath) {
+      const raw = scene.get(id);
+      if (!raw || raw.type === "connector") continue;
+      const el = this.geometryOf(raw);
+      const outline = createSvgElement("rect");
+      outline.setAttribute("data-icad-drill-outline", id);
+      setAttrs(outline, {
+        x: el.x,
+        y: el.y,
+        width: el.w,
+        height: el.h,
+        fill: "none",
+        stroke: "#0f62fe",
+        "stroke-width": 1,
+        "stroke-opacity": 0.35,
+      });
+      this.overlayLayer.appendChild(outline);
+    }
 
     for (const rawId of this.selectedIds) {
       const raw = scene.get(rawId);

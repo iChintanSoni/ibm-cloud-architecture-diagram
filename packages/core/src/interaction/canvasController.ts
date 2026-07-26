@@ -43,6 +43,14 @@ interface ResizeState {
   startScenePoint: Point;
 }
 
+/** Container types "double-click to drill into" applies to — Frame excluded, matching every
+ * other place a pointer directly manipulates an element (drag, hover-ports, connect-mode): it's a
+ * presentation-sectioning background, not an IBM containment primitive (docs/00-decision-log.md's
+ * D24, docs/10-canvas-parity-plan.md's M14 sidebar-tab item). */
+function isDrillableContainerType(el: SceneElement): boolean {
+  return el.type === "box" || el.type === "zone" || el.type === "group";
+}
+
 interface MarqueeState {
   pointerId: number;
   startClient: Point;
@@ -93,14 +101,18 @@ function parsePortAttr(value: string): {
  * Owns: wheel pan/zoom, click-to-select, drag-to-move (with a drag threshold, Shift axis-lock,
  * snapping, and Escape-to-abort), 8-handle resize (Shift aspect-lock, Alt resize-from-center,
  * Escape-to-abort — M16.2), drag-to-connect via ports, keyboard connect-mode ("c", Tab, Enter,
- * Escape), marquee selection (fully-enclosed only, Escape-to-abort — M16.3), and the canvas's own
- * keyboard operability (Tab/Shift+Tab focus, Enter/Space select, arrow-key nudge — drag-to-move's
- * own keyboard equivalent, Delete/Backspace, Ctrl/Cmd+A select-all — marquee's own keyboard
- * equivalent) — see docs/07-accessibility.md#canvas-the-hard-20, a hard requirement this class
- * must keep meeting, not just replicate incidentally. Resize's own keyboard equivalent is the
- * Properties panel's typed X/Y/W/H fields (`InspectorPanel.tsx`), which predate this gesture and
- * already cover it — mirroring how M16.1 found arrow-key nudge already covered drag-to-move; no
- * new keyboard code was needed for resize either.
+ * Escape), marquee selection (fully-enclosed only, Escape-to-abort — M16.3), double-click to
+ * drill into a nested Box/Zone/Group with Escape to step back out (M16.4 — while drilled, the
+ * container's own background arms a scoped marquee instead of a move, mirroring Frame's existing
+ * carve-out), and the canvas's own keyboard operability (Tab/Shift+Tab focus, Enter/Space select
+ * — a second Enter on an already-selected drillable container drills into it, M16.4's own keyboard
+ * equivalent, arrow-key nudge — drag-to-move's own keyboard equivalent, Delete/Backspace,
+ * Ctrl/Cmd+A select-all — marquee's own keyboard equivalent) — see
+ * docs/07-accessibility.md#canvas-the-hard-20, a hard requirement this class must keep meeting,
+ * not just replicate incidentally. Resize's own keyboard equivalent is the Properties panel's
+ * typed X/Y/W/H fields (`InspectorPanel.tsx`), which predate this gesture and already cover it —
+ * mirroring how M16.1 found arrow-key nudge already covered drag-to-move; no new keyboard code was
+ * needed for resize either.
  *
  * Built on Pointer Events with `setPointerCapture` (D27, docs/00-decision-log.md) so a drag
  * survives the cursor leaving the container.
@@ -117,6 +129,11 @@ export class CanvasController {
   private dragState: DragState | undefined;
   private resizeState: ResizeState | undefined;
   private marqueeState: MarqueeState | undefined;
+  /** Ancestor-to-innermost chain of containers currently drilled into (M16.4) — a persistent
+   * scope that coexists with `mode` rather than replacing it (you can still drag/resize/marquee
+   * while drilled), so it's tracked and emitted separately from CanvasMode. */
+  private drillPath: ElementId[] = [];
+  private drillEmitter = new Emitter<{ change: ElementId[] }>();
   /** A completed element drag or resize still fires a trailing native `click` on release — this
    * swallows exactly that one, so it doesn't re-hit-test at the (now-moved-to/resized-to) release
    * point and stomp the selection the gesture itself already settled. */
@@ -136,6 +153,7 @@ export class CanvasController {
     this.container.addEventListener("pointerdown", this.handlePointerDown);
     this.container.addEventListener("pointerup", this.handlePointerUp);
     this.container.addEventListener("click", this.handleClick);
+    this.container.addEventListener("dblclick", this.handleDoubleClick);
     this.container.addEventListener("keydown", this.handleKeyDown);
     window.addEventListener("keydown", this.handleGlobalKeyDown);
   }
@@ -146,6 +164,7 @@ export class CanvasController {
     this.container.removeEventListener("pointerdown", this.handlePointerDown);
     this.container.removeEventListener("pointerup", this.handlePointerUp);
     this.container.removeEventListener("click", this.handleClick);
+    this.container.removeEventListener("dblclick", this.handleDoubleClick);
     this.container.removeEventListener("keydown", this.handleKeyDown);
     window.removeEventListener("keydown", this.handleGlobalKeyDown);
   }
@@ -156,6 +175,15 @@ export class CanvasController {
 
   onModeChange(listener: (mode: CanvasMode) => void): () => void {
     return this.modeEmitter.on("change", listener);
+  }
+
+  /** Outermost-to-innermost chain of containers currently drilled into (M16.4) — empty when none. */
+  getDrillPath(): ElementId[] {
+    return this.drillPath;
+  }
+
+  onDrillChange(listener: (path: ElementId[]) => void): () => void {
+    return this.drillEmitter.on("change", listener);
   }
 
   /** Suppresses all canvas keyboard handling — used while presentation mode owns the keyboard
@@ -195,6 +223,64 @@ export class CanvasController {
   private setMode(mode: CanvasMode): void {
     this.mode = mode;
     this.modeEmitter.emit("change", mode);
+  }
+
+  private setDrillPath(path: ElementId[]): void {
+    this.drillPath = path;
+    this.editor.setDrillPath(path);
+    this.drillEmitter.emit("change", path);
+  }
+
+  /** The innermost container currently drilled into, if any — the one whose own background arms
+   * a scoped marquee instead of a move (see handlePointerDown/updateMarquee). */
+  private drillScope(): ElementId | undefined {
+    return this.drillPath[this.drillPath.length - 1];
+  }
+
+  /** A container is drillable once it actually has something inside it — an empty box/zone/group
+   * has nothing a drilled marquee could reach, so entering it would be a no-op affordance. */
+  private canDrillInto(id: ElementId): boolean {
+    const el = this.editor.scene.get(id);
+    if (!el || !isDrillableContainerType(el)) return false;
+    return this.editor.scene.childrenOf(id).length > 0;
+  }
+
+  // Double-click to drill into a nested container (M16.4, docs/10-canvas-parity-plan.md — straight
+  // from IBM's own kit instructions: "make sure the inside bounding box is highlighted by double
+  // clicking on the inside shape"). Selects and focuses the double-clicked container itself (its
+  // own two preceding native clicks already did this; explicit here so it also holds for a
+  // synthetic dblclick with no preceding clicks, e.g. in tests) and pushes its drillable ancestor
+  // chain — outermost first, the container itself last — so every one of them renders a faint
+  // outline (SvgRenderer.setDrillPath) alongside whatever's actively selected inside it.
+  private enterDrill(containerId: ElementId): void {
+    const chain = [...this.editor.scene.ancestorsOf(containerId)]
+      .reverse()
+      .filter(isDrillableContainerType)
+      .map((el) => el.id);
+    chain.push(containerId);
+    this.setDrillPath(chain);
+    this.editor.selection.set([containerId]);
+    this.editor.focusElement(containerId);
+  }
+
+  private handleDoubleClick = (event: MouseEvent): void => {
+    if (this.mode.kind !== "idle") return;
+    const point = this.toScenePoint(event.clientX, event.clientY);
+    if (!point) return;
+    const hit = hitTest(this.editor.scene, point);
+    if (!hit || !this.canDrillInto(hit.id)) return;
+    if (this.drillScope() === hit.id) return; // already drilled all the way into this one
+    this.enterDrill(hit.id);
+  };
+
+  /** Escape's drill-exit (M16.4): pops one level, re-selecting whatever's now the innermost
+   * remaining container — mirroring how stepping "out" of a nested scope also steps the active
+   * selection back out to its containing level, not just shrinking the faint-outline chain. */
+  private stepOutOfDrill(): void {
+    const next = this.drillPath.slice(0, -1);
+    this.setDrillPath(next);
+    const newInner = next[next.length - 1];
+    this.editor.selection.set(newInner ? [newInner] : []);
   }
 
   private svg(): SVGSVGElement | null {
@@ -359,11 +445,13 @@ export class CanvasController {
     // trailing click, same as before marquee existed.
     if (hit && hit.type === "connector") return;
 
-    if (!hit || hit.type === "frame") {
-      // Empty canvas, or a Frame's own background: Frame has no drag semantics (D25) so a
-      // press-drag starting on one is unambiguously a marquee, not a move — otherwise a Frame
-      // spanning most of the canvas (its usual presentation-sectioning role) would make it
-      // impossible to rubber-band select anything inside it.
+    if (!hit || hit.type === "frame" || hit.id === this.drillScope()) {
+      // Empty canvas, a Frame's own background (Frame has no drag semantics, D25), or the
+      // background of the container currently drilled into (M16.4): in all three cases a
+      // press-drag starting there is unambiguously a marquee, not a move — otherwise dragging the
+      // drilled container's own body would make it impossible to rubber-band select its contents,
+      // exactly the problem Frame's carve-out already solves for the "spans most of the canvas"
+      // case.
       this.marqueeState = {
         pointerId: event.pointerId,
         startClient: { x: event.clientX, y: event.clientY },
@@ -425,7 +513,17 @@ export class CanvasController {
     // Fully-enclosed only (Decisions taken, docs/10-canvas-parity-plan.md), matching draw.io and
     // Excalidraw — safest in dense nested diagrams where intersect-mode would constantly grab the
     // enclosing Box/Zone instead of what's inside it.
-    const enclosedIds = hitTestRect(this.editor.scene, rect).map((el) => el.id);
+    let enclosed = hitTestRect(this.editor.scene, rect);
+    // Drilled in (M16.4): a rubber-band drawn while working inside a container should only ever
+    // reach that container's own contents, even if it happens to also enclose something outside
+    // it — the whole point of drilling in is to scope the working set to what's inside.
+    const scope = this.drillScope();
+    if (scope) {
+      enclosed = enclosed.filter((el) =>
+        this.editor.scene.isSelfOrDescendant(scope, el.id),
+      );
+    }
+    const enclosedIds = enclosed.map((el) => el.id);
     this.editor.selection.set(
       marquee.additive
         ? [...new Set([...marquee.preSelection, ...enclosedIds])]
@@ -634,7 +732,14 @@ export class CanvasController {
       this.setMode({ kind: "idle" });
       return;
     }
-    if (this.mode.kind === "placing") this.cancelPlacement();
+    if (this.mode.kind === "placing") {
+      this.cancelPlacement();
+      return;
+    }
+    // Drill step-out (M16.4): only once nothing else claimed this Escape — a gesture in progress
+    // or an armed placement takes priority, matching how those checks above already order
+    // themselves from most to least transient.
+    if (this.drillPath.length > 0) this.stepOutOfDrill();
   };
 
   // Keyboard-operable canvas (docs/07-accessibility.md#canvas-the-hard-20). Tab/Shift+Tab move
@@ -702,6 +807,22 @@ export class CanvasController {
     if (event.key === "Enter" || event.key === " ") {
       if (!focusedId) return;
       event.preventDefault();
+      // Enter on an already-selected, already-focused drillable container is the keyboard
+      // equivalent of the second click in a double-click (D19): the first Enter selects it (the
+      // branch below, same as any other element), a second Enter drills into it. Space stays
+      // pure toggle-selection, never drills — mirroring how the mouse path only drills on an
+      // actual double-click, not two separate single clicks.
+      if (
+        event.key === "Enter" &&
+        !event.shiftKey &&
+        this.editor.selection.get().length === 1 &&
+        this.editor.selection.isSelected(focusedId) &&
+        this.drillScope() !== focusedId &&
+        this.canDrillInto(focusedId)
+      ) {
+        this.enterDrill(focusedId);
+        return;
+      }
       if (event.shiftKey) this.editor.selection.toggle(focusedId);
       else this.editor.selection.set([focusedId]);
       return;

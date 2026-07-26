@@ -338,8 +338,36 @@ realistic diagram.
   Ctrl/Cmd+A (selects every scene element, connectors and Frames included, matching what a click or
   marquee can already reach) — genuinely new code, unlike M16.1/M16.2's nudge/Properties-panel
   reuse, since nothing pre-existing covered "select everything."
-- ⬜ **Double-click to drill into a nested container**, Escape to step back out, with **both bounding
-  boxes rendered** — the parent faint, the child active (IBM's prescribed model).
+- ✅ **Double-click to drill into a nested container**, Escape to step back out, with **both
+  bounding boxes rendered** — the parent faint, the child active (IBM's prescribed model). Unlike
+  drag/resize/marquee, drilling isn't a transient gesture — it's a persistent scope you can still
+  drag/resize/marquee _inside_ of — so it's tracked as its own `drillPath: ElementId[]` on
+  `CanvasController` (outermost container first) rather than a new `CanvasMode` variant, emitted
+  via a separate `onDrillChange`. Double-clicking a Box/Zone/Group that actually has children (an
+  empty one has nothing a drilled marquee could reach, so it's excluded) selects and focuses it,
+  then pushes its full drillable-ancestor chain; each entry in the chain renders a new faint,
+  undashed `SvgRenderer.setDrillPath()` outline (`stroke-opacity: 0.35`, no inset) _alongside_ —
+  not instead of — the existing active-selection outline, satisfying "both bounding boxes at once"
+  without new selection-outline code. Frame is excluded from drilling for the same reason it's
+  excluded from drag/hover-ports/connect-mode elsewhere in this class: a presentation-sectioning
+  background, not an IBM containment primitive (D24).
+
+  The functional payoff, not just the visual one: while drilled into container X, a press-drag
+  starting on X's own background now arms a marquee scoped to X's own descendants (via
+  `scene.isSelfOrDescendant`) instead of moving X — mirroring the Frame carve-out marquee selection
+  already needed, generalized to "the thing you're currently working inside of has no drag
+  semantics of its own right now." Without this, dragging a fully-packed container's background
+  would always move the container, with no way to rubber-band-select its contents. Escape pops one
+  level off the drill path and re-selects whatever's now innermost (or clears selection entirely
+  once back at the root) — "step back out" moves the active selection outward a level, not just
+  the faint-outline chain. Keyboard equivalent: a second Enter on an already-selected, already-
+  focused drillable container drills into it (mirroring the two clicks in a double-click); Space is
+  deliberately left as pure toggle-selection, never drilling, so the two keys stay distinguishable.
+  Plain single-click hit-testing needed no changes at all — M15's C9 fix already always resolves to
+  the deepest element under the pointer, so reaching a nested element directly never required
+  drilling; this milestone's drill scope is about the marquee/background-drag semantics and the
+  dual-outline affordance, not reachability.
+
 - ⬜ Clipboard: copy / cut / paste / duplicate, Alt+drag to clone, paste-at-cursor.
 - ⬜ Right-click context menus, contextual to the hit target.
 - ⬜ Alt+click to select through to an occluded element.

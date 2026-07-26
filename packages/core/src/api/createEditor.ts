@@ -959,6 +959,11 @@ export class Editor {
     this.renderer.setMarqueeRect(rect);
   }
 
+  /** Faint outline(s) for the container(s) currently drilled into (M16.4) — pass `[]` to clear. */
+  setDrillPath(ids: ElementId[]): void {
+    this.renderer.setDrillPath(ids);
+  }
+
   destroy(): void {
     this.resizeObserver?.disconnect();
     this.renderer.destroy();

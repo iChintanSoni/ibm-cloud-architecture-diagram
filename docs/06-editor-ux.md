@@ -45,6 +45,11 @@ custom SVG engine ([D3](00-decision-log.md#d3--svg-dom-rendering--locked)). Ever
 - **Selection:** click, shift-click, keyboard Enter/Shift+Enter, drag a marquee over empty canvas
   or a Frame's background (fully-enclosed elements only; Shift adds to the existing selection), or
   Ctrl/Cmd+A to select everything. No align/distribute/z-order commands yet.
+- **Drilling into a container:** double-click a Box/Zone/Group that has children (or press Enter a
+  second time on an already-selected one) to drill into it — its own bounding box, and every
+  container above it, render a faint outline alongside the active selection (IBM's own prescribed
+  "both bounding boxes visible" model). While drilled in, a press-drag on that container's own
+  background rubber-bands its contents instead of moving it. Escape steps back out one level.
 - **Snapping:** connector ports, plus grid/sibling-edge/16px-inset snapping live during a
   drag-to-move (M16.1) — alignment guide lines aren't drawn yet (M17). Resize doesn't snap yet either.
 - **Undo/redo:** unlimited within a session, backed by the command bus.

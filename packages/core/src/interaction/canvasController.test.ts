@@ -63,6 +63,22 @@ function click(
   );
 }
 
+function dblclick(
+  target: EventTarget,
+  x: number,
+  y: number,
+  opts: Partial<MouseEventInit> = {},
+): void {
+  target.dispatchEvent(
+    new MouseEvent("dblclick", {
+      bubbles: true,
+      clientX: x,
+      clientY: y,
+      ...opts,
+    }),
+  );
+}
+
 function keydown(
   target: EventTarget,
   key: string,
@@ -657,6 +673,196 @@ describe("CanvasController", () => {
       drag(container, 500, 500, 600, 600);
 
       expect(controller.getMode()).toEqual({ kind: "connecting", fromId: a });
+    });
+  });
+
+  describe("double-click to drill into a nested container (M16.4, docs/10-canvas-parity-plan.md)", () => {
+    it("double-clicking a container's own background drills into it, selecting it and pushing its own faint outline", () => {
+      const box = editor.addBox({
+        at: { x: 0, y: 0 },
+        w: 100,
+        h: 100,
+        label: "box",
+      });
+      editor.addIcon("test/vpc", { at: { x: 60, y: 60 }, parentId: box });
+
+      // (10,10) is inside box's bbox but clear of the icon's (60,60)-(80,80) footprint.
+      dblclick(container, 10, 10);
+
+      expect(controller.getDrillPath()).toEqual([box]);
+      expect(editor.selection.get()).toEqual([box]);
+      expect(
+        container.querySelector(`[data-icad-drill-outline="${box}"]`),
+      ).not.toBeNull();
+    });
+
+    it("drilling into a nested child pushes the full ancestor chain, outermost first", () => {
+      const outer = editor.addBox({
+        at: { x: 0, y: 0 },
+        w: 200,
+        h: 200,
+        label: "outer",
+      });
+      const inner = editor.addZone({
+        at: { x: 20, y: 20 },
+        w: 100,
+        h: 100,
+        parentId: outer,
+        label: "inner",
+        zoneKind: "az",
+      });
+      editor.addIcon("test/vpc", { at: { x: 60, y: 60 }, parentId: inner });
+
+      // (30,30) is inside inner's bbox but clear of the icon.
+      dblclick(container, 30, 30);
+
+      expect(controller.getDrillPath()).toEqual([outer, inner]);
+      expect(editor.selection.get()).toEqual([inner]);
+    });
+
+    it("does nothing for a container with no children, a leaf element, empty canvas, or a Frame", () => {
+      const empty = editor.addBox({
+        at: { x: 0, y: 0 },
+        w: 50,
+        h: 50,
+        label: "empty",
+      });
+      const icon = editor.addIcon("test/vpc", { at: { x: 200, y: 0 } });
+      editor.addFrame({ at: { x: 0, y: 200 }, name: "Section" });
+
+      dblclick(container, 25, 25); // empty box
+      expect(controller.getDrillPath()).toEqual([]);
+
+      dblclick(container, 205, 5); // leaf icon
+      expect(controller.getDrillPath()).toEqual([]);
+
+      dblclick(container, 900, 900); // empty canvas
+      expect(controller.getDrillPath()).toEqual([]);
+
+      dblclick(container, 10, 210); // Frame background
+      expect(controller.getDrillPath()).toEqual([]);
+      expect(editor.selection.get()).toEqual([]);
+      expect(empty).toBeDefined();
+      expect(icon).toBeDefined();
+    });
+
+    it("Escape steps back out one level at a time, re-selecting the containing level", () => {
+      const outer = editor.addBox({
+        at: { x: 0, y: 0 },
+        w: 200,
+        h: 200,
+        label: "outer",
+      });
+      const inner = editor.addZone({
+        at: { x: 20, y: 20 },
+        w: 100,
+        h: 100,
+        parentId: outer,
+        label: "inner",
+        zoneKind: "az",
+      });
+      editor.addIcon("test/vpc", { at: { x: 60, y: 60 }, parentId: inner });
+      dblclick(container, 30, 30);
+      expect(controller.getDrillPath()).toEqual([outer, inner]);
+
+      keydown(window, "Escape");
+      expect(controller.getDrillPath()).toEqual([outer]);
+      expect(editor.selection.get()).toEqual([outer]);
+
+      keydown(window, "Escape");
+      expect(controller.getDrillPath()).toEqual([]);
+      expect(editor.selection.get()).toEqual([]);
+    });
+
+    it("a press-drag on the drilled container's own background arms a marquee scoped to its contents", () => {
+      const box = editor.addBox({
+        at: { x: 0, y: 0 },
+        w: 200,
+        h: 200,
+        label: "box",
+      });
+      const inside = editor.addIcon("test/vpc", {
+        at: { x: 20, y: 20 },
+        parentId: box,
+      });
+      // Outside the box entirely (a sibling, not a descendant), but still fully enclosed by the
+      // rubber-band rect drawn below — geometry alone would select it too, if not for scoping.
+      const outside = editor.addBox({
+        at: { x: 100, y: 250 },
+        w: 30,
+        h: 30,
+        label: "outside",
+      });
+      dblclick(container, 5, 5); // drills into box (its background, clear of `inside`)
+      expect(controller.getDrillPath()).toEqual([box]);
+
+      // Press starts on box's own background (not on `inside`), so this arms a scoped marquee
+      // rather than moving box — and the rect (5,5)-(150,300) fully encloses both `inside`
+      // (20,20)-(68,68) and the unrelated `outside` (100,250)-(130,280).
+      drag(container, 5, 5, 150, 300);
+
+      expect(controller.getMode()).toEqual({ kind: "idle" });
+      expect(editor.selection.get()).toEqual([inside]);
+      expect(editor.selection.isSelected(outside)).toBe(false);
+      // Drilling didn't turn the container itself into something un-draggable in general — only
+      // scoped this one gesture; box's own geometry is untouched (a move would have changed it).
+      expect(editor.scene.get(box)).toMatchObject({ x: 0, y: 0 });
+    });
+
+    it("a second Enter on an already-selected, focused drillable container drills into it", () => {
+      const box = editor.addBox({
+        at: { x: 0, y: 0 },
+        w: 100,
+        h: 100,
+        label: "box",
+      });
+      editor.addIcon("test/vpc", { at: { x: 60, y: 60 }, parentId: box });
+      editor.focusElement(box);
+
+      keydown(container, "Enter"); // first Enter: selects
+      expect(editor.selection.get()).toEqual([box]);
+      expect(controller.getDrillPath()).toEqual([]);
+
+      keydown(container, "Enter"); // second Enter: drills in
+      expect(controller.getDrillPath()).toEqual([box]);
+      expect(editor.selection.get()).toEqual([box]);
+    });
+
+    it("Space never drills, even when the focused element is already selected", () => {
+      const box = editor.addBox({
+        at: { x: 0, y: 0 },
+        w: 100,
+        h: 100,
+        label: "box",
+      });
+      editor.addIcon("test/vpc", { at: { x: 60, y: 60 }, parentId: box });
+      editor.focusElement(box);
+      editor.selection.set([box]);
+
+      keydown(container, " ");
+
+      expect(controller.getDrillPath()).toEqual([]);
+      expect(editor.selection.get()).toEqual([box]); // unchanged — plain Space just re-selects
+    });
+
+    it("emits drill-path changes via onDrillChange", () => {
+      const box = editor.addBox({
+        at: { x: 0, y: 0 },
+        w: 100,
+        h: 100,
+        label: "box",
+      });
+      editor.addIcon("test/vpc", { at: { x: 60, y: 60 }, parentId: box });
+      const paths: string[][] = [];
+      const unsubscribe = controller.onDrillChange((path) =>
+        paths.push([...path]),
+      );
+
+      dblclick(container, 10, 10);
+      keydown(window, "Escape");
+
+      expect(paths).toEqual([[box], []]);
+      unsubscribe();
     });
   });
 

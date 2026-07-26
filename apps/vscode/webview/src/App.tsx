@@ -50,6 +50,9 @@ export function App() {
   const canvasRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<Editor | null>(null);
   const controllerRef = useRef<CanvasController | null>(null);
+  // Only used to diff against the next onDrillChange path (grew = entered, shrank = exited) —
+  // not state, since nothing here needs to trigger a re-render.
+  const drillPathRef = useRef<ElementId[]>([]);
   const [catalog] = useState(createIbmCloudCatalog);
 
   const { kind: themeKind, carbonTheme } = useVsCodeTheme();
@@ -148,6 +151,23 @@ export function App() {
       // it ended (a completed click, or Escape from anywhere).
       if (mode.kind !== "placing") setActiveLibraryPlacement(undefined);
     });
+    // Double-click/Enter drill and Escape step-out (M16.4) are each a discrete, meaningful change
+    // (not a continuous gesture like drag/resize/marquee, which stay silent), so — like
+    // onConnected/onDeleted above — this is worth its own live-region announcement.
+    const unsubscribeDrill = controller.onDrillChange((path) => {
+      const previous = drillPathRef.current;
+      drillPathRef.current = path;
+      if (path.length > previous.length) {
+        const el = editor.scene.get(path[path.length - 1]!);
+        if (el) announce(`Entered ${elementDisplayName(el)}`);
+      } else if (path.length < previous.length) {
+        const id = path[path.length - 1];
+        const el = id ? editor.scene.get(id) : undefined;
+        announce(
+          el ? `Exited to ${elementDisplayName(el)}` : "Exited to canvas",
+        );
+      }
+    });
 
     const unsubscribeChange = editor.on(() => {
       setElements(editor.scene.all());
@@ -198,6 +218,7 @@ export function App() {
       unsubscribeDispatch();
       unsubscribeHost();
       unsubscribeMode();
+      unsubscribeDrill();
       controller.destroy();
       controllerRef.current = null;
       editor.destroy();

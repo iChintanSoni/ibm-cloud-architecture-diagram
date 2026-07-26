@@ -789,8 +789,8 @@ the same `CanvasController` with no shell-local interaction code.
 
 #### M16 — The core loop
 
-🟡 **In progress** — M16.1 (drag-to-move), M16.2 (8-handle resize), and M16.3 (marquee selection +
-Ctrl/Cmd+A) have landed; see
+🟡 **In progress** — M16.1 (drag-to-move), M16.2 (8-handle resize), M16.3 (marquee selection +
+Ctrl/Cmd+A), and M16.4 (double-click to drill into a nested container) have landed; see
 [Canvas parity plan → M16](10-canvas-parity-plan.md#m16--the-core-loop).
 
 Drag-to-move, 8-handle resize, marquee (fully-enclosed), select-all, clipboard
@@ -835,7 +835,18 @@ follow-up.
    the pre-drag selection instead of replacing it, and Escape restores that snapshot. Ctrl/Cmd+A
    is genuinely new keyboard code (unlike M16.1/M16.2's nudge/Properties-panel reuse) since nothing
    pre-existing covered "select everything."
-4. ⬜ Double-click to drill into a nested container, both bounding boxes shown, Escape to step out.
+4. ✅ **Double-click to drill into a nested container**, both bounding boxes shown, Escape to step
+   out. Tracked as its own `drillPath` on `CanvasController` (a persistent scope, not a
+   `CanvasMode`, since you can still drag/resize/marquee while drilled) rather than changing what a
+   plain click resolves to — M15's C9 fix already always hit-tests to the deepest element, so
+   reaching a nested child directly never needed drilling. The functional change is what a
+   press-drag on the drilled container's own background now does: it arms a marquee scoped to that
+   container's descendants instead of moving it, generalizing the Frame carve-out M16.3 already
+   needed. `SvgRenderer.setDrillPath()` renders each ancestor in the chain as a new faint,
+   undashed outline alongside (not instead of) the existing active-selection outline, so both
+   render at once per IBM's prescribed model. Keyboard parity: a second Enter on an
+   already-selected, already-focused drillable container drills into it, mirroring the two clicks
+   in a double-click; Space stays pure toggle-selection and never drills.
 5. ⬜ Clipboard: copy/cut/paste/duplicate, Alt-drag clone, paste-at-cursor.
 6. ⬜ Right-click context menus.
 7. ⬜ Alt+click select-through to an occluded element.
