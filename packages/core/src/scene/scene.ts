@@ -24,6 +24,10 @@ type SceneEvents = { change: SceneChangeEvent };
 export class Scene {
   private elements = new Map<ElementId, SceneElement>();
   private emitter = new Emitter<SceneEvents>();
+  private batching = false;
+  private batchedIds = new Set<ElementId>();
+  private batchedReasons = new Set<SceneChangeEvent["reason"]>();
+  private batchedDirty = false;
 
   meta: DocumentMeta;
   canvas: CanvasSettings;
@@ -112,24 +116,70 @@ export class Scene {
     return result;
   }
 
+  /**
+   * Defers every `_put`/`_remove`/`_replaceAll`/`_setConformance` change-event emission inside
+   * `fn` into a single coalesced event fired after it returns, instead of one event per call. A
+   * command that touches N elements (move-with cascade, cascading delete, ...) previously
+   * triggered N full render+lint passes via the `scene.on()` subscription — one per `_put` — which
+   * dominated the cost of every multi-element gesture (C13, docs/10-canvas-parity-plan.md). Only
+   * `CommandBus` calls this, wrapping each `do()`/`undo()`. Reentrant: a transaction started while
+   * already inside one just runs `fn()` against the outer buffer rather than flushing early, so a
+   * `batch()`'s per-sub-command writes all land in one coalesced event.
+   */
+  _transaction<T>(fn: () => T): T {
+    if (this.batching) return fn();
+    this.batching = true;
+    this.batchedIds = new Set();
+    this.batchedReasons = new Set();
+    this.batchedDirty = false;
+    try {
+      return fn();
+    } finally {
+      this.batching = false;
+      if (this.batchedDirty) {
+        const reason: SceneChangeEvent["reason"] =
+          this.batchedReasons.size === 1 ? [...this.batchedReasons][0]! : "replace";
+        this.emitter.emit("change", { reason, ids: [...this.batchedIds] });
+      }
+    }
+  }
+
   /** Internal write used by commands. Not exported outside the package. */
   _put(el: SceneElement, reason: SceneChangeEvent["reason"] = "add"): void {
     this.elements.set(el.id, el);
     this.meta.updatedAt = new Date().toISOString();
-    this.emitter.emit("change", { reason, ids: [el.id] });
+    if (this.batching) {
+      this.batchedIds.add(el.id);
+      this.batchedReasons.add(reason);
+      this.batchedDirty = true;
+    } else {
+      this.emitter.emit("change", { reason, ids: [el.id] });
+    }
   }
 
   _remove(id: ElementId): void {
     if (!this.elements.delete(id)) return;
     this.meta.updatedAt = new Date().toISOString();
-    this.emitter.emit("change", { reason: "remove", ids: [id] });
+    if (this.batching) {
+      this.batchedIds.add(id);
+      this.batchedReasons.add("remove");
+      this.batchedDirty = true;
+    } else {
+      this.emitter.emit("change", { reason: "remove", ids: [id] });
+    }
   }
 
   _replaceAll(elements: SceneElement[]): void {
     this.elements.clear();
     for (const el of elements) this.elements.set(el.id, el);
     this.meta.updatedAt = new Date().toISOString();
-    this.emitter.emit("change", { reason: "replace", ids: elements.map((e) => e.id) });
+    if (this.batching) {
+      for (const el of elements) this.batchedIds.add(el.id);
+      this.batchedReasons.add("replace");
+      this.batchedDirty = true;
+    } else {
+      this.emitter.emit("change", { reason: "replace", ids: elements.map((e) => e.id) });
+    }
   }
 
   /** Internal settings write used by commands so configuration is undoable. */
@@ -139,6 +189,11 @@ export class Scene {
       ruleSeverities: { ...settings.ruleSeverities }
     };
     this.meta.updatedAt = new Date().toISOString();
-    this.emitter.emit("change", { reason: "update", ids: [] });
+    if (this.batching) {
+      this.batchedReasons.add("update");
+      this.batchedDirty = true;
+    } else {
+      this.emitter.emit("change", { reason: "update", ids: [] });
+    }
   }
 }

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { Scene } from "../scene/scene.js";
 import type { BoxElement, ConnectorElement } from "../scene/types.js";
 import { CommandBus } from "./commandBus.js";
@@ -260,6 +260,31 @@ describe("CommandBus", () => {
     bus.dispatch(moveElements(scene, ["b"], 0, 100));
 
     expect((scene.get("c1") as ConnectorElement).waypoints).toEqual(manualWaypoints);
+  });
+
+  it("coalesces a move-with cascade + reroute into one scene change event per dispatch/undo/redo", () => {
+    const scene = new Scene();
+    const bus = new CommandBus(scene);
+    bus.dispatch(addElement(box("parent")));
+    bus.dispatch(addElement(box("child-1", "parent")));
+    bus.dispatch(addElement(box("child-2", "parent")));
+    bus.dispatch(addElement(box("outsider")));
+    bus.dispatch(addElement(connector("c1", "child-1", "outsider")));
+
+    const listener = vi.fn();
+    scene.on(listener);
+
+    bus.dispatch(moveElements(scene, ["parent"], 10, 20));
+    expect(listener).toHaveBeenCalledTimes(1);
+    const dispatchIds = new Set(listener.mock.calls[0]?.[0]?.ids as string[]);
+    // parent + both children moved, plus the rerouted connector — all in the one coalesced event.
+    expect(dispatchIds).toEqual(new Set(["parent", "child-1", "child-2", "c1"]));
+
+    bus.undo();
+    expect(listener).toHaveBeenCalledTimes(2);
+
+    bus.redo();
+    expect(listener).toHaveBeenCalledTimes(3);
   });
 
   it("re-routes an auto connector attached to a resized element via updateElement", () => {

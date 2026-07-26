@@ -325,6 +325,46 @@ describe("IBM published visual golden fixtures", () => {
     expect(attributes(noIconLabel)).toMatchObject({ x: "12", y: "327", fill: "#161616" });
   });
 
+  it("renders a Box's and a Zone's own label beside their corner icon too, not just Group's (C7)", () => {
+    // Regression test: this positioning was originally built for Group only — Box and Zone fell
+    // through to the generic bottom-center labelText() instead, confirmed wrong against IBM's own
+    // iks_sr_mz_vpc reference (every container's title sits top-left beside its icon there,
+    // including Region/IBM Cloud/Subnet, all Box, and Zone 1, a Zone).
+    scene._put({
+      id: "region",
+      type: "box",
+      semantic: "deployedOn",
+      catalogRef: "fixture/server",
+      x: 0,
+      y: 0,
+      w: 300,
+      h: 200,
+      label: { text: "Region" },
+      style: { stroke: "#878d96" }
+    });
+    scene._put({
+      id: "zone-1",
+      type: "zone",
+      semantic: "boundary",
+      zoneKind: "az",
+      catalogRef: "fixture/server",
+      x: 0,
+      y: 300,
+      w: 300,
+      h: 200,
+      label: { text: "Zone 1" }
+    });
+    renderer.render(scene);
+
+    const boxLabel = renderer.nodeFor("region")?.querySelector("text");
+    expect(attributes(boxLabel)).toMatchObject({ x: "40", y: "27", fill: "#161616" });
+    expect(boxLabel?.textContent).toBe("Region");
+
+    const zoneLabel = renderer.nodeFor("zone-1")?.querySelector("text");
+    expect(attributes(zoneLabel)).toMatchObject({ x: "40", y: "327", fill: "#161616" });
+    expect(zoneLabel?.textContent).toBe("Zone 1");
+  });
+
   it("renders reference-backed public/private and bidirectional/unidirectional endpoints", () => {
     for (const y of [40, 120]) {
       scene._put({

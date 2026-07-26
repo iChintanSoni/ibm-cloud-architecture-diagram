@@ -754,7 +754,8 @@ exactly one undo entry, and runs the linter exactly once; all three shells drive
 the same `CanvasController` with no shell-local interaction code.
 
 #### M16 — The core loop
-⬜ **Not started**
+🟡 **In progress** — the first slice landed as M16.1; see
+[Canvas parity plan → M16](10-canvas-parity-plan.md#m16--the-core-loop).
 
 Drag-to-move, 8-handle resize, marquee (fully-enclosed), select-all, clipboard
 (copy/cut/paste/duplicate/Alt-drag clone), context menus, Alt+click select-through, and
@@ -763,6 +764,25 @@ straight from the kit's own "Prescribed location / Scaling elements" instruction
 Every gesture ships with its keyboard equivalent in the same PR;
 [D19](00-decision-log.md#d19--full-ibm-equal-access--wcag-21-aa--locked) is a requirement, not a
 follow-up.
+
+1. ✅ **Drag-to-move.** `CanvasController` migrated from mouse to Pointer Events with
+   `setPointerCapture` (D27) and gained its first `dragging` mode: a drag threshold, Shift
+   axis-lock, Escape-to-abort, and live snapping (grid/sibling/16px inset via M15's `snapMove()`,
+   wired into a real gesture for the first time) — built on `Editor.beginInteraction()`/
+   `SvgRenderer.previewTransform()` (D26), also their first real caller. Alongside it, fixed a
+   perf gap the drag would otherwise have made painfully visible: `Scene._transaction()` now
+   coalesces every `_put`/`_remove` a single command makes into one change event instead of one
+   per element, and `createEditor.ts`'s subscription repaints just the affected ids
+   (`SvgRenderer.renderElements()`, extended to also repaint any attached connector and resync tab
+   order) instead of the whole scene for a position-only change — see C13 in the
+   [canvas parity plan](10-canvas-parity-plan.md#confirmed-defects), now resolved. Keyboard parity
+   for this gesture was already satisfied by M8's arrow-key nudge; no new keyboard code was needed.
+2. ⬜ 8-handle resize (Shift aspect-lock, Alt resize-from-center).
+3. ⬜ Marquee selection (fully-enclosed) and Ctrl/Cmd+A.
+4. ⬜ Double-click to drill into a nested container, both bounding boxes shown, Escape to step out.
+5. ⬜ Clipboard: copy/cut/paste/duplicate, Alt-drag clone, paste-at-cursor.
+6. ⬜ Right-click context menus.
+7. ⬜ Alt+click select-through to an occluded element.
 
 #### M17 — The feedback layer
 ⬜ **Not started**

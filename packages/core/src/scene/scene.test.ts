@@ -88,4 +88,88 @@ describe("Scene", () => {
     expect(listener.mock.calls[1]?.[0]).toMatchObject({ reason: "remove", ids: ["a"] });
     expect(listener.mock.calls[2]?.[0]).toMatchObject({ reason: "replace", ids: ["b"] });
   });
+
+  describe("_transaction", () => {
+    it("coalesces every _put inside the callback into one change event covering all ids", () => {
+      const scene = new Scene();
+      scene._put(box("a"));
+      scene._put(box("b"));
+      scene._put(box("c"));
+      const listener = vi.fn();
+      scene.on(listener);
+
+      scene._transaction(() => {
+        scene._put({ ...scene.get("a")!, x: 5 }, "update");
+        scene._put({ ...scene.get("b")!, x: 5 }, "update");
+        scene._put({ ...scene.get("c")!, x: 5 }, "update");
+      });
+
+      expect(listener).toHaveBeenCalledTimes(1);
+      const event = listener.mock.calls[0]?.[0];
+      expect(event.reason).toBe("update");
+      expect([...event.ids].sort()).toEqual(["a", "b", "c"]);
+    });
+
+    it("does not flush early for a nested transaction", () => {
+      const scene = new Scene();
+      scene._put(box("a"));
+      const listener = vi.fn();
+      scene.on(listener);
+
+      scene._transaction(() => {
+        scene._transaction(() => {
+          scene._put({ ...scene.get("a")!, x: 1 }, "update");
+        });
+        expect(listener).not.toHaveBeenCalled();
+        scene._put({ ...scene.get("a")!, x: 2 }, "update");
+      });
+
+      expect(listener).toHaveBeenCalledTimes(1);
+    });
+
+    it("still flushes a conformance-only transaction, whose ids stay empty", () => {
+      const scene = new Scene();
+      const listener = vi.fn();
+      scene.on(listener);
+
+      scene._transaction(() => {
+        scene._setConformance({ exportGate: "block", ruleSeverities: {} });
+      });
+
+      expect(listener).toHaveBeenCalledTimes(1);
+      expect(listener.mock.calls[0]?.[0]).toMatchObject({ reason: "update", ids: [] });
+    });
+
+    it("reports 'replace' when the buffered calls mix reasons", () => {
+      const scene = new Scene();
+      scene._put(box("a"));
+      const listener = vi.fn();
+      scene.on(listener);
+
+      scene._transaction(() => {
+        scene._put(box("b"), "add");
+        scene._put({ ...scene.get("a")!, x: 1 }, "update");
+      });
+
+      expect(listener.mock.calls[0]?.[0]).toMatchObject({ reason: "replace" });
+    });
+
+    it("still flushes if fn throws, and resets batching state for the next transaction", () => {
+      const scene = new Scene();
+      const listener = vi.fn();
+      scene.on(listener);
+
+      expect(() =>
+        scene._transaction(() => {
+          scene._put(box("a"));
+          throw new Error("boom");
+        })
+      ).toThrow("boom");
+      expect(listener).toHaveBeenCalledTimes(1);
+      expect(listener.mock.calls[0]?.[0]).toMatchObject({ reason: "add", ids: ["a"] });
+
+      scene._put(box("b"));
+      expect(listener).toHaveBeenCalledTimes(2);
+    });
+  });
 });

@@ -50,6 +50,37 @@ function keydown(target: EventTarget, key: string, opts: Partial<KeyboardEventIn
   target.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key, ...opts }));
 }
 
+// jsdom 29.1.1 implements the PointerEvent constructor (clientX/clientY/pointerId all work) but
+// not setPointerCapture/hasPointerCapture/releasePointerCapture (all undefined) — confirmed by
+// inspection, not assumed; CanvasController guards every call to those three behind a typeof
+// check for exactly this reason, so a drag still runs end-to-end here despite the gap.
+function pointerEvent(
+  type: "pointerdown" | "pointermove" | "pointerup",
+  target: EventTarget,
+  x: number,
+  y: number,
+  opts: Partial<PointerEventInit> = {}
+): void {
+  target.dispatchEvent(
+    new PointerEvent(type, { bubbles: true, clientX: x, clientY: y, pointerId: 1, ...opts })
+  );
+}
+
+/** Drags from (x1,y1) to (x2,y2) via pointerdown/pointermove/pointerup, in one intermediate step
+ * past DRAG_THRESHOLD so tests don't need to know its exact value. */
+function drag(
+  target: EventTarget,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  opts: Partial<PointerEventInit> = {}
+): void {
+  pointerEvent("pointerdown", target, x1, y1, opts);
+  pointerEvent("pointermove", target, x2, y2, opts);
+  pointerEvent("pointerup", target, x2, y2, opts);
+}
+
 describe("CanvasController", () => {
   let container: HTMLDivElement;
   let editor: Editor;
@@ -140,6 +171,139 @@ describe("CanvasController", () => {
 
     expect(modes).toEqual(["placing", "idle"]);
     unsubscribe();
+  });
+
+  describe("drag-to-move (M16.1, docs/10-canvas-parity-plan.md)", () => {
+    it("drags an element past the threshold, cascades to descendants, and lands one undo entry", () => {
+      // 96x96 (a multiple of the default 8px grid) so a well-clear-of-tolerance drag delta lands
+      // every candidate edge exactly on a grid line — snapMove (already unit-tested on its own,
+      // snapping.test.ts) is then a no-op here, keeping this test's numbers exact and predictable.
+      const parent = editor.addBox({ at: { x: 0, y: 0 }, w: 96, h: 96, label: "parent" });
+      // Inside parent's bbox but clear of the 48x48 child's (20,20)-(68,68) footprint, so the drag
+      // starts on parent, not the (deepest-containment-wins) child.
+      const child = editor.addIcon("test/vpc", { at: { x: 20, y: 20 }, parentId: parent });
+      const parentBefore = { ...editor.scene.get(parent)! };
+      const childBefore = { ...editor.scene.get(child)! };
+
+      drag(container, 8, 8, 40, 24); // dx=32, dy=16 — both multiples of 8, well past the threshold
+
+      expect(controller.getMode()).toEqual({ kind: "idle" });
+      const parentAfter = editor.scene.get(parent)!;
+      const childAfter = editor.scene.get(child)!;
+      expect(parentAfter).toMatchObject({ x: 32, y: 16 });
+      // Move-with: the child cascaded by the exact same delta as its parent.
+      expect(childAfter.x - childBefore.x).toBe(parentAfter.x - parentBefore.x);
+      expect(childAfter.y - childBefore.y).toBe(parentAfter.y - parentBefore.y);
+
+      // One undo reverts just the move; a second removes the child's own add — proving the drag
+      // landed as exactly one distinct undo step, not fused with or duplicated on top of the adds.
+      expect(editor.commands.undo()).toBe(true);
+      expect(editor.scene.get(parent)).toMatchObject(parentBefore);
+      expect(editor.scene.get(child)).toMatchObject(childBefore);
+      expect(editor.commands.undo()).toBe(true);
+      expect(editor.scene.get(child)).toBeUndefined();
+      expect(editor.scene.get(parent)).toBeDefined();
+    });
+
+    it("selects an unselected target immediately on pointerdown, before the drag completes", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
+      pointerEvent("pointerdown", container, 25, 25);
+      expect(editor.selection.get()).toEqual([a]);
+    });
+
+    it("dragging a member of an existing multi-selection keeps the whole selection, moving both", () => {
+      // snapMove snaps the *combined* bbox of a whole multi-selection (boundsOf spans both), not
+      // each element individually — 48x48 boxes on an 8px grid, 200px apart (also a multiple of
+      // 8), keep every edge of that combined bbox grid-aligned so a grid-multiple drag delta is a
+      // snap no-op, same reasoning as the cascade test above.
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 48, h: 48, label: "a" });
+      const b = editor.addBox({ at: { x: 200, y: 0 }, w: 48, h: 48, label: "b" });
+      editor.selection.set([a, b]);
+
+      drag(container, 8, 8, 24, 8); // dx=16 (a multiple of 8), starting inside a's bbox
+
+      expect(editor.selection.get().sort()).toEqual([a, b].sort());
+      expect(editor.scene.get(a)).toMatchObject({ x: 16, y: 0 });
+      expect(editor.scene.get(b)).toMatchObject({ x: 216, y: 0 });
+    });
+
+    it("a drag below the threshold dispatches nothing, and the trailing click still selects normally", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
+      drag(container, 25, 25, 26, 25); // dx=1 — short of DRAG_THRESHOLD (4)
+      click(container, 26, 25);
+
+      expect(editor.scene.get(a)).toMatchObject({ x: 0, y: 0 });
+      expect(editor.selection.get()).toEqual([a]);
+      // No move command was pushed on top of the box's own add: one undo removes the box itself.
+      expect(editor.commands.undo()).toBe(true);
+      expect(editor.scene.get(a)).toBeUndefined();
+      expect(editor.commands.canUndo()).toBe(false);
+    });
+
+    it("the trailing click after a real drag does not re-select at the release point", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
+      // Release lands over empty space — an unsuppressed click here would clear the selection.
+      drag(container, 25, 25, 500, 500);
+      click(container, 500, 500);
+
+      expect(editor.selection.get()).toEqual([a]);
+    });
+
+    it("Shift locks the drag to whichever axis has the larger raw delta", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
+      drag(container, 25, 25, 45, 33, { shiftKey: true }); // dx=20, dy=8 -> locks to x, dy forced 0
+
+      expect(editor.scene.get(a)).toMatchObject({ y: 0 });
+      expect(editor.scene.get(a)?.x).toBeGreaterThan(0);
+    });
+
+    it("Escape mid-drag aborts: no command dispatched, preview transform cleared", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
+      pointerEvent("pointerdown", container, 25, 25);
+      pointerEvent("pointermove", container, 60, 25);
+      expect(controller.getMode()).toEqual({ kind: "dragging" });
+
+      keydown(window, "Escape");
+
+      expect(controller.getMode()).toEqual({ kind: "idle" });
+      expect(editor.scene.get(a)).toMatchObject({ x: 0, y: 0 });
+      expect(container.querySelector(`[data-icad-id="${a}"]`)?.getAttribute("transform")).toBeNull();
+
+      // The pointerup that (in a real browser) still follows an aborted drag must be a no-op.
+      pointerEvent("pointerup", container, 60, 25);
+      expect(editor.scene.get(a)).toMatchObject({ x: 0, y: 0 });
+
+      // abort() pushed nothing on top of the box's own add: one undo removes the box itself.
+      expect(editor.commands.undo()).toBe(true);
+      expect(editor.scene.get(a)).toBeUndefined();
+      expect(editor.commands.canUndo()).toBe(false);
+    });
+
+    it("snaps to the grid during a live drag", () => {
+      // A 50x50 box's edges land a few px off-grid for almost any raw delta, so a small drag
+      // should engage grid-snap (snapMove's own exact tie-breaking among left/center/right
+      // candidates is snapping.test.ts's concern, not this one — asserting "landed on some grid
+      // line, not the raw unsnapped position" is the invariant this test actually owns).
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
+      drag(container, 25, 25, 30, 25); // dx=5 — within the default 6px snap tolerance
+
+      const after = editor.scene.get(a)!;
+      expect(after.x).not.toBe(5); // the raw, un-snapped delta
+      // snapMove aligns whichever edge (left/center/right) is nearest a grid line, not necessarily
+      // the box's own x — assert that invariant directly rather than guessing which edge wins.
+      expect([after.x, after.x + after.w / 2, after.x + after.w].some((v) => v % 8 === 0)).toBe(true);
+      expect(after.y).toBe(0);
+    });
+
+    it("does not arm a drag while connecting or placing", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
+      controller.armPlacement(() => {});
+
+      drag(container, 25, 25, 60, 25);
+
+      expect(editor.scene.get(a)).toMatchObject({ x: 0, y: 0 });
+      expect(controller.getMode()).toEqual({ kind: "placing" });
+    });
   });
 
   describe("keyboard operability (docs/07-accessibility.md#canvas-the-hard-20)", () => {

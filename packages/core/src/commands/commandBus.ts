@@ -13,7 +13,7 @@ export class CommandBus {
   constructor(private scene: Scene) {}
 
   dispatch(command: Command): void {
-    command.do(this.scene);
+    this.scene._transaction(() => command.do(this.scene));
     this.undoStack.push(command);
     this.redoStack = [];
     this.emitter.emit("dispatch", { command });
@@ -22,7 +22,7 @@ export class CommandBus {
   undo(): boolean {
     const command = this.undoStack.pop();
     if (!command) return false;
-    command.undo(this.scene);
+    this.scene._transaction(() => command.undo(this.scene));
     this.redoStack.push(command);
     return true;
   }
@@ -30,7 +30,7 @@ export class CommandBus {
   redo(): boolean {
     const command = this.redoStack.pop();
     if (!command) return false;
-    command.do(this.scene);
+    this.scene._transaction(() => command.do(this.scene));
     this.undoStack.push(command);
     return true;
   }

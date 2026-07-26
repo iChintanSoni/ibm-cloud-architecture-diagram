@@ -4,7 +4,7 @@ import type { Diagnostic, Severity } from "../linter/types.js";
 import { accessibleName, accessibleRole } from "../scene/accessibleName.js";
 import { formatConnectorAnnotation } from "../scene/connectorAnnotation.js";
 import type { Scene } from "../scene/scene.js";
-import type { ConnectorAnnotation, ConnectorElement, ConnectorType, GroupElement, SceneElement } from "../scene/types.js";
+import type { ConnectorAnnotation, ConnectorElement, ConnectorType, SceneElement } from "../scene/types.js";
 import { connectorPathPoints } from "../routing/routeConnector.js";
 import { PRIMARY_TO_SECONDARY_FILL } from "../theme/colorPalette.js";
 import { createSvgElement, setAttrs } from "./dom.js";
@@ -303,6 +303,14 @@ export class SvgRenderer {
     this.svg = createSvgElement("svg");
     setAttrs(this.svg, { width: "100%", height: "100%" });
     this.svg.setAttribute("data-icad-root", "true");
+    // Without this, a real mouse drag starting on or crossing a label (an SVG <text> node, e.g.
+    // "Application tier") triggers the browser's native text-selection highlight instead of (or
+    // alongside) drag-to-move (M16.1) — CDP-dispatched synthetic pointer events don't exercise the
+    // browser's selection machinery, so this was invisible to automated testing and only surfaced
+    // with a real mouse. Set on the SVG root, not per-shell CSS, so both `apps/web` and
+    // `apps/vscode` get it for free (D2, docs/00-decision-log.md).
+    this.svg.style.setProperty("user-select", "none");
+    this.svg.style.setProperty("-webkit-user-select", "none");
 
     const defs = createSvgElement("defs");
     for (const def of MARKER_DEFS) {
@@ -388,21 +396,39 @@ export class SvgRenderer {
   }
 
   /**
-   * Re-renders only the given elements from the scene's current committed state — e.g. after a
-   * targeted mutation where re-running full render()'s per-element pass over the whole scene
-   * would be wasteful. Skips add/remove reconciliation, DOM reordering, overlays, and tab-index
-   * sync, all of which full render() already owns; callers that also touch containment, z-order,
-   * or selection should call render() instead. A live (uncommitted) resize preview along these
-   * lines is left for M16 to design against this primitive, not solved here (C10,
-   * docs/10-canvas-parity-plan.md) — M15 is foundation-only.
+   * Re-renders only the given elements (plus any connector attached to one of them, added below)
+   * from the scene's current committed state — e.g. after a position-only mutation where
+   * re-running full render()'s per-element pass over the whole scene would be wasteful. Still
+   * skips add/remove reconciliation and DOM reordering, both of which imply a containment/z-order
+   * change that full render() must handle instead — callers whose change could have altered either
+   * must call render(). `createEditor.ts`'s `scene.on()` subscription enforces this by only taking
+   * this path for a coalesced "update"-reason change (`Scene._transaction`); every command that
+   * adds/removes/reparents/reorders reports a reason that forces the full-render fallback there.
+   *
+   * A connector's rendered *endpoints* are always re-derived live from its attached elements'
+   * current position (`connectorPathPoints`, `routeConnector.ts`), independent of routing mode —
+   * only a manual connector's inner waypoints are frozen. So a connector attached to a moved
+   * element needs repainting here too, even though nothing rerouted it and its own id wasn't in
+   * `ids`.
    */
   renderElements(ids: string[]): void {
     if (!this.currentScene) return;
-    for (const id of ids) {
-      const el = this.currentScene.get(id);
-      if (!el) continue;
-      this.nodes.set(id, this.renderElement(el, this.currentScene));
+    const scene = this.currentScene;
+    const targets = new Set(ids);
+    for (const el of scene.all()) {
+      if (
+        el.type === "connector" &&
+        (targets.has(el.from.elementId) || targets.has(el.to.elementId))
+      ) {
+        targets.add(el.id);
+      }
     }
+    for (const id of targets) {
+      const el = scene.get(id);
+      if (!el) continue;
+      this.nodes.set(id, this.renderElement(el, scene));
+    }
+    this.syncTabIndexes(scene);
   }
 
   /**
@@ -599,8 +625,8 @@ export class SvgRenderer {
       setAttrs(title, { x: el.x + 8, y: el.y + 18, fill: this.labelStroke(el, scene) });
       title.textContent = el.name;
       g.appendChild(title);
-    } else if (el.type === "group" && el.label?.text) {
-      g.appendChild(this.groupLabelText(el));
+    } else if ((el.type === "box" || el.type === "group" || el.type === "zone") && el.label?.text) {
+      g.appendChild(this.containerLabelText(el));
     } else if ("label" in el && el.label?.text && el.type !== "text" && el.type !== "connector") {
       g.appendChild(this.labelText(el, scene));
     }
@@ -715,13 +741,19 @@ export class SvgRenderer {
   }
 
   /**
-   * A Group's own label sits beside its corner glyph, top-left, baseline-aligned with the icon —
-   * not centered below the whole boundary — matching IBM's worked examples (see
-   * CONTAINER_LABEL_GAP above). It always renders on the group's own fill (containerFill, which
-   * D24 keeps hardcoded light regardless of theme), so the text stays dark unconditionally rather
-   * than following labelStroke's parent-based theme check.
+   * A container's own label sits beside its corner glyph, top-left, baseline-aligned with the
+   * icon — not centered below the whole boundary — matching IBM's worked examples (Region, IBM
+   * Cloud, IBM VPC, Kubernetes/OpenShift, Zone, and Subnet all place their title this way; see
+   * CONTAINER_LABEL_GAP above). Applies to every container type (box/group/zone) alike, per C7's
+   * same "not Box alone" reasoning for the sidebar tab and corner glyph above — this was originally
+   * built for Group only and never generalized, so Box/Zone fell through to the generic
+   * `labelText()`'s bottom-center placement instead (confirmed wrong against IBM's own
+   * `iks_sr_mz_vpc` reference: every one of its container titles sits top-left beside its icon).
+   * Always renders on the container's own fill (containerFill, which D24 keeps hardcoded light
+   * regardless of theme), so the text stays dark unconditionally rather than following
+   * labelStroke's parent-based theme check.
    */
-  private groupLabelText(el: GroupElement): SVGTextElement {
+  private containerLabelText(el: SceneElement & { catalogRef?: string }): SVGTextElement {
     const text = createSvgElement("text");
     const hasIcon = Boolean(el.catalogRef);
     const x = el.x + CONTAINER_GLYPH_INSET + (hasIcon ? CONTAINER_GLYPH_SIZE + CONTAINER_LABEL_GAP : 0);

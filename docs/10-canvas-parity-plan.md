@@ -40,7 +40,7 @@ competitor and must not regress.
 | C10 | Renderer never reorders existing DOM nodes, so `z` changes cannot repaint correctly | [`svgRenderer.ts` `render()`](../packages/core/src/render/svgRenderer.ts) |
 | C11 | `rotation` and `canvas.grid` are dead fields — declared, never read | [`types.ts`](../packages/core/src/scene/types.ts) |
 | C12 | `CommandBus` has no coalescing, so any per-frame gesture would flood the undo stack | [`commandBus.ts`](../packages/core/src/commands/commandBus.ts) |
-| C13 | Every `Scene` change — including a single-element `dispatch()`/`undo()`/`redo()` — re-runs a full-scene `SvgRenderer.render()` **and** a full-scene `Linter.run()`, not just for the changed ids. Cost scales with total diagram size, not gesture size: on the benchmark below, nudging 10 of 2000 elements and undoing it costs ~2s each, roughly what re-rendering the whole diagram from scratch costs. The ephemeral preview path (D26) avoids this during a drag itself, but `Interaction.commit()` still dispatches through this same full-scene path once at the end — [M16](#m16--the-core-loop)'s drag-to-move should budget for a multi-second freeze on commit at realistic diagram sizes unless render/lint are made incremental (scoped to the changed ids) before or during that milestone. *(Found while building M15.7's benchmark harness, not in the original audit.)* | [`createEditor.ts`](../packages/core/src/api/createEditor.ts) constructor's `scene.on()` subscription; [`benchmark.test.ts`](../packages/core/src/perf/benchmark.test.ts) |
+| C13 | Every `Scene` change — including a single-element `dispatch()`/`undo()`/`redo()` — re-runs a full-scene `SvgRenderer.render()` **and** a full-scene `Linter.run()`, not just for the changed ids. Cost scales with total diagram size, not gesture size: on the benchmark below, nudging 10 of 2000 elements and undoing it costs ~2s each, roughly what re-rendering the whole diagram from scratch costs. The ephemeral preview path (D26) avoids this during a drag itself, but `Interaction.commit()` still dispatches through this same full-scene path once at the end — [M16](#m16--the-core-loop)'s drag-to-move should budget for a multi-second freeze on commit at realistic diagram sizes unless render/lint are made incremental (scoped to the changed ids) before or during that milestone. *(Found while building M15.7's benchmark harness, not in the original audit. **Resolved in M16.1**: `Scene._transaction()` coalesces a command's `_put`/`_remove` calls into one change event — it turned out to be worse than this note implies, since a cascading move of N elements was N full-scene passes, not one — and `createEditor.ts`'s subscription now repaints only the affected ids for a position-only change instead of the whole scene.)* | [`createEditor.ts`](../packages/core/src/api/createEditor.ts) constructor's `scene.on()` subscription; [`benchmark.test.ts`](../packages/core/src/perf/benchmark.test.ts) |
 
 ### Missing vs. both competitors
 
@@ -260,17 +260,39 @@ realistic diagram.
 
 ## M16 — The core loop
 
-⬜ **Not started.** The first milestone a user can feel.
+🟡 **In progress.** The first milestone a user can feel.
 
-- Drag-to-move with a drag threshold, Shift to axis-lock, Escape to abort, and move-with semantics
-  (already correct in `moveElements`).
-- 8-handle resize — 4 corner, 4 mid-edge — with Shift for aspect lock and Alt to resize from center.
-- Marquee selection (fully-enclosed only, per Decisions taken) and Ctrl/Cmd+A.
-- **Double-click to drill into a nested container**, Escape to step back out, with **both bounding
+- ✅ **Drag-to-move**, with a drag threshold, Shift to axis-lock, Escape to abort, and move-with
+  semantics (`moveElements`, unchanged). `CanvasController` moved from mouse events to Pointer
+  Events with `setPointerCapture` (D27 said it should be from the start; nothing had actually done
+  it yet) so the gesture survives the cursor leaving the canvas. Live snapping (grid/sibling/16px
+  inset) is fully wired via `snapMove()` — this is its first real caller — but drawing the guide
+  lines it returns is left for M17 below, per that milestone's own "alignment guides ... drawn
+  from M15's snapping engine." `Editor.beginInteraction()`/`SvgRenderer.previewTransform()` (D26)
+  got their first real caller too.
+
+  This also closed **C13**: a drag's `commit()` dispatches through the same full-scene
+  render+lint path every command already used, and that path turned out to be worse than C13's
+  original note — `Scene._put()` fires one change event *per element touched*, so a cascading
+  move of N elements was N full-scene passes, not one. Fixed generically at `Scene` (a
+  `_transaction()` wrapping each `CommandBus` dispatch/undo/redo now coalesces every `_put`/
+  `_remove` inside it into a single event) rather than special-cased for move, so cascading
+  delete and any other multi-element command get the same fix. `createEditor.ts`'s subscription
+  now repaints only the affected ids (`SvgRenderer.renderElements()`, extended to also catch any
+  attached connector — its endpoints are always live-derived regardless of routing mode — and to
+  resync tab order) instead of the whole scene, for a coalesced "update"-reason change; anything
+  that could have altered containment or z-order still gets a full `render()`. Verified via a new
+  benchmark scenario mirroring M15's own "Done when" line (a scripted 200-update drag of a
+  ~40-element subtree: the linter now runs exactly once for the whole gesture, and the existing
+  dispatch/undo/redo benchmark dropped roughly 20-40x). Keyboard parity for this gesture needed no
+  new code — arrow-key nudge (M8) already covers it.
+- ⬜ 8-handle resize — 4 corner, 4 mid-edge — with Shift for aspect lock and Alt to resize from center.
+- ⬜ Marquee selection (fully-enclosed only, per Decisions taken) and Ctrl/Cmd+A.
+- ⬜ **Double-click to drill into a nested container**, Escape to step back out, with **both bounding
   boxes rendered** — the parent faint, the child active (IBM's prescribed model).
-- Clipboard: copy / cut / paste / duplicate, Alt+drag to clone, paste-at-cursor.
-- Right-click context menus, contextual to the hit target.
-- Alt+click to select through to an occluded element.
+- ⬜ Clipboard: copy / cut / paste / duplicate, Alt+drag to clone, paste-at-cursor.
+- ⬜ Right-click context menus, contextual to the hit target.
+- ⬜ Alt+click to select through to an occluded element.
 
 Every gesture ships with its keyboard equivalent in the same PR — [D19](00-decision-log.md#d19--full-ibm-equal-access--wcag-21-aa--locked)
 is a requirement, not a follow-up.

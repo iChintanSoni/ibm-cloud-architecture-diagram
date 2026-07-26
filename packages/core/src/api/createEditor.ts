@@ -176,7 +176,16 @@ export class Editor {
 
     this.scene.on((event) => {
       if (this.focusedId && !this.scene.has(this.focusedId)) this.focusedId = undefined;
-      this.renderer.render(this.scene);
+      // A coalesced "update"-reason change (Scene._transaction) never added/removed/reparented/
+      // reordered anything, so a scoped repaint of just the affected ids is safe and much cheaper
+      // than a full render() at diagram scale (C13, docs/10-canvas-parity-plan.md). Every command
+      // that could have changed containment or z-order reports a different reason and falls
+      // through to the full render() below. Empty ids (e.g. a conformance-only change) needs no
+      // element repaint at all — the lint refresh below still runs.
+      if (event.ids.length > 0) {
+        if (event.reason === "update") this.renderer.renderElements(event.ids);
+        else this.renderer.render(this.scene);
+      }
       this.renderer.setDiagnostics(this.linter.run(this.scene));
       this.changeEmitter.emit("change", event);
     });

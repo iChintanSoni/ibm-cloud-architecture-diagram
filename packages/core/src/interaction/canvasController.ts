@@ -1,12 +1,30 @@
-import type { Editor } from "../api/createEditor.js";
+import type { Editor, Interaction } from "../api/createEditor.js";
 import { clientPointToCanvas } from "../render/dom.js";
 import type { Point } from "../render/port.js";
 import { portPoint } from "../render/port.js";
 import type { ElementId, PortSide, SceneElement } from "../scene/types.js";
 import { Emitter } from "../util/emitter.js";
 import { hitTest } from "./hitTest.js";
+import { snapMove } from "./snapping.js";
 
-export type CanvasMode = { kind: "idle" } | { kind: "connecting"; fromId: ElementId } | { kind: "placing" };
+export type CanvasMode =
+  | { kind: "idle" }
+  | { kind: "connecting"; fromId: ElementId }
+  | { kind: "placing" }
+  | { kind: "dragging" };
+
+/** Client-space (zoom-independent) pixels the pointer must move before a mousedown-on-an-element
+ * becomes a drag rather than a click. */
+const DRAG_THRESHOLD = 4;
+
+interface DragState {
+  pointerId: number;
+  ids: ElementId[];
+  interaction: Interaction;
+  startClient: Point;
+  startScenePoint: Point;
+  moved: boolean;
+}
 
 export interface CanvasControllerOptions {
   /** Fired after a connector is created by any input path (drag, click, keyboard connect-mode) —
@@ -27,11 +45,15 @@ function parsePortAttr(value: string): { elementId: ElementId; side: PortSide } 
  * The canvas's own pointer + keyboard interaction, as one state machine (D27,
  * docs/00-decision-log.md) — previously ~250 lines duplicated near-identically between
  * `apps/web` and `apps/vscode`'s own `App.tsx` (docs/10-canvas-parity-plan.md's de-fork item).
- * Owns: wheel pan/zoom, click-to-select, drag-to-connect via ports, keyboard connect-mode ("c",
- * Tab, Enter, Escape), and the canvas's own keyboard operability (Tab/Shift+Tab focus,
- * Enter/Space select, arrow-key nudge, Delete/Backspace) — see
+ * Owns: wheel pan/zoom, click-to-select, drag-to-move (with a drag threshold, Shift axis-lock,
+ * snapping, and Escape-to-abort), drag-to-connect via ports, keyboard connect-mode ("c", Tab,
+ * Enter, Escape), and the canvas's own keyboard operability (Tab/Shift+Tab focus, Enter/Space
+ * select, arrow-key nudge — drag-to-move's own keyboard equivalent, Delete/Backspace) — see
  * docs/07-accessibility.md#canvas-the-hard-20, a hard requirement this class must keep meeting,
  * not just replicate incidentally.
+ *
+ * Built on Pointer Events with `setPointerCapture` (D27, docs/00-decision-log.md) so a drag
+ * survives the cursor leaving the container.
  *
  * Deliberately does NOT own: global app-chrome shortcuts (undo/redo/zoom/find/palette — these
  * aren't canvas-scoped, they work from anywhere), presentation-mode stepping, or *what* gets
@@ -42,6 +64,11 @@ export class CanvasController {
   private mode: CanvasMode = { kind: "idle" };
   private modeEmitter = new Emitter<{ change: CanvasMode }>();
   private draggingPort: { elementId: ElementId; side: PortSide } | undefined;
+  private dragState: DragState | undefined;
+  /** A completed element drag still fires a trailing native `click` on release — this swallows
+   * exactly that one, so it doesn't re-hit-test at the (now-moved-to) release point and stomp the
+   * selection the drag itself already settled. */
+  private suppressNextClick = false;
   private onPlace: ((point: Point) => void) | undefined;
   private suspended = false;
 
@@ -51,9 +78,9 @@ export class CanvasController {
     private options: CanvasControllerOptions = {}
   ) {
     this.container.addEventListener("wheel", this.handleWheel, { passive: false });
-    this.container.addEventListener("mousemove", this.handleMouseMove);
-    this.container.addEventListener("mousedown", this.handleMouseDown);
-    this.container.addEventListener("mouseup", this.handleMouseUp);
+    this.container.addEventListener("pointermove", this.handlePointerMove);
+    this.container.addEventListener("pointerdown", this.handlePointerDown);
+    this.container.addEventListener("pointerup", this.handlePointerUp);
     this.container.addEventListener("click", this.handleClick);
     this.container.addEventListener("keydown", this.handleKeyDown);
     window.addEventListener("keydown", this.handleGlobalKeyDown);
@@ -61,9 +88,9 @@ export class CanvasController {
 
   destroy(): void {
     this.container.removeEventListener("wheel", this.handleWheel);
-    this.container.removeEventListener("mousemove", this.handleMouseMove);
-    this.container.removeEventListener("mousedown", this.handleMouseDown);
-    this.container.removeEventListener("mouseup", this.handleMouseUp);
+    this.container.removeEventListener("pointermove", this.handlePointerMove);
+    this.container.removeEventListener("pointerdown", this.handlePointerDown);
+    this.container.removeEventListener("pointerup", this.handlePointerUp);
     this.container.removeEventListener("click", this.handleClick);
     this.container.removeEventListener("keydown", this.handleKeyDown);
     window.removeEventListener("keydown", this.handleGlobalKeyDown);
@@ -156,14 +183,33 @@ export class CanvasController {
     }
   };
 
-  // Mouse drag-to-connect (docs/06-editor-ux.md#core-interactions): hover a shape to reveal its
-  // ports (SvgRenderer draws them), mousedown on one starts a rubber-band drag; dropping on
+  private capturePointer(pointerId: number): void {
+    if (typeof this.container.setPointerCapture === "function") this.container.setPointerCapture(pointerId);
+  }
+
+  private releasePointer(pointerId: number): void {
+    if (
+      typeof this.container.hasPointerCapture === "function" &&
+      this.container.hasPointerCapture(pointerId) &&
+      typeof this.container.releasePointerCapture === "function"
+    ) {
+      this.container.releasePointerCapture(pointerId);
+    }
+  }
+
+  // Pointer drag-to-connect (docs/06-editor-ux.md#core-interactions): hover a shape to reveal its
+  // ports (SvgRenderer draws them), pointerdown on one starts a rubber-band drag; dropping on
   // another element's port uses that exact port, dropping anywhere else on it auto-picks a
   // reasonable pair (connectNearest); dropping on empty canvas cancels.
-  private handleMouseMove = (event: MouseEvent): void => {
+  private handlePointerMove = (event: PointerEvent): void => {
     if (this.mode.kind === "placing") return;
     const point = this.toScenePoint(event.clientX, event.clientY);
     if (!point) return;
+
+    if (this.dragState) {
+      this.updateDrag(event, point);
+      return;
+    }
 
     if (this.draggingPort) {
       const source = this.editor.scene.get(this.draggingPort.elementId);
@@ -174,19 +220,110 @@ export class CanvasController {
     this.editor.setHoveredElement(hit && hit.type !== "connector" && hit.type !== "frame" ? hit.id : undefined);
   };
 
-  private handleMouseDown = (event: MouseEvent): void => {
+  // Drag-to-move (M16, docs/10-canvas-parity-plan.md): armed on pointerdown over a selectable
+  // element, but only becomes a real drag once the pointer has moved DRAG_THRESHOLD client px —
+  // short of that, this stays a plain click (handleClick fires normally on release). Selection is
+  // updated here rather than in handleClick so a drag can start immediately with the right
+  // elements, matching standard direct-manipulation editors: an unselected target becomes the
+  // (possibly Shift-extended) selection right away; an already-selected target's whole
+  // multi-selection is preserved so the group drags together; Shift-clicking an already-selected
+  // target is left for handleClick's own toggle-off, not armed as a drag at all.
+  private handlePointerDown = (event: PointerEvent): void => {
     const portAttr =
       event.target instanceof Element
         ? event.target.closest<SVGElement>("[data-icad-port]")?.getAttribute("data-icad-port")
         : null;
-    if (!portAttr) return;
-    const { elementId, side } = parsePortAttr(portAttr);
-    this.draggingPort = { elementId, side };
-    const source = this.editor.scene.get(elementId);
-    if (source) this.editor.setConnectorDraftPoints(portPoint(source, side), portPoint(source, side));
+    if (portAttr) {
+      const { elementId, side } = parsePortAttr(portAttr);
+      this.draggingPort = { elementId, side };
+      this.capturePointer(event.pointerId);
+      const source = this.editor.scene.get(elementId);
+      if (source) this.editor.setConnectorDraftPoints(portPoint(source, side), portPoint(source, side));
+      return;
+    }
+
+    if (this.mode.kind !== "idle") return;
+    const point = this.toScenePoint(event.clientX, event.clientY);
+    if (!point) return;
+    const hit = hitTest(this.editor.scene, point);
+    if (!hit || hit.type === "connector" || hit.type === "frame") return;
+
+    const alreadySelected = this.editor.selection.isSelected(hit.id);
+    if (event.shiftKey) {
+      if (alreadySelected) return; // defer to handleClick's toggle-off; don't arm a drag
+      this.editor.selection.toggle(hit.id);
+      this.editor.focusElement(hit.id);
+    } else if (!alreadySelected) {
+      this.editor.selection.set([hit.id]);
+      this.editor.focusElement(hit.id);
+    }
+
+    // Belt-and-suspenders alongside the SVG root's `user-select: none` (svgRenderer.ts): stops a
+    // real mouse drag from also kicking off the browser's own native text-selection/drag-image
+    // behavior over a label.
+    event.preventDefault();
+
+    const ids = this.editor.selection.get();
+    this.dragState = {
+      pointerId: event.pointerId,
+      ids,
+      interaction: this.editor.beginInteraction(ids),
+      startClient: { x: event.clientX, y: event.clientY },
+      startScenePoint: point,
+      moved: false
+    };
+    this.capturePointer(event.pointerId);
   };
 
-  private handleMouseUp = (event: MouseEvent): void => {
+  private updateDrag(event: PointerEvent, point: Point): void {
+    const drag = this.dragState;
+    if (!drag) return;
+
+    if (!drag.moved) {
+      const clientDx = event.clientX - drag.startClient.x;
+      const clientDy = event.clientY - drag.startClient.y;
+      if (Math.hypot(clientDx, clientDy) < DRAG_THRESHOLD) return;
+      drag.moved = true;
+      this.setMode({ kind: "dragging" });
+    }
+
+    let dx = point.x - drag.startScenePoint.x;
+    let dy = point.y - drag.startScenePoint.y;
+    let lockAxis: "x" | "y" | undefined;
+    if (event.shiftKey) {
+      // Lock to whichever axis currently has the larger raw delta; re-evaluated every move rather
+      // than latched at drag-start, the simplest rule that still feels correct.
+      lockAxis = Math.abs(dx) >= Math.abs(dy) ? "y" : "x";
+      if (lockAxis === "y") dy = 0;
+      else dx = 0;
+    }
+
+    const snapped = snapMove(this.editor.scene, drag.ids, dx, dy);
+    // The lock always wins over a snap candidate on that axis — a grid/sibling candidate near 0
+    // could otherwise reintroduce a tiny delta on the axis the user asked to freeze.
+    const finalDx = lockAxis === "x" ? 0 : snapped.dx;
+    const finalDy = lockAxis === "y" ? 0 : snapped.dy;
+    // Guide-line rendering is M17's ("alignment guides ... drawn from M15's snapping engine",
+    // docs/10-canvas-parity-plan.md) — snapping itself is fully applied here, just not drawn yet.
+    drag.interaction.update(finalDx, finalDy);
+  }
+
+  private handlePointerUp = (event: PointerEvent): void => {
+    this.releasePointer(event.pointerId);
+
+    if (this.dragState) {
+      const { interaction, moved } = this.dragState;
+      this.dragState = undefined;
+      if (moved) {
+        interaction.commit();
+        this.suppressNextClick = true;
+      } else {
+        interaction.abort();
+      }
+      this.setMode({ kind: "idle" });
+      return;
+    }
+
     const dragging = this.draggingPort;
     this.draggingPort = undefined;
     this.editor.clearConnectorDraft();
@@ -214,8 +351,13 @@ export class CanvasController {
   };
 
   private handleClick = (event: MouseEvent): void => {
-    // A drag-to-connect gesture already handled this interaction on mouseup. Ports are hover-only
-    // DOM decorations, not scene elements — this stays DOM-based deliberately (C9,
+    if (this.suppressNextClick) {
+      this.suppressNextClick = false;
+      return;
+    }
+
+    // A drag-to-connect gesture already handled this interaction on pointerup. Ports are
+    // hover-only DOM decorations, not scene elements — this stays DOM-based deliberately (C9,
     // docs/10-canvas-parity-plan.md): it isn't the divergent hit-test path that item closes.
     if (event.target instanceof Element && event.target.closest("[data-icad-port]")) return;
 
@@ -246,11 +388,24 @@ export class CanvasController {
     }
   };
 
-  // Escape cancels an armed placement from anywhere, not just canvas focus — the Library panel's
-  // "armed" affordance is an app-wide modal state, matching the pre-M15 behavior of a window-level
-  // listener rather than this class's own (canvas-focus-scoped) keydown handler below.
+  // Escape cancels an armed placement, or aborts an in-progress drag, from anywhere — not just
+  // canvas focus. Placement's "armed" affordance is an app-wide modal state (pre-M15 behavior); a
+  // mouse-driven drag similarly doesn't guarantee the canvas itself has keyboard focus, so both
+  // live on this window-level listener rather than the canvas-focus-scoped one below. Aborting a
+  // drag only cancels the transform (nothing was ever dispatched, so there's nothing to undo) — it
+  // does not revert whatever selection change pointerdown already made, matching how drag-abort
+  // works in other direct-manipulation editors.
   private handleGlobalKeyDown = (event: KeyboardEvent): void => {
-    if (event.key === "Escape" && this.mode.kind === "placing") this.cancelPlacement();
+    if (event.key !== "Escape") return;
+    if (this.dragState) {
+      const { interaction, pointerId } = this.dragState;
+      this.dragState = undefined;
+      interaction.abort();
+      this.releasePointer(pointerId);
+      this.setMode({ kind: "idle" });
+      return;
+    }
+    if (this.mode.kind === "placing") this.cancelPlacement();
   };
 
   // Keyboard-operable canvas (docs/07-accessibility.md#canvas-the-hard-20). Tab/Shift+Tab move

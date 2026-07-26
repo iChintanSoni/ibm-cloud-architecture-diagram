@@ -570,6 +570,11 @@ describe("createEditor", () => {
       // Committed: the scene reflects the real move and the preview transform is cleared.
       expect(editor.scene.get(id)).toMatchObject({ x: 15, y: 5 });
       expect(node()?.getAttribute("transform")).toBeNull();
+      // The underlying shape's own rendered geometry moved too, not just the (now-cleared)
+      // transform — proof the scoped repaint (Scene._transaction + renderElements, M16.1) actually
+      // redrew this element at its committed position rather than leaving stale coordinates.
+      expect(node()?.querySelector("rect")?.getAttribute("x")).toBe("15");
+      expect(node()?.querySelector("rect")?.getAttribute("y")).toBe("5");
 
       // The whole gesture collapsed into exactly one undo step on top of the box's own add: one
       // undo reverts just the move, a second reverts the add itself — not a third, orphaned step.

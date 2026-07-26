@@ -141,6 +141,13 @@ export function moveElements(scene: Scene, ids: ElementId[], dx: number, dy: num
  * Changes an element's container membership. Reparenting to `undefined`
  * lifts it to the top level. Throws on a cycle (assigning an element as its
  * own descendant's child), which would hang move-with/cascading-delete.
+ *
+ * Reports its `_put` as reason "update": today every caller (`groupElements`, `ungroupElement`)
+ * batches it alongside an "add"/"remove", which coalesces the dispatch's reason to "replace" and
+ * forces a full render (`Scene._transaction`, `createEditor.ts`'s `scene.on()` subscription) — a
+ * reparent changes both the old and new parent's `aria-owns` list, which the "update"-reason fast
+ * render path does not repaint. A future gesture that dispatches this alone (e.g. drag-to-reparent)
+ * would need to account for that, not rely on this reason as-is.
  */
 export function reparentElement(scene: Scene, id: ElementId, parentId: ElementId | undefined): Command {
   const previous = scene.get(id);
