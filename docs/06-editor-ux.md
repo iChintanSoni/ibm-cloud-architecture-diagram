@@ -57,6 +57,11 @@ custom SVG engine ([D3](00-decision-log.md#d3--svg-dom-rendering--locked)). Ever
   over the canvas or cascades a small offset otherwise, and duplicate never disturbs a pending
   copy. Alt-drag an element to drop a moving clone and leave the original in place. Session-only —
   not the OS clipboard, so paste doesn't cross windows/tabs.
+- **Right-click context menu**, contextual to the hit target (the Menu key or Shift+F10 opens the
+  same menu at whatever's focused/selected): Cut/Copy/Paste/Duplicate/Delete/Group/Ungroup/Select
+  All. Right-clicking an unselected element selects it first; a member of an existing
+  multi-selection is left alone so the menu acts on the whole group; empty canvas or a Frame's
+  background clears the selection instead. Paste lands exactly where you right-clicked.
 - **Undo/redo:** unlimited within a session, backed by the command bus.
 
 ## Nesting & spacing

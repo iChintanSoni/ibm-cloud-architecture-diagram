@@ -790,8 +790,9 @@ the same `CanvasController` with no shell-local interaction code.
 #### M16 — The core loop
 
 🟡 **In progress** — M16.1 (drag-to-move), M16.2 (8-handle resize), M16.3 (marquee selection +
-Ctrl/Cmd+A), M16.4 (double-click to drill into a nested container), and M16.5 (clipboard) have
-landed; see [Canvas parity plan → M16](10-canvas-parity-plan.md#m16--the-core-loop).
+Ctrl/Cmd+A), M16.4 (double-click to drill into a nested container), M16.5 (clipboard), and M16.6
+(right-click context menus) have landed; see
+[Canvas parity plan → M16](10-canvas-parity-plan.md#m16--the-core-loop).
 
 Drag-to-move, 8-handle resize, marquee (fully-enclosed), select-all, clipboard
 (copy/cut/paste/duplicate/Alt-drag clone), context menus, Alt+click select-through, and
@@ -866,7 +867,15 @@ follow-up.
    addition was silently blurring keyboard focus to `<body>` in a real browser (invisible to
    jsdom), breaking every keyboard shortcut after the first add — now a minimal-move reconciliation
    that only touches nodes actually out of place.
-6. ⬜ Right-click context menus.
+6. ✅ **Right-click context menus**, contextual to the hit target. `CanvasController` only reports
+   _where_ — a new `onContextMenu(screenPoint, scenePoint)`, plus the Menu key / Shift+F10 keyboard
+   equivalent — after syncing `selection` to the hit target (unselected replaces it, part of a
+   multi-selection leaves the group alone, empty canvas/a Frame clears it). _What_ the menu shows
+   is entirely a new `@icad/ui-web` `ContextMenu` component, a thin wrapper over Carbon's own
+   `Menu`/`MenuItem`, reusing the exact `CommandItem[]` shape the command palette already uses (a
+   new optional `danger` field renders Delete in Carbon's destructive styling) so every action —
+   Cut/Copy/Paste/Duplicate/Delete/Group/Ungroup/Select All — is defined once per shell. Paste
+   passes the exact scene point the menu opened at, landing where you actually right-clicked.
 7. ⬜ Alt+click select-through to an occluded element.
 
 #### M17 — The feedback layer

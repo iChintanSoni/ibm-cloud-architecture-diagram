@@ -4,6 +4,9 @@ export interface CommandItem {
   category?: string;
   shortcut?: string;
   disabled?: boolean;
+  /** Destructive action (e.g. Delete) — `ContextMenu` renders it in Carbon's danger styling; the
+   * command palette doesn't currently have a destructive entry, so it just ignores the flag. */
+  danger?: boolean;
   run: () => void;
 }
 

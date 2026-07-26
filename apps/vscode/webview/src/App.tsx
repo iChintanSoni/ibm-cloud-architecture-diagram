@@ -13,10 +13,12 @@ import {
   type Editor,
   type ExportGate,
   type FrameElement,
+  type Point,
   type SceneElement,
 } from "@icad/core";
 import {
   CommandPalette,
+  ContextMenu,
   FindBar,
   InspectorPanel,
   LibraryPanel,
@@ -36,7 +38,10 @@ import { onHostMessage, postToHost } from "./vscodeApi";
 import { useVsCodeTheme } from "./useVsCodeTheme";
 import { buildValidationView } from "./validation";
 
-/** Live-region wording for CanvasController's onClipboardAction (M16.5). */
+/** Live-region wording for CanvasController's onClipboardAction (M16.5) — also reused by the
+ * context menu's own clipboard items (M16.6), which call Editor.copy/cut/paste/duplicateElements
+ * directly rather than through CanvasController, so they need to format the same announcement
+ * themselves rather than relying on that callback firing. */
 const CLIPBOARD_VERBS: Record<"copy" | "cut" | "paste" | "duplicate", string> =
   {
     copy: "copied",
@@ -44,6 +49,26 @@ const CLIPBOARD_VERBS: Record<"copy" | "cut" | "paste" | "duplicate", string> =
     paste: "pasted",
     duplicate: "duplicated",
   };
+
+function formatClipboardAnnouncement(
+  action: "copy" | "cut" | "paste" | "duplicate",
+  elements: SceneElement[],
+): string {
+  const names = elements.map(elementDisplayName);
+  const verb = CLIPBOARD_VERBS[action];
+  return names.length === 1
+    ? `${names[0]} ${verb}`
+    : `${names.length} elements ${verb}`;
+}
+
+/** Shared with the context menu's own Delete item (M16.6), which calls Editor.deleteElements
+ * directly rather than through CanvasController's own keyboard path. */
+function formatDeletedAnnouncement(elements: SceneElement[]): string {
+  const names = elements.map(elementDisplayName);
+  return names.length === 1
+    ? `${names[0]} deleted`
+    : `${names.length} elements deleted`;
+}
 
 /** Ctrl/Cmd+K and Ctrl/Cmd+F stay global; other shortcuts back off while the user is typing. */
 function isEditableTarget(target: EventTarget | null): boolean {
@@ -81,6 +106,9 @@ export function App() {
   const [zoomPercent, setZoomPercent] = useState(100);
   const [presentingFrameId, setPresentingFrameId] = useState<ElementId>();
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [contextMenu, setContextMenu] = useState<
+    { x: number; y: number; scenePoint: Point } | undefined
+  >();
   const [findOpen, setFindOpen] = useState(false);
   const [findQuery, setFindQuery] = useState("");
   const [findActiveIndex, setFindActiveIndex] = useState(0);
@@ -144,21 +172,13 @@ export function App() {
           );
       },
       onDeleted: (deletedElements) => {
-        const names = deletedElements.map(elementDisplayName);
-        announce(
-          names.length === 1
-            ? `${names[0]} deleted`
-            : `${names.length} elements deleted`,
-        );
+        announce(formatDeletedAnnouncement(deletedElements));
       },
       onClipboardAction: (action, elements) => {
-        const names = elements.map(elementDisplayName);
-        const verb = CLIPBOARD_VERBS[action];
-        announce(
-          names.length === 1
-            ? `${names[0]} ${verb}`
-            : `${names.length} elements ${verb}`,
-        );
+        announce(formatClipboardAnnouncement(action, elements));
+      },
+      onContextMenu: (screenPoint, scenePoint) => {
+        setContextMenu({ x: screenPoint.x, y: screenPoint.y, scenePoint });
       },
     });
     controllerRef.current = controller;
@@ -649,6 +669,110 @@ export function App() {
     })),
   ];
 
+  // Right-click (or the Menu key / Shift+F10) canvas menu, contextual to the hit target (M16.6):
+  // CanvasController has already synced `selection` to whatever was right-clicked by the time
+  // `onContextMenu` fires, so this just reads that same state the rest of the UI already reads.
+  // Each action calls straight into the Editor API rather than through CanvasController's own
+  // keyboard path, so it needs to format its own announcement (the shared helpers above).
+  const contextMenuItems: CommandItem[] = [
+    {
+      id: "ctx-cut",
+      label: "Cut",
+      shortcut: "Ctrl+X",
+      disabled: selectedIds.length === 0,
+      run: () => {
+        const editor = editorRef.current;
+        if (!editor) return;
+        const cut = editor.cut(selectedIds);
+        if (cut.length > 0) announce(formatClipboardAnnouncement("cut", cut));
+      },
+    },
+    {
+      id: "ctx-copy",
+      label: "Copy",
+      shortcut: "Ctrl+C",
+      disabled: selectedIds.length === 0,
+      run: () => {
+        const editor = editorRef.current;
+        if (!editor) return;
+        const copied = editor.copy(selectedIds);
+        if (copied.length > 0)
+          announce(formatClipboardAnnouncement("copy", copied));
+      },
+    },
+    {
+      id: "ctx-paste",
+      label: "Paste",
+      shortcut: "Ctrl+V",
+      disabled: !(editorRef.current?.canPaste() ?? false),
+      run: () => {
+        const editor = editorRef.current;
+        if (!editor || !contextMenu) return;
+        const pasted = editor
+          .paste(contextMenu.scenePoint)
+          .map((id) => editor.scene.get(id))
+          .filter((el): el is SceneElement => el !== undefined);
+        if (pasted.length > 0)
+          announce(formatClipboardAnnouncement("paste", pasted));
+      },
+    },
+    {
+      id: "ctx-duplicate",
+      label: "Duplicate",
+      shortcut: "Ctrl+D",
+      disabled: selectedIds.length === 0,
+      run: () => {
+        const editor = editorRef.current;
+        if (!editor) return;
+        const duplicated = editor
+          .duplicateElements(selectedIds)
+          .map((id) => editor.scene.get(id))
+          .filter((el): el is SceneElement => el !== undefined);
+        if (duplicated.length > 0)
+          announce(formatClipboardAnnouncement("duplicate", duplicated));
+      },
+    },
+    {
+      id: "ctx-delete",
+      label: "Delete",
+      danger: true,
+      disabled: selectedIds.length === 0,
+      run: () => {
+        const editor = editorRef.current;
+        if (!editor) return;
+        const deleted = selectedIds
+          .map((id) => editor.scene.get(id))
+          .filter((el): el is SceneElement => el !== undefined);
+        if (deleted.length === 0) return;
+        editor.deleteElements(selectedIds);
+        announce(formatDeletedAnnouncement(deleted));
+      },
+    },
+    {
+      id: "ctx-group",
+      label: "Group",
+      shortcut: "Ctrl+G",
+      disabled: !canGroup,
+      run: handleGroup,
+    },
+    {
+      id: "ctx-ungroup",
+      label: "Ungroup",
+      shortcut: "Ctrl+Shift+G",
+      disabled: !canUngroup,
+      run: handleUngroup,
+    },
+    {
+      id: "ctx-select-all",
+      label: "Select All",
+      shortcut: "Ctrl+A",
+      run: () => {
+        const editor = editorRef.current;
+        editor?.selection.set(editor.scene.all().map((el) => el.id));
+      },
+    },
+  ];
+
   const {
     groups: groupedDiagnostics,
     counts,
@@ -939,6 +1063,13 @@ export function App() {
           open={paletteOpen}
           commands={commands}
           onClose={() => setPaletteOpen(false)}
+        />
+        <ContextMenu
+          open={contextMenu !== undefined}
+          x={contextMenu?.x ?? 0}
+          y={contextMenu?.y ?? 0}
+          items={contextMenuItems}
+          onClose={() => setContextMenu(undefined)}
         />
       </div>
     </Theme>

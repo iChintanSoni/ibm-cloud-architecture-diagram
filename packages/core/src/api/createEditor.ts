@@ -936,6 +936,12 @@ export class Editor {
     return { command, idMap };
   }
 
+  /** Whether `paste()` would do anything right now — e.g. a shell's context menu disabling its own
+   * "Paste" entry rather than rendering one that's a guaranteed no-op. */
+  canPaste(): boolean {
+    return this.clipboard.length > 0;
+  }
+
   /**
    * Snapshots `ids` (expanded to descendants + internal connectors) into the in-memory clipboard,
    * ready for `paste()` — no-ops (leaving any existing clipboard contents untouched) if none of

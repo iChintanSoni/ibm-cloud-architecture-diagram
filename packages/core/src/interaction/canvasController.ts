@@ -94,6 +94,17 @@ export interface CanvasControllerOptions {
     action: "copy" | "cut" | "paste" | "duplicate",
     elements: SceneElement[],
   ) => void;
+  /** Fired on a right-click (or its keyboard equivalent, the ContextMenu key / Shift+F10) with the
+   * screen point to anchor a menu at and the scene point under it — the latter is what a "Paste"
+   * item should pass to `Editor.paste()` so it lands where you actually right-clicked, not
+   * wherever the pointer happens to be by the time the menu item runs. Core only reports *where*
+   * and leaves *what the menu shows* entirely to the shell (M16.6) — selection has already been
+   * synced to the hit target by the time this fires, so a shell only needs to read
+   * `editor.selection` to decide which actions apply. */
+  onContextMenu?: (
+    screenPoint: { x: number; y: number },
+    scenePoint: Point,
+  ) => void;
 }
 
 function parsePortAttr(value: string): {
@@ -129,7 +140,11 @@ function parsePortAttr(value: string): {
  * needed for resize either. Alt-drag-clone (M16.5) is a new `cloneOnDrag` flag on the existing
  * `dragging` mode, not a mode of its own — the drag re-targets from the original ids onto a fresh
  * `duplicateElements()` clone the moment it crosses the drag threshold, so the originals stay put
- * and what's dragged from then on is the copy.
+ * and what's dragged from then on is the copy. Right-click (M16.6, keyboard equivalent: the Menu
+ * key or Shift+F10) syncs selection to the hit target — an unselected target replaces the
+ * selection, one already part of a multi-selection leaves it alone — and reports only *where* via
+ * `onContextMenu`; *what* the menu shows and does is entirely `@icad/ui-web`'s `ContextMenu` and
+ * whichever shell wires it, the same split `armPlacement`'s opaque callback already uses.
  *
  * Built on Pointer Events with `setPointerCapture` (D27, docs/00-decision-log.md) so a drag
  * survives the cursor leaving the container.
@@ -175,6 +190,7 @@ export class CanvasController {
     this.container.addEventListener("pointerup", this.handlePointerUp);
     this.container.addEventListener("click", this.handleClick);
     this.container.addEventListener("dblclick", this.handleDoubleClick);
+    this.container.addEventListener("contextmenu", this.handleContextMenu);
     this.container.addEventListener("keydown", this.handleKeyDown);
     window.addEventListener("keydown", this.handleGlobalKeyDown);
   }
@@ -186,6 +202,7 @@ export class CanvasController {
     this.container.removeEventListener("pointerup", this.handlePointerUp);
     this.container.removeEventListener("click", this.handleClick);
     this.container.removeEventListener("dblclick", this.handleDoubleClick);
+    this.container.removeEventListener("contextmenu", this.handleContextMenu);
     this.container.removeEventListener("keydown", this.handleKeyDown);
     window.removeEventListener("keydown", this.handleGlobalKeyDown);
   }
@@ -302,6 +319,34 @@ export class CanvasController {
     this.setDrillPath(next);
     const newInner = next[next.length - 1];
     this.editor.selection.set(newInner ? [newInner] : []);
+  }
+
+  // Right-click context menu (M16.6, docs/10-canvas-parity-plan.md): always preventDefault's the
+  // browser's own menu. Syncs selection to the hit target first — an unselected target replaces
+  // the selection (matching every other click-to-select path), but a target that's already part
+  // of a multi-selection leaves the whole selection alone, so "right-click any member" acts on the
+  // group; empty canvas or a Frame's own background (no real target, same carve-out marquee/drill
+  // use) clears it instead, so the menu shows canvas-level actions. What the menu actually shows is
+  // entirely the shell's call (`onContextMenu` only reports where).
+  private handleContextMenu = (event: MouseEvent): void => {
+    if (this.mode.kind !== "idle") return;
+    const point = this.toScenePoint(event.clientX, event.clientY);
+    if (!point) return;
+    event.preventDefault();
+    const hit = hitTest(this.editor.scene, point);
+    this.applyContextMenuSelection(hit);
+    this.options.onContextMenu?.({ x: event.clientX, y: event.clientY }, point);
+  };
+
+  private applyContextMenuSelection(hit: SceneElement | undefined): void {
+    if (!hit || hit.type === "frame") {
+      this.editor.selection.clear();
+      return;
+    }
+    if (!this.editor.selection.isSelected(hit.id)) {
+      this.editor.selection.set([hit.id]);
+      this.editor.focusElement(hit.id);
+    }
   }
 
   private svg(): SVGSVGElement | null {
@@ -942,6 +987,31 @@ export class CanvasController {
         }
         return;
       }
+    }
+
+    // Context menu (M16.6): the dedicated Menu key, or Shift+F10 (the conventional fallback on
+    // keyboards without one) — opens at the focused/selected element's own screen and scene
+    // position, mirroring a right-click there. A pure-keyboard user with nothing focused/selected
+    // yet has no meaningful anchor point, so this is a no-op rather than guessing one.
+    if (
+      event.key === "ContextMenu" ||
+      (event.shiftKey && event.key === "F10")
+    ) {
+      const id = focusedId ?? this.editor.selection.get()[0];
+      if (!id || !this.editor.scene.has(id)) return;
+      event.preventDefault();
+      const node = this.container.querySelector(`[data-icad-id="${id}"]`);
+      const rect =
+        node instanceof Element ? node.getBoundingClientRect() : null;
+      const screenPoint = rect
+        ? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
+        : { x: 0, y: 0 };
+      const bbox = this.editor.boundsOf([id]);
+      const scenePoint = bbox
+        ? { x: bbox.x + bbox.w / 2, y: bbox.y + bbox.h / 2 }
+        : { x: 0, y: 0 };
+      this.options.onContextMenu?.(screenPoint, scenePoint);
+      return;
     }
 
     let selected = this.editor.selection.get();

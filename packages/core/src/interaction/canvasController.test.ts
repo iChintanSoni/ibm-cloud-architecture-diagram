@@ -79,6 +79,23 @@ function dblclick(
   );
 }
 
+function rightClick(
+  target: EventTarget,
+  x: number,
+  y: number,
+  opts: Partial<MouseEventInit> = {},
+): void {
+  target.dispatchEvent(
+    new MouseEvent("contextmenu", {
+      bubbles: true,
+      cancelable: true,
+      clientX: x,
+      clientY: y,
+      ...opts,
+    }),
+  );
+}
+
 function keydown(
   target: EventTarget,
   key: string,
@@ -1034,6 +1051,106 @@ describe("CanvasController", () => {
         expect(editor.selection.get()).toEqual([a]);
         expect(editor.scene.get(a)).toMatchObject({ x: 32, y: 0 });
       });
+    });
+  });
+
+  describe("context menu (M16.6, docs/10-canvas-parity-plan.md)", () => {
+    it("right-clicking an unselected element selects it and reports the screen + scene point", () => {
+      const onContextMenu = vi.fn();
+      withOptions({ onContextMenu });
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
+
+      rightClick(container, 25, 35);
+
+      expect(editor.selection.get()).toEqual([a]);
+      expect(onContextMenu).toHaveBeenCalledTimes(1);
+      const [screenPoint, scenePoint] = onContextMenu.mock.calls[0]!;
+      expect(screenPoint).toEqual({ x: 25, y: 35 });
+      expect(scenePoint).toEqual({ x: 25, y: 35 }); // identity-mapped by the test polyfill
+    });
+
+    it("right-clicking a member of an existing multi-selection leaves the whole selection intact", () => {
+      const onContextMenu = vi.fn();
+      withOptions({ onContextMenu });
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
+      const b = editor.addBox({
+        at: { x: 100, y: 0 },
+        w: 50,
+        h: 50,
+        label: "b",
+      });
+      editor.selection.set([a, b]);
+
+      rightClick(container, 25, 25); // lands on a, already part of the multi-selection
+
+      expect(editor.selection.get().sort()).toEqual([a, b].sort());
+      expect(onContextMenu).toHaveBeenCalledTimes(1);
+    });
+
+    it("right-clicking empty canvas or a Frame's background clears the selection", () => {
+      const onContextMenu = vi.fn();
+      withOptions({ onContextMenu });
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
+      editor.addFrame({ at: { x: 0, y: 200 }, name: "Section" });
+      editor.selection.set([a]);
+
+      rightClick(container, 500, 500); // empty canvas
+      expect(editor.selection.get()).toEqual([]);
+
+      editor.selection.set([a]);
+      rightClick(container, 10, 210); // Frame's own background
+      expect(editor.selection.get()).toEqual([]);
+
+      expect(onContextMenu).toHaveBeenCalledTimes(2);
+    });
+
+    it("does not open while connecting, placing, dragging, resizing, or marqueeing", () => {
+      const onContextMenu = vi.fn();
+      withOptions({ onContextMenu });
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
+      controller.startConnecting(a);
+
+      rightClick(container, 25, 25);
+
+      expect(onContextMenu).not.toHaveBeenCalled();
+    });
+
+    it("ContextMenu key opens at the focused element's own screen/scene position", () => {
+      const onContextMenu = vi.fn();
+      withOptions({ onContextMenu });
+      const a = editor.addBox({
+        at: { x: 10, y: 10 },
+        w: 40,
+        h: 20,
+        label: "a",
+      });
+      editor.focusElement(a);
+
+      keydown(container, "ContextMenu");
+
+      expect(onContextMenu).toHaveBeenCalledTimes(1);
+      const [, scenePoint] = onContextMenu.mock.calls[0]!;
+      expect(scenePoint).toEqual({ x: 30, y: 20 }); // a's own bbox center (10+20, 10+10)
+    });
+
+    it("Shift+F10 is the fallback keyboard equivalent", () => {
+      const onContextMenu = vi.fn();
+      withOptions({ onContextMenu });
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
+      editor.selection.set([a]);
+
+      keydown(container, "F10", { shiftKey: true });
+
+      expect(onContextMenu).toHaveBeenCalledTimes(1);
+    });
+
+    it("the keyboard equivalent is a no-op with nothing focused or selected", () => {
+      const onContextMenu = vi.fn();
+      withOptions({ onContextMenu });
+
+      keydown(container, "ContextMenu");
+
+      expect(onContextMenu).not.toHaveBeenCalled();
     });
   });
 

@@ -395,7 +395,23 @@ realistic diagram.
   the first, live in a real browser (jsdom couldn't have caught it) — `syncDomOrder()`'s blanket
   re-append on any add was blurring keyboard focus off the canvas entirely, so no further keydown
   ever reached `CanvasController`'s (container-scoped) listener again.
-- ⬜ Right-click context menus, contextual to the hit target.
+- ✅ **Right-click context menus**, contextual to the hit target. `CanvasController` reports only
+  _where_ (a new `onContextMenu(screenPoint, scenePoint)`, plus the Menu key / Shift+F10 keyboard
+  equivalent) — _what_ the menu shows is entirely `@icad/ui-web`'s new `ContextMenu` component and
+  whichever shell wires it, the same split `armPlacement`'s opaque callback already uses. A
+  right-click syncs `selection` to the hit target first (an unselected target replaces it, one
+  already part of a multi-selection leaves the whole group alone — "right-click any member" acts
+  on the group; empty canvas or a Frame's own background clears it, matching the existing
+  drill/marquee carve-out for "no real target"), so a shell only needs to read `editor.selection`
+  to decide which actions apply — contextual to the hit target without `CanvasController` itself
+  needing to know what a menu even is. `ContextMenu` is a thin wrapper over Carbon's own
+  `Menu`/`MenuItem` (which already handles positioning, open/close, and keyboard nav natively) and
+  the exact same `CommandItem[]` shape the command palette already uses (a new optional `danger`
+  field renders Delete in Carbon's own destructive styling), so every action — Cut/Copy/Paste/
+  Duplicate/Delete/Group/Ungroup/Select All — is defined once per shell and reused by both
+  surfaces, not duplicated between them. "Paste" passes the exact scene point the menu opened at,
+  so it lands where you actually right-clicked (or where the keyboard equivalent last focused/
+  selected something), not wherever the pointer happens to be once the item runs.
 - ⬜ Alt+click to select through to an occluded element.
 
 Every gesture ships with its keyboard equivalent in the same PR — [D19](00-decision-log.md#d19--full-ibm-equal-access--wcag-21-aa--locked)
