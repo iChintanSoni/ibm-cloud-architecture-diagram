@@ -8,14 +8,28 @@ import {
   reparentElement,
   removeElement,
   updateConformance,
-  updateElement
+  updateElement,
 } from "./commands.js";
 
 function box(id: string, parentId?: string): BoxElement {
-  return { id, type: "box", semantic: "deployedOn", x: 0, y: 0, w: 100, h: 50, ...(parentId ? { parentId } : {}) };
+  return {
+    id,
+    type: "box",
+    semantic: "deployedOn",
+    x: 0,
+    y: 0,
+    w: 100,
+    h: 50,
+    ...(parentId ? { parentId } : {}),
+  };
 }
 
-function connector(id: string, fromId: string, toId: string, opts: Partial<ConnectorElement> = {}): ConnectorElement {
+function connector(
+  id: string,
+  fromId: string,
+  toId: string,
+  opts: Partial<ConnectorElement> = {},
+): ConnectorElement {
   return {
     id,
     type: "connector",
@@ -29,7 +43,7 @@ function connector(id: string, fromId: string, toId: string, opts: Partial<Conne
     connectorType: "association",
     routing: "auto",
     waypoints: [],
-    ...opts
+    ...opts,
   };
 }
 
@@ -79,10 +93,16 @@ describe("CommandBus", () => {
   it("merges independent style patches without clobbering existing properties", () => {
     const scene = new Scene();
     const bus = new CommandBus(scene);
-    bus.dispatch(addElement({ ...box("a"), style: { fill: "white", stroke: "black" } }));
+    bus.dispatch(
+      addElement({ ...box("a"), style: { fill: "white", stroke: "black" } }),
+    );
 
     bus.dispatch(updateElement(scene, "a", { style: { strokeWidth: 2 } }));
-    expect(scene.get("a")?.style).toEqual({ fill: "white", stroke: "black", strokeWidth: 2 });
+    expect(scene.get("a")?.style).toEqual({
+      fill: "white",
+      stroke: "black",
+      strokeWidth: 2,
+    });
 
     bus.undo();
     expect(scene.get("a")?.style).toEqual({ fill: "white", stroke: "black" });
@@ -95,18 +115,24 @@ describe("CommandBus", () => {
     bus.dispatch(updateConformance(scene, { exportGate: "block" }));
     bus.dispatch(
       updateConformance(scene, {
-        ruleSeverity: { ruleId: "missing-label", severity: "error" }
-      })
+        ruleSeverity: { ruleId: "missing-label", severity: "error" },
+      }),
     );
     expect(scene.conformance).toEqual({
       exportGate: "block",
-      ruleSeverities: { "missing-label": "error" }
+      ruleSeverities: { "missing-label": "error" },
     });
 
     bus.undo();
-    expect(scene.conformance).toEqual({ exportGate: "block", ruleSeverities: {} });
+    expect(scene.conformance).toEqual({
+      exportGate: "block",
+      ruleSeverities: {},
+    });
     bus.undo();
-    expect(scene.conformance).toEqual({ exportGate: "warn", ruleSeverities: {} });
+    expect(scene.conformance).toEqual({
+      exportGate: "warn",
+      ruleSeverities: {},
+    });
     bus.redo();
     bus.redo();
     expect(scene.conformance.ruleSeverities["missing-label"]).toBe("error");
@@ -114,14 +140,21 @@ describe("CommandBus", () => {
 
   it("removes a rule severity override to restore its IBM default", () => {
     const scene = new Scene({
-      conformance: { exportGate: "warn", ruleSeverities: { "missing-label": "error" } }
+      conformance: {
+        exportGate: "warn",
+        ruleSeverities: { "missing-label": "error" },
+      },
     });
     const bus = new CommandBus(scene);
 
-    bus.dispatch(updateConformance(scene, { ruleSeverity: { ruleId: "missing-label" } }));
+    bus.dispatch(
+      updateConformance(scene, { ruleSeverity: { ruleId: "missing-label" } }),
+    );
     expect(scene.conformance.ruleSeverities).toEqual({});
     bus.undo();
-    expect(scene.conformance.ruleSeverities).toEqual({ "missing-label": "error" });
+    expect(scene.conformance.ruleSeverities).toEqual({
+      "missing-label": "error",
+    });
   });
 
   it("restores a removed element on undo", () => {
@@ -187,7 +220,10 @@ describe("CommandBus", () => {
 
     bus.undo();
     expect(scene.get("parent")).toMatchObject({ id: "parent" });
-    expect(scene.get("child")).toMatchObject({ id: "child", parentId: "parent" });
+    expect(scene.get("child")).toMatchObject({
+      id: "child",
+      parentId: "parent",
+    });
   });
 
   it("removes a connector left dangling by a cascading delete, and restores it on undo", () => {
@@ -204,7 +240,10 @@ describe("CommandBus", () => {
 
     bus.undo();
     expect(scene.get("conn")).toMatchObject({ id: "conn" });
-    expect(scene.get("child")).toMatchObject({ id: "child", parentId: "parent" });
+    expect(scene.get("child")).toMatchObject({
+      id: "child",
+      parentId: "parent",
+    });
   });
 
   it("reparents an element and undoes back to its prior container", () => {
@@ -226,7 +265,9 @@ describe("CommandBus", () => {
     bus.dispatch(addElement(box("parent")));
     bus.dispatch(addElement(box("child", "parent")));
 
-    expect(() => reparentElement(scene, "parent", "child")).toThrow(/descendant/);
+    expect(() => reparentElement(scene, "parent", "child")).toThrow(
+      /descendant/,
+    );
   });
 
   it("re-routes an auto connector attached to a moved element, and undoes back", () => {
@@ -255,11 +296,20 @@ describe("CommandBus", () => {
     bus.dispatch(addElement(box("a")));
     bus.dispatch(addElement(box("b")));
     const manualWaypoints = [{ x: 42, y: 42 }];
-    bus.dispatch(addElement(connector("c1", "a", "b", { routing: "manual", waypoints: manualWaypoints })));
+    bus.dispatch(
+      addElement(
+        connector("c1", "a", "b", {
+          routing: "manual",
+          waypoints: manualWaypoints,
+        }),
+      ),
+    );
 
     bus.dispatch(moveElements(scene, ["b"], 0, 100));
 
-    expect((scene.get("c1") as ConnectorElement).waypoints).toEqual(manualWaypoints);
+    expect((scene.get("c1") as ConnectorElement).waypoints).toEqual(
+      manualWaypoints,
+    );
   });
 
   it("coalesces a move-with cascade + reroute into one scene change event per dispatch/undo/redo", () => {
@@ -278,7 +328,9 @@ describe("CommandBus", () => {
     expect(listener).toHaveBeenCalledTimes(1);
     const dispatchIds = new Set(listener.mock.calls[0]?.[0]?.ids as string[]);
     // parent + both children moved, plus the rerouted connector — all in the one coalesced event.
-    expect(dispatchIds).toEqual(new Set(["parent", "child-1", "child-2", "c1"]));
+    expect(dispatchIds).toEqual(
+      new Set(["parent", "child-1", "child-2", "c1"]),
+    );
 
     bus.undo();
     expect(listener).toHaveBeenCalledTimes(2);

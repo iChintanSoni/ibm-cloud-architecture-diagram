@@ -7,7 +7,15 @@ import { normalizeIcon, type NormalizedIcon } from "./extract.js";
 // regardless of which extraction path produced it, is normalized into the same 0..24 space.
 const GLYPH_VIEWBOX = 24;
 const DEFAULT_FLAT_SIZE = 32;
-const DRAWABLE_TAGS = new Set(["path", "rect", "circle", "ellipse", "polygon", "polyline", "line"]);
+const DRAWABLE_TAGS = new Set([
+  "path",
+  "rect",
+  "circle",
+  "ellipse",
+  "polygon",
+  "polyline",
+  "line",
+]);
 
 interface StencilEntry {
   xml?: string;
@@ -32,7 +40,11 @@ function decodeEntities(s: string): string {
 // groups matches by selector for a comma-separated list rather than returning them in
 // true document order, so shape/color lookups that care about "the first one" walk
 // the tree manually instead.
-function collectInOrder(root: Element, tags: Set<string>, out: Element[] = []): Element[] {
+function collectInOrder(
+  root: Element,
+  tags: Set<string>,
+  out: Element[] = [],
+): Element[] {
   for (const child of Array.from(root.children) as Element[]) {
     if (tags.has(child.tagName.toLowerCase())) out.push(child);
     collectInOrder(child, tags, out);
@@ -41,7 +53,9 @@ function collectInOrder(root: Element, tags: Set<string>, out: Element[] = []): 
 }
 
 function hasDirectDrawableChild(el: Element): boolean {
-  return Array.from(el.children).some((c) => DRAWABLE_TAGS.has((c as Element).tagName.toLowerCase()));
+  return Array.from(el.children).some((c) =>
+    DRAWABLE_TAGS.has((c as Element).tagName.toLowerCase()),
+  );
 }
 
 function clearAncestorTransforms(from: Element, root: Element): void {
@@ -74,9 +88,14 @@ function normalizeFlatGlyph(xml: string): NormalizedIcon | undefined {
   if (!svg) return undefined;
 
   const viewBox = svg.getAttribute("viewBox")?.trim().split(/\s+/).map(Number);
-  const size = viewBox && viewBox.length === 4 && viewBox[2] ? Math.max(viewBox[2]!, viewBox[3]!) : DEFAULT_FLAT_SIZE;
+  const size =
+    viewBox && viewBox.length === 4 && viewBox[2]
+      ? Math.max(viewBox[2]!, viewBox[3]!)
+      : DEFAULT_FLAT_SIZE;
 
-  const frame = collectInOrder(svg, new Set(["g"])).find(hasDirectDrawableChild);
+  const frame = collectInOrder(svg, new Set(["g"])).find(
+    hasDirectDrawableChild,
+  );
   if (!frame) return undefined;
 
   clearAncestorTransforms(frame, svg);
@@ -87,10 +106,14 @@ function normalizeFlatGlyph(xml: string): NormalizedIcon | undefined {
   // since (unlike the tile format) there's no single background fill to treat as canonical.
   const firstDrawable = collectInOrder(frame, DRAWABLE_TAGS)[0];
   const rawColor = firstDrawable?.getAttribute("fill");
-  const color = !isWhiteOrNone(rawColor ?? null) ? rawColor!.toUpperCase() : undefined;
+  const color = !isWhiteOrNone(rawColor ?? null)
+    ? rawColor!.toUpperCase()
+    : undefined;
 
   const serialized = new dom.window.XMLSerializer().serializeToString(svg);
-  const fragment = serialized.replace(/^<svg[^>]*>/, "").replace(/<\/svg>$/, "");
+  const fragment = serialized
+    .replace(/^<svg[^>]*>/, "")
+    .replace(/<\/svg>$/, "");
 
   return { fragment, rounded: false, ...(color ? { color } : {}) };
 }
@@ -109,7 +132,9 @@ function normalizeFlatGlyph(xml: string): NormalizedIcon | undefined {
  * glyph formats), the first occurrence wins — the same convention `build.ts` already uses
  * for duplicate slugs from the plain `svg/` tree.
  */
-export function extractDrawioLibraryIcons(xmlPath: string): ExtractedGroupIcon[] {
+export function extractDrawioLibraryIcons(
+  xmlPath: string,
+): ExtractedGroupIcon[] {
   const raw = readFileSync(xmlPath, "utf8");
   const match = raw.match(/<mxlibrary[^>]*>(\[[\s\S]*\])\s*<\/mxlibrary>/);
   if (!match) return [];

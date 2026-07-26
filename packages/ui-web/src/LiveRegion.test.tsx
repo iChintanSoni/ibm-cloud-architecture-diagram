@@ -30,12 +30,20 @@ describe("LiveRegion", () => {
   });
 
   it("supports an assertive politeness level", () => {
-    act(() => root.render(<LiveRegion message="Export blocked" politeness="assertive" />));
-    expect(container.querySelector('[role="status"]')?.getAttribute("aria-live")).toBe("assertive");
+    act(() =>
+      root.render(
+        <LiveRegion message="Export blocked" politeness="assertive" />,
+      ),
+    );
+    expect(
+      container.querySelector('[role="status"]')?.getAttribute("aria-live"),
+    ).toBe("assertive");
   });
 
   it("is visually hidden but present in the DOM", () => {
     act(() => root.render(<LiveRegion message="Connected A to B" />));
-    expect(container.querySelector(".icad-visually-hidden")?.textContent).toBe("Connected A to B");
+    expect(container.querySelector(".icad-visually-hidden")?.textContent).toBe(
+      "Connected A to B",
+    );
   });
 });

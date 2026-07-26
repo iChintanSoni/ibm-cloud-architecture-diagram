@@ -1,9 +1,20 @@
 import { describe, expect, it } from "vitest";
 import { Scene } from "../scene/scene.js";
-import type { BoxElement, ConnectorElement, IconNodeElement } from "../scene/types.js";
+import type {
+  BoxElement,
+  ConnectorElement,
+  IconNodeElement,
+} from "../scene/types.js";
 import { hitTest, hitTestAll, hitTestRect } from "./hitTest.js";
 
-function box(id: string, x: number, y: number, w: number, h: number, parentId?: string): BoxElement {
+function box(
+  id: string,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  parentId?: string,
+): BoxElement {
   return {
     id,
     type: "box",
@@ -12,11 +23,16 @@ function box(id: string, x: number, y: number, w: number, h: number, parentId?: 
     y,
     w,
     h,
-    ...(parentId ? { parentId } : {})
+    ...(parentId ? { parentId } : {}),
   };
 }
 
-function icon(id: string, x: number, y: number, parentId?: string): IconNodeElement {
+function icon(
+  id: string,
+  x: number,
+  y: number,
+  parentId?: string,
+): IconNodeElement {
   return {
     id,
     type: "iconNode",
@@ -26,11 +42,16 @@ function icon(id: string, x: number, y: number, parentId?: string): IconNodeElem
     y,
     w: 48,
     h: 48,
-    ...(parentId ? { parentId } : {})
+    ...(parentId ? { parentId } : {}),
   };
 }
 
-function connector(id: string, from: string, to: string, waypoints: Array<{ x: number; y: number }>): ConnectorElement {
+function connector(
+  id: string,
+  from: string,
+  to: string,
+  waypoints: Array<{ x: number; y: number }>,
+): ConnectorElement {
   return {
     id,
     type: "connector",
@@ -43,7 +64,7 @@ function connector(id: string, from: string, to: string, waypoints: Array<{ x: n
     to: { elementId: to, port: "w" },
     connectorType: "association",
     routing: "manual",
-    waypoints
+    waypoints,
   };
 }
 
@@ -67,7 +88,10 @@ describe("hitTest", () => {
     // it), which previously defeated the old z-order-only heuristic (C9).
     scene._put(icon("child", 20, 20));
     scene._put(box("container", 0, 0, 200, 200));
-    scene._put({ ...(scene.get("child") as IconNodeElement), parentId: "container" }, "update");
+    scene._put(
+      { ...(scene.get("child") as IconNodeElement), parentId: "container" },
+      "update",
+    );
 
     expect(hitTest(scene, { x: 40, y: 40 })?.id).toBe("child");
   });
@@ -95,12 +119,14 @@ describe("hitTest", () => {
     scene._put(
       connector("conn", "from", "to", [
         { x: 40, y: 20 },
-        { x: 200, y: 20 }
-      ])
+        { x: 200, y: 20 },
+      ]),
     );
 
     expect(hitTest(scene, { x: 100, y: 20 })?.id).toBe("conn"); // dead-center on the line
-    expect(hitTest(scene, { x: 100, y: 23 }, { tolerance: 6 })?.id).toBe("conn"); // within tolerance
+    expect(hitTest(scene, { x: 100, y: 23 }, { tolerance: 6 })?.id).toBe(
+      "conn",
+    ); // within tolerance
     expect(hitTest(scene, { x: 100, y: 40 }, { tolerance: 6 })).toBeUndefined(); // well outside it
   });
 
@@ -110,7 +136,11 @@ describe("hitTest", () => {
     scene._put(box("middle", 20, 20, 200, 200, "outer"));
     scene._put(icon("inner", 40, 40, "middle"));
 
-    expect(hitTestAll(scene, { x: 50, y: 50 }).map((el) => el.id)).toEqual(["inner", "middle", "outer"]);
+    expect(hitTestAll(scene, { x: 50, y: 50 }).map((el) => el.id)).toEqual([
+      "inner",
+      "middle",
+      "outer",
+    ]);
   });
 
   it("hitTestRect matches only elements fully enclosed by the rect, not merely overlapping (fully-enclosed marquee semantics)", () => {
@@ -118,7 +148,9 @@ describe("hitTest", () => {
     scene._put(box("enclosed", 10, 10, 50, 50));
     scene._put(box("straddling", 80, 10, 100, 50));
 
-    const ids = hitTestRect(scene, { x: 0, y: 0, w: 100, h: 100 }).map((el) => el.id);
+    const ids = hitTestRect(scene, { x: 0, y: 0, w: 100, h: 100 }).map(
+      (el) => el.id,
+    );
     expect(ids).toEqual(["enclosed"]);
   });
 
@@ -129,11 +161,15 @@ describe("hitTest", () => {
     scene._put(
       connector("conn", "from", "to", [
         { x: 40, y: 20 },
-        { x: 500, y: 20 }
-      ])
+        { x: 500, y: 20 },
+      ]),
     );
 
-    expect(hitTestRect(scene, { x: 0, y: 0, w: 600, h: 100 }).map((el) => el.id)).toContain("conn");
-    expect(hitTestRect(scene, { x: 0, y: 0, w: 100, h: 100 }).map((el) => el.id)).not.toContain("conn");
+    expect(
+      hitTestRect(scene, { x: 0, y: 0, w: 600, h: 100 }).map((el) => el.id),
+    ).toContain("conn");
+    expect(
+      hitTestRect(scene, { x: 0, y: 0, w: 100, h: 100 }).map((el) => el.id),
+    ).not.toContain("conn");
   });
 });

@@ -8,7 +8,11 @@ import type { ConnectorAnnotation } from "./types.js";
  * (the same convention `[PORT]` itself uses, not literal punctuation to render) — this follows
  * docs/05's own worked example, which already drops it.
  */
-export function formatConnectorAnnotation(annotation: ConnectorAnnotation): string {
-  const withSecurity = annotation.security ? `${annotation.name} ${annotation.security}` : annotation.name;
+export function formatConnectorAnnotation(
+  annotation: ConnectorAnnotation,
+): string {
+  const withSecurity = annotation.security
+    ? `${annotation.name} ${annotation.security}`
+    : annotation.name;
   return annotation.port ? `${withSecurity}:${annotation.port}` : withSecurity;
 }

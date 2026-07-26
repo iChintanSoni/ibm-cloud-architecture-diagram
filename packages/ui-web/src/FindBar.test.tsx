@@ -8,7 +8,10 @@ import type { FindMatch } from "./findModel.js";
 
 /** Controlled Carbon inputs need the native setter so React's change-event plugin fires onChange. */
 function setNativeInputValue(input: HTMLInputElement, value: string): void {
-  const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!;
+  const setter = Object.getOwnPropertyDescriptor(
+    window.HTMLInputElement.prototype,
+    "value",
+  )!.set!;
   setter.call(input, value);
   input.dispatchEvent(new Event("input", { bubbles: true }));
 }
@@ -31,7 +34,7 @@ describe("FindBar", () => {
 
   const matches: FindMatch[] = [
     { id: "a", label: "Payments", type: "box", kind: "element" },
-    { id: "b", label: "Checkout flow", type: "frame", kind: "frame" }
+    { id: "b", label: "Checkout flow", type: "frame", kind: "frame" },
   ];
 
   it("renders nothing when closed", () => {
@@ -46,7 +49,7 @@ describe("FindBar", () => {
           onNext={vi.fn()}
           onPrevious={vi.fn()}
           onClose={vi.fn()}
-        />
+        />,
       );
     });
     expect(container.querySelector('[role="search"]')).toBeNull();
@@ -65,11 +68,13 @@ describe("FindBar", () => {
           onNext={vi.fn()}
           onPrevious={vi.fn()}
           onClose={vi.fn()}
-        />
+        />,
       );
     });
 
-    expect(container.querySelector(".icad-find-bar__count")?.textContent).toBe("2 / 2");
+    expect(container.querySelector(".icad-find-bar__count")?.textContent).toBe(
+      "2 / 2",
+    );
 
     const input = container.querySelector<HTMLInputElement>("input")!;
     act(() => setNativeInputValue(input, "checkout"));
@@ -88,10 +93,12 @@ describe("FindBar", () => {
           onNext={vi.fn()}
           onPrevious={vi.fn()}
           onClose={vi.fn()}
-        />
+        />,
       );
     });
-    expect(container.querySelector(".icad-find-bar__count")?.textContent).toBe("No results");
+    expect(container.querySelector(".icad-find-bar__count")?.textContent).toBe(
+      "No results",
+    );
   });
 
   it("steps forward and backward through matches on Enter/Shift+Enter", () => {
@@ -108,16 +115,26 @@ describe("FindBar", () => {
           onNext={onNext}
           onPrevious={onPrevious}
           onClose={vi.fn()}
-        />
+        />,
       );
     });
 
     const input = container.querySelector<HTMLInputElement>("input")!;
-    act(() => input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })));
+    act(() =>
+      input.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+      ),
+    );
     expect(onNext).toHaveBeenCalledTimes(1);
 
     act(() =>
-      input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", shiftKey: true, bubbles: true }))
+      input.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "Enter",
+          shiftKey: true,
+          bubbles: true,
+        }),
+      ),
     );
     expect(onPrevious).toHaveBeenCalledTimes(1);
   });
@@ -135,12 +152,16 @@ describe("FindBar", () => {
           onNext={vi.fn()}
           onPrevious={vi.fn()}
           onClose={onClose}
-        />
+        />,
       );
     });
 
     const input = container.querySelector<HTMLInputElement>("input")!;
-    act(() => input.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+    act(() =>
+      input.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+      ),
+    );
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
@@ -162,8 +183,8 @@ describe("FindBar", () => {
             onNext={vi.fn()}
             onPrevious={vi.fn()}
             onClose={vi.fn()}
-          />
-        )
+          />,
+        ),
       );
 
     render(true);

@@ -36,7 +36,7 @@ export async function openIcadFileNative(): Promise<OpenedNativeFile | null> {
 export async function saveIcadFileNative(
   content: string,
   path: string | null,
-  suggestedName: string
+  suggestedName: string,
 ): Promise<string | null> {
   const { save } = await import("@tauri-apps/plugin-dialog");
   const { writeTextFile } = await import("@tauri-apps/plugin-fs");
@@ -71,7 +71,7 @@ export async function consumeStartupFile(): Promise<OpenedNativeFile | null> {
  * With" request delivered after startup. Returns an unsubscribe function.
  */
 export async function onNativeFileOpen(
-  handler: (file: OpenedNativeFile) => void
+  handler: (file: OpenedNativeFile) => void,
 ): Promise<() => void> {
   const { listen } = await import("@tauri-apps/api/event");
   const { readTextFile } = await import("@tauri-apps/plugin-fs");
@@ -88,7 +88,9 @@ export async function onNativeFileOpen(
  * the OS live, the same as an unset window `theme` config, but settable at
  * runtime so switching back to "auto" after an explicit choice un-forces it.
  */
-export async function setNativeTheme(theme: "light" | "dark" | null): Promise<void> {
+export async function setNativeTheme(
+  theme: "light" | "dark" | null,
+): Promise<void> {
   const { getCurrentWindow } = await import("@tauri-apps/api/window");
   await getCurrentWindow().setTheme(theme);
 }
@@ -101,7 +103,7 @@ export async function setNativeTheme(theme: "light" | "dark" | null): Promise<vo
 export async function saveExportNative(
   blob: Blob,
   suggestedName: string,
-  filters: { name: string; extensions: string[] }[]
+  filters: { name: string; extensions: string[] }[],
 ): Promise<string | null> {
   const { save } = await import("@tauri-apps/plugin-dialog");
   const { writeFile } = await import("@tauri-apps/plugin-fs");

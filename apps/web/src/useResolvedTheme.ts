@@ -4,7 +4,10 @@ export type ThemePreference = "auto" | "light" | "dark";
 type CarbonTheme = "white" | "g100";
 
 function prefersDark(): boolean {
-  return typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches;
+  return (
+    typeof window !== "undefined" &&
+    window.matchMedia("(prefers-color-scheme: dark)").matches
+  );
 }
 
 /** Resolves the auto/light/dark preference (docs/06-editor-ux.md#themes) to a Carbon theme token. */
@@ -14,7 +17,8 @@ export function useResolvedTheme(preference: ThemePreference): CarbonTheme {
   useEffect(() => {
     if (preference !== "auto") return;
     const media = window.matchMedia("(prefers-color-scheme: dark)");
-    const listener = (e: MediaQueryListEvent) => setSystemPrefersDark(e.matches);
+    const listener = (e: MediaQueryListEvent) =>
+      setSystemPrefersDark(e.matches);
     media.addEventListener("change", listener);
     return () => media.removeEventListener("change", listener);
   }, [preference]);

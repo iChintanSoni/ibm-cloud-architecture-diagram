@@ -5,14 +5,14 @@ import { buildValidationView } from "./validation";
 const noOpFix: Command = {
   label: "fix",
   do() {},
-  undo() {}
+  undo() {},
 };
 
 function diagnostic(
   id: string,
   severity: Severity,
   ruleId = id,
-  quickFix?: Command
+  quickFix?: Command,
 ): Diagnostic {
   return {
     id,
@@ -20,7 +20,7 @@ function diagnostic(
     severity,
     category: "labels",
     message: id,
-    ...(quickFix ? { quickFix } : {})
+    ...(quickFix ? { quickFix } : {}),
   };
 }
 
@@ -31,17 +31,19 @@ describe("buildValidationView", () => {
         diagnostic("information", "info"),
         diagnostic("warning", "warn"),
         diagnostic("error-1", "error"),
-        diagnostic("error-2", "error")
+        diagnostic("error-2", "error"),
       ],
-      "warn"
+      "warn",
     );
 
-    expect(view.groups.map((group) => group.severity)).toEqual(["error", "warn", "info"]);
-    expect(view.groups.map((group) => group.items.map((item) => item.id))).toEqual([
-      ["error-1", "error-2"],
-      ["warning"],
-      ["information"]
+    expect(view.groups.map((group) => group.severity)).toEqual([
+      "error",
+      "warn",
+      "info",
     ]);
+    expect(
+      view.groups.map((group) => group.items.map((item) => item.id)),
+    ).toEqual([["error-1", "error-2"], ["warning"], ["information"]]);
     expect(view.counts).toEqual({ error: 2, warn: 1, info: 1 });
   });
 
@@ -51,9 +53,9 @@ describe("buildValidationView", () => {
         diagnostic("missing-1", "warn", "missing-label", noOpFix),
         diagnostic("missing-2", "warn", "missing-label", noOpFix),
         diagnostic("missing-3", "warn", "missing-label"),
-        diagnostic("crossing", "warn", "connector-crosses-obstacle", noOpFix)
+        diagnostic("crossing", "warn", "connector-crosses-obstacle", noOpFix),
       ],
-      "warn"
+      "warn",
     );
 
     expect(view.fixableByRule.get("missing-label")).toBe(2);
@@ -61,12 +63,20 @@ describe("buildValidationView", () => {
   });
 
   it("never blocks in advisory mode, even with errors", () => {
-    expect(buildValidationView([diagnostic("error", "error")], "warn").exportBlocked).toBe(false);
+    expect(
+      buildValidationView([diagnostic("error", "error")], "warn").exportBlocked,
+    ).toBe(false);
   });
 
   it("blocks strict export only when at least one error exists", () => {
-    expect(buildValidationView([diagnostic("warning", "warn")], "block").exportBlocked).toBe(false);
-    expect(buildValidationView([diagnostic("error", "error")], "block").exportBlocked).toBe(true);
+    expect(
+      buildValidationView([diagnostic("warning", "warn")], "block")
+        .exportBlocked,
+    ).toBe(false);
+    expect(
+      buildValidationView([diagnostic("error", "error")], "block")
+        .exportBlocked,
+    ).toBe(true);
   });
 
   it("returns empty groups and zero counts for a clean document", () => {

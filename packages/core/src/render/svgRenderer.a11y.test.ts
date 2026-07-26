@@ -19,9 +19,9 @@ function testCatalog(): Catalog {
         container: "square",
         asset: "vpc",
         keywords: ["vpc"],
-        tier: "ibm-cloud"
-      }
-    ]
+        tier: "ibm-cloud",
+      },
+    ],
   };
   return new Catalog(manifest, new Map([["vpc", "<rect />"]]));
 }
@@ -36,7 +36,7 @@ function box(id: string, x: number, parentId?: string): BoxElement {
     w: 200,
     h: 200,
     label: { text: id },
-    ...(parentId ? { parentId } : {})
+    ...(parentId ? { parentId } : {}),
   };
 }
 
@@ -50,7 +50,7 @@ function icon(id: string, x: number, parentId?: string): IconNodeElement {
     y: 10,
     w: 48,
     h: 48,
-    ...(parentId ? { parentId } : {})
+    ...(parentId ? { parentId } : {}),
   };
 }
 
@@ -76,9 +76,13 @@ describe("SvgRenderer accessibility", () => {
     renderer.render(scene);
 
     expect(renderer.nodeFor("vpc")?.getAttribute("role")).toBe("group");
-    expect(renderer.nodeFor("vpc")?.getAttribute("aria-label")).toBe("Box: vpc, contains 1 element");
+    expect(renderer.nodeFor("vpc")?.getAttribute("aria-label")).toBe(
+      "Box: vpc, contains 1 element",
+    );
     expect(renderer.nodeFor("server")?.getAttribute("role")).toBe("button");
-    expect(renderer.nodeFor("server")?.getAttribute("aria-label")).toBe("Virtual Private Cloud");
+    expect(renderer.nodeFor("server")?.getAttribute("aria-label")).toBe(
+      "Virtual Private Cloud",
+    );
   });
 
   it("gives every element a real id so aria-owns can reference it", () => {
@@ -93,7 +97,9 @@ describe("SvgRenderer accessibility", () => {
     scene._put(icon("server-2", 60, "vpc"));
     renderer.render(scene);
 
-    expect(renderer.nodeFor("vpc")?.getAttribute("aria-owns")).toBe("server-1 server-2");
+    expect(renderer.nodeFor("vpc")?.getAttribute("aria-owns")).toBe(
+      "server-1 server-2",
+    );
     expect(renderer.nodeFor("server-1")?.hasAttribute("aria-owns")).toBe(false);
   });
 
@@ -160,7 +166,9 @@ describe("SvgRenderer accessibility", () => {
 
     renderer.setSelection(["east", "west"]);
 
-    const tabbable = ["east", "west"].filter((id) => renderer.nodeFor(id)?.getAttribute("tabindex") === "0");
+    const tabbable = ["east", "west"].filter(
+      (id) => renderer.nodeFor(id)?.getAttribute("tabindex") === "0",
+    );
     expect(tabbable).toHaveLength(1);
   });
 

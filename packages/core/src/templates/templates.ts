@@ -9,7 +9,7 @@ import type {
   DocumentMeta,
   FrameElement,
   IconNodeElement,
-  SceneElement
+  SceneElement,
 } from "../scene/types.js";
 
 export type DiagramTemplateId = DocumentMeta["diagramLevel"];
@@ -24,23 +24,23 @@ export const DIAGRAM_TEMPLATES: readonly DiagramTemplate[] = [
   {
     id: "blank",
     name: "Blank",
-    description: "An empty canvas with the IBM Cloud library ready."
+    description: "An empty canvas with the IBM Cloud library ready.",
   },
   {
     id: "system-context",
     name: "System context",
-    description: "Actors, external systems, and a solution boundary."
+    description: "Actors, external systems, and a solution boundary.",
   },
   {
     id: "high-level",
     name: "High-level / logical",
-    description: "Key IBM Cloud services and their main west-to-east flows."
+    description: "Key IBM Cloud services and their main west-to-east flows.",
   },
   {
     id: "detailed",
     name: "Detailed / deployment",
-    description: "Region, VPC, subnet, security-group, and workload structure."
-  }
+    description: "Region, VPC, subnet, security-group, and workload structure.",
+  },
 ] as const;
 
 export interface CreateTemplateDocumentOptions {
@@ -54,7 +54,7 @@ const TEMPLATE_TITLES: Record<DiagramTemplateId, string> = {
   blank: "Untitled diagram",
   "system-context": "System context",
   "high-level": "High-level architecture",
-  detailed: "Detailed deployment"
+  detailed: "Detailed deployment",
 };
 
 function frame(id: string, name: string, w: number, h: number): FrameElement {
@@ -68,7 +68,7 @@ function frame(id: string, name: string, w: number, h: number): FrameElement {
     y: 20,
     w,
     h,
-    z: -100
+    z: -100,
   };
 }
 
@@ -78,7 +78,7 @@ function actor(
   x: number,
   y: number,
   parentId: string,
-  catalogRef = "ibm-cloud/user"
+  catalogRef = "ibm-cloud/user",
 ): ActorElement {
   return {
     id,
@@ -90,7 +90,7 @@ function actor(
     y,
     w: 48,
     h: 48,
-    parentId
+    parentId,
   };
 }
 
@@ -100,7 +100,7 @@ function icon(
   label: string,
   x: number,
   y: number,
-  parentId: string
+  parentId: string,
 ): IconNodeElement {
   return {
     id,
@@ -112,7 +112,7 @@ function icon(
     y,
     w: 48,
     h: 48,
-    parentId
+    parentId,
   };
 }
 
@@ -120,7 +120,7 @@ function connector(
   id: string,
   from: string,
   to: string,
-  flowColor: "public" | "private" = "private"
+  flowColor: "public" | "private" = "private",
 ): ConnectorElement {
   return {
     id,
@@ -135,7 +135,7 @@ function connector(
     connectorType: "connection",
     direction: "unidirectional",
     flowColor,
-    routing: "auto"
+    routing: "auto",
   };
 }
 
@@ -147,7 +147,14 @@ function systemContextElements(): SceneElement[] {
   return [
     frame(frameId, "System context", 960, 560),
     actor("system-context-customer", "Customer", 70, 190, frameId),
-    actor("system-context-external", "External system", 70, 330, frameId, "ibm-cloud/user-collaborate"),
+    actor(
+      "system-context-external",
+      "External system",
+      70,
+      330,
+      frameId,
+      "ibm-cloud/user-collaborate",
+    ),
     {
       id: solutionId,
       type: "box",
@@ -159,7 +166,7 @@ function systemContextElements(): SceneElement[] {
       w: 650,
       h: 400,
       parentId: frameId,
-      z: -20
+      z: -20,
     },
     {
       id: cloudId,
@@ -172,7 +179,7 @@ function systemContextElements(): SceneElement[] {
       w: 550,
       h: 300,
       parentId: solutionId,
-      z: -10
+      z: -10,
     },
     icon(
       applicationId,
@@ -180,20 +187,20 @@ function systemContextElements(): SceneElement[] {
       "Application",
       520,
       250,
-      cloudId
+      cloudId,
     ),
     connector(
       "system-context-customer-flow",
       "system-context-customer",
       applicationId,
-      "public"
+      "public",
     ),
     connector(
       "system-context-external-flow",
       "system-context-external",
       applicationId,
-      "public"
-    )
+      "public",
+    ),
   ];
 }
 
@@ -218,7 +225,7 @@ function highLevelElements(): SceneElement[] {
       w: 820,
       h: 470,
       parentId: frameId,
-      z: -30
+      z: -30,
     },
     {
       id: vpcId,
@@ -232,7 +239,7 @@ function highLevelElements(): SceneElement[] {
       w: 720,
       h: 360,
       parentId: cloudId,
-      z: -20
+      z: -20,
     },
     {
       id: workloadId,
@@ -244,21 +251,44 @@ function highLevelElements(): SceneElement[] {
       w: 390,
       h: 230,
       parentId: vpcId,
-      z: -10
+      z: -10,
     },
-    icon("high-level-gateway", "ibm-cloud/gateway-api", "API Gateway", 340, 270, workloadId),
-    icon("high-level-app", "ibm-cloud/instance-bx", "Application", 565, 270, workloadId),
+    icon(
+      "high-level-gateway",
+      "ibm-cloud/gateway-api",
+      "API Gateway",
+      340,
+      270,
+      workloadId,
+    ),
+    icon(
+      "high-level-app",
+      "ibm-cloud/instance-bx",
+      "Application",
+      565,
+      270,
+      workloadId,
+    ),
     icon(
       "high-level-storage",
       "ibm-cloud/object-storage-application",
       "Object storage",
       800,
       270,
-      vpcId
+      vpcId,
     ),
-    connector("high-level-public-flow", "high-level-customer", "high-level-gateway", "public"),
+    connector(
+      "high-level-public-flow",
+      "high-level-customer",
+      "high-level-gateway",
+      "public",
+    ),
     connector("high-level-app-flow", "high-level-gateway", "high-level-app"),
-    connector("high-level-storage-flow", "high-level-app", "high-level-storage")
+    connector(
+      "high-level-storage-flow",
+      "high-level-app",
+      "high-level-storage",
+    ),
   ];
 }
 
@@ -285,7 +315,7 @@ function detailedElements(): SceneElement[] {
       w: 920,
       h: 520,
       parentId: frameId,
-      z: -40
+      z: -40,
     },
     {
       id: vpcId,
@@ -299,7 +329,7 @@ function detailedElements(): SceneElement[] {
       w: 840,
       h: 440,
       parentId: regionId,
-      z: -30
+      z: -30,
     },
     {
       id: publicSubnetId,
@@ -313,7 +343,7 @@ function detailedElements(): SceneElement[] {
       w: 220,
       h: 330,
       parentId: vpcId,
-      z: -20
+      z: -20,
     },
     {
       id: privateSubnetId,
@@ -327,7 +357,7 @@ function detailedElements(): SceneElement[] {
       w: 500,
       h: 330,
       parentId: vpcId,
-      z: -20
+      z: -20,
     },
     {
       id: securityGroupId,
@@ -339,23 +369,49 @@ function detailedElements(): SceneElement[] {
       w: 240,
       h: 240,
       parentId: privateSubnetId,
-      z: -10
+      z: -10,
     },
-    icon("detailed-gateway", "ibm-cloud/gateway-api", "Public gateway", 315, 285, publicSubnetId),
-    icon("detailed-app", "ibm-cloud/instance-bx", "Application server", 575, 245, securityGroupId),
-    icon("detailed-worker", "ibm-cloud/instance-bx", "Worker", 675, 345, securityGroupId),
+    icon(
+      "detailed-gateway",
+      "ibm-cloud/gateway-api",
+      "Public gateway",
+      315,
+      285,
+      publicSubnetId,
+    ),
+    icon(
+      "detailed-app",
+      "ibm-cloud/instance-bx",
+      "Application server",
+      575,
+      245,
+      securityGroupId,
+    ),
+    icon(
+      "detailed-worker",
+      "ibm-cloud/instance-bx",
+      "Worker",
+      675,
+      345,
+      securityGroupId,
+    ),
     icon(
       "detailed-storage",
       "ibm-cloud/object-storage-application",
       "Object storage",
       865,
       285,
-      privateSubnetId
+      privateSubnetId,
     ),
-    connector("detailed-public-flow", "detailed-customer", "detailed-gateway", "public"),
+    connector(
+      "detailed-public-flow",
+      "detailed-customer",
+      "detailed-gateway",
+      "public",
+    ),
     connector("detailed-app-flow", "detailed-gateway", "detailed-app"),
     connector("detailed-worker-flow", "detailed-app", "detailed-worker"),
-    connector("detailed-storage-flow", "detailed-worker", "detailed-storage")
+    connector("detailed-storage-flow", "detailed-worker", "detailed-storage"),
   ];
 }
 
@@ -375,19 +431,23 @@ function elementsFor(templateId: DiagramTemplateId): SceneElement[] {
 function routeTemplateConnectors(elements: SceneElement[]): SceneElement[] {
   const scene = new Scene();
   scene._replaceAll(elements);
-  return scene.all().map((element) =>
-    element.type === "connector"
-      ? { ...element, waypoints: routeConnectorInScene(scene, element) }
-      : element
-  );
+  return scene
+    .all()
+    .map((element) =>
+      element.type === "connector"
+        ? { ...element, waypoints: routeConnectorInScene(scene, element) }
+        : element,
+    );
 }
 
 /** Builds a complete, portable .icad document for any supported IBM diagram level. */
 export function createTemplateDocument(
   templateId: DiagramTemplateId,
-  options: CreateTemplateDocumentOptions
+  options: CreateTemplateDocumentOptions,
 ): IcadDocument {
-  const descriptor = DIAGRAM_TEMPLATES.find((template) => template.id === templateId);
+  const descriptor = DIAGRAM_TEMPLATES.find(
+    (template) => template.id === templateId,
+  );
   if (!descriptor) throw new Error(`Unknown diagram template: "${templateId}"`);
   const now = options.now ?? new Date().toISOString();
   return {
@@ -398,17 +458,17 @@ export function createTemplateDocument(
       title: TEMPLATE_TITLES[templateId],
       diagramLevel: templateId,
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
     },
     canvas: {
       theme: options.theme ?? "auto",
       grid: 8,
-      background: "transparent"
+      background: "transparent",
     },
     conformance: {
       exportGate: "warn",
-      ruleSeverities: {}
+      ruleSeverities: {},
     },
-    elements: routeTemplateConnectors(elementsFor(templateId))
+    elements: routeTemplateConnectors(elementsFor(templateId)),
   };
 }

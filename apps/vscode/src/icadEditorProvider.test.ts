@@ -2,14 +2,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("vscode", async () => await import("./testUtils/fakeVscode.js"));
 
-const { Uri, createFakeWebviewPanel, resetFakeVscode, workspace } = await import("./testUtils/fakeVscode.js");
+const { Uri, createFakeWebviewPanel, resetFakeVscode, workspace } =
+  await import("./testUtils/fakeVscode.js");
 const { IcadEditorProvider } = await import("./icadEditorProvider.js");
 const { IcadDocument } = await import("./icadDocument.js");
 
 const encoder = new TextEncoder();
 
 async function openDocument(content: string) {
-  vi.mocked(workspace.fs.readFile).mockResolvedValueOnce(encoder.encode(content));
+  vi.mocked(workspace.fs.readFile).mockResolvedValueOnce(
+    encoder.encode(content),
+  );
   return IcadDocument.create(Uri.file("/diagrams/a.icad") as never);
 }
 
@@ -30,8 +33,14 @@ describe("IcadEditorProvider", () => {
     provider.resolveCustomEditor(document, panel as never);
     panel.emitMessage({ type: "ready" });
 
-    expect(panel.webview.postMessage).toHaveBeenCalledWith({ type: "init", content: '{"format":"icad"}' });
-    expect(panel.webview.postMessage).toHaveBeenCalledWith({ type: "themeKind", kind: "light" });
+    expect(panel.webview.postMessage).toHaveBeenCalledWith({
+      type: "init",
+      content: '{"format":"icad"}',
+    });
+    expect(panel.webview.postMessage).toHaveBeenCalledWith({
+      type: "themeKind",
+      kind: "light",
+    });
   });
 
   it("bridges a genuine edit into VS Code's undo stack and forwards undo()/redo() to the webview", async () => {
@@ -84,7 +93,10 @@ describe("IcadEditorProvider", () => {
 
     await provider.saveCustomDocument(document, undefined as never);
 
-    expect(workspace.fs.writeFile).toHaveBeenCalledWith(document.uri, encoder.encode('{"v":3}'));
+    expect(workspace.fs.writeFile).toHaveBeenCalledWith(
+      document.uri,
+      encoder.encode('{"v":3}'),
+    );
   });
 
   it("saveCustomDocumentAs writes latestContent to the destination uri", async () => {
@@ -93,9 +105,16 @@ describe("IcadEditorProvider", () => {
     document.applyEdit({ content: '{"v":4}', label: "Move" });
     const destination = Uri.file("/diagrams/copy.icad");
 
-    await provider.saveCustomDocumentAs(document, destination as never, undefined as never);
+    await provider.saveCustomDocumentAs(
+      document,
+      destination as never,
+      undefined as never,
+    );
 
-    expect(workspace.fs.writeFile).toHaveBeenCalledWith(destination, encoder.encode('{"v":4}'));
+    expect(workspace.fs.writeFile).toHaveBeenCalledWith(
+      destination,
+      encoder.encode('{"v":4}'),
+    );
   });
 
   it("backupCustomDocument writes to the backup destination and its delete() removes it", async () => {
@@ -104,9 +123,16 @@ describe("IcadEditorProvider", () => {
     document.applyEdit({ content: '{"v":5}', label: "Move" });
     const destination = Uri.file("/backups/a-1.icad");
 
-    const backup = await provider.backupCustomDocument(document, { destination } as never, undefined as never);
+    const backup = await provider.backupCustomDocument(
+      document,
+      { destination } as never,
+      undefined as never,
+    );
 
-    expect(workspace.fs.writeFile).toHaveBeenCalledWith(destination, encoder.encode('{"v":5}'));
+    expect(workspace.fs.writeFile).toHaveBeenCalledWith(
+      destination,
+      encoder.encode('{"v":5}'),
+    );
     backup.delete();
     expect(workspace.fs.delete).toHaveBeenCalledWith(destination);
   });
@@ -118,11 +144,16 @@ describe("IcadEditorProvider", () => {
     provider.resolveCustomEditor(document, panel as never);
     document.applyEdit({ content: '{"unsaved":true}', label: "Add box" });
 
-    vi.mocked(workspace.fs.readFile).mockResolvedValueOnce(encoder.encode('{"onDisk":true}'));
+    vi.mocked(workspace.fs.readFile).mockResolvedValueOnce(
+      encoder.encode('{"onDisk":true}'),
+    );
     await provider.revertCustomDocument(document, undefined as never);
 
     expect(document.latestContent).toBe('{"onDisk":true}');
-    expect(panel.webview.postMessage).toHaveBeenCalledWith({ type: "revert", content: '{"onDisk":true}' });
+    expect(panel.webview.postMessage).toHaveBeenCalledWith({
+      type: "revert",
+      content: '{"onDisk":true}',
+    });
   });
 
   it("exportSvg prompts a save dialog and writes the chosen file", async () => {
@@ -139,7 +170,10 @@ describe("IcadEditorProvider", () => {
     await flush();
 
     expect(fakeWindow.showSaveDialog).toHaveBeenCalled();
-    expect(workspace.fs.writeFile).toHaveBeenCalledWith(target, encoder.encode("<svg></svg>"));
+    expect(workspace.fs.writeFile).toHaveBeenCalledWith(
+      target,
+      encoder.encode("<svg></svg>"),
+    );
   });
 
   it("relays requestOpen/requestSave/requestSaveAs to the matching native VS Code command", async () => {
@@ -154,9 +188,18 @@ describe("IcadEditorProvider", () => {
     panel.emitMessage({ type: "requestSave" });
     panel.emitMessage({ type: "requestSaveAs" });
 
-    expect(commands.executeCommand).toHaveBeenNthCalledWith(1, "workbench.action.files.openFile");
-    expect(commands.executeCommand).toHaveBeenNthCalledWith(2, "workbench.action.files.save");
-    expect(commands.executeCommand).toHaveBeenNthCalledWith(3, "workbench.action.files.saveAs");
+    expect(commands.executeCommand).toHaveBeenNthCalledWith(
+      1,
+      "workbench.action.files.openFile",
+    );
+    expect(commands.executeCommand).toHaveBeenNthCalledWith(
+      2,
+      "workbench.action.files.save",
+    );
+    expect(commands.executeCommand).toHaveBeenNthCalledWith(
+      3,
+      "workbench.action.files.saveAs",
+    );
   });
 
   it("exportSvg does nothing if the user cancels the save dialog", async () => {

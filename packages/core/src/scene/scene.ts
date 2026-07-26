@@ -5,7 +5,7 @@ import type {
   ConformanceSettings,
   DocumentMeta,
   ElementId,
-  SceneElement
+  SceneElement,
 } from "./types.js";
 
 export interface SceneChangeEvent {
@@ -46,13 +46,18 @@ export class Scene {
       diagramLevel: "blank",
       createdAt: now,
       updatedAt: now,
-      ...init?.meta
+      ...init?.meta,
     };
-    this.canvas = { theme: "auto", grid: 8, background: "transparent", ...init?.canvas };
+    this.canvas = {
+      theme: "auto",
+      grid: 8,
+      background: "transparent",
+      ...init?.canvas,
+    };
     this.catalog = init?.catalog ?? { id: "ibm-cloud", version: "0.0.0" };
     this.conformance = {
       exportGate: init?.conformance?.exportGate ?? "warn",
-      ruleSeverities: { ...(init?.conformance?.ruleSeverities ?? {}) }
+      ruleSeverities: { ...(init?.conformance?.ruleSeverities ?? {}) },
     };
   }
 
@@ -138,7 +143,9 @@ export class Scene {
       this.batching = false;
       if (this.batchedDirty) {
         const reason: SceneChangeEvent["reason"] =
-          this.batchedReasons.size === 1 ? [...this.batchedReasons][0]! : "replace";
+          this.batchedReasons.size === 1
+            ? [...this.batchedReasons][0]!
+            : "replace";
         this.emitter.emit("change", { reason, ids: [...this.batchedIds] });
       }
     }
@@ -178,7 +185,10 @@ export class Scene {
       this.batchedReasons.add("replace");
       this.batchedDirty = true;
     } else {
-      this.emitter.emit("change", { reason: "replace", ids: elements.map((e) => e.id) });
+      this.emitter.emit("change", {
+        reason: "replace",
+        ids: elements.map((e) => e.id),
+      });
     }
   }
 
@@ -186,7 +196,7 @@ export class Scene {
   _setConformance(settings: ConformanceSettings): void {
     this.conformance = {
       exportGate: settings.exportGate,
-      ruleSeverities: { ...settings.ruleSeverities }
+      ruleSeverities: { ...settings.ruleSeverities },
     };
     this.meta.updatedAt = new Date().toISOString();
     if (this.batching) {

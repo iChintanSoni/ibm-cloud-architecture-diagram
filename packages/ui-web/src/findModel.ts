@@ -10,7 +10,11 @@ export interface FindMatch {
 }
 
 /** Searches element labels, icon catalog names, and frame names (docs/06-editor-ux.md#find-on-canvas-f). */
-export function findMatches(elements: SceneElement[], catalog: Catalog, query: string): FindMatch[] {
+export function findMatches(
+  elements: SceneElement[],
+  catalog: Catalog,
+  query: string,
+): FindMatch[] {
   const q = query.trim().toLowerCase();
   if (!q) return [];
 
@@ -18,14 +22,19 @@ export function findMatches(elements: SceneElement[], catalog: Catalog, query: s
   for (const element of elements) {
     if (element.type === "connector") continue;
     const catalogName =
-      "catalogRef" in element && element.catalogRef ? catalog.resolve(element.catalogRef)?.name : undefined;
-    const haystack = [elementDisplayName(element), catalogName].filter(Boolean).join(" ").toLowerCase();
+      "catalogRef" in element && element.catalogRef
+        ? catalog.resolve(element.catalogRef)?.name
+        : undefined;
+    const haystack = [elementDisplayName(element), catalogName]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
     if (haystack.includes(q)) {
       matches.push({
         id: element.id,
         label: elementDisplayName(element),
         type: element.type,
-        kind: element.type === "frame" ? "frame" : "element"
+        kind: element.type === "frame" ? "frame" : "element",
       });
     }
   }

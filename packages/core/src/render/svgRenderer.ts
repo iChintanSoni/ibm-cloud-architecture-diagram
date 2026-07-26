@@ -1,11 +1,20 @@
 import type { Catalog } from "../catalog/catalog.js";
-import { RESIZE_HANDLES, resizeCursor, type ResizeHandle } from "../interaction/resize.js";
+import {
+  RESIZE_HANDLES,
+  resizeCursor,
+  type ResizeHandle,
+} from "../interaction/resize.js";
 import { computeTabOrder } from "../interaction/tabOrder.js";
 import type { Diagnostic, Severity } from "../linter/types.js";
 import { accessibleName, accessibleRole } from "../scene/accessibleName.js";
 import { formatConnectorAnnotation } from "../scene/connectorAnnotation.js";
 import type { Scene } from "../scene/scene.js";
-import type { ConnectorAnnotation, ConnectorElement, ConnectorType, SceneElement } from "../scene/types.js";
+import type {
+  ConnectorAnnotation,
+  ConnectorElement,
+  ConnectorType,
+  SceneElement,
+} from "../scene/types.js";
 import type { Rect } from "../routing/orthogonalRouter.js";
 import { connectorPathPoints } from "../routing/routeConnector.js";
 import { PRIMARY_TO_SECONDARY_FILL } from "../theme/colorPalette.js";
@@ -73,7 +82,7 @@ interface Palette {
 
 const PALETTES: Record<ResolvedTheme, Palette> = {
   light: { stroke: "#161616", zone: "#8d8d8d", frame: "#a8a8a8" },
-  dark: { stroke: "#f4f4f4", zone: "#a8a8a8", frame: "#6f6f6f" }
+  dark: { stroke: "#f4f4f4", zone: "#a8a8a8", frame: "#6f6f6f" },
 };
 
 /**
@@ -120,7 +129,7 @@ const MARKER_IDS: Record<Exclude<MarkerKind, "none">, MarkerId> = {
   "arrow-hollow": "icad-arrow-hollow",
   "diamond-open": "icad-diamond-open",
   "diamond-filled": "icad-diamond-filled",
-  box: "icad-box"
+  box: "icad-box",
 };
 
 interface ConnectorStyleSpec {
@@ -140,7 +149,7 @@ const CONNECTION_TYPES = new Set<ConnectorType>([
   "connection",
   "physical-connection",
   "tunneling-connection",
-  "traffic-through-double-tunnel"
+  "traffic-through-double-tunnel",
 ]);
 
 /**
@@ -156,7 +165,11 @@ const CONNECTION_TYPES = new Set<ConnectorType>([
 const CONNECTOR_STYLE: Record<ConnectorType, ConnectorStyleSpec> = {
   "logical-connection": { dash: "4 3", endMarker: "arrow" },
   connection: { endMarker: "arrow" },
-  "physical-connection": { doubleLine: true, startMarker: "box", endMarker: "box" },
+  "physical-connection": {
+    doubleLine: true,
+    startMarker: "box",
+    endMarker: "box",
+  },
   "tunneling-connection": { band: 1, endMarker: "arrow" },
   "traffic-through-double-tunnel": { band: 2, endMarker: "arrow" },
   dependency: { dash: "4 3", endMarker: "arrow-open" },
@@ -164,7 +177,7 @@ const CONNECTOR_STYLE: Record<ConnectorType, ConnectorStyleSpec> = {
   aggregation: { endMarker: "arrow-open", startMarker: "diamond-open" },
   composition: { endMarker: "arrow-open", startMarker: "diamond-filled" },
   implementation: { dash: "4 3", endMarker: "arrow-hollow" },
-  extends: { endMarker: "arrow-hollow" }
+  extends: { endMarker: "arrow-hollow" },
 };
 
 /** Point at a fraction `t` (0..1) along a polyline's total length. */
@@ -211,7 +224,7 @@ function offsetRectilinear(points: Point[], offset: number): Point[] {
     return {
       a: { x: p.x + nx, y: p.y + ny },
       b: { x: q.x + nx, y: q.y + ny },
-      horizontal: Math.abs(dy) < 0.01
+      horizontal: Math.abs(dy) < 0.01,
     };
   });
   const out: Point[] = [segments[0]!.a];
@@ -223,7 +236,11 @@ function offsetRectilinear(points: Point[], offset: number): Point[] {
       break;
     }
     if (seg.horizontal !== next.horizontal) {
-      out.push(seg.horizontal ? { x: next.a.x, y: seg.a.y } : { x: seg.a.x, y: next.a.y });
+      out.push(
+        seg.horizontal
+          ? { x: next.a.x, y: seg.a.y }
+          : { x: seg.a.x, y: next.a.y },
+      );
     } else {
       out.push(seg.b);
     }
@@ -239,8 +256,16 @@ function toPointsAttr(points: Point[]): string {
 function resizeHandlePoint(el: Rect, handle: ResizeHandle): Point {
   const cx = el.x + el.w / 2;
   const cy = el.y + el.h / 2;
-  const x = handle.includes("w") ? el.x : handle.includes("e") ? el.x + el.w : cx;
-  const y = handle.includes("n") ? el.y : handle.includes("s") ? el.y + el.h : cy;
+  const x = handle.includes("w")
+    ? el.x
+    : handle.includes("e")
+      ? el.x + el.w
+      : cx;
+  const y = handle.includes("n")
+    ? el.y
+    : handle.includes("s")
+      ? el.y + el.h
+      : cy;
   return { x, y };
 }
 
@@ -267,17 +292,41 @@ const MARKER_DEFS: Array<{
     id: "icad-dot",
     d: "M5,2 A3,3 0 1,0 5,8 A3,3 0 1,0 5,2",
     colorAttr: "fill",
-    refX: 5
+    refX: 5,
   },
   { id: "icad-arrow", d: "M0,0 L10,5 L0,10 z", colorAttr: "fill" },
   // Open chevron, no closing base line — IBM's relationship arrowhead (Connectors.drawio:
   // endArrow=open), distinct from the closed hollow triangle below (endArrow=block;endFill=0).
-  { id: "icad-arrow-open", d: "M1,1 L9,5 L1,9", colorAttr: "stroke", fixedFill: "none" },
-  { id: "icad-arrow-hollow", d: "M0,0 L10,5 L0,10 z", colorAttr: "stroke", fixedFill: "none" },
-  { id: "icad-diamond-open", d: "M0,5 L5,0 L10,5 L5,10 z", colorAttr: "stroke", fixedFill: "white" },
-  { id: "icad-diamond-filled", d: "M0,5 L5,0 L10,5 L5,10 z", colorAttr: "fill" },
+  {
+    id: "icad-arrow-open",
+    d: "M1,1 L9,5 L1,9",
+    colorAttr: "stroke",
+    fixedFill: "none",
+  },
+  {
+    id: "icad-arrow-hollow",
+    d: "M0,0 L10,5 L0,10 z",
+    colorAttr: "stroke",
+    fixedFill: "none",
+  },
+  {
+    id: "icad-diamond-open",
+    d: "M0,5 L5,0 L10,5 L5,10 z",
+    colorAttr: "stroke",
+    fixedFill: "white",
+  },
+  {
+    id: "icad-diamond-filled",
+    d: "M0,5 L5,0 L10,5 L5,10 z",
+    colorAttr: "fill",
+  },
   // Hollow square end-cap for "physical connection" (Connectors.drawio: shape=link;endArrow=box;endFill=0).
-  { id: "icad-box", d: "M1,1 L9,1 L9,9 L1,9 Z", colorAttr: "stroke", fixedFill: "none" }
+  {
+    id: "icad-box",
+    d: "M1,1 L9,1 L9,9 L1,9 Z",
+    colorAttr: "stroke",
+    fixedFill: "none",
+  },
 ];
 
 /**
@@ -311,7 +360,7 @@ export class SvgRenderer {
   constructor(
     private container: HTMLElement,
     private catalog: Catalog,
-    theme: ResolvedTheme = "light"
+    theme: ResolvedTheme = "light",
   ) {
     this.palette = PALETTES[theme];
 
@@ -337,14 +386,17 @@ export class SvgRenderer {
         refY: 5,
         markerWidth: 7,
         markerHeight: 7,
-        orient: "auto-start-reverse"
+        orient: "auto-start-reverse",
       });
       const path = createSvgElement("path");
       setAttrs(path, {
         d: def.d,
-        fill: def.colorAttr === "fill" ? "context-stroke" : (def.fixedFill ?? "none"),
+        fill:
+          def.colorAttr === "fill"
+            ? "context-stroke"
+            : (def.fixedFill ?? "none"),
         stroke: def.colorAttr === "stroke" ? "context-stroke" : undefined,
-        "stroke-width": def.colorAttr === "stroke" ? 1.2 : undefined
+        "stroke-width": def.colorAttr === "stroke" ? 1.2 : undefined,
       });
       marker.appendChild(path);
       defs.appendChild(marker);
@@ -380,7 +432,10 @@ export class SvgRenderer {
   /** Current container size in CSS pixels, falling back off-DOM (e.g. tests). */
   containerSize(): { w: number; h: number } {
     const rect = this.container.getBoundingClientRect();
-    return { w: rect.width || FALLBACK_VIEWPORT_SIZE.w, h: rect.height || FALLBACK_VIEWPORT_SIZE.h };
+    return {
+      w: rect.width || FALLBACK_VIEWPORT_SIZE.w,
+      h: rect.height || FALLBACK_VIEWPORT_SIZE.h,
+    };
   }
 
   render(scene: Scene): void {
@@ -544,7 +599,9 @@ export class SvgRenderer {
     if (!committed) return;
     if (geometry) this.previewGeometry.set(id, geometry);
     else this.previewGeometry.delete(id);
-    const merged = geometry ? ({ ...committed, ...geometry } as SceneElement) : committed;
+    const merged = geometry
+      ? ({ ...committed, ...geometry } as SceneElement)
+      : committed;
     this.nodes.set(id, this.renderElement(merged, this.currentScene));
     this.renderOverlays(this.currentScene);
   }
@@ -570,7 +627,10 @@ export class SvgRenderer {
   /** Keeps exactly one node in the natural tab sequence (roving tabindex), preferring keyboard focus over selection. */
   private syncTabIndexes(scene: Scene): void {
     const targetId =
-      this.focusedId ?? (this.selectedIds.size === 1 ? [...this.selectedIds][0] : computeTabOrder(scene)[0]?.id);
+      this.focusedId ??
+      (this.selectedIds.size === 1
+        ? [...this.selectedIds][0]
+        : computeTabOrder(scene)[0]?.id);
     for (const [id, node] of this.nodes) {
       node.setAttribute("tabindex", id === targetId ? "0" : "-1");
     }
@@ -600,7 +660,13 @@ export class SvgRenderer {
     switch (el.type) {
       case "box": {
         const stroke = el.style?.stroke ?? this.palette.stroke;
-        g.appendChild(this.rect(el, { stroke, dashed: false, fill: this.containerFill(el, scene) }));
+        g.appendChild(
+          this.rect(el, {
+            stroke,
+            dashed: false,
+            fill: this.containerFill(el, scene),
+          }),
+        );
         g.appendChild(this.sidebarTab(el, stroke));
         if (el.catalogRef) g.appendChild(this.containerCornerGlyph(el));
         break;
@@ -609,7 +675,13 @@ export class SvgRenderer {
         // Sidebar tab on every container, not Box alone (C7, docs/10-canvas-parity-plan.md) — IBM's
         // own worked examples (Public Network, IBM Cloud, Region, OpenShift, Zone) all carry one.
         const stroke = el.style?.stroke ?? this.palette.stroke;
-        g.appendChild(this.rect(el, { stroke, dashed: true, fill: this.containerFill(el, scene) }));
+        g.appendChild(
+          this.rect(el, {
+            stroke,
+            dashed: true,
+            fill: this.containerFill(el, scene),
+          }),
+        );
         g.appendChild(this.sidebarTab(el, stroke));
         if (el.catalogRef) g.appendChild(this.containerCornerGlyph(el));
         break;
@@ -619,20 +691,36 @@ export class SvgRenderer {
         // zone / on-prem) only; Region/VPC/Subnet are Box, not Zone, as of D24.
         const stroke = el.style?.stroke ?? this.palette.zone;
         g.appendChild(
-          this.rect(el, { stroke, dashed: true, dashArray: "2 2", strokeWidth: 2, fill: this.containerFill(el, scene) })
+          this.rect(el, {
+            stroke,
+            dashed: true,
+            dashArray: "2 2",
+            strokeWidth: 2,
+            fill: this.containerFill(el, scene),
+          }),
         );
         g.appendChild(this.sidebarTab(el, stroke));
         if (el.catalogRef) g.appendChild(this.containerCornerGlyph(el));
         break;
       }
       case "frame":
-        g.appendChild(this.rect(el, { stroke: this.palette.frame, dashed: true, strokeWidth: 1 }));
+        g.appendChild(
+          this.rect(el, {
+            stroke: this.palette.frame,
+            dashed: true,
+            strokeWidth: 1,
+          }),
+        );
         break;
       case "actor": {
         // Solid black circle + white glyph is the IBM Actor spec itself (D25, not
         // theme-dependent) — falls back to IBM's own default black when no catalogRef is set
         // (e.g. a generic Actor placed without a specific icon) or it can't be resolved.
-        const rect = this.rect(el, { stroke: "none", dashed: false, fill: this.tileColor(el.catalogRef, "#000000") });
+        const rect = this.rect(el, {
+          stroke: "none",
+          dashed: false,
+          fill: this.tileColor(el.catalogRef, "#000000"),
+        });
         rect.setAttribute("rx", String(el.h / 2));
         rect.setAttribute("ry", String(el.h / 2));
         g.appendChild(rect);
@@ -644,7 +732,13 @@ export class SvgRenderer {
         // docs/00-decision-log.md), not theme-dependent. Falls back to a neutral gray if the
         // catalogRef can't be resolved (e.g. a stale reference against a since-changed catalog
         // version — Roadmap M13) rather than rendering a blank/black tile.
-        g.appendChild(this.rect(el, { stroke: "none", dashed: false, fill: this.tileColor(el.catalogRef, "#8d8d8d") }));
+        g.appendChild(
+          this.rect(el, {
+            stroke: "none",
+            dashed: false,
+            fill: this.tileColor(el.catalogRef, "#8d8d8d"),
+          }),
+        );
         g.appendChild(this.iconGlyph(el));
         break;
       }
@@ -663,12 +757,24 @@ export class SvgRenderer {
 
     if (el.type === "frame") {
       const title = createSvgElement("text");
-      setAttrs(title, { x: el.x + 8, y: el.y + 18, fill: this.labelStroke(el, scene) });
+      setAttrs(title, {
+        x: el.x + 8,
+        y: el.y + 18,
+        fill: this.labelStroke(el, scene),
+      });
       title.textContent = el.name;
       g.appendChild(title);
-    } else if ((el.type === "box" || el.type === "group" || el.type === "zone") && el.label?.text) {
+    } else if (
+      (el.type === "box" || el.type === "group" || el.type === "zone") &&
+      el.label?.text
+    ) {
       g.appendChild(this.containerLabelText(el));
-    } else if ("label" in el && el.label?.text && el.type !== "text" && el.type !== "connector") {
+    } else if (
+      "label" in el &&
+      el.label?.text &&
+      el.type !== "text" &&
+      el.type !== "connector"
+    ) {
       g.appendChild(this.labelText(el, scene));
     }
 
@@ -677,7 +783,13 @@ export class SvgRenderer {
 
   private rect(
     el: SceneElement,
-    opts: { stroke: string; dashed: boolean; strokeWidth?: number; fill?: string; dashArray?: string }
+    opts: {
+      stroke: string;
+      dashed: boolean;
+      strokeWidth?: number;
+      fill?: string;
+      dashArray?: string;
+    },
   ): SVGRectElement {
     const rect = createSvgElement("rect");
     setAttrs(rect, {
@@ -688,7 +800,10 @@ export class SvgRenderer {
       fill: el.style?.fill ?? opts.fill ?? "none",
       stroke: el.style?.stroke ?? opts.stroke,
       "stroke-width": el.style?.strokeWidth ?? opts.strokeWidth ?? 1,
-      "stroke-dasharray": (el.style?.dashed ?? opts.dashed) ? (opts.dashArray ?? "6 4") : undefined
+      "stroke-dasharray":
+        (el.style?.dashed ?? opts.dashed)
+          ? (opts.dashArray ?? "6 4")
+          : undefined,
     });
     return rect;
   }
@@ -701,7 +816,7 @@ export class SvgRenderer {
       y: el.y,
       width: SIDEBAR_TAB_WIDTH,
       height: Math.min(SIDEBAR_TAB_HEIGHT, el.h),
-      fill: color
+      fill: color,
     });
     return tab;
   }
@@ -716,7 +831,12 @@ export class SvgRenderer {
    */
   private labelStroke(el: SceneElement, scene: Scene): string {
     const parent = el.parentId ? scene.get(el.parentId) : undefined;
-    if (parent && (parent.type === "box" || parent.type === "group" || parent.type === "zone")) {
+    if (
+      parent &&
+      (parent.type === "box" ||
+        parent.type === "group" ||
+        parent.type === "zone")
+    ) {
       return "#161616";
     }
     return this.palette.stroke;
@@ -731,7 +851,7 @@ export class SvgRenderer {
           ancestor.type === "box" ||
           ancestor.type === "group" ||
           ancestor.type === "zone" ||
-          ancestor.type === "frame"
+          ancestor.type === "frame",
       ).length;
     if (containerDepth % 2 === 1) return "white";
     const stroke = (el.style?.stroke ?? "").toLowerCase();
@@ -752,15 +872,19 @@ export class SvgRenderer {
       y: el.y + NODE_GLYPH_INSET,
       width: NODE_GLYPH_SIZE,
       height: NODE_GLYPH_SIZE,
-      viewBox: `0 0 ${GLYPH_VIEWBOX_SIZE} ${GLYPH_VIEWBOX_SIZE}`
+      viewBox: `0 0 ${GLYPH_VIEWBOX_SIZE} ${GLYPH_VIEWBOX_SIZE}`,
     });
     // Stays white-on-tile (D25) — no recolor, unlike containerCornerGlyph below.
-    const fragment = el.catalogRef ? this.catalog.svg(el.catalogRef) : undefined;
+    const fragment = el.catalogRef
+      ? this.catalog.svg(el.catalogRef)
+      : undefined;
     nested.innerHTML = fragment ?? "";
     return nested;
   }
 
-  private containerCornerGlyph(el: SceneElement & { catalogRef?: string }): SVGSVGElement {
+  private containerCornerGlyph(
+    el: SceneElement & { catalogRef?: string },
+  ): SVGSVGElement {
     const nested = createSvgElement("svg");
     setAttrs(nested, {
       x: el.x + CONTAINER_GLYPH_INSET,
@@ -770,12 +894,14 @@ export class SvgRenderer {
       // The asset's own coordinate space (GLYPH_VIEWBOX_SIZE), not the smaller on-screen display
       // size above — this is what scales the shared 24-unit glyph down to fit a 20px corner icon,
       // rather than cropping it.
-      viewBox: `0 0 ${GLYPH_VIEWBOX_SIZE} ${GLYPH_VIEWBOX_SIZE}`
+      viewBox: `0 0 ${GLYPH_VIEWBOX_SIZE} ${GLYPH_VIEWBOX_SIZE}`,
     });
     // No tile sits behind a corner glyph, so the now-always-white catalog asset (D25) is
     // recolored to the container's own accent — the same color as its sidebar tab/border —
     // rather than staying invisible-white on the container's own light fill.
-    const fragment = el.catalogRef ? this.catalog.svg(el.catalogRef) : undefined;
+    const fragment = el.catalogRef
+      ? this.catalog.svg(el.catalogRef)
+      : undefined;
     const color = el.style?.stroke ?? this.palette.stroke;
     nested.innerHTML = fragment ? recolorGlyph(fragment, color) : "";
     return nested;
@@ -794,10 +920,15 @@ export class SvgRenderer {
    * regardless of theme), so the text stays dark unconditionally rather than following
    * labelStroke's parent-based theme check.
    */
-  private containerLabelText(el: SceneElement & { catalogRef?: string }): SVGTextElement {
+  private containerLabelText(
+    el: SceneElement & { catalogRef?: string },
+  ): SVGTextElement {
     const text = createSvgElement("text");
     const hasIcon = Boolean(el.catalogRef);
-    const x = el.x + CONTAINER_GLYPH_INSET + (hasIcon ? CONTAINER_GLYPH_SIZE + CONTAINER_LABEL_GAP : 0);
+    const x =
+      el.x +
+      CONTAINER_GLYPH_INSET +
+      (hasIcon ? CONTAINER_GLYPH_SIZE + CONTAINER_LABEL_GAP : 0);
     const y = el.y + CONTAINER_GLYPH_INSET + CONTAINER_GLYPH_SIZE / 2 + 5;
     setAttrs(text, { x, y, fill: "#161616" });
     text.textContent = el.label?.text ?? "";
@@ -807,8 +938,16 @@ export class SvgRenderer {
   private labelText(el: SceneElement, scene: Scene): SVGTextElement {
     const text = createSvgElement("text");
     const position = el.label?.position ?? "s";
-    const point = { x: el.x + el.w / 2, y: position === "s" ? el.y + el.h + 14 : el.y - 6 };
-    setAttrs(text, { x: point.x, y: point.y, fill: this.labelStroke(el, scene), "text-anchor": "middle" });
+    const point = {
+      x: el.x + el.w / 2,
+      y: position === "s" ? el.y + el.h + 14 : el.y - 6,
+    };
+    setAttrs(text, {
+      x: point.x,
+      y: point.y,
+      fill: this.labelStroke(el, scene),
+      "text-anchor": "middle",
+    });
     text.textContent = el.label?.text ?? "";
     return text;
   }
@@ -821,12 +960,20 @@ export class SvgRenderer {
    * the path. Line color follows flowColor (green/blue) when set, otherwise
    * an explicit style override, otherwise the theme default.
    */
-  private renderConnector(g: SVGGElement, el: ConnectorElement, scene: Scene): void {
+  private renderConnector(
+    g: SVGGElement,
+    el: ConnectorElement,
+    scene: Scene,
+  ): void {
     const points = connectorPathPoints(scene, el);
     const pointsAttr = toPointsAttr(points);
     const style =
-      (CONNECTOR_STYLE as Record<string, ConnectorStyleSpec>)[el.connectorType] ?? CONNECTOR_STYLE.association;
-    const stroke = el.style?.stroke ?? (el.flowColor ? FLOW_COLORS[el.flowColor] : this.palette.stroke);
+      (CONNECTOR_STYLE as Record<string, ConnectorStyleSpec>)[
+        el.connectorType
+      ] ?? CONNECTOR_STYLE.association;
+    const stroke =
+      el.style?.stroke ??
+      (el.flowColor ? FLOW_COLORS[el.flowColor] : this.palette.stroke);
     const strokeWidth = el.style?.strokeWidth ?? 2;
 
     if (style.band) {
@@ -839,8 +986,9 @@ export class SvgRenderer {
         setAttrs(band, {
           points: pointsAttr,
           fill: "none",
-          stroke: i === 2 ? TUNNEL_BAND_COLORS.double : TUNNEL_BAND_COLORS.single,
-          "stroke-width": strokeWidth + i * 6
+          stroke:
+            i === 2 ? TUNNEL_BAND_COLORS.double : TUNNEL_BAND_COLORS.single,
+          "stroke-width": strokeWidth + i * 6,
         });
         g.appendChild(band);
       }
@@ -849,7 +997,8 @@ export class SvgRenderer {
     const isConnection = CONNECTION_TYPES.has(el.connectorType);
     // Physical connection's hollow box caps (both ends, per Connectors.drawio's symmetric
     // startArrow=box/endArrow=box) override the generic connection dot-start convention.
-    const startMarker: MarkerKind = style.startMarker ?? (isConnection ? "dot" : "none");
+    const startMarker: MarkerKind =
+      style.startMarker ?? (isConnection ? "dot" : "none");
     const endMarker: MarkerKind =
       style.endMarker === "box"
         ? "box"
@@ -864,8 +1013,10 @@ export class SvgRenderer {
       stroke,
       "stroke-width": strokeWidth,
       "stroke-dasharray": style.dash,
-      "marker-start": startMarker !== "none" ? `url(#${MARKER_IDS[startMarker]})` : undefined,
-      "marker-end": endMarker !== "none" ? `url(#${MARKER_IDS[endMarker]})` : undefined
+      "marker-start":
+        startMarker !== "none" ? `url(#${MARKER_IDS[startMarker]})` : undefined,
+      "marker-end":
+        endMarker !== "none" ? `url(#${MARKER_IDS[endMarker]})` : undefined,
     });
     g.appendChild(line);
 
@@ -876,7 +1027,7 @@ export class SvgRenderer {
         fill: "none",
         stroke,
         "stroke-width": strokeWidth,
-        "stroke-dasharray": style.dash
+        "stroke-dasharray": style.dash,
       });
       g.appendChild(parallel);
     }
@@ -884,15 +1035,23 @@ export class SvgRenderer {
     if (el.label?.text) {
       const mid = pointAtFraction(points, 0.5);
       const text = createSvgElement("text");
-      setAttrs(text, { x: mid.x, y: mid.y - 4, fill: this.palette.stroke, "text-anchor": "middle" });
+      setAttrs(text, {
+        x: mid.x,
+        y: mid.y - 4,
+        fill: this.palette.stroke,
+        "text-anchor": "middle",
+      });
       text.textContent = el.label.text;
       g.appendChild(text);
     }
 
-    if (el.cardinality?.from) g.appendChild(this.cardinalityLabel(points, 0.1, el.cardinality.from));
-    if (el.cardinality?.to) g.appendChild(this.cardinalityLabel(points, 0.9, el.cardinality.to));
+    if (el.cardinality?.from)
+      g.appendChild(this.cardinalityLabel(points, 0.1, el.cardinality.from));
+    if (el.cardinality?.to)
+      g.appendChild(this.cardinalityLabel(points, 0.9, el.cardinality.to));
     if (el.sequence) g.appendChild(this.sequenceBadge(points, el.sequence));
-    if (el.annotation) g.appendChild(this.annotationLabel(points, el.annotation));
+    if (el.annotation)
+      g.appendChild(this.annotationLabel(points, el.annotation));
   }
 
   /**
@@ -901,7 +1060,10 @@ export class SvgRenderer {
    * midpoint — clear of the label above it (label sits at mid.y-4) and the sequence badge
    * straddling the line (radius 9, so it spans mid.y-9..mid.y+9).
    */
-  private annotationLabel(points: Point[], annotation: ConnectorAnnotation): SVGTextElement {
+  private annotationLabel(
+    points: Point[],
+    annotation: ConnectorAnnotation,
+  ): SVGTextElement {
     const mid = pointAtFraction(points, 0.5);
     const text = createSvgElement("text");
     setAttrs(text, {
@@ -909,16 +1071,26 @@ export class SvgRenderer {
       y: mid.y + 20,
       fill: this.palette.stroke,
       "text-anchor": "middle",
-      "font-size": 11
+      "font-size": 11,
     });
     text.textContent = formatConnectorAnnotation(annotation);
     return text;
   }
 
-  private cardinalityLabel(points: Point[], t: number, text: string): SVGTextElement {
+  private cardinalityLabel(
+    points: Point[],
+    t: number,
+    text: string,
+  ): SVGTextElement {
     const at = pointAtFraction(points, t);
     const el = createSvgElement("text");
-    setAttrs(el, { x: at.x, y: at.y - 4, fill: this.palette.stroke, "text-anchor": "middle", "font-size": 11 });
+    setAttrs(el, {
+      x: at.x,
+      y: at.y - 4,
+      fill: this.palette.stroke,
+      "text-anchor": "middle",
+      "font-size": 11,
+    });
     el.textContent = text;
     return el;
   }
@@ -932,9 +1104,21 @@ export class SvgRenderer {
     const at = pointAtFraction(points, 0.5);
     const badge = createSvgElement("g");
     const circle = createSvgElement("circle");
-    setAttrs(circle, { cx: at.x, cy: at.y, r: 9, fill: "white", stroke: this.palette.stroke });
+    setAttrs(circle, {
+      cx: at.x,
+      cy: at.y,
+      r: 9,
+      fill: "white",
+      stroke: this.palette.stroke,
+    });
     const label = createSvgElement("text");
-    setAttrs(label, { x: at.x, y: at.y + 3, fill: this.palette.stroke, "text-anchor": "middle", "font-size": 10 });
+    setAttrs(label, {
+      x: at.x,
+      y: at.y + 3,
+      fill: this.palette.stroke,
+      "text-anchor": "middle",
+      "font-size": 10,
+    });
     label.textContent = text;
     badge.appendChild(circle);
     badge.appendChild(label);
@@ -955,7 +1139,7 @@ export class SvgRenderer {
           fill: "none",
           stroke: "#0f62fe",
           "stroke-width": 5,
-          "stroke-opacity": 0.35
+          "stroke-opacity": 0.35,
         });
         this.overlayLayer.appendChild(highlight);
       } else {
@@ -972,7 +1156,7 @@ export class SvgRenderer {
           fill: "none",
           stroke: "#0f62fe",
           "stroke-width": 2,
-          "stroke-dasharray": "4 2"
+          "stroke-dasharray": "4 2",
         });
         this.overlayLayer.appendChild(outline);
       }
@@ -1000,7 +1184,7 @@ export class SvgRenderer {
             "stroke-width": 1.5,
             cursor: resizeCursor(handle),
             "pointer-events": "all",
-            "data-icad-resize-handle": handle
+            "data-icad-resize-handle": handle,
           });
           this.overlayLayer.appendChild(marker);
         }
@@ -1010,11 +1194,16 @@ export class SvgRenderer {
     const byElement = new Map<string, Diagnostic[]>();
     for (const item of this.diagnostics) {
       if (!item.elementId || !scene.has(item.elementId)) continue;
-      byElement.set(item.elementId, [...(byElement.get(item.elementId) ?? []), item]);
+      byElement.set(item.elementId, [
+        ...(byElement.get(item.elementId) ?? []),
+        item,
+      ]);
     }
     for (const [id, diagnostics] of byElement) {
       const el = this.geometryOf(scene.get(id)!);
-      const severity = highestSeverity(diagnostics.map((item) => item.severity));
+      const severity = highestSeverity(
+        diagnostics.map((item) => item.severity),
+      );
       const at =
         el.type === "connector"
           ? pointAtFraction(connectorPathPoints(scene, el), 0.5)
@@ -1029,9 +1218,14 @@ export class SvgRenderer {
         cx: at.x,
         cy: at.y,
         r: 8,
-        fill: severity === "error" ? "#da1e28" : severity === "warn" ? "#f1c21b" : "#0f62fe",
+        fill:
+          severity === "error"
+            ? "#da1e28"
+            : severity === "warn"
+              ? "#f1c21b"
+              : "#0f62fe",
         stroke: "#ffffff",
-        "stroke-width": 1.5
+        "stroke-width": 1.5,
       });
       badge.appendChild(circle);
       const text = createSvgElement("text");
@@ -1041,9 +1235,10 @@ export class SvgRenderer {
         fill: severity === "warn" ? "#161616" : "#ffffff",
         "font-size": 10,
         "font-weight": 600,
-        "text-anchor": "middle"
+        "text-anchor": "middle",
       });
-      text.textContent = diagnostics.length > 1 ? String(diagnostics.length) : "!";
+      text.textContent =
+        diagnostics.length > 1 ? String(diagnostics.length) : "!";
       badge.appendChild(text);
       this.overlayLayer.appendChild(badge);
     }
@@ -1061,7 +1256,7 @@ export class SvgRenderer {
           fill: "none",
           stroke: "#0f62fe",
           "stroke-width": 1,
-          "stroke-dasharray": "1 2"
+          "stroke-dasharray": "1 2",
         });
         this.overlayLayer.appendChild(ring);
       }
@@ -1081,7 +1276,7 @@ export class SvgRenderer {
             stroke: "#0f62fe",
             "stroke-width": 1.5,
             "pointer-events": "all",
-            "data-icad-port": `${el.id}:${side}`
+            "data-icad-port": `${el.id}:${side}`,
           });
           this.overlayLayer.appendChild(marker);
         }
@@ -1097,7 +1292,7 @@ export class SvgRenderer {
         y2: this.draftConnector.to.y,
         stroke: "#0f62fe",
         "stroke-width": 2,
-        "stroke-dasharray": "4 3"
+        "stroke-dasharray": "4 3",
       });
       this.overlayLayer.appendChild(line);
     }

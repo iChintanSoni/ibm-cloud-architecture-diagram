@@ -6,13 +6,14 @@ import {
   HeaderMenu,
   HeaderMenuItem,
   HeaderName,
-  HeaderNavigation
+  HeaderNavigation,
 } from "@carbon/react";
 import { Flash, Search } from "@carbon/react/icons";
 import type { MouseEvent, ReactNode } from "react";
 
 export type ThemePreference = "auto" | "light" | "dark";
-export type InsertKind = "box" | "group" | "boundary" | "actor" | "text" | "frame";
+export type InsertKind =
+  "box" | "group" | "boundary" | "actor" | "text" | "frame";
 
 const INSERT_ITEMS: Array<{ kind: InsertKind; label: string }> = [
   { kind: "box", label: "Box (deployedOn)" },
@@ -20,7 +21,7 @@ const INSERT_ITEMS: Array<{ kind: InsertKind; label: string }> = [
   { kind: "boundary", label: "Boundary" },
   { kind: "actor", label: "Actor" },
   { kind: "text", label: "Text" },
-  { kind: "frame", label: "Frame" }
+  { kind: "frame", label: "Frame" },
 ];
 
 export interface TopBarProps {
@@ -64,7 +65,7 @@ function action(handler: () => void): (event: MouseEvent) => void {
 function MenuAction({
   onClick,
   disabled,
-  children
+  children,
 }: {
   onClick: () => void;
   disabled?: boolean;
@@ -106,11 +107,15 @@ export function TopBar({
   onOpenCommandPalette,
   onInsert,
   themePreference,
-  onThemeChange
+  onThemeChange,
 }: TopBarProps) {
   return (
     <Header aria-label="ICAD — IBM Cloud Architecture Diagrams">
-      <HeaderName href="#" prefix="ICAD" onClick={(event) => event.preventDefault()}>
+      <HeaderName
+        href="#"
+        prefix="ICAD"
+        onClick={(event) => event.preventDefault()}
+      >
         IBM Cloud Architecture Diagrams
       </HeaderName>
       <HeaderNavigation aria-label="Main menu">
@@ -141,14 +146,25 @@ export function TopBar({
           <MenuAction onClick={onResetZoom}>Reset zoom to 100%</MenuAction>
           <MenuAction onClick={onFitToContent}>Fit to content</MenuAction>
           <MenuAction onClick={onOpenFind}>Find on canvas…</MenuAction>
-          <MenuAction onClick={onOpenCommandPalette}>Command palette…</MenuAction>
-          <MenuAction onClick={() => onThemeChange("auto")} disabled={themePreference === "auto"}>
+          <MenuAction onClick={onOpenCommandPalette}>
+            Command palette…
+          </MenuAction>
+          <MenuAction
+            onClick={() => onThemeChange("auto")}
+            disabled={themePreference === "auto"}
+          >
             Theme: Auto
           </MenuAction>
-          <MenuAction onClick={() => onThemeChange("light")} disabled={themePreference === "light"}>
+          <MenuAction
+            onClick={() => onThemeChange("light")}
+            disabled={themePreference === "light"}
+          >
             Theme: Light
           </MenuAction>
-          <MenuAction onClick={() => onThemeChange("dark")} disabled={themePreference === "dark"}>
+          <MenuAction
+            onClick={() => onThemeChange("dark")}
+            disabled={themePreference === "dark"}
+          >
             Theme: Dark
           </MenuAction>
         </HeaderMenu>
@@ -160,17 +176,25 @@ export function TopBar({
           ))}
         </HeaderMenu>
         <HeaderMenu menuLinkName="Help" aria-label="Help">
-          <MenuAction onClick={onOpenCommandPalette}>Keyboard shortcuts &amp; commands…</MenuAction>
+          <MenuAction onClick={onOpenCommandPalette}>
+            Keyboard shortcuts &amp; commands…
+          </MenuAction>
         </HeaderMenu>
       </HeaderNavigation>
       <HeaderGlobalBar>
         <span className="icad-zoom-indicator" aria-live="polite">
           {Math.round(zoomPercent)}%
         </span>
-        <HeaderGlobalAction aria-label="Find on canvas (Ctrl+F)" onClick={onOpenFind}>
+        <HeaderGlobalAction
+          aria-label="Find on canvas (Ctrl+F)"
+          onClick={onOpenFind}
+        >
           <Search size={20} />
         </HeaderGlobalAction>
-        <HeaderGlobalAction aria-label="Command palette (Ctrl+K)" onClick={onOpenCommandPalette}>
+        <HeaderGlobalAction
+          aria-label="Command palette (Ctrl+K)"
+          onClick={onOpenCommandPalette}
+        >
           <Flash size={20} />
         </HeaderGlobalAction>
         <div className="icad-theme-switch">

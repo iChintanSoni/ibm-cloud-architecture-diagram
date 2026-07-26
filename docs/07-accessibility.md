@@ -37,7 +37,7 @@ focus, and expose to assistive tech.
 ## Connectors & relationships
 
 Because connectors bind to ports and carry semantic type, screen-reader output can be relational,
-not just geometric: "Actor *Customer* connects to *API Gateway* (request flow)."
+not just geometric: "Actor _Customer_ connects to _API Gateway_ (request flow)."
 
 ## Color & contrast
 
@@ -66,12 +66,13 @@ keyboard operation first, then the screen-reader object tree and live regions, a
 ## Manual screen-reader script (VoiceOver / NVDA)
 
 CI (axe-core, keyboard E2E) catches structural violations and verifies every action is
-keyboard-reachable, but it can't judge whether the *spoken result* actually makes sense to a
+keyboard-reachable, but it can't judge whether the _spoken result_ actually makes sense to a
 screen-reader user — phrasing, timing, double-announcements, or a stale name. That judgment needs
 a human at a real screen reader. Run this on **VoiceOver** (macOS: Cmd+F5) or **NVDA** (Windows,
 free) before a release; ~20 minutes.
 
 **What to listen for at every step**, beyond "did it do the right thing":
+
 - The name spoken is current and correct — never a stale label, an internal ID, or literally the
   word "unknown".
 - A live-region announcement fires once, is timely (not delayed past your next action), and
@@ -80,10 +81,11 @@ free) before a release; ~20 minutes.
 - Verbosity is reasonable — a container announces its child count once, not per keystroke.
 
 **Script** (start a Blank diagram):
+
 1. **Insert a container** (Insert menu → Box). Confirm it's announced added and focus lands on it
    (not left in the menu).
 2. **Place a catalog icon two ways**: click one in the Library panel, then arm and click a canvas
-   point (mouse flow) — *and separately* Tab to a different icon button and press Enter/Space
+   point (mouse flow) — _and separately_ Tab to a different icon button and press Enter/Space
    (keyboard flow, no mouse). Both must place the icon and announce it; the keyboard path must not
    require a follow-up click to complete.
 3. **Tab across the canvas.** Confirm the order is sensible (containers before children, west→east,

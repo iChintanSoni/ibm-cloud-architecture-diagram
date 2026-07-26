@@ -2,7 +2,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createEditor, type Editor } from "../api/createEditor.js";
 import { Catalog } from "../catalog/catalog.js";
 import type { CatalogManifest } from "../catalog/types.js";
-import { CanvasController, type CanvasControllerOptions } from "./canvasController.js";
+import {
+  CanvasController,
+  type CanvasControllerOptions,
+} from "./canvasController.js";
 
 // jsdom implements neither SVGSVGElement.getScreenCTM nor createSVGPoint (confirmed: calling
 // either throws "not a function"), so clientPointToCanvas — and every CanvasController handler
@@ -15,9 +18,13 @@ function polyfillSvgGeometry(svg: SVGSVGElement): void {
   Object.assign(svg, {
     getScreenCTM: () => ({ inverse: () => ({}) }),
     createSVGPoint: () => {
-      const point = { x: 0, y: 0, matrixTransform: () => ({ x: point.x, y: point.y }) };
+      const point = {
+        x: 0,
+        y: 0,
+        matrixTransform: () => ({ x: point.x, y: point.y }),
+      };
       return point;
-    }
+    },
   });
 }
 
@@ -35,19 +42,40 @@ function testCatalog(): Catalog {
         container: "square",
         asset: "vpc",
         keywords: ["vpc"],
-        tier: "ibm-cloud"
-      }
-    ]
+        tier: "ibm-cloud",
+      },
+    ],
   };
-  return new Catalog(manifest, new Map([["vpc", '<rect width="20" height="20" fill="#0f62fe" />']]));
+  return new Catalog(
+    manifest,
+    new Map([["vpc", '<rect width="20" height="20" fill="#0f62fe" />']]),
+  );
 }
 
-function click(target: EventTarget, x: number, y: number, opts: Partial<MouseEventInit> = {}): void {
-  target.dispatchEvent(new MouseEvent("click", { bubbles: true, clientX: x, clientY: y, ...opts }));
+function click(
+  target: EventTarget,
+  x: number,
+  y: number,
+  opts: Partial<MouseEventInit> = {},
+): void {
+  target.dispatchEvent(
+    new MouseEvent("click", { bubbles: true, clientX: x, clientY: y, ...opts }),
+  );
 }
 
-function keydown(target: EventTarget, key: string, opts: Partial<KeyboardEventInit> = {}): void {
-  target.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key, ...opts }));
+function keydown(
+  target: EventTarget,
+  key: string,
+  opts: Partial<KeyboardEventInit> = {},
+): void {
+  target.dispatchEvent(
+    new KeyboardEvent("keydown", {
+      bubbles: true,
+      cancelable: true,
+      key,
+      ...opts,
+    }),
+  );
 }
 
 // jsdom 29.1.1 implements the PointerEvent constructor (clientX/clientY/pointerId all work) but
@@ -59,10 +87,16 @@ function pointerEvent(
   target: EventTarget,
   x: number,
   y: number,
-  opts: Partial<PointerEventInit> = {}
+  opts: Partial<PointerEventInit> = {},
 ): void {
   target.dispatchEvent(
-    new PointerEvent(type, { bubbles: true, clientX: x, clientY: y, pointerId: 1, ...opts })
+    new PointerEvent(type, {
+      bubbles: true,
+      clientX: x,
+      clientY: y,
+      pointerId: 1,
+      ...opts,
+    }),
   );
 }
 
@@ -74,7 +108,7 @@ function drag(
   y1: number,
   x2: number,
   y2: number,
-  opts: Partial<PointerEventInit> = {}
+  opts: Partial<PointerEventInit> = {},
 ): void {
   pointerEvent("pointerdown", target, x1, y1, opts);
   pointerEvent("pointermove", target, x2, y2, opts);
@@ -104,7 +138,12 @@ describe("CanvasController", () => {
   }
 
   it("starts idle and selects the element under a click, clearing selection on empty space", () => {
-    const id = editor.addBox({ at: { x: 0, y: 0 }, w: 100, h: 100, label: "box" });
+    const id = editor.addBox({
+      at: { x: 0, y: 0 },
+      w: 100,
+      h: 100,
+      label: "box",
+    });
     expect(controller.getMode()).toEqual({ kind: "idle" });
 
     click(container, 50, 50);
@@ -164,7 +203,9 @@ describe("CanvasController", () => {
 
   it("emits mode changes via onModeChange", () => {
     const modes: string[] = [];
-    const unsubscribe = controller.onModeChange((mode) => modes.push(mode.kind));
+    const unsubscribe = controller.onModeChange((mode) =>
+      modes.push(mode.kind),
+    );
 
     controller.armPlacement(() => {});
     controller.cancelPlacement();
@@ -178,10 +219,18 @@ describe("CanvasController", () => {
       // 96x96 (a multiple of the default 8px grid) so a well-clear-of-tolerance drag delta lands
       // every candidate edge exactly on a grid line — snapMove (already unit-tested on its own,
       // snapping.test.ts) is then a no-op here, keeping this test's numbers exact and predictable.
-      const parent = editor.addBox({ at: { x: 0, y: 0 }, w: 96, h: 96, label: "parent" });
+      const parent = editor.addBox({
+        at: { x: 0, y: 0 },
+        w: 96,
+        h: 96,
+        label: "parent",
+      });
       // Inside parent's bbox but clear of the 48x48 child's (20,20)-(68,68) footprint, so the drag
       // starts on parent, not the (deepest-containment-wins) child.
-      const child = editor.addIcon("test/vpc", { at: { x: 20, y: 20 }, parentId: parent });
+      const child = editor.addIcon("test/vpc", {
+        at: { x: 20, y: 20 },
+        parentId: parent,
+      });
       const parentBefore = { ...editor.scene.get(parent)! };
       const childBefore = { ...editor.scene.get(child)! };
 
@@ -217,7 +266,12 @@ describe("CanvasController", () => {
       // 8), keep every edge of that combined bbox grid-aligned so a grid-multiple drag delta is a
       // snap no-op, same reasoning as the cascade test above.
       const a = editor.addBox({ at: { x: 0, y: 0 }, w: 48, h: 48, label: "a" });
-      const b = editor.addBox({ at: { x: 200, y: 0 }, w: 48, h: 48, label: "b" });
+      const b = editor.addBox({
+        at: { x: 200, y: 0 },
+        w: 48,
+        h: 48,
+        label: "b",
+      });
       editor.selection.set([a, b]);
 
       drag(container, 8, 8, 24, 8); // dx=16 (a multiple of 8), starting inside a's bbox
@@ -267,7 +321,11 @@ describe("CanvasController", () => {
 
       expect(controller.getMode()).toEqual({ kind: "idle" });
       expect(editor.scene.get(a)).toMatchObject({ x: 0, y: 0 });
-      expect(container.querySelector(`[data-icad-id="${a}"]`)?.getAttribute("transform")).toBeNull();
+      expect(
+        container
+          .querySelector(`[data-icad-id="${a}"]`)
+          ?.getAttribute("transform"),
+      ).toBeNull();
 
       // The pointerup that (in a real browser) still follows an aborted drag must be a no-op.
       pointerEvent("pointerup", container, 60, 25);
@@ -291,7 +349,11 @@ describe("CanvasController", () => {
       expect(after.x).not.toBe(5); // the raw, un-snapped delta
       // snapMove aligns whichever edge (left/center/right) is nearest a grid line, not necessarily
       // the box's own x — assert that invariant directly rather than guessing which edge wins.
-      expect([after.x, after.x + after.w / 2, after.x + after.w].some((v) => v % 8 === 0)).toBe(true);
+      expect(
+        [after.x, after.x + after.w / 2, after.x + after.w].some(
+          (v) => v % 8 === 0,
+        ),
+      ).toBe(true);
       expect(after.y).toBe(0);
     });
 
@@ -308,7 +370,9 @@ describe("CanvasController", () => {
 
   describe("8-handle resize (M16.2, docs/10-canvas-parity-plan.md)", () => {
     function resizeHandle(handleId: string): Element {
-      const el = container.querySelector(`[data-icad-resize-handle="${handleId}"]`);
+      const el = container.querySelector(
+        `[data-icad-resize-handle="${handleId}"]`,
+      );
       if (!el) throw new Error(`resize handle "${handleId}" is not rendered`);
       return el;
     }
@@ -320,7 +384,7 @@ describe("CanvasController", () => {
       y1: number,
       x2: number,
       y2: number,
-      opts: Partial<PointerEventInit> = {}
+      opts: Partial<PointerEventInit> = {},
     ): void {
       pointerEvent("pointerdown", resizeHandle(handleId), x1, y1, opts);
       pointerEvent("pointermove", container, x2, y2, opts);
@@ -329,21 +393,39 @@ describe("CanvasController", () => {
 
     it("renders all 8 handles for a single non-connector, non-frame selection, none otherwise", () => {
       const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
-      const b = editor.addBox({ at: { x: 100, y: 0 }, w: 50, h: 50, label: "b" });
-      expect(container.querySelectorAll("[data-icad-resize-handle]")).toHaveLength(0);
+      const b = editor.addBox({
+        at: { x: 100, y: 0 },
+        w: 50,
+        h: 50,
+        label: "b",
+      });
+      expect(
+        container.querySelectorAll("[data-icad-resize-handle]"),
+      ).toHaveLength(0);
 
       editor.selection.set([a]);
-      expect(container.querySelectorAll("[data-icad-resize-handle]")).toHaveLength(8);
+      expect(
+        container.querySelectorAll("[data-icad-resize-handle]"),
+      ).toHaveLength(8);
 
       editor.selection.set([a, b]);
-      expect(container.querySelectorAll("[data-icad-resize-handle]")).toHaveLength(0);
+      expect(
+        container.querySelectorAll("[data-icad-resize-handle]"),
+      ).toHaveLength(0);
 
       editor.selection.clear();
-      expect(container.querySelectorAll("[data-icad-resize-handle]")).toHaveLength(0);
+      expect(
+        container.querySelectorAll("[data-icad-resize-handle]"),
+      ).toHaveLength(0);
     });
 
     it("dragging the 'e' handle grows width only, landing one undo entry", () => {
-      const a = editor.addBox({ at: { x: 10, y: 10 }, w: 50, h: 50, label: "a" });
+      const a = editor.addBox({
+        at: { x: 10, y: 10 },
+        w: 50,
+        h: 50,
+        label: "a",
+      });
       editor.selection.set([a]);
 
       resizeDrag("e", 60, 35, 90, 35); // dx=30
@@ -361,8 +443,16 @@ describe("CanvasController", () => {
     });
 
     it("dragging the 'nw' handle keeps the bottom-right corner fixed and does not move-with children", () => {
-      const parent = editor.addBox({ at: { x: 0, y: 0 }, w: 100, h: 100, label: "parent" });
-      const child = editor.addIcon("test/vpc", { at: { x: 40, y: 40 }, parentId: parent });
+      const parent = editor.addBox({
+        at: { x: 0, y: 0 },
+        w: 100,
+        h: 100,
+        label: "parent",
+      });
+      const child = editor.addIcon("test/vpc", {
+        at: { x: 40, y: 40 },
+        parentId: parent,
+      });
       editor.selection.set([parent]);
 
       resizeDrag("nw", 0, 0, 20, 10); // dx=20, dy=10
@@ -376,7 +466,12 @@ describe("CanvasController", () => {
     });
 
     it("Shift locks the aspect ratio on a corner handle", () => {
-      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 200, h: 100, label: "a" });
+      const a = editor.addBox({
+        at: { x: 0, y: 0 },
+        w: 200,
+        h: 100,
+        label: "a",
+      });
       editor.selection.set([a]);
 
       resizeDrag("se", 200, 100, 240, 105, { shiftKey: true }); // dx=40 dominates dy=5
@@ -385,7 +480,12 @@ describe("CanvasController", () => {
     });
 
     it("Alt resizes symmetrically from the original center", () => {
-      const a = editor.addBox({ at: { x: 100, y: 100 }, w: 100, h: 100, label: "a" });
+      const a = editor.addBox({
+        at: { x: 100, y: 100 },
+        w: 100,
+        h: 100,
+        label: "a",
+      });
       editor.selection.set([a]);
 
       resizeDrag("e", 200, 150, 220, 150, { altKey: true }); // dx=20
@@ -428,19 +528,28 @@ describe("CanvasController", () => {
 
       expect(editor.selection.get()).toEqual([a]);
     });
-
   });
 
   describe("keyboard operability (docs/07-accessibility.md#canvas-the-hard-20)", () => {
     it("Enter selects the currently focused element", () => {
-      const id = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "box" });
+      const id = editor.addBox({
+        at: { x: 0, y: 0 },
+        w: 50,
+        h: 50,
+        label: "box",
+      });
       editor.focusElement(id);
       keydown(container, "Enter");
       expect(editor.selection.get()).toEqual([id]);
     });
 
     it("Shift+Enter toggles the focused element into the selection", () => {
-      const id = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "box" });
+      const id = editor.addBox({
+        at: { x: 0, y: 0 },
+        w: 50,
+        h: 50,
+        label: "box",
+      });
       editor.focusElement(id);
       keydown(container, "Enter", { shiftKey: true });
       expect(editor.selection.get()).toEqual([id]);
@@ -449,7 +558,12 @@ describe("CanvasController", () => {
     });
 
     it("arrow keys nudge the current selection", () => {
-      const id = editor.addBox({ at: { x: 10, y: 10 }, w: 50, h: 50, label: "box" });
+      const id = editor.addBox({
+        at: { x: 10, y: 10 },
+        w: 50,
+        h: 50,
+        label: "box",
+      });
       editor.selection.set([id]);
       keydown(container, "ArrowRight");
       expect(editor.scene.get(id)).toMatchObject({ x: 11, y: 10 });
@@ -460,7 +574,12 @@ describe("CanvasController", () => {
     it("Delete removes the selection and calls onDeleted with the full elements, captured before removal", () => {
       const onDeleted = vi.fn();
       withOptions({ onDeleted });
-      const id = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "box" });
+      const id = editor.addBox({
+        at: { x: 0, y: 0 },
+        w: 50,
+        h: 50,
+        label: "box",
+      });
       editor.selection.set([id]);
 
       keydown(container, "Delete");
@@ -476,7 +595,12 @@ describe("CanvasController", () => {
       const onConnected = vi.fn();
       withOptions({ onConnected });
       const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
-      const b = editor.addBox({ at: { x: 200, y: 0 }, w: 50, h: 50, label: "b" });
+      const b = editor.addBox({
+        at: { x: 200, y: 0 },
+        w: 50,
+        h: 50,
+        label: "b",
+      });
       editor.focusElement(a);
 
       keydown(container, "c");
@@ -512,7 +636,12 @@ describe("CanvasController", () => {
     });
 
     it("setSuspended(true) disables all canvas keyboard handling (e.g. during presentation mode)", () => {
-      const id = editor.addBox({ at: { x: 10, y: 10 }, w: 50, h: 50, label: "box" });
+      const id = editor.addBox({
+        at: { x: 10, y: 10 },
+        w: 50,
+        h: 50,
+        label: "box",
+      });
       editor.selection.set([id]);
       controller.setSuspended(true);
 

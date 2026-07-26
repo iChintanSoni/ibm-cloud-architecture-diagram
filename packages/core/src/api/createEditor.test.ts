@@ -2,7 +2,11 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { Catalog } from "../catalog/catalog.js";
 import type { CatalogManifest } from "../catalog/types.js";
 import { moveElements } from "../commands/commands.js";
-import { createEditor, ExportBlockedError, type Editor } from "./createEditor.js";
+import {
+  createEditor,
+  ExportBlockedError,
+  type Editor,
+} from "./createEditor.js";
 
 function testCatalog(): Catalog {
   const manifest: CatalogManifest = {
@@ -18,11 +22,13 @@ function testCatalog(): Catalog {
         container: "square",
         asset: "vpc",
         keywords: ["vpc"],
-        tier: "ibm-cloud"
-      }
-    ]
+        tier: "ibm-cloud",
+      },
+    ],
   };
-  const assets = new Map([["vpc", '<rect width="20" height="20" fill="#0f62fe" />']]);
+  const assets = new Map([
+    ["vpc", '<rect width="20" height="20" fill="#0f62fe" />'],
+  ]);
   return new Catalog(manifest, assets);
 }
 
@@ -41,24 +47,44 @@ describe("createEditor", () => {
 
   it("adds a box and renders a DOM node keyed by element id", () => {
     const id = editor.addBox({ at: { x: 0, y: 0 }, label: "VPC" });
-    expect(editor.scene.get(id)).toMatchObject({ type: "box", semantic: "deployedOn" });
-    expect(container.querySelector(`[data-icad-id="${id}"][data-icad-type="box"]`)).not.toBeNull();
+    expect(editor.scene.get(id)).toMatchObject({
+      type: "box",
+      semantic: "deployedOn",
+    });
+    expect(
+      container.querySelector(`[data-icad-id="${id}"][data-icad-type="box"]`),
+    ).not.toBeNull();
   });
 
   it("adds a catalog icon and renders its glyph", () => {
     const id = editor.addIcon("test/vpc", { at: { x: 40, y: 40 } });
-    expect(editor.scene.get(id)).toMatchObject({ type: "iconNode", catalogRef: "test/vpc" });
-    expect(container.querySelector(`[data-icad-id="${id}"] svg rect`)).not.toBeNull();
+    expect(editor.scene.get(id)).toMatchObject({
+      type: "iconNode",
+      catalogRef: "test/vpc",
+    });
+    expect(
+      container.querySelector(`[data-icad-id="${id}"] svg rect`),
+    ).not.toBeNull();
   });
 
   it("throws when adding an unknown catalog icon", () => {
-    expect(() => editor.addIcon("does/not-exist", { at: { x: 0, y: 0 } })).toThrow(/Unknown catalog icon/);
+    expect(() =>
+      editor.addIcon("does/not-exist", { at: { x: 0, y: 0 } }),
+    ).toThrow(/Unknown catalog icon/);
   });
 
   it("adds a text element and renders its content", () => {
-    const id = editor.addText({ at: { x: 10, y: 10 }, text: "Payments platform" });
-    expect(editor.scene.get(id)).toMatchObject({ type: "text", text: "Payments platform" });
-    expect(container.querySelector(`[data-icad-id="${id}"] text`)?.textContent).toBe("Payments platform");
+    const id = editor.addText({
+      at: { x: 10, y: 10 },
+      text: "Payments platform",
+    });
+    expect(editor.scene.get(id)).toMatchObject({
+      type: "text",
+      text: "Payments platform",
+    });
+    expect(
+      container.querySelector(`[data-icad-id="${id}"] text`)?.textContent,
+    ).toBe("Payments platform");
   });
 
   it("adds named frames with presentation order through the public API", () => {
@@ -66,23 +92,34 @@ describe("createEditor", () => {
       at: { x: 0, y: 0 },
       w: 600,
       h: 400,
-      name: "Overview"
+      name: "Overview",
     });
     const deployment = editor.addFrame({
       at: { x: 700, y: 0 },
       w: 600,
       h: 400,
-      name: "Deployment"
+      name: "Deployment",
     });
 
-    expect(editor.scene.get(overview)).toMatchObject({ type: "frame", order: 1 });
-    expect(editor.scene.get(deployment)).toMatchObject({ type: "frame", order: 2 });
-    expect(container.querySelector(`[data-icad-id="${overview}"] text`)?.textContent).toBe("Overview");
+    expect(editor.scene.get(overview)).toMatchObject({
+      type: "frame",
+      order: 1,
+    });
+    expect(editor.scene.get(deployment)).toMatchObject({
+      type: "frame",
+      order: 2,
+    });
+    expect(
+      container.querySelector(`[data-icad-id="${overview}"] text`)?.textContent,
+    ).toBe("Overview");
   });
 
   it("reorders every frame as one undoable operation", () => {
     const overview = editor.addFrame({ at: { x: 0, y: 0 }, name: "Overview" });
-    const deployment = editor.addFrame({ at: { x: 900, y: 0 }, name: "Deployment" });
+    const deployment = editor.addFrame({
+      at: { x: 900, y: 0 },
+      name: "Deployment",
+    });
 
     editor.reorderFrames([deployment, overview]);
     expect(editor.scene.get(deployment)).toMatchObject({ order: 1 });
@@ -91,7 +128,9 @@ describe("createEditor", () => {
     editor.commands.undo();
     expect(editor.scene.get(overview)).toMatchObject({ order: 1 });
     expect(editor.scene.get(deployment)).toMatchObject({ order: 2 });
-    expect(() => editor.reorderFrames([overview])).toThrow(/every frame exactly once/);
+    expect(() => editor.reorderFrames([overview])).toThrow(
+      /every frame exactly once/,
+    );
   });
 
   it("starts a template document and clears history from the replaced document", () => {
@@ -101,14 +140,19 @@ describe("createEditor", () => {
     editor.newDocument("system-context");
 
     expect(editor.scene.meta.diagramLevel).toBe("system-context");
-    expect(editor.scene.all().some((element) => element.type === "frame")).toBe(true);
+    expect(editor.scene.all().some((element) => element.type === "frame")).toBe(
+      true,
+    );
     expect(editor.commands.canUndo()).toBe(false);
     expect(editor.selection.get()).toEqual([]);
   });
 
   it("moves a box's contents along with it (move-with)", () => {
     const parent = editor.addBox({ at: { x: 0, y: 0 }, label: "Subnet" });
-    const child = editor.addIcon("test/vpc", { at: { x: 20, y: 20 }, parentId: parent });
+    const child = editor.addIcon("test/vpc", {
+      at: { x: 20, y: 20 },
+      parentId: parent,
+    });
 
     editor.commands.dispatch(moveElements(editor.scene, [parent], 50, 30));
 
@@ -118,20 +162,23 @@ describe("createEditor", () => {
 
   it("edits inspector properties as one undoable move-with operation", () => {
     const parent = editor.addBox({ at: { x: 0, y: 0 }, label: "Subnet" });
-    const child = editor.addIcon("test/vpc", { at: { x: 20, y: 20 }, parentId: parent });
+    const child = editor.addIcon("test/vpc", {
+      at: { x: 20, y: 20 },
+      parentId: parent,
+    });
 
     editor.updateElementProperties(parent, {
       x: 80,
       y: 40,
       w: 300,
-      label: { text: "Application subnet" }
+      label: { text: "Application subnet" },
     });
 
     expect(editor.scene.get(parent)).toMatchObject({
       x: 80,
       y: 40,
       w: 300,
-      label: { text: "Application subnet" }
+      label: { text: "Application subnet" },
     });
     expect(editor.scene.get(child)).toMatchObject({ x: 100, y: 60 });
 
@@ -140,20 +187,31 @@ describe("createEditor", () => {
       x: 0,
       y: 0,
       w: 240,
-      label: { text: "Subnet" }
+      label: { text: "Subnet" },
     });
     expect(editor.scene.get(child)).toMatchObject({ x: 20, y: 20 });
   });
 
   it("reroutes an attached automatic connector after an inspector resize", () => {
     const a = editor.addBox({ at: { x: 0, y: 0 }, w: 100, h: 60, label: "A" });
-    const b = editor.addBox({ at: { x: 300, y: 0 }, w: 100, h: 60, label: "B" });
-    const connectorId = editor.connect({ elementId: a, port: "e" }, { elementId: b, port: "w" });
+    const b = editor.addBox({
+      at: { x: 300, y: 0 },
+      w: 100,
+      h: 60,
+      label: "B",
+    });
+    const connectorId = editor.connect(
+      { elementId: a, port: "e" },
+      { elementId: b, port: "w" },
+    );
 
     editor.updateElementProperties(a, { h: 400 });
 
     expect(editor.scene.get(a)).toMatchObject({ h: 400 });
-    expect((editor.scene.get(connectorId) as { waypoints?: unknown[] }).waypoints?.length).toBeGreaterThan(0);
+    expect(
+      (editor.scene.get(connectorId) as { waypoints?: unknown[] }).waypoints
+        ?.length,
+    ).toBeGreaterThan(0);
     editor.commands.undo();
     expect(editor.scene.get(a)).toMatchObject({ h: 60 });
     expect(editor.scene.get(connectorId)).toMatchObject({ waypoints: [] });
@@ -169,7 +227,9 @@ describe("createEditor", () => {
 
     editor.commands.undo();
     expect(editor.scene.get(child)?.parentId).toBeUndefined();
-    expect(() => editor.setElementParent(child, nonContainer)).toThrow(/cannot contain/);
+    expect(() => editor.setElementParent(child, nonContainer)).toThrow(
+      /cannot contain/,
+    );
   });
 
   it("notifies shell listeners when selection changes", () => {
@@ -186,32 +246,56 @@ describe("createEditor", () => {
 
   it("connects two elements and renders a routed polyline", () => {
     const a = editor.addBox({ at: { x: 0, y: 0 }, w: 100, h: 60, label: "A" });
-    const b = editor.addBox({ at: { x: 300, y: 0 }, w: 100, h: 60, label: "B" });
-    const connId = editor.connect({ elementId: a, port: "e" }, { elementId: b, port: "w" });
+    const b = editor.addBox({
+      at: { x: 300, y: 0 },
+      w: 100,
+      h: 60,
+      label: "B",
+    });
+    const connId = editor.connect(
+      { elementId: a, port: "e" },
+      { elementId: b, port: "w" },
+    );
 
-    const polyline = container.querySelector(`[data-icad-id="${connId}"] polyline`);
+    const polyline = container.querySelector(
+      `[data-icad-id="${connId}"] polyline`,
+    );
     expect(polyline).not.toBeNull();
     expect(polyline?.getAttribute("points")).toContain("100,30");
   });
 
   it("routes a connector around an icon placed in its path", () => {
     const a = editor.addBox({ at: { x: 0, y: 0 }, w: 100, h: 60, label: "A" });
-    const b = editor.addBox({ at: { x: 300, y: 0 }, w: 100, h: 60, label: "B" });
+    const b = editor.addBox({
+      at: { x: 300, y: 0 },
+      w: 100,
+      h: 60,
+      label: "B",
+    });
     editor.addIcon("test/vpc", { at: { x: 180, y: 5 } });
-    const connId = editor.connect({ elementId: a, port: "e" }, { elementId: b, port: "w" });
+    const connId = editor.connect(
+      { elementId: a, port: "e" },
+      { elementId: b, port: "w" },
+    );
 
     expect(editor.scene.get(connId)).toMatchObject({ routing: "auto" });
-    const waypoints = (editor.scene.get(connId) as { waypoints?: unknown[] }).waypoints;
+    const waypoints = (editor.scene.get(connId) as { waypoints?: unknown[] })
+      .waypoints;
     expect(waypoints?.length).toBeGreaterThan(0);
   });
 
   it("renders a dashed line and a hollow arrowhead for an implementation connector", () => {
     const a = editor.addBox({ at: { x: 0, y: 0 }, w: 100, h: 60, label: "A" });
-    const b = editor.addBox({ at: { x: 300, y: 0 }, w: 100, h: 60, label: "B" });
+    const b = editor.addBox({
+      at: { x: 300, y: 0 },
+      w: 100,
+      h: 60,
+      label: "B",
+    });
     const connId = editor.connect(
       { elementId: a, port: "e" },
       { elementId: b, port: "w" },
-      { connectorType: "implementation" }
+      { connectorType: "implementation" },
     );
 
     const line = container.querySelector(`[data-icad-id="${connId}"] polyline`);
@@ -221,11 +305,16 @@ describe("createEditor", () => {
 
   it("colors a connection-type connector by flowColor", () => {
     const a = editor.addBox({ at: { x: 0, y: 0 }, w: 100, h: 60, label: "A" });
-    const b = editor.addBox({ at: { x: 300, y: 0 }, w: 100, h: 60, label: "B" });
+    const b = editor.addBox({
+      at: { x: 300, y: 0 },
+      w: 100,
+      h: 60,
+      label: "B",
+    });
     const connId = editor.connect(
       { elementId: a, port: "e" },
       { elementId: b, port: "w" },
-      { connectorType: "connection", flowColor: "public" }
+      { connectorType: "connection", flowColor: "public" },
     );
 
     const line = container.querySelector(`[data-icad-id="${connId}"] polyline`);
@@ -234,11 +323,16 @@ describe("createEditor", () => {
 
   it("renders IBM endpoint dots at both ends of a bidirectional connection", () => {
     const a = editor.addBox({ at: { x: 0, y: 0 }, w: 100, h: 60, label: "A" });
-    const b = editor.addBox({ at: { x: 300, y: 0 }, w: 100, h: 60, label: "B" });
+    const b = editor.addBox({
+      at: { x: 300, y: 0 },
+      w: 100,
+      h: 60,
+      label: "B",
+    });
     const connId = editor.connect(
       { elementId: a, port: "e" },
       { elementId: b, port: "w" },
-      { connectorType: "connection", direction: "bidirectional" }
+      { connectorType: "connection", direction: "bidirectional" },
     );
 
     const line = container.querySelector(`[data-icad-id="${connId}"] polyline`);
@@ -248,11 +342,16 @@ describe("createEditor", () => {
 
   it("renders an IBM source dot and destination arrow for a unidirectional connection", () => {
     const a = editor.addBox({ at: { x: 0, y: 0 }, w: 100, h: 60, label: "A" });
-    const b = editor.addBox({ at: { x: 300, y: 0 }, w: 100, h: 60, label: "B" });
+    const b = editor.addBox({
+      at: { x: 300, y: 0 },
+      w: 100,
+      h: 60,
+      label: "B",
+    });
     const connId = editor.connect(
       { elementId: a, port: "e" },
       { elementId: b, port: "w" },
-      { connectorType: "connection", direction: "unidirectional" }
+      { connectorType: "connection", direction: "unidirectional" },
     );
 
     const line = container.querySelector(`[data-icad-id="${connId}"] polyline`);
@@ -262,17 +361,33 @@ describe("createEditor", () => {
 
   it("overrides the route with manual waypoints and can switch back to auto", () => {
     const a = editor.addBox({ at: { x: 0, y: 0 }, w: 100, h: 60, label: "A" });
-    const b = editor.addBox({ at: { x: 300, y: 0 }, w: 100, h: 60, label: "B" });
-    const connId = editor.connect({ elementId: a, port: "e" }, { elementId: b, port: "w" });
+    const b = editor.addBox({
+      at: { x: 300, y: 0 },
+      w: 100,
+      h: 60,
+      label: "B",
+    });
+    const connId = editor.connect(
+      { elementId: a, port: "e" },
+      { elementId: b, port: "w" },
+    );
 
     editor.setConnectorWaypoints(connId, [{ x: 150, y: 200 }]);
-    expect(editor.scene.get(connId)).toMatchObject({ routing: "manual", waypoints: [{ x: 150, y: 200 }] });
+    expect(editor.scene.get(connId)).toMatchObject({
+      routing: "manual",
+      waypoints: [{ x: 150, y: 200 }],
+    });
 
     editor.commands.dispatch(moveElements(editor.scene, [b], 0, 50));
-    expect(editor.scene.get(connId)).toMatchObject({ waypoints: [{ x: 150, y: 200 }] });
+    expect(editor.scene.get(connId)).toMatchObject({
+      waypoints: [{ x: 150, y: 200 }],
+    });
 
     editor.autoRouteConnector(connId);
-    const reRouted = editor.scene.get(connId) as { routing?: string; waypoints?: unknown[] };
+    const reRouted = editor.scene.get(connId) as {
+      routing?: string;
+      waypoints?: unknown[];
+    };
     expect(reRouted.routing).toBe("auto");
     expect(reRouted.waypoints).not.toEqual([{ x: 150, y: 200 }]);
   });
@@ -311,10 +426,14 @@ describe("createEditor", () => {
   it("selects validation targets and renders editor-only validation badges", () => {
     const id = editor.addBox({ at: { x: 0, y: 0 } });
     editor.lint();
-    expect(container.querySelector(`[data-icad-validation-badge="${id}"]`)).not.toBeNull();
+    expect(
+      container.querySelector(`[data-icad-validation-badge="${id}"]`),
+    ).not.toBeNull();
 
     editor.selection.set([id]);
-    expect(container.querySelector('[data-icad-layer="overlays"] rect')).not.toBeNull();
+    expect(
+      container.querySelector('[data-icad-layer="overlays"] rect'),
+    ).not.toBeNull();
 
     const svg = editor.export({ format: "svg" }) as string;
     expect(svg).not.toContain('data-icad-layer="overlays"');
@@ -338,14 +457,14 @@ describe("createEditor", () => {
     editor.addGroup({
       at: { x: 200, y: 0 },
       label: "Security group",
-      style: { dashed: false }
+      style: { dashed: false },
     });
     editor.setRuleSeverity("missing-label", "error");
     editor.setRuleSeverity("container-border", "info");
 
     expect(editor.complianceSummary()).toMatchObject({
       counts: { error: 1, warn: 0, info: 1 },
-      blocked: false
+      blocked: false,
     });
 
     editor.setExportGate("block");
@@ -361,12 +480,16 @@ describe("createEditor", () => {
       x: 0,
       y: 0,
       w: 64,
-      h: 40
+      h: 40,
     });
     editor.lint();
 
-    const badge = container.querySelector('[data-icad-validation-badge="invalid-icon"]');
-    expect(badge?.querySelector("circle")?.getAttribute("fill")).toBe("#da1e28");
+    const badge = container.querySelector(
+      '[data-icad-validation-badge="invalid-icon"]',
+    );
+    expect(badge?.querySelector("circle")?.getAttribute("fill")).toBe(
+      "#da1e28",
+    );
     expect(badge?.querySelector("text")?.textContent).toBe("2");
   });
 
@@ -374,7 +497,10 @@ describe("createEditor", () => {
     editor.addBox({ at: { x: 5, y: 5 }, label: "VPC" });
     const doc = editor.toIcad();
 
-    const other = createEditor({ container: document.createElement("div"), catalog: testCatalog() });
+    const other = createEditor({
+      container: document.createElement("div"),
+      catalog: testCatalog(),
+    });
     other.loadIcad(doc);
 
     expect(other.toIcad().elements).toEqual(doc.elements);
@@ -412,7 +538,12 @@ describe("createEditor", () => {
     });
 
     it("focuses the viewport on the given elements' bounding box", () => {
-      const id = editor.addBox({ at: { x: 500, y: 500 }, w: 100, h: 100, label: "Far away" });
+      const id = editor.addBox({
+        at: { x: 500, y: 500 },
+        w: 100,
+        h: 100,
+        label: "Far away",
+      });
       editor.focusOnElements([id]);
       const state = editor.viewport.get();
       // The box's center (550,550) should now be roughly centered in the (fallback) 800x600 viewport.
@@ -503,8 +634,16 @@ describe("createEditor", () => {
     });
 
     it("moves nested contents along when nudging a container (move-with)", () => {
-      const parent = editor.addBox({ at: { x: 0, y: 0 }, w: 200, h: 200, label: "parent" });
-      const child = editor.addIcon("test/vpc", { at: { x: 20, y: 20 }, parentId: parent });
+      const parent = editor.addBox({
+        at: { x: 0, y: 0 },
+        w: 200,
+        h: 200,
+        label: "parent",
+      });
+      const child = editor.addIcon("test/vpc", {
+        at: { x: 20, y: 20 },
+        parentId: parent,
+      });
       editor.nudgeElements([parent], 10, 10);
       expect(editor.scene.get(child)).toMatchObject({ x: 30, y: 30 });
     });
@@ -521,8 +660,16 @@ describe("createEditor", () => {
     });
 
     it("deletes an element and its descendants as one undoable step, then clears selection", () => {
-      const parent = editor.addBox({ at: { x: 0, y: 0 }, w: 200, h: 200, label: "parent" });
-      const child = editor.addIcon("test/vpc", { at: { x: 20, y: 20 }, parentId: parent });
+      const parent = editor.addBox({
+        at: { x: 0, y: 0 },
+        w: 200,
+        h: 200,
+        label: "parent",
+      });
+      const child = editor.addIcon("test/vpc", {
+        at: { x: 20, y: 20 },
+        parentId: parent,
+      });
       editor.selection.set([parent]);
 
       editor.deleteElements([parent]);
@@ -544,7 +691,12 @@ describe("createEditor", () => {
       expect(editor.scene.all()).toHaveLength(0);
 
       editor.commands.undo();
-      expect(editor.scene.all().map((el) => el.id).sort()).toEqual([a, b].sort());
+      expect(
+        editor.scene
+          .all()
+          .map((el) => el.id)
+          .sort(),
+      ).toEqual([a, b].sort());
     });
 
     it("does nothing when deleting only unknown ids", () => {
@@ -586,18 +738,30 @@ describe("createEditor", () => {
     });
 
     it("previews move-with: a container's descendants get the same live transform", () => {
-      const parent = editor.addBox({ at: { x: 0, y: 0 }, w: 200, h: 200, label: "parent" });
-      const child = editor.addIcon("test/vpc", { at: { x: 20, y: 20 }, parentId: parent });
+      const parent = editor.addBox({
+        at: { x: 0, y: 0 },
+        w: 200,
+        h: 200,
+        label: "parent",
+      });
+      const child = editor.addIcon("test/vpc", {
+        at: { x: 20, y: 20 },
+        parentId: parent,
+      });
 
       const interaction = editor.beginInteraction([parent]);
       interaction.update(10, 10);
 
-      expect(container.querySelector(`[data-icad-id="${parent}"]`)?.getAttribute("transform")).toBe(
-        "translate(10, 10)"
-      );
-      expect(container.querySelector(`[data-icad-id="${child}"]`)?.getAttribute("transform")).toBe(
-        "translate(10, 10)"
-      );
+      expect(
+        container
+          .querySelector(`[data-icad-id="${parent}"]`)
+          ?.getAttribute("transform"),
+      ).toBe("translate(10, 10)");
+      expect(
+        container
+          .querySelector(`[data-icad-id="${child}"]`)
+          ?.getAttribute("transform"),
+      ).toBe("translate(10, 10)");
 
       interaction.commit();
       expect(editor.scene.get(child)).toMatchObject({ x: 30, y: 30 });
@@ -611,7 +775,11 @@ describe("createEditor", () => {
       interaction.abort();
 
       expect(editor.scene.get(id)).toMatchObject({ x: 10, y: 10 });
-      expect(container.querySelector(`[data-icad-id="${id}"]`)?.getAttribute("transform")).toBeNull();
+      expect(
+        container
+          .querySelector(`[data-icad-id="${id}"]`)
+          ?.getAttribute("transform"),
+      ).toBeNull();
 
       // A single undo removes the box's own add — proving abort() pushed nothing on top of it.
       editor.commands.undo();
@@ -646,39 +814,78 @@ describe("createEditor", () => {
       // both must carry the same live transform or the outline visibly desyncs from the shape.
       const withThatId = container.querySelectorAll(`[data-icad-id="${id}"]`);
       expect(withThatId.length).toBeGreaterThanOrEqual(2);
-      withThatId.forEach((el) => expect(el.getAttribute("transform")).toBe("translate(7, 3)"));
+      withThatId.forEach((el) =>
+        expect(el.getAttribute("transform")).toBe("translate(7, 3)"),
+      );
     });
   });
 
   describe("group / ungroup", () => {
     it("groups two elements into a new Group container sized to their bounds, and selects it", () => {
       const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
-      const b = editor.addBox({ at: { x: 200, y: 100 }, w: 50, h: 50, label: "b" });
+      const b = editor.addBox({
+        at: { x: 200, y: 100 },
+        w: 50,
+        h: 50,
+        label: "b",
+      });
 
       const groupId = editor.groupElements([a, b]);
 
       expect(groupId).toBeDefined();
-      expect(editor.scene.get(groupId!)).toMatchObject({ type: "group", semantic: "deployedTo" });
+      expect(editor.scene.get(groupId!)).toMatchObject({
+        type: "group",
+        semantic: "deployedTo",
+      });
       expect(editor.scene.get(a)?.parentId).toBe(groupId);
       expect(editor.scene.get(b)?.parentId).toBe(groupId);
       // bbox of a (0,0,50,50) + b (200,100,50,50) is x:0 y:0 w:250 h:150, padded by 16 on each side.
-      expect(editor.scene.get(groupId!)).toMatchObject({ x: -16, y: -16, w: 282, h: 182 });
+      expect(editor.scene.get(groupId!)).toMatchObject({
+        x: -16,
+        y: -16,
+        w: 282,
+        h: 182,
+      });
       expect(editor.selection.get()).toEqual([groupId]);
     });
 
     it("nests the new group under a shared parent", () => {
-      const parent = editor.addBox({ at: { x: 0, y: 0 }, w: 400, h: 400, label: "parent" });
-      const a = editor.addIcon("test/vpc", { at: { x: 10, y: 10 }, parentId: parent });
-      const b = editor.addIcon("test/vpc", { at: { x: 100, y: 10 }, parentId: parent });
+      const parent = editor.addBox({
+        at: { x: 0, y: 0 },
+        w: 400,
+        h: 400,
+        label: "parent",
+      });
+      const a = editor.addIcon("test/vpc", {
+        at: { x: 10, y: 10 },
+        parentId: parent,
+      });
+      const b = editor.addIcon("test/vpc", {
+        at: { x: 100, y: 10 },
+        parentId: parent,
+      });
 
       const groupId = editor.groupElements([a, b]);
       expect(editor.scene.get(groupId!)?.parentId).toBe(parent);
     });
 
     it("defaults to canvas root when grouped elements don't share a parent", () => {
-      const parent = editor.addBox({ at: { x: 0, y: 0 }, w: 400, h: 400, label: "parent" });
-      const a = editor.addIcon("test/vpc", { at: { x: 10, y: 10 }, parentId: parent });
-      const b = editor.addBox({ at: { x: 500, y: 0 }, w: 50, h: 50, label: "root box" });
+      const parent = editor.addBox({
+        at: { x: 0, y: 0 },
+        w: 400,
+        h: 400,
+        label: "parent",
+      });
+      const a = editor.addIcon("test/vpc", {
+        at: { x: 10, y: 10 },
+        parentId: parent,
+      });
+      const b = editor.addBox({
+        at: { x: 500, y: 0 },
+        w: 50,
+        h: 50,
+        label: "root box",
+      });
 
       const groupId = editor.groupElements([a, b]);
       expect(editor.scene.get(groupId!)?.parentId).toBeUndefined();
@@ -707,10 +914,27 @@ describe("createEditor", () => {
     });
 
     it("ungroups a container, reparenting its children to the container's own parent, and selects them", () => {
-      const outer = editor.addBox({ at: { x: 0, y: 0 }, w: 400, h: 400, label: "outer" });
-      const group = editor.addGroup({ at: { x: 10, y: 10 }, w: 200, h: 200, parentId: outer, label: "inner" });
-      const a = editor.addIcon("test/vpc", { at: { x: 20, y: 20 }, parentId: group });
-      const b = editor.addIcon("test/vpc", { at: { x: 100, y: 20 }, parentId: group });
+      const outer = editor.addBox({
+        at: { x: 0, y: 0 },
+        w: 400,
+        h: 400,
+        label: "outer",
+      });
+      const group = editor.addGroup({
+        at: { x: 10, y: 10 },
+        w: 200,
+        h: 200,
+        parentId: outer,
+        label: "inner",
+      });
+      const a = editor.addIcon("test/vpc", {
+        at: { x: 20, y: 20 },
+        parentId: group,
+      });
+      const b = editor.addIcon("test/vpc", {
+        at: { x: 100, y: 20 },
+        parentId: group,
+      });
 
       editor.ungroupElement(group);
 
@@ -721,16 +945,32 @@ describe("createEditor", () => {
     });
 
     it("ungroups a root-level container to canvas root", () => {
-      const group = editor.addGroup({ at: { x: 0, y: 0 }, w: 200, h: 200, label: "group" });
-      const a = editor.addIcon("test/vpc", { at: { x: 20, y: 20 }, parentId: group });
+      const group = editor.addGroup({
+        at: { x: 0, y: 0 },
+        w: 200,
+        h: 200,
+        label: "group",
+      });
+      const a = editor.addIcon("test/vpc", {
+        at: { x: 20, y: 20 },
+        parentId: group,
+      });
 
       editor.ungroupElement(group);
       expect(editor.scene.get(a)?.parentId).toBeUndefined();
     });
 
     it("undoes an ungroup as a single step", () => {
-      const group = editor.addGroup({ at: { x: 0, y: 0 }, w: 200, h: 200, label: "group" });
-      const a = editor.addIcon("test/vpc", { at: { x: 20, y: 20 }, parentId: group });
+      const group = editor.addGroup({
+        at: { x: 0, y: 0 },
+        w: 200,
+        h: 200,
+        label: "group",
+      });
+      const a = editor.addIcon("test/vpc", {
+        at: { x: 20, y: 20 },
+        parentId: group,
+      });
 
       editor.ungroupElement(group);
       editor.commands.undo();
@@ -753,7 +993,12 @@ describe("createEditor", () => {
   describe("connectNearest", () => {
     it("connects two elements using a port pair inferred from their relative position", () => {
       const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
-      const b = editor.addBox({ at: { x: 300, y: 0 }, w: 50, h: 50, label: "b" });
+      const b = editor.addBox({
+        at: { x: 300, y: 0 },
+        w: 50,
+        h: 50,
+        label: "b",
+      });
 
       const connId = editor.connectNearest(a, b);
 
@@ -761,7 +1006,7 @@ describe("createEditor", () => {
       expect(editor.scene.get(connId!)).toMatchObject({
         type: "connector",
         from: { elementId: a, port: "e" },
-        to: { elementId: b, port: "w" }
+        to: { elementId: b, port: "w" },
       });
       expect(editor.selection.get()).toEqual([connId]);
     });
@@ -769,8 +1014,12 @@ describe("createEditor", () => {
     it("passes through connector type/direction/flowColor options", () => {
       const a = editor.addBox({ at: { x: 0, y: 0 }, label: "a" });
       const b = editor.addBox({ at: { x: 300, y: 0 }, label: "b" });
-      const connId = editor.connectNearest(a, b, { connectorType: "dependency" });
-      expect(editor.scene.get(connId!)).toMatchObject({ connectorType: "dependency" });
+      const connId = editor.connectNearest(a, b, {
+        connectorType: "dependency",
+      });
+      expect(editor.scene.get(connId!)).toMatchObject({
+        connectorType: "dependency",
+      });
     });
 
     it("does nothing for unknown ids, self-connections, or connector endpoints", () => {
@@ -788,24 +1037,35 @@ describe("createEditor", () => {
     it("shows a port-marker hover ring on an element and clears it", () => {
       const a = editor.addBox({ at: { x: 0, y: 0 }, label: "a" });
       editor.setHoveredElement(a);
-      expect(container.querySelector(`[data-icad-port^="${a}:"]`)).not.toBeNull();
+      expect(
+        container.querySelector(`[data-icad-port^="${a}:"]`),
+      ).not.toBeNull();
       editor.setHoveredElement(undefined);
       expect(container.querySelector(`[data-icad-port^="${a}:"]`)).toBeNull();
     });
 
     it("draws a connector preview snapped to the nearest ports between two elements", () => {
       const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
-      const b = editor.addBox({ at: { x: 300, y: 0 }, w: 50, h: 50, label: "b" });
+      const b = editor.addBox({
+        at: { x: 300, y: 0 },
+        w: 50,
+        h: 50,
+        label: "b",
+      });
       editor.previewConnectorBetween(a, b);
 
-      const line = container.querySelector('[data-icad-layer="overlays"] line')!;
+      const line = container.querySelector(
+        '[data-icad-layer="overlays"] line',
+      )!;
       expect(line.getAttribute("x1")).toBe("50"); // a's east port
       expect(line.getAttribute("x2")).toBe("300"); // b's west port
     });
 
     it("draws a connector preview at arbitrary points for a mouse drag in progress", () => {
       editor.setConnectorDraftPoints({ x: 5, y: 5 }, { x: 40, y: 60 });
-      const line = container.querySelector('[data-icad-layer="overlays"] line')!;
+      const line = container.querySelector(
+        '[data-icad-layer="overlays"] line',
+      )!;
       expect(line.getAttribute("x2")).toBe("40");
       expect(line.getAttribute("y2")).toBe("60");
     });
@@ -813,13 +1073,17 @@ describe("createEditor", () => {
     it("clears the connector draft", () => {
       editor.setConnectorDraftPoints({ x: 0, y: 0 }, { x: 1, y: 1 });
       editor.clearConnectorDraft();
-      expect(container.querySelector('[data-icad-layer="overlays"] line')).toBeNull();
+      expect(
+        container.querySelector('[data-icad-layer="overlays"] line'),
+      ).toBeNull();
     });
 
     it("does nothing when previewing between an unknown element", () => {
       const a = editor.addBox({ at: { x: 0, y: 0 }, label: "a" });
       editor.previewConnectorBetween(a, "missing");
-      expect(container.querySelector('[data-icad-layer="overlays"] line')).toBeNull();
+      expect(
+        container.querySelector('[data-icad-layer="overlays"] line'),
+      ).toBeNull();
     });
   });
 });

@@ -14,7 +14,7 @@ const options = {
   // exists inside a running VS Code process and is injected at load time.
   external: ["vscode"],
   sourcemap: true,
-  logLevel: "info"
+  logLevel: "info",
 };
 
 if (watch) {

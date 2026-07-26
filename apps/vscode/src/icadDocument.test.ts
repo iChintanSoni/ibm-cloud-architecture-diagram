@@ -15,7 +15,9 @@ beforeEach(() => {
 describe("IcadDocument", () => {
   it("reads its initial content from the document uri", async () => {
     const uri = Uri.file("/diagrams/a.icad");
-    vi.mocked(workspace.fs.readFile).mockResolvedValueOnce(encoder.encode('{"format":"icad"}'));
+    vi.mocked(workspace.fs.readFile).mockResolvedValueOnce(
+      encoder.encode('{"format":"icad"}'),
+    );
 
     const document = await IcadDocument.create(uri as never);
 
@@ -25,17 +27,26 @@ describe("IcadDocument", () => {
 
   it("reads from the backup uri instead of the document uri when restoring after a crash", async () => {
     const uri = Uri.file("/diagrams/a.icad");
-    vi.mocked(workspace.fs.readFile).mockResolvedValueOnce(encoder.encode('{"format":"icad","backup":true}'));
+    vi.mocked(workspace.fs.readFile).mockResolvedValueOnce(
+      encoder.encode('{"format":"icad","backup":true}'),
+    );
 
-    const document = await IcadDocument.create(uri as never, "file:///backups/a-1.icad");
+    const document = await IcadDocument.create(
+      uri as never,
+      "file:///backups/a-1.icad",
+    );
 
     const [readUri] = vi.mocked(workspace.fs.readFile).mock.calls[0]!;
-    expect((readUri as InstanceType<typeof Uri>).fsPath).toBe("/backups/a-1.icad");
+    expect((readUri as InstanceType<typeof Uri>).fsPath).toBe(
+      "/backups/a-1.icad",
+    );
     expect(document.latestContent).toBe('{"format":"icad","backup":true}');
   });
 
   it("applyEdit updates latestContent and notifies listeners", async () => {
-    vi.mocked(workspace.fs.readFile).mockResolvedValueOnce(encoder.encode("{}"));
+    vi.mocked(workspace.fs.readFile).mockResolvedValueOnce(
+      encoder.encode("{}"),
+    );
     const document = await IcadDocument.create(Uri.file("/a.icad") as never);
 
     const received: string[] = [];
@@ -49,11 +60,15 @@ describe("IcadDocument", () => {
 
   it("revert re-reads from the original uri and updates latestContent", async () => {
     const uri = Uri.file("/a.icad");
-    vi.mocked(workspace.fs.readFile).mockResolvedValueOnce(encoder.encode("{}"));
+    vi.mocked(workspace.fs.readFile).mockResolvedValueOnce(
+      encoder.encode("{}"),
+    );
     const document = await IcadDocument.create(uri as never);
     document.applyEdit({ content: '{"v":1}', label: "Add box" });
 
-    vi.mocked(workspace.fs.readFile).mockResolvedValueOnce(encoder.encode('{"onDisk":true}'));
+    vi.mocked(workspace.fs.readFile).mockResolvedValueOnce(
+      encoder.encode('{"onDisk":true}'),
+    );
     const result = await document.revert();
 
     expect(result).toBe('{"onDisk":true}');
@@ -61,13 +76,18 @@ describe("IcadDocument", () => {
   });
 
   it("writeTo writes the current content to the given uri", async () => {
-    vi.mocked(workspace.fs.readFile).mockResolvedValueOnce(encoder.encode("{}"));
+    vi.mocked(workspace.fs.readFile).mockResolvedValueOnce(
+      encoder.encode("{}"),
+    );
     const document = await IcadDocument.create(Uri.file("/a.icad") as never);
     document.applyEdit({ content: '{"v":2}', label: "Move" });
 
     const target = Uri.file("/copy.icad");
     await document.writeTo(target as never);
 
-    expect(workspace.fs.writeFile).toHaveBeenCalledWith(target, encoder.encode('{"v":2}'));
+    expect(workspace.fs.writeFile).toHaveBeenCalledWith(
+      target,
+      encoder.encode('{"v":2}'),
+    );
   });
 });

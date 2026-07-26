@@ -84,12 +84,12 @@ omitted — but a freshly `doc_create`d document has never been saved, so pass a
 
 ## Quick reference
 
-| Situation | Call |
-|---|---|
-| Check current state | `lint()` |
-| Fix everything fixable | `quickfix_apply_all()` |
-| Fix one rule only | `quickfix_apply_all({ ruleId })` |
-| Fix one specific diagnostic | `quickfix_apply({ diagnosticId })` (re-`lint()` after) |
-| Export canonical SVG | `export_diagram({ format: "svg" })` |
+| Situation                      | Call                                                    |
+| ------------------------------ | ------------------------------------------------------- |
+| Check current state            | `lint()`                                                |
+| Fix everything fixable         | `quickfix_apply_all()`                                  |
+| Fix one rule only              | `quickfix_apply_all({ ruleId })`                        |
+| Fix one specific diagnostic    | `quickfix_apply({ diagnosticId })` (re-`lint()` after)  |
+| Export canonical SVG           | `export_diagram({ format: "svg" })`                     |
 | Export without editable source | `export_diagram({ format: "svg", embedSource: false })` |
-| Persist the `.icad` document | `doc_save({ path })` |
+| Persist the `.icad` document   | `doc_save({ path })`                                    |

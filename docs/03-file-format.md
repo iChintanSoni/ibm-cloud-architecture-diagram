@@ -15,24 +15,25 @@
 ```jsonc
 {
   "format": "icad",
-  "version": 1,                         // schema version (migrations key off this)
+  "version": 1, // schema version (migrations key off this)
   "catalog": { "id": "ibm-cloud", "version": "2.0.0" }, // pinned icon catalog (see D11)
   "meta": {
     "title": "Payments platform — system context",
-    "diagramLevel": "system-context",   // system-context | high-level | detailed | blank
+    "diagramLevel": "system-context", // system-context | high-level | detailed | blank
     "createdAt": "2026-07-22T00:00:00Z",
     "updatedAt": "2026-07-22T00:00:00Z",
-    "author": "…"
+    "author": "…",
   },
   "canvas": { "theme": "auto", "grid": 8, "background": "transparent" },
   "conformance": {
-    "exportGate": "warn",                // warn | block
-    "ruleSeverities": {                  // omitted entries use IBM defaults
-      "missing-label": "error"           // error | warn | info | off
-    }
+    "exportGate": "warn", // warn | block
+    "ruleSeverities": {
+      // omitted entries use IBM defaults
+      "missing-label": "error", // error | warn | info | off
+    },
   },
-  "elements": [ /* see below */ ],
-  "frames": [ /* sectioning + presentation order */ ]
+  "elements": [/* see below */],
+  "frames": [/* sectioning + presentation order */],
 }
 ```
 
@@ -42,30 +43,33 @@ Elements are a discriminated union on `type`. Shared fields:
 
 ```jsonc
 {
-  "id": "el_9f3a",            // stable, unique
-  "type": "iconNode",         // iconNode | box | group | zone | actor | connector | text | frame
-  "semantic": "node",         // IBM meaning: deployedOn | deployedTo | node | actor | boundary
-  "x": 320, "y": 160, "w": 48, "h": 48,
+  "id": "el_9f3a", // stable, unique
+  "type": "iconNode", // iconNode | box | group | zone | actor | connector | text | frame
+  "semantic": "node", // IBM meaning: deployedOn | deployedTo | node | actor | boundary
+  "x": 320,
+  "y": 160,
+  "w": 48,
+  "h": 48,
   "rotation": 0,
-  "parentId": "el_box1",      // container membership (moves-with)
+  "parentId": "el_box1", // container membership (moves-with)
   "label": { "text": "VPC", "position": "s" },
-  "style": { /* stroke, fill, dashed, color token */ },
-  "z": 12
+  "style": {/* stroke, fill, dashed, color token */},
+  "z": 12,
 }
 ```
 
 Type-specific additions:
 
-| `type` | Extra fields | IBM meaning |
-|---|---|---|
-| `iconNode` | `catalogRef: "ibm-cloud/vpc"` | Standalone component/device (square container, 1px outline) |
-| `box` | — (solid border) | `deployedOn` location (logical/virtual/physical) |
-| `group` | — (dashed border) | `deployedTo` grouping of services/apps |
-| `zone` | `zoneKind: "az"\|"on-prem"` | Geographic boundary (dotted; D24 — region/VPC/subnet are `box`) |
-| `actor` | `catalogRef?` | Role/user (rounded) |
-| `connector` | `from`, `to` (port refs), `connectorType`, `waypoints[]`, `routing?`, `direction?`, `flowColor?`, `cardinality?` | IBM connector nomenclature |
-| `text` | `text`, typography | Free annotation |
-| `frame` | `name`, `order`, `bounds` | Section + presentation step |
+| `type`      | Extra fields                                                                                                     | IBM meaning                                                     |
+| ----------- | ---------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| `iconNode`  | `catalogRef: "ibm-cloud/vpc"`                                                                                    | Standalone component/device (square container, 1px outline)     |
+| `box`       | — (solid border)                                                                                                 | `deployedOn` location (logical/virtual/physical)                |
+| `group`     | — (dashed border)                                                                                                | `deployedTo` grouping of services/apps                          |
+| `zone`      | `zoneKind: "az"\|"on-prem"`                                                                                      | Geographic boundary (dotted; D24 — region/VPC/subnet are `box`) |
+| `actor`     | `catalogRef?`                                                                                                    | Role/user (rounded)                                             |
+| `connector` | `from`, `to` (port refs), `connectorType`, `waypoints[]`, `routing?`, `direction?`, `flowColor?`, `cardinality?` | IBM connector nomenclature                                      |
+| `text`      | `text`, typography                                                                                               | Free annotation                                                 |
+| `frame`     | `name`, `order`, `bounds`                                                                                        | Section + presentation step                                     |
 
 Ports are referenced as `{ elementId, port: "n"|"e"|"s"|"w"|"center" }`. Connectors store their
 routed `waypoints` for stable re-open, but the router can re-derive them — `routing: "auto"`
@@ -94,6 +98,7 @@ via the catalog's `aliases` and, failing that, renders a labeled placeholder wit
 Handled by `core/io`. See also [Editor UX → Export](06-editor-ux.md#export).
 
 ### SVG (canonical)
+
 - Produced directly from the render tree, so export == on-screen.
 - Defaults mirror IBM guidance: transparent background, embedded fonts/images, spec colors.
 - **Re-editable copy ([D8](00-decision-log.md#d8--re-editable-svg-via-embedded-icad-copy--locked)):** the full `.icad` JSON is embedded in a
@@ -109,9 +114,11 @@ Handled by `core/io`. See also [Editor UX → Export](06-editor-ux.md#export).
 ```
 
 ### PNG
+
 - Rasterized from the SVG at selectable scale (1×/2×/3×), transparent or white background.
 
 ### Export gate
+
 The [linter](05-ibm-spec-conformance.md) can optionally **warn or block** export when the diagram
 has spec violations ([D12](00-decision-log.md#d12--advisory-linter--quick-fixes--optional-export-gate--locked)). Configurable; default = warn.
 Both the gate and per-rule severity overrides live in the document's `conformance` object, so a

@@ -6,19 +6,22 @@ import type {
   ElementId,
   ExportGate,
   SceneElement,
-  ConformanceSeverity
+  ConformanceSeverity,
 } from "../scene/types.js";
 import type { Command } from "./types.js";
 
 /** Auto-routed connectors whose `from`/`to` is one of `ids` — these need rerouting after a move/resize. */
-function attachedAutoConnectors(scene: Scene, ids: Set<ElementId>): ConnectorElement[] {
+function attachedAutoConnectors(
+  scene: Scene,
+  ids: Set<ElementId>,
+): ConnectorElement[] {
   return scene
     .all()
     .filter(
       (el): el is ConnectorElement =>
         el.type === "connector" &&
         el.routing !== "manual" &&
-        (ids.has(el.from.elementId) || ids.has(el.to.elementId))
+        (ids.has(el.from.elementId) || ids.has(el.to.elementId)),
     );
 }
 
@@ -26,7 +29,13 @@ function rerouteConnectors(scene: Scene, connectors: ConnectorElement[]): void {
   for (const connector of connectors) {
     const current = scene.get(connector.id) as ConnectorElement | undefined;
     if (!current) continue;
-    scene._put({ ...current, waypoints: routeConnectorInScene(scene, current) } as SceneElement, "update");
+    scene._put(
+      {
+        ...current,
+        waypoints: routeConnectorInScene(scene, current),
+      } as SceneElement,
+      "update",
+    );
   }
 }
 
@@ -38,7 +47,7 @@ export function addElement(element: SceneElement): Command {
     },
     undo(scene) {
       scene._remove(element.id);
-    }
+    },
   };
 }
 
@@ -63,7 +72,7 @@ export function removeElement(scene: Scene, id: ElementId): Command {
       (el): el is ConnectorElement =>
         el.type === "connector" &&
         !subtreeIds.has(el.id) &&
-        (subtreeIds.has(el.from.elementId) || subtreeIds.has(el.to.elementId))
+        (subtreeIds.has(el.from.elementId) || subtreeIds.has(el.to.elementId)),
     );
   const removed = [...subtree, ...danglingConnectors];
   return {
@@ -73,16 +82,22 @@ export function removeElement(scene: Scene, id: ElementId): Command {
     },
     undo(s) {
       for (const el of removed) s._put(el, "add");
-    }
+    },
   };
 }
 
 const GEOMETRY_FIELDS = ["x", "y", "w", "h"] as const;
 
-export function updateElement(scene: Scene, id: ElementId, patch: Partial<SceneElement>): Command {
+export function updateElement(
+  scene: Scene,
+  id: ElementId,
+  patch: Partial<SceneElement>,
+): Command {
   const previous = scene.get(id);
   const geometryChanged = GEOMETRY_FIELDS.some((k) => k in patch);
-  const affectedConnectors = geometryChanged ? attachedAutoConnectors(scene, new Set([id])) : [];
+  const affectedConnectors = geometryChanged
+    ? attachedAutoConnectors(scene, new Set([id]))
+    : [];
   return {
     label: "update element",
     do(s) {
@@ -93,7 +108,7 @@ export function updateElement(scene: Scene, id: ElementId, patch: Partial<SceneE
         ...patch,
         ...("style" in patch && patch.style
           ? { style: { ...(current.style ?? {}), ...patch.style } }
-          : {})
+          : {}),
       } as SceneElement;
       s._put(next, "update");
       rerouteConnectors(s, affectedConnectors);
@@ -101,7 +116,7 @@ export function updateElement(scene: Scene, id: ElementId, patch: Partial<SceneE
     undo(s) {
       if (previous) s._put(previous, "update");
       for (const connector of affectedConnectors) s._put(connector, "update");
-    }
+    },
   };
 }
 
@@ -111,7 +126,12 @@ export function updateElement(scene: Scene, id: ElementId, patch: Partial<SceneE
  * container carries its contents along. Descendants shared by more than one
  * selected id are only moved once.
  */
-export function moveElements(scene: Scene, ids: ElementId[], dx: number, dy: number): Command {
+export function moveElements(
+  scene: Scene,
+  ids: ElementId[],
+  dx: number,
+  dy: number,
+): Command {
   const allIds = new Set(ids);
   for (const id of ids) {
     for (const descendant of scene.descendantsOf(id)) allIds.add(descendant.id);
@@ -123,7 +143,11 @@ export function moveElements(scene: Scene, ids: ElementId[], dx: number, dy: num
     do(s) {
       for (const id of allIds) {
         const el = s.get(id);
-        if (el) s._put({ ...el, x: el.x + dx, y: el.y + dy } as SceneElement, "update");
+        if (el)
+          s._put(
+            { ...el, x: el.x + dx, y: el.y + dy } as SceneElement,
+            "update",
+          );
       }
       rerouteConnectors(s, affectedConnectors);
     },
@@ -133,7 +157,7 @@ export function moveElements(scene: Scene, ids: ElementId[], dx: number, dy: num
         if (el) s._put(el, "update");
       }
       for (const connector of affectedConnectors) s._put(connector, "update");
-    }
+    },
   };
 }
 
@@ -149,11 +173,17 @@ export function moveElements(scene: Scene, ids: ElementId[], dx: number, dy: num
  * render path does not repaint. A future gesture that dispatches this alone (e.g. drag-to-reparent)
  * would need to account for that, not rely on this reason as-is.
  */
-export function reparentElement(scene: Scene, id: ElementId, parentId: ElementId | undefined): Command {
+export function reparentElement(
+  scene: Scene,
+  id: ElementId,
+  parentId: ElementId | undefined,
+): Command {
   const previous = scene.get(id);
   if (!previous) throw new Error(`Cannot reparent unknown element "${id}"`);
   if (parentId !== undefined && scene.isSelfOrDescendant(id, parentId)) {
-    throw new Error(`Cannot reparent "${id}" into its own descendant "${parentId}"`);
+    throw new Error(
+      `Cannot reparent "${id}" into its own descendant "${parentId}"`,
+    );
   }
   const next = { ...previous, parentId } as SceneElement;
   if (parentId === undefined) delete next.parentId;
@@ -164,13 +194,14 @@ export function reparentElement(scene: Scene, id: ElementId, parentId: ElementId
     },
     undo(s) {
       s._put(previous, "update");
-    }
+    },
   };
 }
 
 function requireConnector(scene: Scene, id: ElementId): ConnectorElement {
   const el = scene.get(id);
-  if (!el || el.type !== "connector") throw new Error(`Not a connector: "${id}"`);
+  if (!el || el.type !== "connector")
+    throw new Error(`Not a connector: "${id}"`);
   return el;
 }
 
@@ -182,7 +213,7 @@ function requireConnector(scene: Scene, id: ElementId): ConnectorElement {
 export function setManualWaypoints(
   scene: Scene,
   id: ElementId,
-  waypoints: Array<{ x: number; y: number }>
+  waypoints: Array<{ x: number; y: number }>,
 ): Command {
   const previous = requireConnector(scene, id);
   const next: ConnectorElement = { ...previous, waypoints, routing: "manual" };
@@ -193,7 +224,7 @@ export function setManualWaypoints(
     },
     undo(s) {
       s._put(previous, "update");
-    }
+    },
   };
 }
 
@@ -205,13 +236,17 @@ export function autoRouteConnector(scene: Scene, id: ElementId): Command {
     do(s) {
       const current = requireConnector(s, id);
       s._put(
-        { ...current, routing: "auto", waypoints: routeConnectorInScene(s, { ...current, routing: "auto" }) },
-        "update"
+        {
+          ...current,
+          routing: "auto",
+          waypoints: routeConnectorInScene(s, { ...current, routing: "auto" }),
+        },
+        "update",
       );
     },
     undo(s) {
       s._put(previous, "update");
-    }
+    },
   };
 }
 
@@ -223,8 +258,9 @@ export function batch(label: string, commands: Command[]): Command {
       for (const c of commands) c.do(scene);
     },
     undo(scene) {
-      for (let i = commands.length - 1; i >= 0; i -= 1) commands[i]!.undo(scene);
-    }
+      for (let i = commands.length - 1; i >= 0; i -= 1)
+        commands[i]!.undo(scene);
+    },
   };
 }
 
@@ -234,19 +270,22 @@ export function updateConformance(
   patch: {
     exportGate?: ExportGate;
     ruleSeverity?: { ruleId: string; severity?: ConformanceSeverity };
-  }
+  },
 ): Command {
   const previous: ConformanceSettings = {
     exportGate: scene.conformance.exportGate,
-    ruleSeverities: { ...scene.conformance.ruleSeverities }
+    ruleSeverities: { ...scene.conformance.ruleSeverities },
   };
   const next: ConformanceSettings = {
     exportGate: patch.exportGate ?? previous.exportGate,
-    ruleSeverities: { ...previous.ruleSeverities }
+    ruleSeverities: { ...previous.ruleSeverities },
   };
   if (patch.ruleSeverity) {
-    if (patch.ruleSeverity.severity === undefined) delete next.ruleSeverities[patch.ruleSeverity.ruleId];
-    else next.ruleSeverities[patch.ruleSeverity.ruleId] = patch.ruleSeverity.severity;
+    if (patch.ruleSeverity.severity === undefined)
+      delete next.ruleSeverities[patch.ruleSeverity.ruleId];
+    else
+      next.ruleSeverities[patch.ruleSeverity.ruleId] =
+        patch.ruleSeverity.severity;
   }
   return {
     label: "update conformance settings",
@@ -255,6 +294,6 @@ export function updateConformance(
     },
     undo(s) {
       s._setConformance(previous);
-    }
+    },
   };
 }

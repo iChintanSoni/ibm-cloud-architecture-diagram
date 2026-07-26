@@ -61,9 +61,7 @@
       "asset": "icons/actors/administrator.svg",
       "tier": "ibm-cloud",
       "color": "#000000",
-      "keywords": [
-        "administrator"
-      ]
+      "keywords": ["administrator"]
     },
     {
       "id": "ibm-cloud/ai",
@@ -74,9 +72,7 @@
       "asset": "icons/ai/ai.svg",
       "tier": "ibm-cloud",
       "color": "#A56EFF",
-      "keywords": [
-        "ai"
-      ]
+      "keywords": ["ai"]
     },
     {
       "id": "ibm-cloud/ai-governance-lifecycle",
@@ -87,11 +83,7 @@
       "asset": "icons/ai/ai-governance-lifecycle.svg",
       "tier": "ibm-cloud",
       "color": "#A56EFF",
-      "keywords": [
-        "ai",
-        "governance",
-        "lifecycle"
-      ]
+      "keywords": ["ai", "governance", "lifecycle"]
     },
     {
       "id": "ibm-cloud/ai-governance-tracked",
@@ -102,11 +94,7 @@
       "asset": "icons/ai/ai-governance-tracked.svg",
       "tier": "ibm-cloud",
       "color": "#A56EFF",
-      "keywords": [
-        "ai",
-        "governance",
-        "tracked"
-      ]
+      "keywords": ["ai", "governance", "tracked"]
     },
     {
       "id": "ibm-cloud/ai-launch",
@@ -117,10 +105,7 @@
       "asset": "icons/ai/ai-launch.svg",
       "tier": "ibm-cloud",
       "color": "#A56EFF",
-      "keywords": [
-        "ai",
-        "launch"
-      ]
+      "keywords": ["ai", "launch"]
     },
     {
       "id": "ibm-cloud/alerting",
@@ -131,9 +116,7 @@
       "asset": "icons/groups/alerting.svg",
       "tier": "ibm-cloud",
       "color": "#009D9A",
-      "keywords": [
-        "alerting"
-      ]
+      "keywords": ["alerting"]
     },
     {
       "id": "ibm-cloud/api",
@@ -144,9 +127,7 @@
       "asset": "icons/groups/api.svg",
       "tier": "ibm-cloud",
       "color": "#A56EFF",
-      "keywords": [
-        "api"
-      ]
+      "keywords": ["api"]
     },
     {
       "id": "ibm-cloud/api-1",
@@ -157,9 +138,7 @@
       "asset": "icons/applications/api-1.svg",
       "tier": "ibm-cloud",
       "color": "#A56EFF",
-      "keywords": [
-        "api"
-      ]
+      "keywords": ["api"]
     },
     {
       "id": "ibm-cloud/api-2",
@@ -170,9 +149,7 @@
       "asset": "icons/applications/api-2.svg",
       "tier": "ibm-cloud",
       "color": "#A56EFF",
-      "keywords": [
-        "api"
-      ]
+      "keywords": ["api"]
     },
     {
       "id": "ibm-cloud/application",
@@ -183,9 +160,7 @@
       "asset": "icons/applications/application.svg",
       "tier": "ibm-cloud",
       "color": "#A56EFF",
-      "keywords": [
-        "application"
-      ]
+      "keywords": ["application"]
     },
     {
       "id": "ibm-cloud/archive",
@@ -196,9 +171,7 @@
       "asset": "icons/data/archive.svg",
       "tier": "ibm-cloud",
       "color": "#0F62FE",
-      "keywords": [
-        "archive"
-      ]
+      "keywords": ["archive"]
     },
     {
       "id": "ibm-cloud/auditing",
@@ -209,9 +182,7 @@
       "asset": "icons/groups/auditing.svg",
       "tier": "ibm-cloud",
       "color": "#009D9A",
-      "keywords": [
-        "auditing"
-      ]
+      "keywords": ["auditing"]
     },
     {
       "id": "ibm-cloud/authorization-boundary",
@@ -222,10 +193,7 @@
       "asset": "icons/security/authorization-boundary.svg",
       "tier": "ibm-cloud",
       "color": "#FA4D56",
-      "keywords": [
-        "authorization",
-        "boundary"
-      ]
+      "keywords": ["authorization", "boundary"]
     },
     {
       "id": "ibm-cloud/automation-script",
@@ -236,10 +204,7 @@
       "asset": "icons/applications/automation-script.svg",
       "tier": "ibm-cloud",
       "color": "#A56EFF",
-      "keywords": [
-        "automation",
-        "script"
-      ]
+      "keywords": ["automation", "script"]
     },
     {
       "id": "ibm-cloud/back-end-l2-switch",
@@ -250,12 +215,7 @@
       "asset": "icons/network/back-end-l2-switch.svg",
       "tier": "ibm-cloud",
       "color": "#878D96",
-      "keywords": [
-        "back",
-        "end",
-        "l2",
-        "switch"
-      ]
+      "keywords": ["back", "end", "l2", "switch"]
     },
     {
       "id": "ibm-cloud/back-end-router",
@@ -266,11 +226,7 @@
       "asset": "icons/network/back-end-router.svg",
       "tier": "ibm-cloud",
       "color": "#878D96",
-      "keywords": [
-        "back",
-        "end",
-        "router"
-      ]
+      "keywords": ["back", "end", "router"]
     },
     {
       "id": "ibm-cloud/back-end-router-group",
@@ -281,12 +237,7 @@
       "asset": "icons/network/back-end-router-group.svg",
       "tier": "ibm-cloud",
       "color": "#878D96",
-      "keywords": [
-        "back",
-        "end",
-        "router",
-        "group"
-      ]
+      "keywords": ["back", "end", "router", "group"]
     },
     {
       "id": "ibm-cloud/back-end-router-group-copy",
@@ -297,13 +248,7 @@
       "asset": "icons/network/back-end-router-group-copy.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": [
-        "back",
-        "end",
-        "router",
-        "group",
-        "copy"
-      ]
+      "keywords": ["back", "end", "router", "group", "copy"]
     },
     {
       "id": "ibm-cloud/backend-router",
@@ -314,10 +259,7 @@
       "asset": "icons/groups/backend-router.svg",
       "tier": "ibm-cloud",
       "color": "#878D96",
-      "keywords": [
-        "backend",
-        "router"
-      ]
+      "keywords": ["backend", "router"]
     },
     {
       "id": "ibm-cloud/backend-switch",
@@ -328,10 +270,7 @@
       "asset": "icons/groups/backend-switch.svg",
       "tier": "ibm-cloud",
       "color": "#878D96",
-      "keywords": [
-        "backend",
-        "switch"
-      ]
+      "keywords": ["backend", "switch"]
     },
     {
       "id": "ibm-cloud/bare-metal-server",
@@ -342,11 +281,7 @@
       "asset": "icons/compute/bare-metal-server.svg",
       "tier": "ibm-cloud",
       "color": "#198038",
-      "keywords": [
-        "bare",
-        "metal",
-        "server"
-      ]
+      "keywords": ["bare", "metal", "server"]
     },
     {
       "id": "ibm-cloud/bare-metal-server-01",
@@ -357,12 +292,7 @@
       "asset": "icons/compute/bare-metal-server-01.svg",
       "tier": "ibm-cloud",
       "color": "#198038",
-      "keywords": [
-        "bare",
-        "metal",
-        "server",
-        "01"
-      ]
+      "keywords": ["bare", "metal", "server", "01"]
     },
     {
       "id": "ibm-cloud/bare-metal-server-for-vpc",
@@ -373,13 +303,7 @@
       "asset": "icons/compute/bare-metal-server-for-vpc.svg",
       "tier": "ibm-cloud",
       "color": "#198038",
-      "keywords": [
-        "bare",
-        "metal",
-        "server",
-        "for",
-        "vpc"
-      ]
+      "keywords": ["bare", "metal", "server", "for", "vpc"]
     },
     {
       "id": "ibm-cloud/bastion-host",
@@ -390,10 +314,7 @@
       "asset": "icons/security/bastion-host.svg",
       "tier": "ibm-cloud",
       "color": "#FA4D56",
-      "keywords": [
-        "bastion",
-        "host"
-      ]
+      "keywords": ["bastion", "host"]
     },
     {
       "id": "ibm-cloud/blob",
@@ -404,9 +325,7 @@
       "asset": "icons/groups/blob.svg",
       "tier": "ibm-cloud",
       "color": "#0F62FE",
-      "keywords": [
-        "blob"
-      ]
+      "keywords": ["blob"]
     },
     {
       "id": "ibm-cloud/block-storage-application",
@@ -417,11 +336,7 @@
       "asset": "icons/data/block-storage-application.svg",
       "tier": "ibm-cloud",
       "color": "#0F62FE",
-      "keywords": [
-        "block",
-        "storage",
-        "application"
-      ]
+      "keywords": ["block", "storage", "application"]
     },
     {
       "id": "ibm-cloud/block-volume",
@@ -432,10 +347,7 @@
       "asset": "icons/data/block-volume.svg",
       "tier": "ibm-cloud",
       "color": "#0F62FE",
-      "keywords": [
-        "block",
-        "volume"
-      ]
+      "keywords": ["block", "volume"]
     },
     {
       "id": "ibm-cloud/build",
@@ -446,9 +358,7 @@
       "asset": "icons/groups/build.svg",
       "tier": "ibm-cloud",
       "color": "#EE5396",
-      "keywords": [
-        "build"
-      ]
+      "keywords": ["build"]
     },
     {
       "id": "ibm-cloud/build-tool",
@@ -459,10 +369,7 @@
       "asset": "icons/devops/build-tool.svg",
       "tier": "ibm-cloud",
       "color": "#EE5396",
-      "keywords": [
-        "build",
-        "tool"
-      ]
+      "keywords": ["build", "tool"]
     },
     {
       "id": "ibm-cloud/call-manager",
@@ -473,10 +380,7 @@
       "asset": "icons/observability/call-manager.svg",
       "tier": "ibm-cloud",
       "color": "#009D9A",
-      "keywords": [
-        "call",
-        "manager"
-      ]
+      "keywords": ["call", "manager"]
     },
     {
       "id": "ibm-cloud/cdn",
@@ -487,9 +391,7 @@
       "asset": "icons/groups/cdn.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": [
-        "cdn"
-      ]
+      "keywords": ["cdn"]
     },
     {
       "id": "ibm-cloud/certificate",
@@ -500,9 +402,7 @@
       "asset": "icons/security/certificate.svg",
       "tier": "ibm-cloud",
       "color": "#FA4D56",
-      "keywords": [
-        "certificate"
-      ]
+      "keywords": ["certificate"]
     },
     {
       "id": "ibm-cloud/chat-operational",
@@ -513,10 +413,7 @@
       "asset": "icons/observability/chat-operational.svg",
       "tier": "ibm-cloud",
       "color": "#009D9A",
-      "keywords": [
-        "chat",
-        "operational"
-      ]
+      "keywords": ["chat", "operational"]
     },
     {
       "id": "ibm-cloud/chip",
@@ -527,9 +424,7 @@
       "asset": "icons/compute/chip.svg",
       "tier": "ibm-cloud",
       "color": "#198038",
-      "keywords": [
-        "chip"
-      ]
+      "keywords": ["chip"]
     },
     {
       "id": "ibm-cloud/cli-application",
@@ -540,10 +435,7 @@
       "asset": "icons/applications/cli-application.svg",
       "tier": "ibm-cloud",
       "color": "#A56EFF",
-      "keywords": [
-        "cli",
-        "application"
-      ]
+      "keywords": ["cli", "application"]
     },
     {
       "id": "ibm-cloud/cloud",
@@ -554,9 +446,7 @@
       "asset": "icons/groups/cloud.svg",
       "tier": "ibm-cloud",
       "color": "#1292E8",
-      "keywords": [
-        "cloud"
-      ]
+      "keywords": ["cloud"]
     },
     {
       "id": "ibm-cloud/cloud-alerting",
@@ -567,10 +457,7 @@
       "asset": "icons/observability/cloud-alerting.svg",
       "tier": "ibm-cloud",
       "color": "#009D9A",
-      "keywords": [
-        "cloud",
-        "alerting"
-      ]
+      "keywords": ["cloud", "alerting"]
     },
     {
       "id": "ibm-cloud/cloud-auditing",
@@ -581,10 +468,7 @@
       "asset": "icons/observability/cloud-auditing.svg",
       "tier": "ibm-cloud",
       "color": "#009D9A",
-      "keywords": [
-        "cloud",
-        "auditing"
-      ]
+      "keywords": ["cloud", "auditing"]
     },
     {
       "id": "ibm-cloud/cloud-logging",
@@ -595,10 +479,7 @@
       "asset": "icons/observability/cloud-logging.svg",
       "tier": "ibm-cloud",
       "color": "#009D9A",
-      "keywords": [
-        "cloud",
-        "logging"
-      ]
+      "keywords": ["cloud", "logging"]
     },
     {
       "id": "ibm-cloud/cloud-monitoring",
@@ -609,10 +490,7 @@
       "asset": "icons/observability/cloud-monitoring.svg",
       "tier": "ibm-cloud",
       "color": "#009D9A",
-      "keywords": [
-        "cloud",
-        "monitoring"
-      ]
+      "keywords": ["cloud", "monitoring"]
     },
     {
       "id": "ibm-cloud/cloud-pak-for-security",
@@ -623,12 +501,7 @@
       "asset": "icons/security/cloud-pak-for-security.svg",
       "tier": "ibm-cloud",
       "color": "#FA4D56",
-      "keywords": [
-        "cloud",
-        "pak",
-        "for",
-        "security"
-      ]
+      "keywords": ["cloud", "pak", "for", "security"]
     },
     {
       "id": "ibm-cloud/cloud-registry",
@@ -639,10 +512,7 @@
       "asset": "icons/compute/cloud-registry.svg",
       "tier": "ibm-cloud",
       "color": "#198038",
-      "keywords": [
-        "cloud",
-        "registry"
-      ]
+      "keywords": ["cloud", "registry"]
     },
     {
       "id": "ibm-cloud/cloud-service-management",
@@ -653,11 +523,7 @@
       "asset": "icons/observability/cloud-service-management.svg",
       "tier": "ibm-cloud",
       "color": "#009D9A",
-      "keywords": [
-        "cloud",
-        "service",
-        "management"
-      ]
+      "keywords": ["cloud", "service", "management"]
     },
     {
       "id": "ibm-cloud/code-engine",
@@ -668,10 +534,7 @@
       "asset": "icons/groups/code-engine.svg",
       "tier": "ibm-cloud",
       "color": "#198038",
-      "keywords": [
-        "code",
-        "engine"
-      ]
+      "keywords": ["code", "engine"]
     },
     {
       "id": "ibm-cloud/code-signing-service",
@@ -682,11 +545,7 @@
       "asset": "icons/security/code-signing-service.svg",
       "tier": "ibm-cloud",
       "color": "#FA4D56",
-      "keywords": [
-        "code",
-        "signing",
-        "service"
-      ]
+      "keywords": ["code", "signing", "service"]
     },
     {
       "id": "ibm-cloud/collaboration",
@@ -697,9 +556,7 @@
       "asset": "icons/groups/collaboration.svg",
       "tier": "ibm-cloud",
       "color": "#000000",
-      "keywords": [
-        "collaboration"
-      ]
+      "keywords": ["collaboration"]
     },
     {
       "id": "ibm-cloud/content-delivery-network",
@@ -710,11 +567,7 @@
       "asset": "icons/network/content-delivery-network.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": [
-        "content",
-        "delivery",
-        "network"
-      ]
+      "keywords": ["content", "delivery", "network"]
     },
     {
       "id": "ibm-cloud/continuous-delivery",
@@ -725,10 +578,7 @@
       "asset": "icons/devops/continuous-delivery.svg",
       "tier": "ibm-cloud",
       "color": "#EE5396",
-      "keywords": [
-        "continuous",
-        "delivery"
-      ]
+      "keywords": ["continuous", "delivery"]
     },
     {
       "id": "ibm-cloud/continuous-integration",
@@ -739,10 +589,7 @@
       "asset": "icons/devops/continuous-integration.svg",
       "tier": "ibm-cloud",
       "color": "#EE5396",
-      "keywords": [
-        "continuous",
-        "integration"
-      ]
+      "keywords": ["continuous", "integration"]
     },
     {
       "id": "ibm-cloud/coudsatellite",
@@ -753,9 +600,7 @@
       "asset": "icons/compute/coudsatellite.svg",
       "tier": "ibm-cloud",
       "color": "#198038",
-      "keywords": [
-        "coudsatellite"
-      ]
+      "keywords": ["coudsatellite"]
     },
     {
       "id": "ibm-cloud/credentials",
@@ -766,9 +611,7 @@
       "asset": "icons/security/credentials.svg",
       "tier": "ibm-cloud",
       "color": "#FA4D56",
-      "keywords": [
-        "credentials"
-      ]
+      "keywords": ["credentials"]
     },
     {
       "id": "ibm-cloud/data-accessor",
@@ -779,10 +622,7 @@
       "asset": "icons/data/data-accessor.svg",
       "tier": "ibm-cloud",
       "color": "#0F62FE",
-      "keywords": [
-        "data",
-        "accessor"
-      ]
+      "keywords": ["data", "accessor"]
     },
     {
       "id": "ibm-cloud/data-backup",
@@ -793,10 +633,7 @@
       "asset": "icons/data/data-backup.svg",
       "tier": "ibm-cloud",
       "color": "#0F62FE",
-      "keywords": [
-        "data",
-        "backup"
-      ]
+      "keywords": ["data", "backup"]
     },
     {
       "id": "ibm-cloud/data-blob",
@@ -807,10 +644,7 @@
       "asset": "icons/data/data-blob.svg",
       "tier": "ibm-cloud",
       "color": "#0F62FE",
-      "keywords": [
-        "data",
-        "blob"
-      ]
+      "keywords": ["data", "blob"]
     },
     {
       "id": "ibm-cloud/data-center",
@@ -821,10 +655,7 @@
       "asset": "icons/groups/data-center.svg",
       "tier": "ibm-cloud",
       "color": "#878D96",
-      "keywords": [
-        "data",
-        "center"
-      ]
+      "keywords": ["data", "center"]
     },
     {
       "id": "ibm-cloud/data-diode",
@@ -835,10 +666,7 @@
       "asset": "icons/security/data-diode.svg",
       "tier": "ibm-cloud",
       "color": "#FA4D56",
-      "keywords": [
-        "data",
-        "diode"
-      ]
+      "keywords": ["data", "diode"]
     },
     {
       "id": "ibm-cloud/data-stage",
@@ -849,10 +677,7 @@
       "asset": "icons/groups/data-stage.svg",
       "tier": "ibm-cloud",
       "color": "#0F62FE",
-      "keywords": [
-        "data",
-        "stage"
-      ]
+      "keywords": ["data", "stage"]
     },
     {
       "id": "ibm-cloud/database",
@@ -863,9 +688,7 @@
       "asset": "icons/data/database.svg",
       "tier": "ibm-cloud",
       "color": "#0F62FE",
-      "keywords": [
-        "database"
-      ]
+      "keywords": ["database"]
     },
     {
       "id": "ibm-cloud/database-datastax",
@@ -876,10 +699,7 @@
       "asset": "icons/data/database-datastax.svg",
       "tier": "ibm-cloud",
       "color": "#0F62FE",
-      "keywords": [
-        "database",
-        "datastax"
-      ]
+      "keywords": ["database", "datastax"]
     },
     {
       "id": "ibm-cloud/database-elastic",
@@ -890,10 +710,7 @@
       "asset": "icons/data/database-elastic.svg",
       "tier": "ibm-cloud",
       "color": "#0F62FE",
-      "keywords": [
-        "database",
-        "elastic"
-      ]
+      "keywords": ["database", "elastic"]
     },
     {
       "id": "ibm-cloud/database-enterprisedb",
@@ -904,10 +721,7 @@
       "asset": "icons/data/database-enterprisedb.svg",
       "tier": "ibm-cloud",
       "color": "#0F62FE",
-      "keywords": [
-        "database",
-        "enterprisedb"
-      ]
+      "keywords": ["database", "enterprisedb"]
     },
     {
       "id": "ibm-cloud/database-etcd",
@@ -918,10 +732,7 @@
       "asset": "icons/data/database-etcd.svg",
       "tier": "ibm-cloud",
       "color": "#0F62FE",
-      "keywords": [
-        "database",
-        "etcd"
-      ]
+      "keywords": ["database", "etcd"]
     },
     {
       "id": "ibm-cloud/database-messaging",
@@ -932,10 +743,7 @@
       "asset": "icons/storage/database-messaging.svg",
       "tier": "ibm-cloud",
       "color": "#0F62FE",
-      "keywords": [
-        "database",
-        "messaging"
-      ]
+      "keywords": ["database", "messaging"]
     },
     {
       "id": "ibm-cloud/database-mongodb",
@@ -946,10 +754,7 @@
       "asset": "icons/data/database-mongodb.svg",
       "tier": "ibm-cloud",
       "color": "#0F62FE",
-      "keywords": [
-        "database",
-        "mongodb"
-      ]
+      "keywords": ["database", "mongodb"]
     },
     {
       "id": "ibm-cloud/database-postgresql",
@@ -960,10 +765,7 @@
       "asset": "icons/data/database-postgresql.svg",
       "tier": "ibm-cloud",
       "color": "#0F62FE",
-      "keywords": [
-        "database",
-        "postgresql"
-      ]
+      "keywords": ["database", "postgresql"]
     },
     {
       "id": "ibm-cloud/database-rabbit",
@@ -974,10 +776,7 @@
       "asset": "icons/data/database-rabbit.svg",
       "tier": "ibm-cloud",
       "color": "#0F62FE",
-      "keywords": [
-        "database",
-        "rabbit"
-      ]
+      "keywords": ["database", "rabbit"]
     },
     {
       "id": "ibm-cloud/database-redis",
@@ -988,10 +787,7 @@
       "asset": "icons/data/database-redis.svg",
       "tier": "ibm-cloud",
       "color": "#0F62FE",
-      "keywords": [
-        "database",
-        "redis"
-      ]
+      "keywords": ["database", "redis"]
     },
     {
       "id": "ibm-cloud/datastore",
@@ -1002,9 +798,7 @@
       "asset": "icons/storage/datastore.svg",
       "tier": "ibm-cloud",
       "color": "#0F62FE",
-      "keywords": [
-        "datastore"
-      ]
+      "keywords": ["datastore"]
     },
     {
       "id": "ibm-cloud/db2-warehouse",
@@ -1015,10 +809,7 @@
       "asset": "icons/data/db2-warehouse.svg",
       "tier": "ibm-cloud",
       "color": "#0F62FE",
-      "keywords": [
-        "db2",
-        "warehouse"
-      ]
+      "keywords": ["db2", "warehouse"]
     },
     {
       "id": "ibm-cloud/dedicated-host",
@@ -1029,10 +820,7 @@
       "asset": "icons/compute/dedicated-host.svg",
       "tier": "ibm-cloud",
       "color": "#198038",
-      "keywords": [
-        "dedicated",
-        "host"
-      ]
+      "keywords": ["dedicated", "host"]
     },
     {
       "id": "ibm-cloud/devices",
@@ -1043,9 +831,7 @@
       "asset": "icons/actors/devices.svg",
       "tier": "ibm-cloud",
       "color": "#000000",
-      "keywords": [
-        "devices"
-      ]
+      "keywords": ["devices"]
     },
     {
       "id": "ibm-cloud/direct-link",
@@ -1056,10 +842,7 @@
       "asset": "icons/network/direct-link.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": [
-        "direct",
-        "link"
-      ]
+      "keywords": ["direct", "link"]
     },
     {
       "id": "ibm-cloud/dns-server",
@@ -1070,10 +853,7 @@
       "asset": "icons/network/dns-server.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": [
-        "dns",
-        "server"
-      ]
+      "keywords": ["dns", "server"]
     },
     {
       "id": "ibm-cloud/dns-services",
@@ -1084,10 +864,7 @@
       "asset": "icons/network/dns-services.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": [
-        "dns",
-        "services"
-      ]
+      "keywords": ["dns", "services"]
     },
     {
       "id": "ibm-cloud/document-protected",
@@ -1098,10 +875,7 @@
       "asset": "icons/security/document-protected.svg",
       "tier": "ibm-cloud",
       "color": "#FA4D56",
-      "keywords": [
-        "document",
-        "protected"
-      ]
+      "keywords": ["document", "protected"]
     },
     {
       "id": "ibm-cloud/document-security",
@@ -1112,10 +886,7 @@
       "asset": "icons/security/document-security.svg",
       "tier": "ibm-cloud",
       "color": "#FA4D56",
-      "keywords": [
-        "document",
-        "security"
-      ]
+      "keywords": ["document", "security"]
     },
     {
       "id": "ibm-cloud/document-signed",
@@ -1126,10 +897,7 @@
       "asset": "icons/security/document-signed.svg",
       "tier": "ibm-cloud",
       "color": "#FA4D56",
-      "keywords": [
-        "document",
-        "signed"
-      ]
+      "keywords": ["document", "signed"]
     },
     {
       "id": "ibm-cloud/document-unprotected",
@@ -1140,10 +908,7 @@
       "asset": "icons/security/document-unprotected.svg",
       "tier": "ibm-cloud",
       "color": "#FA4D56",
-      "keywords": [
-        "document",
-        "unprotected"
-      ]
+      "keywords": ["document", "unprotected"]
     },
     {
       "id": "ibm-cloud/edge-node",
@@ -1154,10 +919,7 @@
       "asset": "icons/network/edge-node.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": [
-        "edge",
-        "node"
-      ]
+      "keywords": ["edge", "node"]
     },
     {
       "id": "ibm-cloud/encryption",
@@ -1168,9 +930,7 @@
       "asset": "icons/security/encryption.svg",
       "tier": "ibm-cloud",
       "color": "#FA4D56",
-      "keywords": [
-        "encryption"
-      ]
+      "keywords": ["encryption"]
     },
     {
       "id": "ibm-cloud/endpoint-gateway",
@@ -1181,10 +941,7 @@
       "asset": "icons/groups/endpoint-gateway.svg",
       "tier": "ibm-cloud",
       "color": "#1292E8",
-      "keywords": [
-        "endpoint",
-        "gateway"
-      ]
+      "keywords": ["endpoint", "gateway"]
     },
     {
       "id": "ibm-cloud/enterprise",
@@ -1195,9 +952,7 @@
       "asset": "icons/actors/enterprise.svg",
       "tier": "ibm-cloud",
       "color": "#000000",
-      "keywords": [
-        "enterprise"
-      ]
+      "keywords": ["enterprise"]
     },
     {
       "id": "ibm-cloud/file-storage",
@@ -1208,10 +963,7 @@
       "asset": "icons/data/file-storage.svg",
       "tier": "ibm-cloud",
       "color": "#0F62FE",
-      "keywords": [
-        "file",
-        "storage"
-      ]
+      "keywords": ["file", "storage"]
     },
     {
       "id": "ibm-cloud/file-storage-application",
@@ -1222,11 +974,7 @@
       "asset": "icons/data/file-storage-application.svg",
       "tier": "ibm-cloud",
       "color": "#0F62FE",
-      "keywords": [
-        "file",
-        "storage",
-        "application"
-      ]
+      "keywords": ["file", "storage", "application"]
     },
     {
       "id": "ibm-cloud/file-system",
@@ -1237,10 +985,7 @@
       "asset": "icons/data/file-system.svg",
       "tier": "ibm-cloud",
       "color": "#0F62FE",
-      "keywords": [
-        "file",
-        "system"
-      ]
+      "keywords": ["file", "system"]
     },
     {
       "id": "ibm-cloud/fingerprint",
@@ -1251,9 +996,7 @@
       "asset": "icons/groups/fingerprint.svg",
       "tier": "ibm-cloud",
       "color": "#FA4D56",
-      "keywords": [
-        "fingerprint"
-      ]
+      "keywords": ["fingerprint"]
     },
     {
       "id": "ibm-cloud/fingerprint-recognition",
@@ -1264,10 +1007,7 @@
       "asset": "icons/security/fingerprint-recognition.svg",
       "tier": "ibm-cloud",
       "color": "#FA4D56",
-      "keywords": [
-        "fingerprint",
-        "recognition"
-      ]
+      "keywords": ["fingerprint", "recognition"]
     },
     {
       "id": "ibm-cloud/firewall",
@@ -1278,9 +1018,7 @@
       "asset": "icons/security/firewall.svg",
       "tier": "ibm-cloud",
       "color": "#FA4D56",
-      "keywords": [
-        "firewall"
-      ]
+      "keywords": ["firewall"]
     },
     {
       "id": "ibm-cloud/firewall-classic",
@@ -1291,10 +1029,7 @@
       "asset": "icons/security/firewall-classic.svg",
       "tier": "ibm-cloud",
       "color": "#FA4D56",
-      "keywords": [
-        "firewall",
-        "classic"
-      ]
+      "keywords": ["firewall", "classic"]
     },
     {
       "id": "ibm-cloud/flag",
@@ -1305,9 +1040,7 @@
       "asset": "icons/actors/flag.svg",
       "tier": "ibm-cloud",
       "color": "#000000",
-      "keywords": [
-        "flag"
-      ]
+      "keywords": ["flag"]
     },
     {
       "id": "ibm-cloud/floating-ip",
@@ -1318,10 +1051,7 @@
       "asset": "icons/network/floating-ip.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": [
-        "floating",
-        "ip"
-      ]
+      "keywords": ["floating", "ip"]
     },
     {
       "id": "ibm-cloud/flow-logs-vpc",
@@ -1332,11 +1062,7 @@
       "asset": "icons/observability/flow-logs-vpc.svg",
       "tier": "ibm-cloud",
       "color": "#009D9A",
-      "keywords": [
-        "flow",
-        "logs",
-        "vpc"
-      ]
+      "keywords": ["flow", "logs", "vpc"]
     },
     {
       "id": "ibm-cloud/gateway",
@@ -1347,9 +1073,7 @@
       "asset": "icons/network/gateway.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": [
-        "gateway"
-      ]
+      "keywords": ["gateway"]
     },
     {
       "id": "ibm-cloud/gateway-api",
@@ -1360,10 +1084,7 @@
       "asset": "icons/network/gateway-api.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": [
-        "gateway",
-        "api"
-      ]
+      "keywords": ["gateway", "api"]
     },
     {
       "id": "ibm-cloud/gateway-user-access",
@@ -1374,11 +1095,7 @@
       "asset": "icons/security/gateway-user-access.svg",
       "tier": "ibm-cloud",
       "color": "#FA4D56",
-      "keywords": [
-        "gateway",
-        "user",
-        "access"
-      ]
+      "keywords": ["gateway", "user", "access"]
     },
     {
       "id": "ibm-cloud/gateway-vpn",
@@ -1389,10 +1106,7 @@
       "asset": "icons/security/gateway-vpn.svg",
       "tier": "ibm-cloud",
       "color": "#FA4D56",
-      "keywords": [
-        "gateway",
-        "vpn"
-      ]
+      "keywords": ["gateway", "vpn"]
     },
     {
       "id": "ibm-cloud/global-load-balancer",
@@ -1403,11 +1117,7 @@
       "asset": "icons/network/global-load-balancer.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": [
-        "global",
-        "load",
-        "balancer"
-      ]
+      "keywords": ["global", "load", "balancer"]
     },
     {
       "id": "ibm-cloud/group",
@@ -1418,9 +1128,7 @@
       "asset": "icons/actors/group.svg",
       "tier": "ibm-cloud",
       "color": "#000000",
-      "keywords": [
-        "group"
-      ]
+      "keywords": ["group"]
     },
     {
       "id": "ibm-cloud/group-98",
@@ -1431,10 +1139,7 @@
       "asset": "icons/ai/group-98.svg",
       "tier": "ibm-cloud",
       "color": "#A56EFF",
-      "keywords": [
-        "group",
-        "98"
-      ]
+      "keywords": ["group", "98"]
     },
     {
       "id": "ibm-cloud/group-meeting",
@@ -1445,10 +1150,7 @@
       "asset": "icons/actors/group-meeting.svg",
       "tier": "ibm-cloud",
       "color": "#000000",
-      "keywords": [
-        "group",
-        "meeting"
-      ]
+      "keywords": ["group", "meeting"]
     },
     {
       "id": "ibm-cloud/group-security",
@@ -1459,10 +1161,7 @@
       "asset": "icons/security/group-security.svg",
       "tier": "ibm-cloud",
       "color": "#FA4D56",
-      "keywords": [
-        "group",
-        "security"
-      ]
+      "keywords": ["group", "security"]
     },
     {
       "id": "ibm-cloud/gui",
@@ -1473,9 +1172,7 @@
       "asset": "icons/observability/gui.svg",
       "tier": "ibm-cloud",
       "color": "#009D9A",
-      "keywords": [
-        "gui"
-      ]
+      "keywords": ["gui"]
     },
     {
       "id": "ibm-cloud/gui-management",
@@ -1486,10 +1183,7 @@
       "asset": "icons/observability/gui-management.svg",
       "tier": "ibm-cloud",
       "color": "#009D9A",
-      "keywords": [
-        "gui",
-        "management"
-      ]
+      "keywords": ["gui", "management"]
     },
     {
       "id": "ibm-cloud/hardware-security-module",
@@ -1500,11 +1194,7 @@
       "asset": "icons/security/hardware-security-module.svg",
       "tier": "ibm-cloud",
       "color": "#FA4D56",
-      "keywords": [
-        "hardware",
-        "security",
-        "module"
-      ]
+      "keywords": ["hardware", "security", "module"]
     },
     {
       "id": "ibm-cloud/hybrid-networking",
@@ -1515,10 +1205,7 @@
       "asset": "icons/network/hybrid-networking.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": [
-        "hybrid",
-        "networking"
-      ]
+      "keywords": ["hybrid", "networking"]
     },
     {
       "id": "ibm-cloud/ibm-cloud",
@@ -1529,10 +1216,7 @@
       "asset": "icons/network/ibm-cloud.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": [
-        "ibm",
-        "cloud"
-      ]
+      "keywords": ["ibm", "cloud"]
     },
     {
       "id": "ibm-cloud/ibm-cloud-hyper-protect-dbaas",
@@ -1543,13 +1227,7 @@
       "asset": "icons/storage/ibm-cloud-hyper-protect-dbaas.svg",
       "tier": "ibm-cloud",
       "color": "#0F62FE",
-      "keywords": [
-        "ibm",
-        "cloud",
-        "hyper",
-        "protect",
-        "dbaas"
-      ]
+      "keywords": ["ibm", "cloud", "hyper", "protect", "dbaas"]
     },
     {
       "id": "ibm-cloud/ibm-cloud-key-protect",
@@ -1560,12 +1238,7 @@
       "asset": "icons/security/ibm-cloud-key-protect.svg",
       "tier": "ibm-cloud",
       "color": "#FA4D56",
-      "keywords": [
-        "ibm",
-        "cloud",
-        "key",
-        "protect"
-      ]
+      "keywords": ["ibm", "cloud", "key", "protect"]
     },
     {
       "id": "ibm-cloud/ibm-cloud-pak-data",
@@ -1576,12 +1249,7 @@
       "asset": "icons/data/ibm-cloud-pak-data.svg",
       "tier": "ibm-cloud",
       "color": "#0F62FE",
-      "keywords": [
-        "ibm",
-        "cloud",
-        "pak",
-        "data"
-      ]
+      "keywords": ["ibm", "cloud", "pak", "data"]
     },
     {
       "id": "ibm-cloud/ibm-cloud-schematics",
@@ -1592,11 +1260,7 @@
       "asset": "icons/groups/ibm-cloud-schematics.svg",
       "tier": "ibm-cloud",
       "color": "#ED5396",
-      "keywords": [
-        "ibm",
-        "cloud",
-        "schematics"
-      ]
+      "keywords": ["ibm", "cloud", "schematics"]
     },
     {
       "id": "ibm-cloud/ibm-cloud-subnets",
@@ -1607,11 +1271,7 @@
       "asset": "icons/network/ibm-cloud-subnets.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": [
-        "ibm",
-        "cloud",
-        "subnets"
-      ]
+      "keywords": ["ibm", "cloud", "subnets"]
     },
     {
       "id": "ibm-cloud/ibm-cloud-vpc",
@@ -1622,11 +1282,7 @@
       "asset": "icons/network/ibm-cloud-vpc.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": [
-        "ibm",
-        "cloud",
-        "vpc"
-      ]
+      "keywords": ["ibm", "cloud", "vpc"]
     },
     {
       "id": "ibm-cloud/ibm-cloudant",
@@ -1637,10 +1293,7 @@
       "asset": "icons/storage/ibm-cloudant.svg",
       "tier": "ibm-cloud",
       "color": "#0F62FE",
-      "keywords": [
-        "ibm",
-        "cloudant"
-      ]
+      "keywords": ["ibm", "cloudant"]
     },
     {
       "id": "ibm-cloud/ibm-datastage",
@@ -1651,10 +1304,7 @@
       "asset": "icons/storage/ibm-datastage.svg",
       "tier": "ibm-cloud",
       "color": "#0F62FE",
-      "keywords": [
-        "ibm",
-        "datastage"
-      ]
+      "keywords": ["ibm", "datastage"]
     },
     {
       "id": "ibm-cloud/ibm-db2",
@@ -1665,10 +1315,7 @@
       "asset": "icons/storage/ibm-db2.svg",
       "tier": "ibm-cloud",
       "color": "#0F62FE",
-      "keywords": [
-        "ibm",
-        "db2"
-      ]
+      "keywords": ["ibm", "db2"]
     },
     {
       "id": "ibm-cloud/ibm-db2-alt",
@@ -1679,11 +1326,7 @@
       "asset": "icons/data/ibm-db2-alt.svg",
       "tier": "ibm-cloud",
       "color": "#0F62FE",
-      "keywords": [
-        "ibm",
-        "db2",
-        "alt"
-      ]
+      "keywords": ["ibm", "db2", "alt"]
     },
     {
       "id": "ibm-cloud/ibm-vpn-for-vpc",
@@ -1694,12 +1337,7 @@
       "asset": "icons/security/ibm-vpn-for-vpc.svg",
       "tier": "ibm-cloud",
       "color": "#FA4D56",
-      "keywords": [
-        "ibm",
-        "vpn",
-        "for",
-        "vpc"
-      ]
+      "keywords": ["ibm", "vpn", "for", "vpc"]
     },
     {
       "id": "ibm-cloud/ibm-watsonx",
@@ -1710,10 +1348,7 @@
       "asset": "icons/ai/ibm-watsonx.svg",
       "tier": "ibm-cloud",
       "color": "#A56EFF",
-      "keywords": [
-        "ibm",
-        "watsonx"
-      ]
+      "keywords": ["ibm", "watsonx"]
     },
     {
       "id": "ibm-cloud/ibm-watsonx-governance",
@@ -1724,11 +1359,7 @@
       "asset": "icons/ai/ibm-watsonx-governance.svg",
       "tier": "ibm-cloud",
       "color": "#A56EFF",
-      "keywords": [
-        "ibm",
-        "watsonx",
-        "governance"
-      ]
+      "keywords": ["ibm", "watsonx", "governance"]
     },
     {
       "id": "ibm-cloud/identity-and-access-management",
@@ -1739,12 +1370,7 @@
       "asset": "icons/security/identity-and-access-management.svg",
       "tier": "ibm-cloud",
       "color": "#FA4D56",
-      "keywords": [
-        "identity",
-        "and",
-        "access",
-        "management"
-      ]
+      "keywords": ["identity", "and", "access", "management"]
     },
     {
       "id": "ibm-cloud/image-service",
@@ -1755,10 +1381,7 @@
       "asset": "icons/compute/image-service.svg",
       "tier": "ibm-cloud",
       "color": "#198038",
-      "keywords": [
-        "image",
-        "service"
-      ]
+      "keywords": ["image", "service"]
     },
     {
       "id": "ibm-cloud/instance-bx",
@@ -1769,10 +1392,7 @@
       "asset": "icons/compute/instance-bx.svg",
       "tier": "ibm-cloud",
       "color": "#198038",
-      "keywords": [
-        "instance",
-        "bx"
-      ]
+      "keywords": ["instance", "bx"]
     },
     {
       "id": "ibm-cloud/instance-cx",
@@ -1783,10 +1403,7 @@
       "asset": "icons/compute/instance-cx.svg",
       "tier": "ibm-cloud",
       "color": "#198038",
-      "keywords": [
-        "instance",
-        "cx"
-      ]
+      "keywords": ["instance", "cx"]
     },
     {
       "id": "ibm-cloud/instance-group",
@@ -1797,10 +1414,7 @@
       "asset": "icons/compute/instance-group.svg",
       "tier": "ibm-cloud",
       "color": "#198038",
-      "keywords": [
-        "instance",
-        "group"
-      ]
+      "keywords": ["instance", "group"]
     },
     {
       "id": "ibm-cloud/instance-mx",
@@ -1811,10 +1425,7 @@
       "asset": "icons/compute/instance-mx.svg",
       "tier": "ibm-cloud",
       "color": "#198038",
-      "keywords": [
-        "instance",
-        "mx"
-      ]
+      "keywords": ["instance", "mx"]
     },
     {
       "id": "ibm-cloud/internet",
@@ -1825,9 +1436,7 @@
       "asset": "icons/network/internet.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": [
-        "internet"
-      ]
+      "keywords": ["internet"]
     },
     {
       "id": "ibm-cloud/internet-services",
@@ -1838,10 +1447,7 @@
       "asset": "icons/network/internet-services.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": [
-        "internet",
-        "services"
-      ]
+      "keywords": ["internet", "services"]
     },
     {
       "id": "ibm-cloud/intrusion-prevention",
@@ -1852,10 +1458,7 @@
       "asset": "icons/security/intrusion-prevention.svg",
       "tier": "ibm-cloud",
       "color": "#FA4D56",
-      "keywords": [
-        "intrusion",
-        "prevention"
-      ]
+      "keywords": ["intrusion", "prevention"]
     },
     {
       "id": "ibm-cloud/intrusion-prevention-detection",
@@ -1866,11 +1469,7 @@
       "asset": "icons/groups/intrusion-prevention-detection.svg",
       "tier": "ibm-cloud",
       "color": "#FA4D56",
-      "keywords": [
-        "intrusion",
-        "prevention",
-        "detection"
-      ]
+      "keywords": ["intrusion", "prevention", "detection"]
     },
     {
       "id": "ibm-cloud/key",
@@ -1881,9 +1480,7 @@
       "asset": "icons/security/key.svg",
       "tier": "ibm-cloud",
       "color": "#FA4D56",
-      "keywords": [
-        "key"
-      ]
+      "keywords": ["key"]
     },
     {
       "id": "ibm-cloud/key-protect",
@@ -1894,10 +1491,7 @@
       "asset": "icons/groups/key-protect.svg",
       "tier": "ibm-cloud",
       "color": "#FA4E56",
-      "keywords": [
-        "key",
-        "protect"
-      ]
+      "keywords": ["key", "protect"]
     },
     {
       "id": "ibm-cloud/kubernetes",
@@ -1908,9 +1502,7 @@
       "asset": "icons/compute/kubernetes.svg",
       "tier": "ibm-cloud",
       "color": "#198038",
-      "keywords": [
-        "kubernetes"
-      ]
+      "keywords": ["kubernetes"]
     },
     {
       "id": "ibm-cloud/kubernetes-cluster",
@@ -1921,10 +1513,7 @@
       "asset": "icons/compute/kubernetes-cluster.svg",
       "tier": "ibm-cloud",
       "color": "#198038",
-      "keywords": [
-        "kubernetes",
-        "cluster"
-      ]
+      "keywords": ["kubernetes", "cluster"]
     },
     {
       "id": "ibm-cloud/l2-switch",
@@ -1935,10 +1524,7 @@
       "asset": "icons/network/l2-switch.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": [
-        "l2",
-        "switch"
-      ]
+      "keywords": ["l2", "switch"]
     },
     {
       "id": "ibm-cloud/l3-switch",
@@ -1949,10 +1535,7 @@
       "asset": "icons/network/l3-switch.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": [
-        "l3",
-        "switch"
-      ]
+      "keywords": ["l3", "switch"]
     },
     {
       "id": "ibm-cloud/laptop",
@@ -1963,9 +1546,7 @@
       "asset": "icons/actors/laptop.svg",
       "tier": "ibm-cloud",
       "color": "#000000",
-      "keywords": [
-        "laptop"
-      ]
+      "keywords": ["laptop"]
     },
     {
       "id": "ibm-cloud/load-balancer-application",
@@ -1976,11 +1557,7 @@
       "asset": "icons/network/load-balancer-application.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": [
-        "load",
-        "balancer",
-        "application"
-      ]
+      "keywords": ["load", "balancer", "application"]
     },
     {
       "id": "ibm-cloud/load-balancer-classic",
@@ -1991,11 +1568,7 @@
       "asset": "icons/network/load-balancer-classic.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": [
-        "load",
-        "balancer",
-        "classic"
-      ]
+      "keywords": ["load", "balancer", "classic"]
     },
     {
       "id": "ibm-cloud/load-balancer-listener",
@@ -2006,11 +1579,7 @@
       "asset": "icons/groups/load-balancer-listener.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": [
-        "load",
-        "balancer",
-        "listener"
-      ]
+      "keywords": ["load", "balancer", "listener"]
     },
     {
       "id": "ibm-cloud/load-balancer-listner",
@@ -2021,11 +1590,7 @@
       "asset": "icons/network/load-balancer-listner.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": [
-        "load",
-        "balancer",
-        "listner"
-      ]
+      "keywords": ["load", "balancer", "listner"]
     },
     {
       "id": "ibm-cloud/load-balancer-pool",
@@ -2036,11 +1601,7 @@
       "asset": "icons/network/load-balancer-pool.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": [
-        "load",
-        "balancer",
-        "pool"
-      ]
+      "keywords": ["load", "balancer", "pool"]
     },
     {
       "id": "ibm-cloud/load-balancer-vpc",
@@ -2051,11 +1612,7 @@
       "asset": "icons/network/load-balancer-vpc.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": [
-        "load",
-        "balancer",
-        "vpc"
-      ]
+      "keywords": ["load", "balancer", "vpc"]
     },
     {
       "id": "ibm-cloud/local-load-balancer",
@@ -2066,11 +1623,7 @@
       "asset": "icons/network/local-load-balancer.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": [
-        "local",
-        "load",
-        "balancer"
-      ]
+      "keywords": ["local", "load", "balancer"]
     },
     {
       "id": "ibm-cloud/location",
@@ -2081,9 +1634,7 @@
       "asset": "icons/actors/location.svg",
       "tier": "ibm-cloud",
       "color": "#000000",
-      "keywords": [
-        "location"
-      ]
+      "keywords": ["location"]
     },
     {
       "id": "ibm-cloud/logging",
@@ -2094,9 +1645,7 @@
       "asset": "icons/groups/logging.svg",
       "tier": "ibm-cloud",
       "color": "#009D9A",
-      "keywords": [
-        "logging"
-      ]
+      "keywords": ["logging"]
     },
     {
       "id": "ibm-cloud/lte-transmission",
@@ -2107,10 +1656,7 @@
       "asset": "icons/network/lte-transmission.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": [
-        "lte",
-        "transmission"
-      ]
+      "keywords": ["lte", "transmission"]
     },
     {
       "id": "ibm-cloud/machine-learning",
@@ -2121,10 +1667,7 @@
       "asset": "icons/ai/machine-learning.svg",
       "tier": "ibm-cloud",
       "color": "#A56EFF",
-      "keywords": [
-        "machine",
-        "learning"
-      ]
+      "keywords": ["machine", "learning"]
     },
     {
       "id": "ibm-cloud/machine-learning-model-1",
@@ -2135,11 +1678,7 @@
       "asset": "icons/ai/machine-learning-model-1.svg",
       "tier": "ibm-cloud",
       "color": "#A56EFF",
-      "keywords": [
-        "machine",
-        "learning",
-        "model"
-      ]
+      "keywords": ["machine", "learning", "model"]
     },
     {
       "id": "ibm-cloud/mail-gateway",
@@ -2150,10 +1689,7 @@
       "asset": "icons/network/mail-gateway.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": [
-        "mail",
-        "gateway"
-      ]
+      "keywords": ["mail", "gateway"]
     },
     {
       "id": "ibm-cloud/meeting",
@@ -2164,9 +1700,7 @@
       "asset": "icons/groups/meeting.svg",
       "tier": "ibm-cloud",
       "color": "#000000",
-      "keywords": [
-        "meeting"
-      ]
+      "keywords": ["meeting"]
     },
     {
       "id": "ibm-cloud/message-queue",
@@ -2177,10 +1711,7 @@
       "asset": "icons/network/message-queue.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": [
-        "message",
-        "queue"
-      ]
+      "keywords": ["message", "queue"]
     },
     {
       "id": "ibm-cloud/mobile",
@@ -2191,9 +1722,7 @@
       "asset": "icons/actors/mobile.svg",
       "tier": "ibm-cloud",
       "color": "#000000",
-      "keywords": [
-        "mobile"
-      ]
+      "keywords": ["mobile"]
     },
     {
       "id": "ibm-cloud/mobile-application",
@@ -2204,10 +1733,7 @@
       "asset": "icons/applications/mobile-application.svg",
       "tier": "ibm-cloud",
       "color": "#A56EFF",
-      "keywords": [
-        "mobile",
-        "application"
-      ]
+      "keywords": ["mobile", "application"]
     },
     {
       "id": "ibm-cloud/model-tuned",
@@ -2218,10 +1744,7 @@
       "asset": "icons/ai/model-tuned.svg",
       "tier": "ibm-cloud",
       "color": "#A56EFF",
-      "keywords": [
-        "model",
-        "tuned"
-      ]
+      "keywords": ["model", "tuned"]
     },
     {
       "id": "ibm-cloud/mysql",
@@ -2232,9 +1755,7 @@
       "asset": "icons/data/mysql.svg",
       "tier": "ibm-cloud",
       "color": "#0F62FE",
-      "keywords": [
-        "mysql"
-      ]
+      "keywords": ["mysql"]
     },
     {
       "id": "ibm-cloud/network-acl",
@@ -2245,10 +1766,7 @@
       "asset": "icons/security/network-acl.svg",
       "tier": "ibm-cloud",
       "color": "#FA4D56",
-      "keywords": [
-        "network",
-        "acl"
-      ]
+      "keywords": ["network", "acl"]
     },
     {
       "id": "ibm-cloud/network-acl-rules",
@@ -2259,11 +1777,7 @@
       "asset": "icons/groups/network-acl-rules.svg",
       "tier": "ibm-cloud",
       "color": "#FA4E56",
-      "keywords": [
-        "network",
-        "acl",
-        "rules"
-      ]
+      "keywords": ["network", "acl", "rules"]
     },
     {
       "id": "ibm-cloud/network-admin-control",
@@ -2274,11 +1788,7 @@
       "asset": "icons/security/network-admin-control.svg",
       "tier": "ibm-cloud",
       "color": "#FA4D56",
-      "keywords": [
-        "network",
-        "admin",
-        "control"
-      ]
+      "keywords": ["network", "admin", "control"]
     },
     {
       "id": "ibm-cloud/network-interface",
@@ -2289,10 +1799,7 @@
       "asset": "icons/network/network-interface.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": [
-        "network",
-        "interface"
-      ]
+      "keywords": ["network", "interface"]
     },
     {
       "id": "ibm-cloud/network-load-balancer",
@@ -2303,11 +1810,7 @@
       "asset": "icons/network/network-load-balancer.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": [
-        "network",
-        "load",
-        "balancer"
-      ]
+      "keywords": ["network", "load", "balancer"]
     },
     {
       "id": "ibm-cloud/network-overlay",
@@ -2318,10 +1821,7 @@
       "asset": "icons/network/network-overlay.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": [
-        "network",
-        "overlay"
-      ]
+      "keywords": ["network", "overlay"]
     },
     {
       "id": "ibm-cloud/object-bucket",
@@ -2332,10 +1832,7 @@
       "asset": "icons/data/object-bucket.svg",
       "tier": "ibm-cloud",
       "color": "#0F62FE",
-      "keywords": [
-        "object",
-        "bucket"
-      ]
+      "keywords": ["object", "bucket"]
     },
     {
       "id": "ibm-cloud/object-storage-accessor",
@@ -2346,11 +1843,7 @@
       "asset": "icons/groups/object-storage-accessor.svg",
       "tier": "ibm-cloud",
       "color": "#0F62FE",
-      "keywords": [
-        "object",
-        "storage",
-        "accessor"
-      ]
+      "keywords": ["object", "storage", "accessor"]
     },
     {
       "id": "ibm-cloud/object-storage-application",
@@ -2361,11 +1854,7 @@
       "asset": "icons/data/object-storage-application.svg",
       "tier": "ibm-cloud",
       "color": "#0F62FE",
-      "keywords": [
-        "object",
-        "storage",
-        "application"
-      ]
+      "keywords": ["object", "storage", "application"]
     },
     {
       "id": "ibm-cloud/object-storage-slicestor",
@@ -2376,11 +1865,7 @@
       "asset": "icons/groups/object-storage-slicestor.svg",
       "tier": "ibm-cloud",
       "color": "#0F62FE",
-      "keywords": [
-        "object",
-        "storage",
-        "slicestor"
-      ]
+      "keywords": ["object", "storage", "slicestor"]
     },
     {
       "id": "ibm-cloud/object-storage-slisor",
@@ -2391,11 +1876,7 @@
       "asset": "icons/data/object-storage-slisor.svg",
       "tier": "ibm-cloud",
       "color": "#0F62FE",
-      "keywords": [
-        "object",
-        "storage",
-        "slisor"
-      ]
+      "keywords": ["object", "storage", "slisor"]
     },
     {
       "id": "ibm-cloud/open-shift",
@@ -2406,10 +1887,7 @@
       "asset": "icons/compute/open-shift.svg",
       "tier": "ibm-cloud",
       "color": "#198038",
-      "keywords": [
-        "open",
-        "shift"
-      ]
+      "keywords": ["open", "shift"]
     },
     {
       "id": "ibm-cloud/pcn-e-node",
@@ -2420,10 +1898,7 @@
       "asset": "icons/security/pcn-e-node.svg",
       "tier": "ibm-cloud",
       "color": "#FA4D56",
-      "keywords": [
-        "pcn",
-        "node"
-      ]
+      "keywords": ["pcn", "node"]
     },
     {
       "id": "ibm-cloud/pcn-p-node",
@@ -2434,10 +1909,7 @@
       "asset": "icons/security/pcn-p-node.svg",
       "tier": "ibm-cloud",
       "color": "#FA4D56",
-      "keywords": [
-        "pcn",
-        "node"
-      ]
+      "keywords": ["pcn", "node"]
     },
     {
       "id": "ibm-cloud/pcn-z-node",
@@ -2448,10 +1920,7 @@
       "asset": "icons/security/pcn-z-node.svg",
       "tier": "ibm-cloud",
       "color": "#FA4D56",
-      "keywords": [
-        "pcn",
-        "node"
-      ]
+      "keywords": ["pcn", "node"]
     },
     {
       "id": "ibm-cloud/phone-application",
@@ -2462,10 +1931,7 @@
       "asset": "icons/applications/phone-application.svg",
       "tier": "ibm-cloud",
       "color": "#A56EFF",
-      "keywords": [
-        "phone",
-        "application"
-      ]
+      "keywords": ["phone", "application"]
     },
     {
       "id": "ibm-cloud/physical-server",
@@ -2476,10 +1942,7 @@
       "asset": "icons/compute/physical-server.svg",
       "tier": "ibm-cloud",
       "color": "#198038",
-      "keywords": [
-        "physical",
-        "server"
-      ]
+      "keywords": ["physical", "server"]
     },
     {
       "id": "ibm-cloud/preprod-environment",
@@ -2490,10 +1953,7 @@
       "asset": "icons/devops/preprod-environment.svg",
       "tier": "ibm-cloud",
       "color": "#EE5396",
-      "keywords": [
-        "preprod",
-        "environment"
-      ]
+      "keywords": ["preprod", "environment"]
     },
     {
       "id": "ibm-cloud/preprod-service",
@@ -2504,10 +1964,7 @@
       "asset": "icons/devops/preprod-service.svg",
       "tier": "ibm-cloud",
       "color": "#EE5396",
-      "keywords": [
-        "preprod",
-        "service"
-      ]
+      "keywords": ["preprod", "service"]
     },
     {
       "id": "ibm-cloud/process",
@@ -2518,9 +1975,7 @@
       "asset": "icons/compute/process.svg",
       "tier": "ibm-cloud",
       "color": "#198038",
-      "keywords": [
-        "process"
-      ]
+      "keywords": ["process"]
     },
     {
       "id": "ibm-cloud/process-gray",
@@ -2531,10 +1986,7 @@
       "asset": "icons/compute/process-gray.svg",
       "tier": "ibm-cloud",
       "color": "#878D96",
-      "keywords": [
-        "process",
-        "gray"
-      ]
+      "keywords": ["process", "gray"]
     },
     {
       "id": "ibm-cloud/process-green",
@@ -2545,10 +1997,7 @@
       "asset": "icons/compute/process-green.svg",
       "tier": "ibm-cloud",
       "color": "#198038",
-      "keywords": [
-        "process",
-        "green"
-      ]
+      "keywords": ["process", "green"]
     },
     {
       "id": "ibm-cloud/prod-environment",
@@ -2559,10 +2008,7 @@
       "asset": "icons/devops/prod-environment.svg",
       "tier": "ibm-cloud",
       "color": "#EE5396",
-      "keywords": [
-        "prod",
-        "environment"
-      ]
+      "keywords": ["prod", "environment"]
     },
     {
       "id": "ibm-cloud/production-regulated",
@@ -2573,10 +2019,7 @@
       "asset": "icons/devops/production-regulated.svg",
       "tier": "ibm-cloud",
       "color": "#EE5396",
-      "keywords": [
-        "production",
-        "regulated"
-      ]
+      "keywords": ["production", "regulated"]
     },
     {
       "id": "ibm-cloud/production-regulated-env",
@@ -2587,11 +2030,7 @@
       "asset": "icons/groups/production-regulated-env.svg",
       "tier": "ibm-cloud",
       "color": "#EE5396",
-      "keywords": [
-        "production",
-        "regulated",
-        "env"
-      ]
+      "keywords": ["production", "regulated", "env"]
     },
     {
       "id": "ibm-cloud/production-service",
@@ -2602,10 +2041,7 @@
       "asset": "icons/devops/production-service.svg",
       "tier": "ibm-cloud",
       "color": "#EE5396",
-      "keywords": [
-        "production",
-        "service"
-      ]
+      "keywords": ["production", "service"]
     },
     {
       "id": "ibm-cloud/prompt-session",
@@ -2616,10 +2052,7 @@
       "asset": "icons/ai/prompt-session.svg",
       "tier": "ibm-cloud",
       "color": "#A56EFF",
-      "keywords": [
-        "prompt",
-        "session"
-      ]
+      "keywords": ["prompt", "session"]
     },
     {
       "id": "ibm-cloud/prompt-template",
@@ -2630,10 +2063,7 @@
       "asset": "icons/ai/prompt-template.svg",
       "tier": "ibm-cloud",
       "color": "#A56EFF",
-      "keywords": [
-        "prompt",
-        "template"
-      ]
+      "keywords": ["prompt", "template"]
     },
     {
       "id": "ibm-cloud/public-gateway",
@@ -2644,10 +2074,7 @@
       "asset": "icons/network/public-gateway.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": [
-        "public",
-        "gateway"
-      ]
+      "keywords": ["public", "gateway"]
     },
     {
       "id": "ibm-cloud/public-network",
@@ -2658,10 +2085,7 @@
       "asset": "icons/network/public-network.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": [
-        "public",
-        "network"
-      ]
+      "keywords": ["public", "network"]
     },
     {
       "id": "ibm-cloud/push-to-talk",
@@ -2672,11 +2096,7 @@
       "asset": "icons/network/push-to-talk.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": [
-        "push",
-        "to",
-        "talk"
-      ]
+      "keywords": ["push", "to", "talk"]
     },
     {
       "id": "ibm-cloud/repo-artifact",
@@ -2687,10 +2107,7 @@
       "asset": "icons/devops/repo-artifact.svg",
       "tier": "ibm-cloud",
       "color": "#EE5396",
-      "keywords": [
-        "repo",
-        "artifact"
-      ]
+      "keywords": ["repo", "artifact"]
     },
     {
       "id": "ibm-cloud/repo-source-code",
@@ -2701,11 +2118,7 @@
       "asset": "icons/devops/repo-source-code.svg",
       "tier": "ibm-cloud",
       "color": "#EE5396",
-      "keywords": [
-        "repo",
-        "source",
-        "code"
-      ]
+      "keywords": ["repo", "source", "code"]
     },
     {
       "id": "ibm-cloud/router",
@@ -2716,9 +2129,7 @@
       "asset": "icons/network/router.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": [
-        "router"
-      ]
+      "keywords": ["router"]
     },
     {
       "id": "ibm-cloud/sattelite",
@@ -2729,9 +2140,7 @@
       "asset": "icons/compute/sattelite.svg",
       "tier": "ibm-cloud",
       "color": "#198038",
-      "keywords": [
-        "sattelite"
-      ]
+      "keywords": ["sattelite"]
     },
     {
       "id": "ibm-cloud/secrets-manager",
@@ -2742,10 +2151,7 @@
       "asset": "icons/security/secrets-manager.svg",
       "tier": "ibm-cloud",
       "color": "#FA4D56",
-      "keywords": [
-        "secrets",
-        "manager"
-      ]
+      "keywords": ["secrets", "manager"]
     },
     {
       "id": "ibm-cloud/security-gateway",
@@ -2756,10 +2162,7 @@
       "asset": "icons/security/security-gateway.svg",
       "tier": "ibm-cloud",
       "color": "#FA4D56",
-      "keywords": [
-        "security",
-        "gateway"
-      ]
+      "keywords": ["security", "gateway"]
     },
     {
       "id": "ibm-cloud/security-group",
@@ -2770,10 +2173,7 @@
       "asset": "icons/groups/security-group.svg",
       "tier": "ibm-cloud",
       "color": "#FA4D56",
-      "keywords": [
-        "security",
-        "group"
-      ]
+      "keywords": ["security", "group"]
     },
     {
       "id": "ibm-cloud/security-services",
@@ -2784,10 +2184,7 @@
       "asset": "icons/security/security-services.svg",
       "tier": "ibm-cloud",
       "color": "#FA4D56",
-      "keywords": [
-        "security",
-        "services"
-      ]
+      "keywords": ["security", "services"]
     },
     {
       "id": "ibm-cloud/server-proxy",
@@ -2798,10 +2195,7 @@
       "asset": "icons/network/server-proxy.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": [
-        "server",
-        "proxy"
-      ]
+      "keywords": ["server", "proxy"]
     },
     {
       "id": "ibm-cloud/serverless-application",
@@ -2812,10 +2206,7 @@
       "asset": "icons/devops/serverless-application.svg",
       "tier": "ibm-cloud",
       "color": "#EE5396",
-      "keywords": [
-        "serverless",
-        "application"
-      ]
+      "keywords": ["serverless", "application"]
     },
     {
       "id": "ibm-cloud/service-desk",
@@ -2826,10 +2217,7 @@
       "asset": "icons/actors/service-desk.svg",
       "tier": "ibm-cloud",
       "color": "#000000",
-      "keywords": [
-        "service",
-        "desk"
-      ]
+      "keywords": ["service", "desk"]
     },
     {
       "id": "ibm-cloud/service-id",
@@ -2840,10 +2228,7 @@
       "asset": "icons/actors/service-id.svg",
       "tier": "ibm-cloud",
       "color": "#000000",
-      "keywords": [
-        "service",
-        "id"
-      ]
+      "keywords": ["service", "id"]
     },
     {
       "id": "ibm-cloud/service-management",
@@ -2854,10 +2239,7 @@
       "asset": "icons/groups/service-management.svg",
       "tier": "ibm-cloud",
       "color": "#009D9A",
-      "keywords": [
-        "service",
-        "management"
-      ]
+      "keywords": ["service", "management"]
     },
     {
       "id": "ibm-cloud/session-boarder-control",
@@ -2868,11 +2250,7 @@
       "asset": "icons/groups/session-boarder-control.svg",
       "tier": "ibm-cloud",
       "color": "#FA4D56",
-      "keywords": [
-        "session",
-        "boarder",
-        "control"
-      ]
+      "keywords": ["session", "boarder", "control"]
     },
     {
       "id": "ibm-cloud/session-border-control",
@@ -2883,11 +2261,7 @@
       "asset": "icons/security/session-border-control.svg",
       "tier": "ibm-cloud",
       "color": "#FA4D56",
-      "keywords": [
-        "session",
-        "border",
-        "control"
-      ]
+      "keywords": ["session", "border", "control"]
     },
     {
       "id": "ibm-cloud/sg-rules",
@@ -2898,10 +2272,7 @@
       "asset": "icons/security/sg-rules.svg",
       "tier": "ibm-cloud",
       "color": "#FA4D56",
-      "keywords": [
-        "sg",
-        "rules"
-      ]
+      "keywords": ["sg", "rules"]
     },
     {
       "id": "ibm-cloud/sim-card",
@@ -2912,10 +2283,7 @@
       "asset": "icons/security/sim-card.svg",
       "tier": "ibm-cloud",
       "color": "#FA4D56",
-      "keywords": [
-        "sim",
-        "card"
-      ]
+      "keywords": ["sim", "card"]
     },
     {
       "id": "ibm-cloud/sql",
@@ -2926,9 +2294,7 @@
       "asset": "icons/data/sql.svg",
       "tier": "ibm-cloud",
       "color": "#0F62FE",
-      "keywords": [
-        "sql"
-      ]
+      "keywords": ["sql"]
     },
     {
       "id": "ibm-cloud/subnet",
@@ -2939,9 +2305,7 @@
       "asset": "icons/network/subnet.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": [
-        "subnet"
-      ]
+      "keywords": ["subnet"]
     },
     {
       "id": "ibm-cloud/subnet-acl-rules",
@@ -2952,11 +2316,7 @@
       "asset": "icons/security/subnet-acl-rules.svg",
       "tier": "ibm-cloud",
       "color": "#FA4D56",
-      "keywords": [
-        "subnet",
-        "acl",
-        "rules"
-      ]
+      "keywords": ["subnet", "acl", "rules"]
     },
     {
       "id": "ibm-cloud/tablet",
@@ -2967,9 +2327,7 @@
       "asset": "icons/actors/tablet.svg",
       "tier": "ibm-cloud",
       "color": "#000000",
-      "keywords": [
-        "tablet"
-      ]
+      "keywords": ["tablet"]
     },
     {
       "id": "ibm-cloud/test-service",
@@ -2980,10 +2338,7 @@
       "asset": "icons/devops/test-service.svg",
       "tier": "ibm-cloud",
       "color": "#EE5396",
-      "keywords": [
-        "test",
-        "service"
-      ]
+      "keywords": ["test", "service"]
     },
     {
       "id": "ibm-cloud/testing",
@@ -2994,9 +2349,7 @@
       "asset": "icons/devops/testing.svg",
       "tier": "ibm-cloud",
       "color": "#EE5396",
-      "keywords": [
-        "testing"
-      ]
+      "keywords": ["testing"]
     },
     {
       "id": "ibm-cloud/transit-gatewa",
@@ -3007,10 +2360,7 @@
       "asset": "icons/network/transit-gatewa.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": [
-        "transit",
-        "gatewa"
-      ]
+      "keywords": ["transit", "gatewa"]
     },
     {
       "id": "ibm-cloud/tsv",
@@ -3021,9 +2371,7 @@
       "asset": "icons/data/tsv.svg",
       "tier": "ibm-cloud",
       "color": "#0F62FE",
-      "keywords": [
-        "tsv"
-      ]
+      "keywords": ["tsv"]
     },
     {
       "id": "ibm-cloud/tuning",
@@ -3034,9 +2382,7 @@
       "asset": "icons/ai/tuning.svg",
       "tier": "ibm-cloud",
       "color": "#A56EFF",
-      "keywords": [
-        "tuning"
-      ]
+      "keywords": ["tuning"]
     },
     {
       "id": "ibm-cloud/two-factor-authentication",
@@ -3047,11 +2393,7 @@
       "asset": "icons/security/two-factor-authentication.svg",
       "tier": "ibm-cloud",
       "color": "#FA4D56",
-      "keywords": [
-        "two",
-        "factor",
-        "authentication"
-      ]
+      "keywords": ["two", "factor", "authentication"]
     },
     {
       "id": "ibm-cloud/unified-communications",
@@ -3062,10 +2404,7 @@
       "asset": "icons/network/unified-communications.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": [
-        "unified",
-        "communications"
-      ]
+      "keywords": ["unified", "communications"]
     },
     {
       "id": "ibm-cloud/user",
@@ -3076,9 +2415,7 @@
       "asset": "icons/actors/user.svg",
       "tier": "ibm-cloud",
       "color": "#000000",
-      "keywords": [
-        "user"
-      ]
+      "keywords": ["user"]
     },
     {
       "id": "ibm-cloud/user-collaborate",
@@ -3089,10 +2426,7 @@
       "asset": "icons/actors/user-collaborate.svg",
       "tier": "ibm-cloud",
       "color": "#000000",
-      "keywords": [
-        "user",
-        "collaborate"
-      ]
+      "keywords": ["user", "collaborate"]
     },
     {
       "id": "ibm-cloud/virtual-application",
@@ -3103,10 +2437,7 @@
       "asset": "icons/applications/virtual-application.svg",
       "tier": "ibm-cloud",
       "color": "#A56EFF",
-      "keywords": [
-        "virtual",
-        "application"
-      ]
+      "keywords": ["virtual", "application"]
     },
     {
       "id": "ibm-cloud/virtual-desktop",
@@ -3117,10 +2448,7 @@
       "asset": "icons/compute/virtual-desktop.svg",
       "tier": "ibm-cloud",
       "color": "#198038",
-      "keywords": [
-        "virtual",
-        "desktop"
-      ]
+      "keywords": ["virtual", "desktop"]
     },
     {
       "id": "ibm-cloud/virtual-server",
@@ -3131,10 +2459,7 @@
       "asset": "icons/compute/virtual-server.svg",
       "tier": "ibm-cloud",
       "color": "#198038",
-      "keywords": [
-        "virtual",
-        "server"
-      ]
+      "keywords": ["virtual", "server"]
     },
     {
       "id": "ibm-cloud/virtual-server-classic",
@@ -3145,11 +2470,7 @@
       "asset": "icons/compute/virtual-server-classic.svg",
       "tier": "ibm-cloud",
       "color": "#198038",
-      "keywords": [
-        "virtual",
-        "server",
-        "classic"
-      ]
+      "keywords": ["virtual", "server", "classic"]
     },
     {
       "id": "ibm-cloud/vlan",
@@ -3160,9 +2481,7 @@
       "asset": "icons/network/vlan.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": [
-        "vlan"
-      ]
+      "keywords": ["vlan"]
     },
     {
       "id": "ibm-cloud/vlan-ibm",
@@ -3173,10 +2492,7 @@
       "asset": "icons/network/vlan-ibm.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": [
-        "vlan",
-        "ibm"
-      ]
+      "keywords": ["vlan", "ibm"]
     },
     {
       "id": "ibm-cloud/voice-route",
@@ -3187,10 +2503,7 @@
       "asset": "icons/network/voice-route.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": [
-        "voice",
-        "route"
-      ]
+      "keywords": ["voice", "route"]
     },
     {
       "id": "ibm-cloud/voice-router",
@@ -3201,10 +2514,7 @@
       "asset": "icons/groups/voice-router.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": [
-        "voice",
-        "router"
-      ]
+      "keywords": ["voice", "router"]
     },
     {
       "id": "ibm-cloud/vpc",
@@ -3215,9 +2525,7 @@
       "asset": "icons/network/vpc.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": [
-        "vpc"
-      ]
+      "keywords": ["vpc"]
     },
     {
       "id": "ibm-cloud/vpc-endpoints",
@@ -3228,10 +2536,7 @@
       "asset": "icons/network/vpc-endpoints.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": [
-        "vpc",
-        "endpoints"
-      ]
+      "keywords": ["vpc", "endpoints"]
     },
     {
       "id": "ibm-cloud/vpn-connection",
@@ -3242,10 +2547,7 @@
       "asset": "icons/security/vpn-connection.svg",
       "tier": "ibm-cloud",
       "color": "#FA4D56",
-      "keywords": [
-        "vpn",
-        "connection"
-      ]
+      "keywords": ["vpn", "connection"]
     },
     {
       "id": "ibm-cloud/vpn-policy",
@@ -3256,10 +2558,7 @@
       "asset": "icons/security/vpn-policy.svg",
       "tier": "ibm-cloud",
       "color": "#FA4D56",
-      "keywords": [
-        "vpn",
-        "policy"
-      ]
+      "keywords": ["vpn", "policy"]
     },
     {
       "id": "ibm-cloud/watsonx-ai",
@@ -3270,10 +2569,7 @@
       "asset": "icons/ai/watsonx-ai.svg",
       "tier": "ibm-cloud",
       "color": "#A56EFF",
-      "keywords": [
-        "watsonx",
-        "ai"
-      ]
+      "keywords": ["watsonx", "ai"]
     },
     {
       "id": "ibm-cloud/watsonx-data",
@@ -3284,10 +2580,7 @@
       "asset": "icons/ai/watsonx-data.svg",
       "tier": "ibm-cloud",
       "color": "#A56EFF",
-      "keywords": [
-        "watsonx",
-        "data"
-      ]
+      "keywords": ["watsonx", "data"]
     },
     {
       "id": "ibm-cloud/watsonx-governance-tracked",
@@ -3298,11 +2591,7 @@
       "asset": "icons/groups/watsonx-governance-tracked.svg",
       "tier": "ibm-cloud",
       "color": "#A56EFF",
-      "keywords": [
-        "watsonx",
-        "governance",
-        "tracked"
-      ]
+      "keywords": ["watsonx", "governance", "tracked"]
     },
     {
       "id": "ibm-cloud/watsonx-governance-untracked",
@@ -3313,11 +2602,7 @@
       "asset": "icons/groups/watsonx-governance-untracked.svg",
       "tier": "ibm-cloud",
       "color": "#A56EFF",
-      "keywords": [
-        "watsonx",
-        "governance",
-        "untracked"
-      ]
+      "keywords": ["watsonx", "governance", "untracked"]
     },
     {
       "id": "ibm-cloud/watsonx-launch-ai",
@@ -3328,11 +2613,7 @@
       "asset": "icons/groups/watsonx-launch-ai.svg",
       "tier": "ibm-cloud",
       "color": "#A56EFF",
-      "keywords": [
-        "watsonx",
-        "launch",
-        "ai"
-      ]
+      "keywords": ["watsonx", "launch", "ai"]
     },
     {
       "id": "ibm-cloud/watsonx-model-tuned",
@@ -3343,11 +2624,7 @@
       "asset": "icons/groups/watsonx-model-tuned.svg",
       "tier": "ibm-cloud",
       "color": "#A56EFF",
-      "keywords": [
-        "watsonx",
-        "model",
-        "tuned"
-      ]
+      "keywords": ["watsonx", "model", "tuned"]
     },
     {
       "id": "ibm-cloud/watsonx-prompt-session",
@@ -3358,11 +2635,7 @@
       "asset": "icons/groups/watsonx-prompt-session.svg",
       "tier": "ibm-cloud",
       "color": "#A56EFF",
-      "keywords": [
-        "watsonx",
-        "prompt",
-        "session"
-      ]
+      "keywords": ["watsonx", "prompt", "session"]
     },
     {
       "id": "ibm-cloud/web-application",
@@ -3373,10 +2646,7 @@
       "asset": "icons/applications/web-application.svg",
       "tier": "ibm-cloud",
       "color": "#A56EFF",
-      "keywords": [
-        "web",
-        "application"
-      ]
+      "keywords": ["web", "application"]
     },
     {
       "id": "ibm-cloud/wifi-bridge",
@@ -3387,10 +2657,7 @@
       "asset": "icons/network/wifi-bridge.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": [
-        "wifi",
-        "bridge"
-      ]
+      "keywords": ["wifi", "bridge"]
     },
     {
       "id": "ibm-cloud/wifi-controller",
@@ -3401,10 +2668,7 @@
       "asset": "icons/network/wifi-controller.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": [
-        "wifi",
-        "controller"
-      ]
+      "keywords": ["wifi", "controller"]
     },
     {
       "id": "ibm-cloud/wifi-not-secure",
@@ -3415,11 +2679,7 @@
       "asset": "icons/security/wifi-not-secure.svg",
       "tier": "ibm-cloud",
       "color": "#FA4D56",
-      "keywords": [
-        "wifi",
-        "not",
-        "secure"
-      ]
+      "keywords": ["wifi", "not", "secure"]
     },
     {
       "id": "ibm-cloud/wifi-router",
@@ -3430,10 +2690,7 @@
       "asset": "icons/network/wifi-router.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": [
-        "wifi",
-        "router"
-      ]
+      "keywords": ["wifi", "router"]
     },
     {
       "id": "ibm-cloud/wifi-secure",
@@ -3444,10 +2701,7 @@
       "asset": "icons/security/wifi-secure.svg",
       "tier": "ibm-cloud",
       "color": "#FA4D56",
-      "keywords": [
-        "wifi",
-        "secure"
-      ]
+      "keywords": ["wifi", "secure"]
     },
     {
       "id": "ibm-cloud/wifi-secured",
@@ -3458,10 +2712,7 @@
       "asset": "icons/groups/wifi-secured.svg",
       "tier": "ibm-cloud",
       "color": "#FA4D56",
-      "keywords": [
-        "wifi",
-        "secured"
-      ]
+      "keywords": ["wifi", "secured"]
     }
   ]
 }

@@ -4,7 +4,10 @@ export type Listener<T> = (payload: T) => void;
 export class Emitter<EventMap extends Record<string, unknown>> {
   private listeners = new Map<keyof EventMap, Set<Listener<unknown>>>();
 
-  on<K extends keyof EventMap>(event: K, listener: Listener<EventMap[K]>): () => void {
+  on<K extends keyof EventMap>(
+    event: K,
+    listener: Listener<EventMap[K]>,
+  ): () => void {
     const set = this.listeners.get(event) ?? new Set();
     set.add(listener as Listener<unknown>);
     this.listeners.set(event, set);

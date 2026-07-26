@@ -6,7 +6,15 @@ import { JSDOM } from "jsdom";
 // with this constant, since both draw the same normalized asset into their own coordinate space.
 const GLYPH_VIEWBOX = 24;
 const SHAPE_TAGS = new Set(["rect", "polygon"]);
-const DRAWABLE_TAGS = new Set(["path", "rect", "circle", "ellipse", "polygon", "polyline", "line"]);
+const DRAWABLE_TAGS = new Set([
+  "path",
+  "rect",
+  "circle",
+  "ellipse",
+  "polygon",
+  "polyline",
+  "line",
+]);
 
 // IBM's exports don't declare a glyph bounding box explicitly; most wrap the glyph in
 // a `<g transform="translate(12, 12)">`-ish group sized so a `_Transparent_Rectangle_`
@@ -30,7 +38,11 @@ export interface NormalizedIcon {
 // jsdom's querySelectorAll does not return matches for a comma-separated selector
 // list in document order (it groups by selector) — walk manually instead, since the
 // *first* canvas-covering shape in true document order is always the background tile.
-function collectInOrder(root: Element, tags: Set<string>, out: Element[] = []): Element[] {
+function collectInOrder(
+  root: Element,
+  tags: Set<string>,
+  out: Element[] = [],
+): Element[] {
   for (const child of Array.from(root.children) as Element[]) {
     if (tags.has(child.tagName.toLowerCase())) out.push(child);
     collectInOrder(child, tags, out);
@@ -77,10 +89,14 @@ function isTransparentHitbox(el: Element): boolean {
 }
 
 function hasDirectDrawableChild(el: Element): boolean {
-  return Array.from(el.children).some((c) => DRAWABLE_TAGS.has((c as Element).tagName.toLowerCase()));
+  return Array.from(el.children).some((c) =>
+    DRAWABLE_TAGS.has((c as Element).tagName.toLowerCase()),
+  );
 }
 
-function parseTranslate(transform: string | null): { x: number; y: number } | undefined {
+function parseTranslate(
+  transform: string | null,
+): { x: number; y: number } | undefined {
   const m = transform?.match(/translate\(\s*([-\d.]+)[ ,]+([-\d.]+)\s*\)/);
   if (!m) return undefined;
   return { x: parseFloat(m[1]!), y: parseFloat(m[2]!) };
@@ -106,7 +122,9 @@ function clearAncestorTransforms(from: Element, root: Element): void {
  * replacing whatever transform positioned it inside the original 48x48 canvas.
  */
 function reframeGlyph(svg: Element): void {
-  const hitbox = collectInOrder(svg, new Set(["rect"])).find(isTransparentHitbox);
+  const hitbox = collectInOrder(svg, new Set(["rect"])).find(
+    isTransparentHitbox,
+  );
 
   let frame: Element | undefined;
   let localSize = DEFAULT_LOCAL_SIZE;
@@ -114,19 +132,24 @@ function reframeGlyph(svg: Element): void {
 
   if (hitbox) {
     frame = hitbox.parentElement as Element | undefined;
-    localSize = parseFloat(hitbox.getAttribute("width") ?? String(DEFAULT_LOCAL_SIZE));
+    localSize = parseFloat(
+      hitbox.getAttribute("width") ?? String(DEFAULT_LOCAL_SIZE),
+    );
     // Usually (0,0), but not always — e.g. object-storage-application's hit-area
     // rect sits at (12,12) within its (untransformed) parent.
     offset = {
       x: parseFloat(hitbox.getAttribute("x") ?? "0"),
-      y: parseFloat(hitbox.getAttribute("y") ?? "0")
+      y: parseFloat(hitbox.getAttribute("y") ?? "0"),
     };
     hitbox.remove();
   } else {
     frame = collectInOrder(svg, new Set(["g"])).find(hasDirectDrawableChild);
     if (frame) {
       const t = parseTranslate(frame.getAttribute("transform"));
-      const isRealOffset = !!t && (Math.abs(t.x) > REAL_OFFSET_THRESHOLD || Math.abs(t.y) > REAL_OFFSET_THRESHOLD);
+      const isRealOffset =
+        !!t &&
+        (Math.abs(t.x) > REAL_OFFSET_THRESHOLD ||
+          Math.abs(t.y) > REAL_OFFSET_THRESHOLD);
       if (!isRealOffset) offset = { x: DEFAULT_OFFSET, y: DEFAULT_OFFSET };
     }
   }
@@ -137,7 +160,9 @@ function reframeGlyph(svg: Element): void {
   const scale = GLYPH_VIEWBOX / localSize;
   frame.setAttribute(
     "transform",
-    offset.x || offset.y ? `scale(${scale}) translate(${-offset.x}, ${-offset.y})` : `scale(${scale})`
+    offset.x || offset.y
+      ? `scale(${scale}) translate(${-offset.x}, ${-offset.y})`
+      : `scale(${scale})`,
   );
 }
 
@@ -161,8 +186,12 @@ export function normalizeIcon(xml: string): NormalizedIcon | undefined {
   const bg = shapesInOrder.find(isCanvasCovering);
   if (!bg) return undefined;
 
-  const rawColor = bg.getAttribute("fill") ?? bg.parentElement?.getAttribute("fill") ?? undefined;
-  const rounded = !!bg.getAttribute("rx") && parseFloat(bg.getAttribute("rx")!) > 0;
+  const rawColor =
+    bg.getAttribute("fill") ??
+    bg.parentElement?.getAttribute("fill") ??
+    undefined;
+  const rounded =
+    !!bg.getAttribute("rx") && parseFloat(bg.getAttribute("rx")!) > 0;
 
   const bgWrapper = bg.parentElement as Element | null;
   bg.remove();
@@ -174,17 +203,20 @@ export function normalizeIcon(xml: string): NormalizedIcon | undefined {
 
   reframeGlyph(svg);
 
-  const color = rawColor && !isWhite(rawColor) ? rawColor.toUpperCase() : undefined;
+  const color =
+    rawColor && !isWhite(rawColor) ? rawColor.toUpperCase() : undefined;
 
   // Serialize the whole <svg> (so it emits exactly one xmlns declaration) and strip
   // the outer tag, rather than serializing each child separately — which would force
   // a redundant xmlns onto every top-level child.
   const serialized = new dom.window.XMLSerializer().serializeToString(svg);
-  const fragment = serialized.replace(/^<svg[^>]*>/, "").replace(/<\/svg>$/, "");
+  const fragment = serialized
+    .replace(/^<svg[^>]*>/, "")
+    .replace(/<\/svg>$/, "");
 
   return {
     fragment,
     rounded,
-    ...(color ? { color } : {})
+    ...(color ? { color } : {}),
   };
 }

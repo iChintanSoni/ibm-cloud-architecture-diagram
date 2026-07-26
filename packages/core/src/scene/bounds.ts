@@ -26,7 +26,7 @@ export function boundsOf(scene: Scene, ids: ElementId[]): Rect | undefined {
           x: Math.min(...xs),
           y: Math.min(...ys),
           w: Math.max(...xs) - Math.min(...xs),
-          h: Math.max(...ys) - Math.min(...ys)
+          h: Math.max(...ys) - Math.min(...ys),
         });
       }
     } else {
@@ -44,5 +44,10 @@ export function boundsOf(scene: Scene, ids: ElementId[]): Rect | undefined {
   const minY = Math.min(...rects.map((r) => r.y));
   const maxX = Math.max(...rects.map((r) => r.x + r.w));
   const maxY = Math.max(...rects.map((r) => r.y + r.h));
-  return { x: minX, y: minY, w: Math.max(maxX - minX, 1), h: Math.max(maxY - minY, 1) };
+  return {
+    x: minX,
+    y: minY,
+    w: Math.max(maxX - minX, 1),
+    h: Math.max(maxY - minY, 1),
+  };
 }

@@ -1,0 +1,24 @@
+# Dependencies and build output
+node_modules/
+dist/
+coverage/
+.turbo/
+.vite/
+.cache/
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+apps/desktop/src-tauri/target/
+
+# Generated files
+apps/desktop/src-tauri/gen/
+pnpm-lock.yaml
+apps/desktop/src-tauri/Cargo.lock
+
+# Languages handled by their ecosystem formatters
+**/*.rs
+**/*.toml
+
+# Local developer settings
+.claude/

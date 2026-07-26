@@ -10,7 +10,7 @@ import {
   reparentElement,
   setManualWaypoints,
   updateConformance,
-  updateElement
+  updateElement,
 } from "../commands/commands.js";
 import type { Command } from "../commands/types.js";
 import { SelectionManager } from "../interaction/selection.js";
@@ -50,11 +50,11 @@ import {
   type Style,
   type TextElement,
   type ZoneElement,
-  type ZoneKind
+  type ZoneKind,
 } from "../scene/types.js";
 import {
   createTemplateDocument,
-  type DiagramTemplateId
+  type DiagramTemplateId,
 } from "../templates/templates.js";
 import { generateId } from "../util/id.js";
 import { Emitter } from "../util/emitter.js";
@@ -79,7 +79,10 @@ interface ContainerPlacementOptions extends PlacementOptions {
   style?: Style;
 }
 
-interface FramePlacementOptions extends Omit<PlacementOptions, "label" | "parentId"> {
+interface FramePlacementOptions extends Omit<
+  PlacementOptions,
+  "label" | "parentId"
+> {
   name: string;
   order?: number;
 }
@@ -139,7 +142,9 @@ export interface ElementPropertiesPatch {
 
 export class ExportBlockedError extends Error {
   constructor(readonly diagnostics: Diagnostic[]) {
-    super(`Export blocked by ${diagnostics.filter((item) => item.severity === "error").length} conformance error(s).`);
+    super(
+      `Export blocked by ${diagnostics.filter((item) => item.severity === "error").length} conformance error(s).`,
+    );
     this.name = "ExportBlockedError";
   }
 }
@@ -149,7 +154,9 @@ const DEFAULT_CONTAINER_SIZE = { w: 240, h: 160 };
 function resolveTheme(preference: CanvasSettings["theme"]): ResolvedTheme {
   if (preference === "light") return "light";
   if (preference === "dark") return "dark";
-  const prefersDark = typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: dark)").matches;
+  const prefersDark =
+    typeof window !== "undefined" &&
+    window.matchMedia?.("(prefers-color-scheme: dark)").matches;
   return prefersDark ? "dark" : "light";
 }
 
@@ -175,17 +182,26 @@ export class Editor {
   constructor(options: CreateEditorOptions) {
     this.catalog = options.catalog;
     this.scene = new Scene({
-      canvas: { theme: options.theme ?? "auto", grid: 8, background: "transparent" },
-      catalog: { id: options.catalog.id, version: options.catalog.version }
+      canvas: {
+        theme: options.theme ?? "auto",
+        grid: 8,
+        background: "transparent",
+      },
+      catalog: { id: options.catalog.id, version: options.catalog.version },
     });
     this.commands = new CommandBus(this.scene);
     this.selection = new SelectionManager();
     this.linter = new Linter({ catalog: this.catalog });
-    this.renderer = new SvgRenderer(options.container, this.catalog, resolveTheme(this.scene.canvas.theme));
+    this.renderer = new SvgRenderer(
+      options.container,
+      this.catalog,
+      resolveTheme(this.scene.canvas.theme),
+    );
     this.viewport = new ViewportController();
 
     this.scene.on((event) => {
-      if (this.focusedId && !this.scene.has(this.focusedId)) this.focusedId = undefined;
+      if (this.focusedId && !this.scene.has(this.focusedId))
+        this.focusedId = undefined;
       // A coalesced "update"-reason change (Scene._transaction) never added/removed/reparented/
       // reordered anything, so a scoped repaint of just the affected ids is safe and much cheaper
       // than a full render() at diagram scale (C13, docs/10-canvas-parity-plan.md). Every command
@@ -206,7 +222,9 @@ export class Editor {
     this.renderer.applyViewport(this.viewport.get());
 
     if (typeof ResizeObserver !== "undefined") {
-      this.resizeObserver = new ResizeObserver(() => this.renderer.applyViewport(this.viewport.get()));
+      this.resizeObserver = new ResizeObserver(() =>
+        this.renderer.applyViewport(this.viewport.get()),
+      );
       this.resizeObserver.observe(options.container);
     }
   }
@@ -230,8 +248,8 @@ export class Editor {
     this.loadIcad(
       createTemplateDocument(templateId, {
         catalog: { id: this.catalog.id, version: this.catalog.version },
-        theme: this.scene.canvas.theme
-      })
+        theme: this.scene.canvas.theme,
+      }),
     );
   }
 
@@ -253,7 +271,7 @@ export class Editor {
       w: 48,
       h: 48,
       ...(opts.parentId ? { parentId: opts.parentId } : {}),
-      ...(opts.label ? { label: { text: opts.label } } : {})
+      ...(opts.label ? { label: { text: opts.label } } : {}),
     };
     this.commands.dispatch(addElement(element));
     return id;
@@ -272,7 +290,7 @@ export class Editor {
       ...(opts.catalogRef ? { catalogRef: opts.catalogRef } : {}),
       ...(opts.style ? { style: opts.style } : {}),
       ...(opts.parentId ? { parentId: opts.parentId } : {}),
-      ...(opts.label ? { label: { text: opts.label } } : {})
+      ...(opts.label ? { label: { text: opts.label } } : {}),
     };
     this.commands.dispatch(addElement(element));
     return id;
@@ -291,13 +309,15 @@ export class Editor {
       ...(opts.catalogRef ? { catalogRef: opts.catalogRef } : {}),
       ...(opts.style ? { style: opts.style } : {}),
       ...(opts.parentId ? { parentId: opts.parentId } : {}),
-      ...(opts.label ? { label: { text: opts.label } } : {})
+      ...(opts.label ? { label: { text: opts.label } } : {}),
     };
     this.commands.dispatch(addElement(element));
     return id;
   }
 
-  addZone(opts: ContainerPlacementOptions & { zoneKind?: ZoneKind }): ElementId {
+  addZone(
+    opts: ContainerPlacementOptions & { zoneKind?: ZoneKind },
+  ): ElementId {
     const id = opts.id ?? generateId("zone");
     const element: ZoneElement = {
       id,
@@ -311,7 +331,7 @@ export class Editor {
       ...(opts.catalogRef ? { catalogRef: opts.catalogRef } : {}),
       ...(opts.style ? { style: opts.style } : {}),
       ...(opts.parentId ? { parentId: opts.parentId } : {}),
-      ...(opts.label ? { label: { text: opts.label } } : {})
+      ...(opts.label ? { label: { text: opts.label } } : {}),
     };
     this.commands.dispatch(addElement(element));
     return id;
@@ -329,7 +349,7 @@ export class Editor {
       h: opts.h ?? 48,
       ...(opts.catalogRef ? { catalogRef: opts.catalogRef } : {}),
       ...(opts.parentId ? { parentId: opts.parentId } : {}),
-      ...(opts.label ? { label: { text: opts.label } } : {})
+      ...(opts.label ? { label: { text: opts.label } } : {}),
     };
     this.commands.dispatch(addElement(element));
     return id;
@@ -346,7 +366,7 @@ export class Editor {
       y: opts.at.y,
       w: opts.w ?? 120,
       h: opts.h ?? 20,
-      ...(opts.parentId ? { parentId: opts.parentId } : {})
+      ...(opts.parentId ? { parentId: opts.parentId } : {}),
     };
     this.commands.dispatch(addElement(element));
     return id;
@@ -367,7 +387,7 @@ export class Editor {
       x: opts.at.x,
       y: opts.at.y,
       w: opts.w ?? 800,
-      h: opts.h ?? 500
+      h: opts.h ?? 500,
     };
     this.commands.dispatch(addElement(element));
     return id;
@@ -390,9 +410,12 @@ export class Editor {
     const commands = frameIds.flatMap((id, index) => {
       const current = this.scene.get(id) as FrameElement;
       const order = index + 1;
-      return current.order === order ? [] : [updateElement(this.scene, id, { order })];
+      return current.order === order
+        ? []
+        : [updateElement(this.scene, id, { order })];
     });
-    if (commands.length > 0) this.commands.dispatch(batch("reorder frames", commands));
+    if (commands.length > 0)
+      this.commands.dispatch(batch("reorder frames", commands));
   }
 
   connect(
@@ -407,7 +430,7 @@ export class Editor {
       annotation?: ConnectorAnnotation;
       label?: string;
       id?: ElementId;
-    } = {}
+    } = {},
   ): ElementId {
     const id = opts.id ?? generateId("conn");
     const base: ConnectorElement = {
@@ -427,15 +450,21 @@ export class Editor {
       ...(opts.cardinality ? { cardinality: opts.cardinality } : {}),
       ...(opts.sequence ? { sequence: opts.sequence } : {}),
       ...(opts.annotation ? { annotation: opts.annotation } : {}),
-      ...(opts.label ? { label: { text: opts.label } } : {})
+      ...(opts.label ? { label: { text: opts.label } } : {}),
     };
-    const element: ConnectorElement = { ...base, waypoints: routeConnectorInScene(this.scene, base) };
+    const element: ConnectorElement = {
+      ...base,
+      waypoints: routeConnectorInScene(this.scene, base),
+    };
     this.commands.dispatch(addElement(element));
     return id;
   }
 
   /** Overrides a connector's route with explicit waypoints (D13's manual escape hatch). */
-  setConnectorWaypoints(id: ElementId, waypoints: Array<{ x: number; y: number }>): void {
+  setConnectorWaypoints(
+    id: ElementId,
+    waypoints: Array<{ x: number; y: number }>,
+  ): void {
     this.commands.dispatch(setManualWaypoints(this.scene, id, waypoints));
   }
 
@@ -458,16 +487,21 @@ export class Editor {
     const nextY = patch.y ?? current.y;
     const dx = nextX - current.x;
     const dy = nextY - current.y;
-    if (dx !== 0 || dy !== 0) commands.push(moveElements(this.scene, [id], dx, dy));
+    if (dx !== 0 || dy !== 0)
+      commands.push(moveElements(this.scene, [id], dx, dy));
 
     const { x: _x, y: _y, ...fieldPatch } = patch;
     if (Object.keys(fieldPatch).length > 0) {
-      commands.push(updateElement(this.scene, id, fieldPatch as Partial<SceneElement>));
+      commands.push(
+        updateElement(this.scene, id, fieldPatch as Partial<SceneElement>),
+      );
     }
 
     if (commands.length === 0) return;
     this.commands.dispatch(
-      commands.length === 1 ? commands[0]! : batch("update element properties", commands)
+      commands.length === 1
+        ? commands[0]!
+        : batch("update element properties", commands),
     );
   }
 
@@ -477,7 +511,12 @@ export class Editor {
     if (parentId !== undefined) {
       const parent = this.scene.get(parentId);
       if (!parent) throw new Error(`Cannot use unknown parent "${parentId}"`);
-      if (parent.type !== "box" && parent.type !== "group" && parent.type !== "zone" && parent.type !== "frame") {
+      if (
+        parent.type !== "box" &&
+        parent.type !== "group" &&
+        parent.type !== "zone" &&
+        parent.type !== "frame"
+      ) {
         throw new Error(`Element "${parentId}" cannot contain other elements`);
       }
     }
@@ -497,7 +536,8 @@ export class Editor {
     return {
       diagnostics,
       counts,
-      blocked: this.scene.conformance.exportGate === "block" && counts.error > 0
+      blocked:
+        this.scene.conformance.exportGate === "block" && counts.error > 0,
     };
   }
 
@@ -509,11 +549,16 @@ export class Editor {
 
   applyQuickFixes(ruleId?: string): number {
     const diagnostics = this.lint().filter(
-      (diagnostic) => diagnostic.quickFix && (ruleId === undefined || diagnostic.ruleId === ruleId)
+      (diagnostic) =>
+        diagnostic.quickFix &&
+        (ruleId === undefined || diagnostic.ruleId === ruleId),
     );
     if (diagnostics.length === 0) return 0;
     this.commands.dispatch(
-      applyQuickFixes(diagnostics, ruleId ? `fix all ${ruleId} issues` : "fix all validation issues")
+      applyQuickFixes(
+        diagnostics,
+        ruleId ? `fix all ${ruleId} issues` : "fix all validation issues",
+      ),
     );
     return diagnostics.length;
   }
@@ -525,8 +570,11 @@ export class Editor {
   setRuleSeverity(ruleId: string, severity?: ConformanceSeverity): void {
     this.commands.dispatch(
       updateConformance(this.scene, {
-        ruleSeverity: { ruleId, ...(severity !== undefined ? { severity } : {}) }
-      })
+        ruleSeverity: {
+          ruleId,
+          ...(severity !== undefined ? { severity } : {}),
+        },
+      }),
     );
   }
 
@@ -535,12 +583,14 @@ export class Editor {
     if (summary.blocked) throw new ExportBlockedError(summary.diagnostics);
     if (opts.format === "svg") {
       return exportSvg(this.scene, this.renderer, {
-        ...(opts.embedSource !== undefined ? { embedSource: opts.embedSource } : {})
+        ...(opts.embedSource !== undefined
+          ? { embedSource: opts.embedSource }
+          : {}),
       });
     }
     return exportPng(this.scene, this.renderer, {
       ...(opts.scale !== undefined ? { scale: opts.scale } : {}),
-      ...(opts.background !== undefined ? { background: opts.background } : {})
+      ...(opts.background !== undefined ? { background: opts.background } : {}),
     });
   }
 
@@ -562,7 +612,10 @@ export class Editor {
    * (docs/06-editor-ux.md#find-on-canvas-f) and frame presentation
    * (docs/06-editor-ux.md#frames-sections--presentation).
    */
-  focusOnElements(ids: ElementId[], opts?: { padding?: number; maxScale?: number }): void {
+  focusOnElements(
+    ids: ElementId[],
+    opts?: { padding?: number; maxScale?: number },
+  ): void {
     const rect = this.boundsOf(ids);
     if (!rect) return;
     this.viewport.focusOn(rect, this.renderer.containerSize(), opts);
@@ -572,7 +625,7 @@ export class Editor {
   fitToContent(opts?: { padding?: number; maxScale?: number }): void {
     this.focusOnElements(
       this.scene.all().map((el) => el.id),
-      opts
+      opts,
     );
   }
 
@@ -590,7 +643,10 @@ export class Editor {
     this.viewport.reset();
   }
 
-  private sceneCenter(size: { w: number; h: number }): { x: number; y: number } {
+  private sceneCenter(size: { w: number; h: number }): {
+    x: number;
+    y: number;
+  } {
     const { x, y, scale } = this.viewport.get();
     return { x: x + size.w / (2 * scale), y: y + size.h / (2 * scale) };
   }
@@ -635,8 +691,10 @@ export class Editor {
     const order = this.tabOrder();
     if (order.length === 0) return;
     const currentIndex = this.focusedId ? order.indexOf(this.focusedId) : -1;
-    const base = currentIndex === -1 ? (direction === 1 ? -1 : 0) : currentIndex;
-    const nextIndex = (((base + direction) % order.length) + order.length) % order.length;
+    const base =
+      currentIndex === -1 ? (direction === 1 ? -1 : 0) : currentIndex;
+    const nextIndex =
+      (((base + direction) % order.length) + order.length) % order.length;
     const nextId = order[nextIndex]!;
     this.focusElement(nextId);
     this.ensureVisible(nextId);
@@ -679,7 +737,8 @@ export class Editor {
     const existing = ids.filter((id) => this.scene.has(id));
     const targets = new Set(existing);
     for (const id of existing) {
-      for (const descendant of this.scene.descendantsOf(id)) targets.add(descendant.id);
+      for (const descendant of this.scene.descendantsOf(id))
+        targets.add(descendant.id);
     }
     const previewIds = [...targets];
     let dx = 0;
@@ -699,7 +758,7 @@ export class Editor {
       },
       abort: () => {
         this.renderer.previewTransform(previewIds, 0, 0);
-      }
+      },
     };
   }
 
@@ -726,14 +785,17 @@ export class Editor {
         if (
           original &&
           latest &&
-          (latest.x !== original.x || latest.y !== original.y || latest.w !== original.w || latest.h !== original.h)
+          (latest.x !== original.x ||
+            latest.y !== original.y ||
+            latest.w !== original.w ||
+            latest.h !== original.h)
         ) {
           this.commands.dispatch(updateElement(this.scene, id, latest));
         }
       },
       abort: () => {
         this.renderer.previewResize(id, null);
-      }
+      },
     };
   }
 
@@ -742,7 +804,9 @@ export class Editor {
     const existing = ids.filter((id) => this.scene.has(id));
     if (existing.length === 0) return;
     const commands = existing.map((id) => removeElement(this.scene, id));
-    this.commands.dispatch(commands.length === 1 ? commands[0]! : batch("delete elements", commands));
+    this.commands.dispatch(
+      commands.length === 1 ? commands[0]! : batch("delete elements", commands),
+    );
     this.selection.clear();
   }
 
@@ -754,7 +818,10 @@ export class Editor {
    * group lands at canvas root. Selects the new group. No-ops (returns
    * undefined) for fewer than two known elements.
    */
-  groupElements(ids: ElementId[], opts: { padding?: number } = {}): ElementId | undefined {
+  groupElements(
+    ids: ElementId[],
+    opts: { padding?: number } = {},
+  ): ElementId | undefined {
     const existing = [...new Set(ids)].filter((id) => this.scene.has(id));
     if (existing.length < 2) return undefined;
     const bbox = this.boundsOf(existing);
@@ -773,12 +840,12 @@ export class Editor {
       y: bbox.y - padding,
       w: bbox.w + padding * 2,
       h: bbox.h + padding * 2,
-      ...(parentId ? { parentId } : {})
+      ...(parentId ? { parentId } : {}),
     };
 
     const commands: Command[] = [
       addElement(group),
-      ...existing.map((id) => reparentElement(this.scene, id, groupId))
+      ...existing.map((id) => reparentElement(this.scene, id, groupId)),
     ];
     this.commands.dispatch(batch("group elements", commands));
     this.selection.set([groupId]);
@@ -815,7 +882,7 @@ export class Editor {
       undo(s) {
         s._put(container, "add");
         for (const original of originalChildren) s._put(original, "update");
-      }
+      },
     };
     this.commands.dispatch(command);
     this.selection.set(children.map((child) => child.id));
@@ -838,13 +905,24 @@ export class Editor {
       sequence?: string;
       annotation?: ConnectorAnnotation;
       label?: string;
-    } = {}
+    } = {},
   ): ElementId | undefined {
     const from = this.scene.get(fromId);
     const to = this.scene.get(toId);
-    if (!from || !to || from.type === "connector" || to.type === "connector" || fromId === toId) return undefined;
+    if (
+      !from ||
+      !to ||
+      from.type === "connector" ||
+      to.type === "connector" ||
+      fromId === toId
+    )
+      return undefined;
     const ports = pickPorts(from, to);
-    const id = this.connect({ elementId: fromId, port: ports.from }, { elementId: toId, port: ports.to }, opts);
+    const id = this.connect(
+      { elementId: fromId, port: ports.from },
+      { elementId: toId, port: ports.to },
+      opts,
+    );
     this.selection.set([id]);
     return id;
   }
@@ -865,7 +943,10 @@ export class Editor {
     const to = this.scene.get(toId);
     if (!from || !to) return;
     const ports = pickPorts(from, to);
-    this.renderer.setConnectorDraft(portPoint(from, ports.from), portPoint(to, ports.to));
+    this.renderer.setConnectorDraft(
+      portPoint(from, ports.from),
+      portPoint(to, ports.to),
+    );
   }
 
   /** Clears any connector rubber-band preview. */

@@ -33,7 +33,7 @@ export function createServerState(catalog: Catalog): ServerState {
     hasExplicitDocument: false,
     lastPath: undefined,
     dirty: false,
-    lastDiagnostics: new Map()
+    lastDiagnostics: new Map(),
   };
   editor.on(() => {
     state.dirty = true;
@@ -43,14 +43,19 @@ export function createServerState(catalog: Catalog): ServerState {
 
 export function requireOpenDocument(state: ServerState): void {
   if (!state.hasExplicitDocument) {
-    throw new ToolError("No document open — call doc_create or doc_open first.");
+    throw new ToolError(
+      "No document open — call doc_create or doc_open first.",
+    );
   }
 }
 
-export function guardReplace(state: ServerState, force: boolean | undefined): void {
+export function guardReplace(
+  state: ServerState,
+  force: boolean | undefined,
+): void {
   if (state.hasExplicitDocument && state.dirty && !force) {
     throw new ToolError(
-      "The current document has unsaved changes — call doc_save first, or pass force: true to discard them."
+      "The current document has unsaved changes — call doc_save first, or pass force: true to discard them.",
     );
   }
 }
@@ -63,15 +68,22 @@ function toWireDiagnostic(diagnostic: Diagnostic) {
     severity: diagnostic.severity,
     category: diagnostic.category,
     message: diagnostic.message,
-    ...(diagnostic.elementId !== undefined ? { elementId: diagnostic.elementId } : {}),
-    ...(diagnostic.quickFixLabel !== undefined ? { quickFixLabel: diagnostic.quickFixLabel } : {}),
-    hasQuickFix: diagnostic.quickFix !== undefined
+    ...(diagnostic.elementId !== undefined
+      ? { elementId: diagnostic.elementId }
+      : {}),
+    ...(diagnostic.quickFixLabel !== undefined
+      ? { quickFixLabel: diagnostic.quickFixLabel }
+      : {}),
+    hasQuickFix: diagnostic.quickFix !== undefined,
   };
 }
 
 /** Refreshes `lastDiagnostics` from a fresh lint pass and returns the wire-safe projection —
  * used by every tool that surfaces diagnostics to an agent. */
-export function recordDiagnostics(state: ServerState, diagnostics: Diagnostic[]) {
+export function recordDiagnostics(
+  state: ServerState,
+  diagnostics: Diagnostic[],
+) {
   state.lastDiagnostics = new Map(diagnostics.map((d) => [d.id, d]));
   return diagnostics.map(toWireDiagnostic);
 }

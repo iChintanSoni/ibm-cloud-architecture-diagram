@@ -1,8 +1,5 @@
 import { Modal, RadioButton, RadioButtonGroup } from "@carbon/react";
-import {
-  DIAGRAM_TEMPLATES,
-  type DiagramTemplateId
-} from "@icad/core";
+import { DIAGRAM_TEMPLATES, type DiagramTemplateId } from "@icad/core";
 import { useState } from "react";
 
 export interface NewDiagramDialogProps {
@@ -16,7 +13,7 @@ export function NewDiagramDialog({
   open,
   hasExistingContent,
   onClose,
-  onCreate
+  onCreate,
 }: NewDiagramDialogProps) {
   const [selection, setSelection] = useState<DiagramTemplateId>("high-level");
 
@@ -33,11 +30,13 @@ export function NewDiagramDialog({
     >
       {hasExistingContent ? (
         <p className="icad-new-diagram__warning">
-          Creating this diagram replaces the current document. Save it first if you want to keep it.
+          Creating this diagram replaces the current document. Save it first if
+          you want to keep it.
         </p>
       ) : (
         <p className="icad-new-diagram__intro">
-          Start with conventions and structure suited to the level of detail you need.
+          Start with conventions and structure suited to the level of detail you
+          need.
         </p>
       )}
       <RadioButtonGroup

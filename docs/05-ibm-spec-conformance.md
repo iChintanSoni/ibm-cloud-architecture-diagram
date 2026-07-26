@@ -1,6 +1,6 @@
 # IBM Spec Conformance
 
-The reason this tool exists instead of generic draw.io: it *understands* the IBM Cloud architecture
+The reason this tool exists instead of generic draw.io: it _understands_ the IBM Cloud architecture
 diagram spec and helps users stay on it. This document defines the semantics we model, the
 conventions we enforce, and how the linter works.
 
@@ -22,14 +22,14 @@ inventory metadata; its raw SVG presentation is not itself the rendering specifi
 
 Per IBM's guidance, shapes carry meaning, not just geometry:
 
-| Element | IBM semantic | Visual convention |
-|---|---|---|
-| **Box** | `deployedOn` — a location (logical/virtual/physical) that platforms, infra, network, services are deployed **on** | **Solid** border container, colored left sidebar accent |
-| **Group** | `deployedTo` — grouping of services/apps deployed **to** a box | **Dashed** border container, no sidebar |
-| **Node** | Standalone component/device | **Square** container — a solid category-color 48×48 tile with a 24×24 white glyph, no outline ([D25](00-decision-log.md#d25--icons-render-as-ibm-authors-them-solid-tile-white-glyph--locked)) |
-| **Actor** | Role/user | **Rounded** shape — a solid black circle with a 24×24 white glyph, no outline |
-| **Boundary** (`zone` internally) | Geographic/organizational boundary — availability zone, on-premises | **Fine-dotted** border, no sidebar, muted gray |
-| **Connector** | Relationship / flow | IBM connector nomenclature (below) |
+| Element                          | IBM semantic                                                                                                      | Visual convention                                                                                                                                                                              |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Box**                          | `deployedOn` — a location (logical/virtual/physical) that platforms, infra, network, services are deployed **on** | **Solid** border container, colored left sidebar accent                                                                                                                                        |
+| **Group**                        | `deployedTo` — grouping of services/apps deployed **to** a box                                                    | **Dashed** border container, no sidebar                                                                                                                                                        |
+| **Node**                         | Standalone component/device                                                                                       | **Square** container — a solid category-color 48×48 tile with a 24×24 white glyph, no outline ([D25](00-decision-log.md#d25--icons-render-as-ibm-authors-them-solid-tile-white-glyph--locked)) |
+| **Actor**                        | Role/user                                                                                                         | **Rounded** shape — a solid black circle with a 24×24 white glyph, no outline                                                                                                                  |
+| **Boundary** (`zone` internally) | Geographic/organizational boundary — availability zone, on-premises                                               | **Fine-dotted** border, no sidebar, muted gray                                                                                                                                                 |
+| **Connector**                    | Relationship / flow                                                                                               | IBM connector nomenclature (below)                                                                                                                                                             |
 
 **Region, VPC, and Subnet are Box** (`deployedOn`), not Boundary — resolved by
 [D24](00-decision-log.md#d24--regionvpcsubnet-are-box-only-availability-zoneon-prem-are-boundary--locked)
@@ -41,41 +41,41 @@ on-premises) renders as the dotted Boundary primitive. This is direct-evidence c
 substitute for the [D17](00-decision-log.md#d17--official--ibm-internal-tool--locked) IBM Design
 sign-off gate.
 
-Example the IBM docs give: *a virtual server instance is `deployedOn` a subnet and `deployedTo` a
-security group.* ICAD models both meanings, but the published guidance does not require every
+Example the IBM docs give: _a virtual server instance is `deployedOn` a subnet and `deployedTo` a
+security group._ ICAD models both meanings, but the published guidance does not require every
 Group to be a child of a Box. Whether `deployedTo` can be multi-valued remains an IBM Design
 follow-up before any `.icad` schema change. The same worked example (`images/DeployedTo.png`)
 confirms Security Group itself renders as a dashed **Group**, not a dotted Boundary — see D24.
 
 ## Color usage
 
-Color carries meaning, and IBM's guidance is specific about *where* each weight of the palette may
+Color carries meaning, and IBM's guidance is specific about _where_ each weight of the palette may
 appear:
 
-| Role | Palette weight | Used for |
-|---|---|---|
-| **Primary** | 50/60 (full saturation) | Outlines, side-bar accents, color blocks, connectors |
-| **Secondary** | 10 (light tint) or white | Fills only |
-| **Alert** | Red/Yellow/Green alert tokens | Badges only |
+| Role          | Palette weight                | Used for                                             |
+| ------------- | ----------------------------- | ---------------------------------------------------- |
+| **Primary**   | 50/60 (full saturation)       | Outlines, side-bar accents, color blocks, connectors |
+| **Secondary** | 10 (light tint) or white      | Fills only                                           |
+| **Alert**     | Red/Yellow/Green alert tokens | Badges only                                          |
 
 Never rely on color alone to convey meaning — labels and icons must carry it too.
 
 The nine primary colors map 1:1 to functional category and match the accent color already baked
 into each catalog icon ([Icon Catalog](04-icon-catalog.md)):
 
-| Category | Primary (outline/connector) | Secondary (10-tint fill) |
-|---|---|---|
-| Security | Red 50 `#fa4d56` | Red 10 `#fff1f1` |
-| DevOps | Magenta 50 `#ee5396` | Magenta 10 `#fff0f7` |
-| Applications | Purple 50 `#a56eff` | Purple 10 `#f6f2ff` |
-| Data & Storage | Blue 60 `#0f62fe` | Blue 10 `#edf5ff` |
-| Network | Cyan 50 `#1192e8` | Cyan 10 `#e5f6ff` |
-| Observability | Teal 50 `#009d9a` | Teal 10 `#d9fbfb` |
-| Compute | Green 60 `#198038` | Green 10 `#defbe6` |
-| Backend / generic location | Cool Gray 50 `#878d96` | Cool Gray 10 `#f2f4f8` |
-| User / Actors | Black `#000000` | — |
+| Category                   | Primary (outline/connector) | Secondary (10-tint fill) |
+| -------------------------- | --------------------------- | ------------------------ |
+| Security                   | Red 50 `#fa4d56`            | Red 10 `#fff1f1`         |
+| DevOps                     | Magenta 50 `#ee5396`        | Magenta 10 `#fff0f7`     |
+| Applications               | Purple 50 `#a56eff`         | Purple 10 `#f6f2ff`      |
+| Data & Storage             | Blue 60 `#0f62fe`           | Blue 10 `#edf5ff`        |
+| Network                    | Cyan 50 `#1192e8`           | Cyan 10 `#e5f6ff`        |
+| Observability              | Teal 50 `#009d9a`           | Teal 10 `#d9fbfb`        |
+| Compute                    | Green 60 `#198038`          | Green 10 `#defbe6`       |
+| Backend / generic location | Cool Gray 50 `#878d96`      | Cool Gray 10 `#f2f4f8`   |
+| User / Actors              | Black `#000000`             | —                        |
 
-Source: *IBM_IT Architecture diagrams kit* v1.1, "Color" slide.
+Source: _IBM_IT Architecture diagrams kit_ v1.1, "Color" slide.
 
 ## Layout convention
 
@@ -96,13 +96,13 @@ not just a line style:
 Physical/protocol connections and messages between elements. Each has a bidirectional and
 unidirectional variant (arrowhead on one end vs. both):
 
-| Type | Line style | Meaning |
-|---|---|---|
-| Logical Connection / Link | even dash | Logical message exchanged between elements |
-| Connection | solid | Network connection |
-| Physical Connection | double line, hollow square end-caps | Physical/cabled connection |
-| Tunneling Connection (schema: `tunneling-connection`) | solid, on a `#FFD7D9` highlighted band | Traffic through a tunnel/encapsulation — what IBM's own `Connectors.drawio` actually labels "Traffic Through Tunnel/Encapsulation"; "Tunneling Connection" itself is a caption in that stencil with no edge behind it, not a distinct line style |
-| Traffic Through Double Tunnel | solid, on a `#FFD7D9` + Carbon Yellow 30 (`#f1c21b`) double band | Traffic through nested tunnels |
+| Type                                                  | Line style                                                       | Meaning                                                                                                                                                                                                                                          |
+| ----------------------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Logical Connection / Link                             | even dash                                                        | Logical message exchanged between elements                                                                                                                                                                                                       |
+| Connection                                            | solid                                                            | Network connection                                                                                                                                                                                                                               |
+| Physical Connection                                   | double line, hollow square end-caps                              | Physical/cabled connection                                                                                                                                                                                                                       |
+| Tunneling Connection (schema: `tunneling-connection`) | solid, on a `#FFD7D9` highlighted band                           | Traffic through a tunnel/encapsulation — what IBM's own `Connectors.drawio` actually labels "Traffic Through Tunnel/Encapsulation"; "Tunneling Connection" itself is a caption in that stencil with no edge behind it, not a distinct line style |
+| Traffic Through Double Tunnel                         | solid, on a `#FFD7D9` + Carbon Yellow 30 (`#f1c21b`) double band | Traffic through nested tunnels                                                                                                                                                                                                                   |
 
 Connection endpoints follow the published IBM reference: bidirectional connections use dots at
 both ends; unidirectional connections use a source dot and destination arrow. Stroke width is 2px
@@ -135,18 +135,18 @@ Logical relationships between elements — not network traffic. IBM's own arrowh
 (`Connectors.drawio`: `endArrow=open`) is an open chevron with no closing base line, distinct from
 implementation/extends's closed hollow triangle (`endArrow=block;endFill=0`):
 
-| Type | Line style | Meaning |
-|---|---|---|
-| Dependency | dashed, open-chevron arrow | Standard — used ~99% of the time, with a description label |
-| Association | solid, open-chevron arrow | Standard |
-| Aggregation | open-diamond + open-chevron arrow | UML — "has-a," part can outlive the whole |
-| Composition | filled-diamond + open-chevron arrow | UML — "owns-a," part's lifetime bound to the whole |
-| Implementation | dashed + closed hollow triangle | UML — realizes an interface |
-| Extends | solid + closed hollow triangle | UML — inheritance |
+| Type           | Line style                          | Meaning                                                    |
+| -------------- | ----------------------------------- | ---------------------------------------------------------- |
+| Dependency     | dashed, open-chevron arrow          | Standard — used ~99% of the time, with a description label |
+| Association    | solid, open-chevron arrow           | Standard                                                   |
+| Aggregation    | open-diamond + open-chevron arrow   | UML — "has-a," part can outlive the whole                  |
+| Composition    | filled-diamond + open-chevron arrow | UML — "owns-a," part's lifetime bound to the whole         |
+| Implementation | dashed + closed hollow triangle     | UML — realizes an interface                                |
+| Extends        | solid + closed hollow triangle      | UML — inheritance                                          |
 
 Association/Aggregation/Composition edges may carry `0..N`-style cardinality labels at each end.
 
-Source: *IBM_IT Architecture diagrams kit* v1.1, "Connectors" slide, cross-checked against
+Source: _IBM_IT Architecture diagrams kit_ v1.1, "Connectors" slide, cross-checked against
 `Connectors.drawio`'s own style strings where the two disagreed.
 
 ## Categories & tiers
@@ -192,8 +192,8 @@ human explanation, and — where possible — an automatic **quick-fix** command
 
 Quick-fixes are ordinary [commands](02-architecture.md#command-bus--history) (`ApplyQuickFix`
 wraps them), so they're undoable and also callable by the [agent API](08-agent-integration.md).
-Examples: *convert Box→Group*, *bind connector to nearest port*, *add missing label*, *snap icon to
-spec size*, *re-route orthogonally*.
+Examples: _convert Box→Group_, _bind connector to nearest port_, _add missing label_, _snap icon to
+spec size_, _re-route orthogonally_.
 
 ### Surfacing
 

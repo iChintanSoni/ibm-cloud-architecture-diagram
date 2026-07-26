@@ -6,7 +6,7 @@ import {
   containerKindLabel,
   confirmedContainerPresets,
   type PrimitiveKind,
-  type ContainerPreset
+  type ContainerPreset,
 } from "./presets.js";
 
 export type LibraryPlacement =
@@ -22,18 +22,30 @@ export interface LibraryPanelProps {
   onChoose: (placement: LibraryPlacement, immediate?: boolean) => void;
 }
 
-function placementKey(placement: LibraryPlacement | undefined): string | undefined {
+function placementKey(
+  placement: LibraryPlacement | undefined,
+): string | undefined {
   if (!placement) return undefined;
   if (placement.type === "icon") return `icon:${placement.icon.id}`;
   if (placement.type === "preset") return `preset:${placement.preset.id}`;
   return `primitive:${placement.kind}`;
 }
 
-export function LibraryPanel({ catalog, activePlacement, onChoose }: LibraryPanelProps) {
+export function LibraryPanel({
+  catalog,
+  activePlacement,
+  onChoose,
+}: LibraryPanelProps) {
   const [query, setQuery] = useState("");
-  const groups = useMemo(() => groupLibraryIcons(catalog, query), [catalog, query]);
+  const groups = useMemo(
+    () => groupLibraryIcons(catalog, query),
+    [catalog, query],
+  );
   const activeKey = placementKey(activePlacement);
-  const resultCount = groups.reduce((total, group) => total + group.icons.length, 0);
+  const resultCount = groups.reduce(
+    (total, group) => total + group.icons.length,
+    0,
+  );
 
   return (
     <aside className="icad-library" aria-label="Diagram library">
@@ -65,7 +77,9 @@ export function LibraryPanel({ catalog, activePlacement, onChoose }: LibraryPane
                     aria-pressed={activeKey === key}
                     onClick={(event) => onChoose(item, event.detail === 0)}
                   >
-                    <span className={`icad-library__primitive icad-library__primitive--${kind}`} />
+                    <span
+                      className={`icad-library__primitive icad-library__primitive--${kind}`}
+                    />
                     <span>{containerKindLabel(kind)}</span>
                   </button>
                 );
@@ -97,9 +111,14 @@ export function LibraryPanel({ catalog, activePlacement, onChoose }: LibraryPane
       )}
 
       <div className="icad-library__results" aria-live="polite">
-        {query && <p className="icad-library__count">{resultCount} matching icons</p>}
+        {query && (
+          <p className="icad-library__count">{resultCount} matching icons</p>
+        )}
         {groups.map(({ category, icons }) => (
-          <details key={category.id} open={Boolean(query) || category.id === "compute"}>
+          <details
+            key={category.id}
+            open={Boolean(query) || category.id === "compute"}
+          >
             <summary>
               {category.name} <span>{icons.length}</span>
             </summary>
@@ -125,12 +144,31 @@ export function LibraryPanel({ catalog, activePlacement, onChoose }: LibraryPane
                         units of any glyph that actually uses them. */}
                     <svg viewBox="0 0 48 48" aria-hidden="true">
                       {icon.container === "rounded" ? (
-                        <circle cx={24} cy={24} r={24} fill={icon.color ?? "#000000"} />
+                        <circle
+                          cx={24}
+                          cy={24}
+                          r={24}
+                          fill={icon.color ?? "#000000"}
+                        />
                       ) : (
-                        <rect width={48} height={48} fill={icon.color ?? "#8d8d8d"} />
+                        <rect
+                          width={48}
+                          height={48}
+                          fill={icon.color ?? "#8d8d8d"}
+                        />
                       )}
-                      <svg x={12} y={12} width={24} height={24} viewBox="0 0 24 24">
-                        <g dangerouslySetInnerHTML={{ __html: catalog.svg(icon.id) ?? "" }} />
+                      <svg
+                        x={12}
+                        y={12}
+                        width={24}
+                        height={24}
+                        viewBox="0 0 24 24"
+                      >
+                        <g
+                          dangerouslySetInnerHTML={{
+                            __html: catalog.svg(icon.id) ?? "",
+                          }}
+                        />
                       </svg>
                     </svg>
                     <span>{icon.name}</span>
@@ -140,7 +178,9 @@ export function LibraryPanel({ catalog, activePlacement, onChoose }: LibraryPane
             </div>
           </details>
         ))}
-        {query && resultCount === 0 && <p className="icad-library__empty">No icons match “{query}”.</p>}
+        {query && resultCount === 0 && (
+          <p className="icad-library__empty">No icons match “{query}”.</p>
+        )}
       </div>
     </aside>
   );

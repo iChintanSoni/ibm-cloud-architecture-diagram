@@ -13,8 +13,17 @@ function library(entries: Array<{ title?: string; image?: string }>): string {
   const jsonEntries = entries.map((e) => {
     const image = e.image ?? FLAT_GLYPH_B64;
     const xml = `<mxGraphModel><root><mxCell id="0"/><mxCell id="1" style="shape=image;image=data:image/svg+xml,${image};" vertex="1" parent="1"/></root></mxGraphModel>`;
-    const escaped = xml.replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-    return { xml: escaped, w: 220, h: 140, aspect: "fixed", ...(e.title ? { title: e.title } : {}) };
+    const escaped = xml
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+    return {
+      xml: escaped,
+      w: 220,
+      h: 140,
+      aspect: "fixed",
+      ...(e.title ? { title: e.title } : {}),
+    };
   });
   return `<mxlibrary title="test">${JSON.stringify(jsonEntries)}</mxlibrary>`;
 }
@@ -54,8 +63,8 @@ describe("extractDrawioLibraryIcons", () => {
     const file = writeFixture(
       library([
         { title: "Network ACL Rules" },
-        { title: "Network ACL Rules", image: FLAT_GLYPH_B64 }
-      ])
+        { title: "Network ACL Rules", image: FLAT_GLYPH_B64 },
+      ]),
     );
     const icons = extractDrawioLibraryIcons(file);
     expect(icons).toHaveLength(1);

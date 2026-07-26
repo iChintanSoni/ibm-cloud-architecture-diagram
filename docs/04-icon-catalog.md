@@ -87,19 +87,19 @@ Re-running the pipeline against a newer upstream tag produces a new catalog vers
   "version": "2.0.0",
   "upstream": {
     "repo": "IBM-Cloud/architecture-icons",
-    "ref": "32d9c311b0dadb95f0fe4fa88b27f3af41c1dbc5"
+    "ref": "32d9c311b0dadb95f0fe4fa88b27f3af41c1dbc5",
   },
   "categories": [
-    { "id": "compute",       "name": "Compute" },
-    { "id": "network",       "name": "Network" },
-    { "id": "storage",       "name": "Storage" },
-    { "id": "security",      "name": "Security" },
-    { "id": "data",          "name": "Data" },
-    { "id": "devops",        "name": "DevOps" },
-    { "id": "ai",            "name": "AI" },
-    { "id": "actors",        "name": "Actors" },
-    { "id": "applications",  "name": "Applications" },
-    { "id": "observability", "name": "Observability" }
+    { "id": "compute", "name": "Compute" },
+    { "id": "network", "name": "Network" },
+    { "id": "storage", "name": "Storage" },
+    { "id": "security", "name": "Security" },
+    { "id": "data", "name": "Data" },
+    { "id": "devops", "name": "DevOps" },
+    { "id": "ai", "name": "AI" },
+    { "id": "actors", "name": "Actors" },
+    { "id": "applications", "name": "Applications" },
+    { "id": "observability", "name": "Observability" },
     /* Group/Boundary are native ICAD elements, not catalog icons — no "groups" category. */
   ],
   "icons": [
@@ -107,23 +107,23 @@ Re-running the pipeline against a newer upstream tag produces a new catalog vers
       "id": "ibm-cloud/vpc",
       "name": "VPC",
       "category": "network",
-      "semantic": "node",              // default IBM meaning when placed
+      "semantic": "node", // default IBM meaning when placed
       "container": "square",
       "color": "#1192E8",
       "asset": "icons/network/vpc.svg",
       "keywords": ["vpc"],
-      "tier": "ibm-cloud"              // ibm-core | ibm-cloud | domains | third-party —
-                                       // only "ibm-cloud" is populated so far; see below
-    }
+      "tier": "ibm-cloud", // ibm-core | ibm-cloud | domains | third-party —
+      // only "ibm-cloud" is populated so far; see below
+    },
     // `aliases` (old→new ID, for migration) will appear on entries once the catalog is
     // re-generated against a newer upstream ref and something gets renamed.
-  ]
+  ],
 }
 ```
 
 > **Containers are not catalog entries.** Box/Group/Boundary (`zone` internally) ship as native ICAD engine primitives
 > ([Architecture → Scene model](02-architecture.md#the-core)), not `icons[]` rows — deliberately no
-> `groups` category above. IBM's kit does ship ~30 *named* container stencils (VPC, Subnet, Region,
+> `groups` category above. IBM's kit does ship ~30 _named_ container stencils (VPC, Subnet, Region,
 > Availability Zone, Authorization Boundary, …), each with a preset icon/color/label. Per
 > [D21](00-decision-log.md#d21--container-presets-are-a-named-shortcut-layer-not-new-element-types--locked),
 > we don't fork these into new element types — instead the library panel offers them as one-click,
@@ -147,43 +147,43 @@ draft, not a spec citation; confirm against IBM Design before shipping ([D17](00
 
 ### IBM Core
 
-| Name | Kind | Category | Corner icon |
-|---|---|---|---|
-| Cloud Services | Box | Network (blue) | — |
-| Enterprise | Box | Generic (gray) | `ibm-cloud/enterprise` |
-| Data Center | Box | Generic (gray) | `ibm-cloud/data-center` |
-| Cloud Point of Presence | Box | Network (blue) | — |
-| Virtual Server | Box | Compute (green) | `ibm-cloud/virtual-server` |
-| Physical Server | Box | Compute (green) | `ibm-cloud/physical-server` |
-| Authorization Boundary | Boundary | Security (red) | `ibm-cloud/authorization-boundary` |
-| Overlay Network | Box | Network (blue) | `ibm-cloud/network-overlay` |
-| Public Network | Box ✓ | Network (blue) | `ibm-cloud/public-network` |
-| VLAN | Box | Network (blue) | `ibm-cloud/vlan` |
-| VPC | Box ✓ | Network (blue) | `ibm-cloud/vpc` |
-| Subnet | Box ✓ | Network (blue) | `ibm-cloud/subnet` |
-| Internet | Box | Network (blue) | `ibm-cloud/internet` |
-| Subnet: ACL | Box | Network (blue) | `ibm-cloud/subnet-acl-rules` |
-| OpenShift | Group ✓ | Compute (green) | `ibm-cloud/open-shift` |
+| Name                    | Kind     | Category        | Corner icon                        |
+| ----------------------- | -------- | --------------- | ---------------------------------- |
+| Cloud Services          | Box      | Network (blue)  | —                                  |
+| Enterprise              | Box      | Generic (gray)  | `ibm-cloud/enterprise`             |
+| Data Center             | Box      | Generic (gray)  | `ibm-cloud/data-center`            |
+| Cloud Point of Presence | Box      | Network (blue)  | —                                  |
+| Virtual Server          | Box      | Compute (green) | `ibm-cloud/virtual-server`         |
+| Physical Server         | Box      | Compute (green) | `ibm-cloud/physical-server`        |
+| Authorization Boundary  | Boundary | Security (red)  | `ibm-cloud/authorization-boundary` |
+| Overlay Network         | Box      | Network (blue)  | `ibm-cloud/network-overlay`        |
+| Public Network          | Box ✓    | Network (blue)  | `ibm-cloud/public-network`         |
+| VLAN                    | Box      | Network (blue)  | `ibm-cloud/vlan`                   |
+| VPC                     | Box ✓    | Network (blue)  | `ibm-cloud/vpc`                    |
+| Subnet                  | Box ✓    | Network (blue)  | `ibm-cloud/subnet`                 |
+| Internet                | Box      | Network (blue)  | `ibm-cloud/internet`               |
+| Subnet: ACL             | Box      | Network (blue)  | `ibm-cloud/subnet-acl-rules`       |
+| OpenShift               | Group ✓  | Compute (green) | `ibm-cloud/open-shift`             |
 
 ### IBM Cloud
 
-| Name | Kind | Category | Corner icon |
-|---|---|---|---|
-| IBM Cloud | Box ✓ | Network (blue) | `ibm-cloud/ibm-cloud` |
-| Availability zone | Boundary ✓ | Generic (gray) | — |
-| Region | Box ✓ | Generic (gray) | `ibm-cloud/location` |
-| Instance group | Group | Compute (green) | `ibm-cloud/instance-group` |
-| IBM Virtual Server | Box | Compute (green) | `ibm-cloud/virtual-server` |
-| Classic Infrastructure | Box | Compute (green) | — |
-| Internet services | Box | Network (blue) | `ibm-cloud/internet-services` |
-| VPC Endpoints | Box | Network (blue) | `ibm-cloud/vpc-endpoints` |
-| IBM Subnet: ACL | Box | Network (blue) | `ibm-cloud/subnet-acl-rules` |
-| IBM Classic VLAN | Box | Network (blue) | `ibm-cloud/vlan-ibm` |
-| IBM VPC | Box | Network (blue) | `ibm-cloud/ibm-cloud-vpc` |
-| Account group | Group | Security (red) | — |
-| Security group | Group ✓ | Security (red) | `ibm-cloud/group-security` |
-| Access group | Group | Security (red) | — |
-| Resource group | Group | Security (red) | — |
+| Name                   | Kind       | Category        | Corner icon                   |
+| ---------------------- | ---------- | --------------- | ----------------------------- |
+| IBM Cloud              | Box ✓      | Network (blue)  | `ibm-cloud/ibm-cloud`         |
+| Availability zone      | Boundary ✓ | Generic (gray)  | —                             |
+| Region                 | Box ✓      | Generic (gray)  | `ibm-cloud/location`          |
+| Instance group         | Group      | Compute (green) | `ibm-cloud/instance-group`    |
+| IBM Virtual Server     | Box        | Compute (green) | `ibm-cloud/virtual-server`    |
+| Classic Infrastructure | Box        | Compute (green) | —                             |
+| Internet services      | Box        | Network (blue)  | `ibm-cloud/internet-services` |
+| VPC Endpoints          | Box        | Network (blue)  | `ibm-cloud/vpc-endpoints`     |
+| IBM Subnet: ACL        | Box        | Network (blue)  | `ibm-cloud/subnet-acl-rules`  |
+| IBM Classic VLAN       | Box        | Network (blue)  | `ibm-cloud/vlan-ibm`          |
+| IBM VPC                | Box        | Network (blue)  | `ibm-cloud/ibm-cloud-vpc`     |
+| Account group          | Group      | Security (red)  | —                             |
+| Security group         | Group ✓    | Security (red)  | `ibm-cloud/group-security`    |
+| Access group           | Group      | Security (red)  | —                             |
+| Resource group         | Group      | Security (red)  | —                             |
 
 Rows with no corner icon have no matching glyph in the upstream `svg/` set as of the pinned
 catalog version — ship them as a colored, labeled container with no icon, or pick a placeholder at
@@ -196,7 +196,7 @@ an earlier draft of this table guessed Boundary from the stencil legend alone. `
 Security Group is `Group`; Access/Resource/Account Group are updated to match for consistency,
 though no worked example confirms those three specifically ([D24](00-decision-log.md#d24--regionvpcsubnet-are-box-only-availability-zoneon-prem-are-boundary--locked)).
 
-Source: *IBM_IT Architecture diagrams kit* v1.1, "Groups" slides, cross-checked against
+Source: _IBM_IT Architecture diagrams kit_ v1.1, "Groups" slides, cross-checked against
 [IBM-Cloud/architecture-icons](https://github.com/IBM-Cloud/architecture-icons)'s `svg/` tree and
 the kit's own worked multi-zone OpenShift example.
 

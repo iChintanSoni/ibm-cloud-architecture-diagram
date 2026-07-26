@@ -117,12 +117,16 @@ describe("normalizeIcon", () => {
 
   it("compensates for an offset baked directly into path coordinates when no wrapper carries it", () => {
     const result = normalizeIcon(BAKED_OFFSET_NO_WRAPPER);
-    expect(result?.fragment).toContain(`transform="scale(1) translate(-12, -12)"`);
+    expect(result?.fragment).toContain(
+      `transform="scale(1) translate(-12, -12)"`,
+    );
   });
 
   it("compensates for a hit-area rect offset within its own parent, and clears cancelling ancestor translates that would otherwise shift it off-canvas", () => {
     const result = normalizeIcon(HITBOX_OFFSET_WITH_CANCELLING_ANCESTORS);
-    expect(result?.fragment).toContain(`transform="scale(1) translate(-12, -12)"`);
+    expect(result?.fragment).toContain(
+      `transform="scale(1) translate(-12, -12)"`,
+    );
     expect(result?.fragment).not.toContain("translate(-670");
     expect(result?.fragment).not.toContain("translate(670");
   });

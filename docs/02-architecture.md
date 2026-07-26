@@ -50,6 +50,7 @@ ibm-cloud-diagram/
 ## The core
 
 ### Scene model
+
 An in-memory document: an ordered element list plus indexes. Elements are discriminated unions:
 
 - `IconNode` — an IBM catalog icon (node/device). Square container per spec.
@@ -64,37 +65,45 @@ Every element has a stable `id`, geometry, style, a `semantic` field (the IBM me
 optional `catalogRef` (for icons). Containers track membership so moving a box moves its contents.
 
 ### Command bus & history
+
 Mutations are commands (`AddElement`, `MoveElements`, `Connect`, `SetSemantic`, `ApplyQuickFix`,
 …). The bus applies a command, pushes an inverse onto the undo stack, and emits a change event.
 Autosave and the MCP server both submit commands — never mutate the scene directly. This is what
 makes the engine cleanly headless for [Agent Integration](08-agent-integration.md).
 
 ### Rendering (SVG DOM)
+
 The renderer reconciles the scene into SVG nodes (a lightweight keyed diff, no React in the core).
 A single `<svg>` viewport with pan/zoom via transform; a static layer for elements and an overlay
-layer for selection/handles/routing previews. Because the render target *is* SVG, export is the
+layer for selection/handles/routing previews. Because the render target _is_ SVG, export is the
 same tree serialized ([File Format](03-file-format.md)).
 
 ### Interaction & tools
+
 Pointer/keyboard events resolve to the active tool (select, box, group, zone, icon-place,
 connector, text, frame). Hit-testing uses the DOM plus geometry math. Snapping: grid, element
 edges/centers, and connector ports.
 
 ### Connectors
+
 Ports are anchor points on shapes. The router produces orthogonal paths that avoid obstacles and
-respect the west→east convention; users can drop manual waypoints. Connector *type* carries IBM
+respect the west→east convention; users can drop manual waypoints. Connector _type_ carries IBM
 nomenclature (line/arrow/dotted-end variants). See [Spec Conformance](05-ibm-spec-conformance.md).
 
 ### Public API (`core/api`)
+
 A stable imperative surface the shells and the MCP server both use:
 
 ```ts
 const editor = createEditor({ container, catalog, theme });
-editor.loadIcad(json); editor.toIcad();
-editor.commands.dispatch(cmd); editor.history.undo();
-editor.catalog.search("vpc"); editor.addIcon("ibm-cloud/vpc", { at });
+editor.loadIcad(json);
+editor.toIcad();
+editor.commands.dispatch(cmd);
+editor.history.undo();
+editor.catalog.search("vpc");
+editor.addIcon("ibm-cloud/vpc", { at });
 editor.connect(portA, portB, { connectorType: "association" });
-editor.lint();                 // → diagnostics + quick-fixes
+editor.lint(); // → diagnostics + quick-fixes
 editor.export({ format: "svg", embedSource: true });
 editor.on("change", handler);
 ```

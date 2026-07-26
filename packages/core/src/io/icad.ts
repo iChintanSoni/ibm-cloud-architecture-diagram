@@ -4,7 +4,7 @@ import type {
   CatalogRefPin,
   ConformanceSettings,
   DocumentMeta,
-  SceneElement
+  SceneElement,
 } from "../scene/types.js";
 
 export const ICAD_FORMAT = "icad" as const;
@@ -29,7 +29,7 @@ export function toIcad(scene: Scene): IcadDocument {
     meta: scene.meta,
     canvas: scene.canvas,
     conformance: scene.conformance,
-    elements: scene.all()
+    elements: scene.all(),
   };
 }
 
@@ -39,7 +39,7 @@ export function fromIcad(input: unknown): Scene {
     meta: doc.meta,
     canvas: doc.canvas,
     catalog: doc.catalog,
-    conformance: doc.conformance
+    conformance: doc.conformance,
   });
   scene._replaceAll(doc.elements);
   return scene;
@@ -53,7 +53,7 @@ export function applyIcad(scene: Scene, input: unknown): void {
   scene.catalog = doc.catalog;
   scene.conformance = {
     exportGate: doc.conformance?.exportGate ?? "warn",
-    ruleSeverities: { ...(doc.conformance?.ruleSeverities ?? {}) }
+    ruleSeverities: { ...(doc.conformance?.ruleSeverities ?? {}) },
   };
   scene._replaceAll(doc.elements);
 }
@@ -77,13 +77,19 @@ function migrate(input: unknown): IcadDocument {
   }
   const candidate = input as Partial<IcadDocument>;
   if (candidate.format !== ICAD_FORMAT) {
-    throw new Error(`Invalid .icad document: expected format "icad", got ${JSON.stringify(candidate.format)}`);
+    throw new Error(
+      `Invalid .icad document: expected format "icad", got ${JSON.stringify(candidate.format)}`,
+    );
   }
   if (typeof candidate.version !== "number" || candidate.version < 1) {
-    throw new Error(`Invalid .icad document: version must be a positive integer, got ${JSON.stringify(candidate.version)}`);
+    throw new Error(
+      `Invalid .icad document: version must be a positive integer, got ${JSON.stringify(candidate.version)}`,
+    );
   }
   if (candidate.version > ICAD_VERSION) {
-    throw new Error(`Unsupported .icad schema version ${candidate.version}; this build only understands up to ${ICAD_VERSION}`);
+    throw new Error(
+      `Unsupported .icad schema version ${candidate.version}; this build only understands up to ${ICAD_VERSION}`,
+    );
   }
   if (!Array.isArray(candidate.elements)) {
     throw new Error("Invalid .icad document: elements must be an array");
@@ -92,7 +98,10 @@ function migrate(input: unknown): IcadDocument {
   let doc = candidate as IcadDocument;
   while (doc.version < ICAD_VERSION) {
     const step = MIGRATIONS[doc.version];
-    if (!step) throw new Error(`No migration registered from .icad schema version ${doc.version}`);
+    if (!step)
+      throw new Error(
+        `No migration registered from .icad schema version ${doc.version}`,
+      );
     doc = step(doc);
   }
 
@@ -109,21 +118,28 @@ function repair(doc: IcadDocument): IcadDocument {
   const ids = new Set(doc.elements.map((el) => el.id));
 
   const withValidParents = doc.elements.map((el) =>
-    el.parentId && !ids.has(el.parentId) ? withoutParent(el) : el
+    el.parentId && !ids.has(el.parentId) ? withoutParent(el) : el,
   );
 
   const parentOf = new Map(withValidParents.map((el) => [el.id, el.parentId]));
-  const acyclic = withValidParents.map((el) => (hasCycle(el.id, parentOf) ? withoutParent(el) : el));
+  const acyclic = withValidParents.map((el) =>
+    hasCycle(el.id, parentOf) ? withoutParent(el) : el,
+  );
 
   const repaired = acyclic
-    .filter((el) => el.type !== "connector" || (ids.has(el.from.elementId) && ids.has(el.to.elementId)))
+    .filter(
+      (el) =>
+        el.type !== "connector" ||
+        (ids.has(el.from.elementId) && ids.has(el.to.elementId)),
+    )
     .map((el) => {
       const w = clampSize(el.w);
       const h = clampSize(el.h);
       return w === el.w && h === el.h ? el : { ...el, w, h };
     });
 
-  return repaired.length === doc.elements.length && repaired.every((el, i) => el === doc.elements[i])
+  return repaired.length === doc.elements.length &&
+    repaired.every((el, i) => el === doc.elements[i])
     ? doc
     : { ...doc, elements: repaired };
 }
@@ -138,7 +154,10 @@ function withoutParent<T extends SceneElement>(el: T): T {
 }
 
 /** Walks the parentId chain from `id`; true if it loops back on itself. */
-function hasCycle(id: string, parentOf: Map<string, string | undefined>): boolean {
+function hasCycle(
+  id: string,
+  parentOf: Map<string, string | undefined>,
+): boolean {
   const visited = new Set<string>([id]);
   let current = parentOf.get(id);
   while (current !== undefined) {

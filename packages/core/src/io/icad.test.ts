@@ -12,7 +12,7 @@ function box(id: string): BoxElement {
     y: 20,
     w: 200,
     h: 150,
-    label: { text: "VPC" }
+    label: { text: "VPC" },
   };
 }
 
@@ -44,12 +44,15 @@ describe(".icad io", () => {
 
   it("round-trips per-document conformance settings", () => {
     const scene = new Scene({
-      conformance: { exportGate: "block", ruleSeverities: { "missing-label": "error" } }
+      conformance: {
+        exportGate: "block",
+        ruleSeverities: { "missing-label": "error" },
+      },
     });
     const restored = fromIcad(toIcad(scene));
     expect(restored.conformance).toEqual({
       exportGate: "block",
-      ruleSeverities: { "missing-label": "error" }
+      ruleSeverities: { "missing-label": "error" },
     });
   });
 
@@ -57,17 +60,24 @@ describe(".icad io", () => {
     const scene = fromIcad({
       format: "icad",
       version: 1,
-      elements: [box("legacy")]
+      elements: [box("legacy")],
     });
-    expect(scene.conformance).toEqual({ exportGate: "warn", ruleSeverities: {} });
+    expect(scene.conformance).toEqual({
+      exportGate: "warn",
+      ruleSeverities: {},
+    });
   });
 
   it("rejects a document with the wrong format tag", () => {
-    expect(() => fromIcad({ format: "drawio", version: 1, elements: [] })).toThrow(/expected format "icad"/);
+    expect(() =>
+      fromIcad({ format: "drawio", version: 1, elements: [] }),
+    ).toThrow(/expected format "icad"/);
   });
 
   it("rejects an unsupported schema version", () => {
-    expect(() => fromIcad({ format: "icad", version: 999, elements: [] })).toThrow(/Unsupported .icad schema version/);
+    expect(() =>
+      fromIcad({ format: "icad", version: 999, elements: [] }),
+    ).toThrow(/Unsupported .icad schema version/);
   });
 
   it("rejects a non-object input", () => {
@@ -75,7 +85,9 @@ describe(".icad io", () => {
   });
 
   it("rejects a non-positive-integer version", () => {
-    expect(() => fromIcad({ format: "icad", version: 0, elements: [] })).toThrow(/version must be a positive integer/);
+    expect(() =>
+      fromIcad({ format: "icad", version: 0, elements: [] }),
+    ).toThrow(/version must be a positive integer/);
   });
 
   describe("repair on load", () => {
@@ -83,7 +95,7 @@ describe(".icad io", () => {
       const scene = fromIcad({
         format: "icad",
         version: 1,
-        elements: [{ ...box("orphan"), parentId: "missing-parent" }]
+        elements: [{ ...box("orphan"), parentId: "missing-parent" }],
       });
       expect(scene.get("orphan")).not.toHaveProperty("parentId");
     });
@@ -94,8 +106,8 @@ describe(".icad io", () => {
         version: 1,
         elements: [
           { ...box("a"), parentId: "b" },
-          { ...box("b"), parentId: "a" }
-        ]
+          { ...box("b"), parentId: "a" },
+        ],
       });
       expect(scene.get("a")).not.toHaveProperty("parentId");
       expect(scene.get("b")).not.toHaveProperty("parentId");
@@ -117,9 +129,9 @@ describe(".icad io", () => {
             h: 0,
             from: { elementId: "kept", port: "e" },
             to: { elementId: "gone", port: "w" },
-            connectorType: "association"
-          }
-        ]
+            connectorType: "association",
+          },
+        ],
       });
       expect(scene.has("conn")).toBe(false);
       expect(scene.has("kept")).toBe(true);
@@ -129,7 +141,7 @@ describe(".icad io", () => {
       const scene = fromIcad({
         format: "icad",
         version: 1,
-        elements: [{ ...box("degenerate"), w: 0, h: Number.NaN }]
+        elements: [{ ...box("degenerate"), w: 0, h: Number.NaN }],
       });
       expect(scene.get("degenerate")).toMatchObject({ w: 1, h: 1 });
     });

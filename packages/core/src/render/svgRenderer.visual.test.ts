@@ -10,7 +10,7 @@ const manifest: CatalogManifest = {
   version: "1",
   categories: [
     { id: "compute", name: "Compute" },
-    { id: "actors", name: "Actors" }
+    { id: "actors", name: "Actors" },
   ],
   icons: [
     {
@@ -20,7 +20,7 @@ const manifest: CatalogManifest = {
       semantic: "node",
       container: "square",
       color: "#198038",
-      asset: "server.svg"
+      asset: "server.svg",
     },
     {
       id: "fixture/user",
@@ -29,7 +29,7 @@ const manifest: CatalogManifest = {
       semantic: "actor",
       container: "rounded",
       color: "#000000",
-      asset: "user.svg"
+      asset: "user.svg",
     },
     {
       id: "fixture/vpc",
@@ -38,20 +38,26 @@ const manifest: CatalogManifest = {
       semantic: "node",
       container: "square",
       color: "#1192e8",
-      asset: "vpc.svg"
-    }
-  ]
+      asset: "vpc.svg",
+    },
+  ],
 };
 
 const catalog = new Catalog(
   manifest,
   new Map([
-    ["server.svg", '<path data-glyph="server" fill="#198038" d="M2 2h16v16H2z"/>'],
-    ["user.svg", '<circle data-glyph="user" fill="#000000" cx="10" cy="10" r="8"/>'],
+    [
+      "server.svg",
+      '<path data-glyph="server" fill="#198038" d="M2 2h16v16H2z"/>',
+    ],
+    [
+      "user.svg",
+      '<circle data-glyph="user" fill="#000000" cx="10" cy="10" r="8"/>',
+    ],
     // A real post-D25 catalog asset: extract.ts no longer recolors, so every catalog SVG's
     // glyph fill is white regardless of the icon's own category color.
-    ["vpc.svg", '<path data-glyph="vpc" fill="#FFFFFF" d="M2 2h16v16H2z"/>']
-  ])
+    ["vpc.svg", '<path data-glyph="vpc" fill="#FFFFFF" d="M2 2h16v16H2z"/>'],
+  ]),
 );
 
 function attributes(element: Element | null): Record<string, string> {
@@ -59,7 +65,7 @@ function attributes(element: Element | null): Record<string, string> {
   return Object.fromEntries(
     Array.from(element.attributes)
       .map((attribute) => [attribute.name, attribute.value])
-      .sort(([a], [b]) => a.localeCompare(b))
+      .sort(([a], [b]) => a.localeCompare(b)),
   );
 }
 
@@ -67,7 +73,7 @@ function connector(
   id: string,
   y: number,
   direction: "unidirectional" | "bidirectional",
-  flowColor: "public" | "private"
+  flowColor: "public" | "private",
 ): ConnectorElement {
   return {
     id,
@@ -83,7 +89,7 @@ function connector(
     direction,
     flowColor,
     routing: "manual",
-    waypoints: []
+    waypoints: [],
   };
 }
 
@@ -107,7 +113,7 @@ describe("IBM published visual golden fixtures", () => {
       x: 10,
       y: 20,
       w: 48,
-      h: 48
+      h: 48,
     });
     scene._put({
       id: "actor",
@@ -117,27 +123,33 @@ describe("IBM published visual golden fixtures", () => {
       x: 80,
       y: 20,
       w: 48,
-      h: 48
+      h: 48,
     });
     renderer.render(scene);
 
-    expect(attributes(renderer.nodeFor("node")?.querySelector(":scope > rect"))).toEqual({
+    expect(
+      attributes(renderer.nodeFor("node")?.querySelector(":scope > rect")),
+    ).toEqual({
       fill: "#198038",
       height: "48",
       stroke: "none",
       "stroke-width": "1",
       width: "48",
       x: "10",
-      y: "20"
+      y: "20",
     });
-    expect(attributes(renderer.nodeFor("node")?.querySelector(":scope > svg"))).toEqual({
+    expect(
+      attributes(renderer.nodeFor("node")?.querySelector(":scope > svg")),
+    ).toEqual({
       height: "24",
       viewBox: "0 0 24 24",
       width: "24",
       x: "22",
-      y: "32"
+      y: "32",
     });
-    expect(attributes(renderer.nodeFor("actor")?.querySelector(":scope > rect"))).toEqual({
+    expect(
+      attributes(renderer.nodeFor("actor")?.querySelector(":scope > rect")),
+    ).toEqual({
       fill: "#000000",
       height: "48",
       rx: "24",
@@ -146,7 +158,7 @@ describe("IBM published visual golden fixtures", () => {
       "stroke-width": "1",
       width: "48",
       x: "80",
-      y: "20"
+      y: "20",
     });
   });
 
@@ -160,7 +172,7 @@ describe("IBM published visual golden fixtures", () => {
         y: 0,
         w: 400,
         h: 300,
-        style: { stroke: "#1192e8" }
+        style: { stroke: "#1192e8" },
       },
       {
         id: "middle",
@@ -171,7 +183,7 @@ describe("IBM published visual golden fixtures", () => {
         y: 20,
         w: 340,
         h: 240,
-        style: { stroke: "#1192e8" }
+        style: { stroke: "#1192e8" },
       },
       {
         id: "inner",
@@ -182,24 +194,30 @@ describe("IBM published visual golden fixtures", () => {
         y: 40,
         w: 280,
         h: 180,
-        style: { stroke: "#198038" }
-      }
+        style: { stroke: "#198038" },
+      },
     ];
     for (const element of elements) scene._put(element);
     renderer.render(scene);
 
-    expect(attributes(renderer.nodeFor("outer")?.querySelector("rect"))).toMatchObject({
+    expect(
+      attributes(renderer.nodeFor("outer")?.querySelector("rect")),
+    ).toMatchObject({
       fill: "#e5f6ff",
-      stroke: "#1192e8"
+      stroke: "#1192e8",
     });
-    expect(attributes(renderer.nodeFor("middle")?.querySelector("rect"))).toMatchObject({
+    expect(
+      attributes(renderer.nodeFor("middle")?.querySelector("rect")),
+    ).toMatchObject({
       fill: "white",
-      stroke: "#1192e8"
+      stroke: "#1192e8",
     });
-    expect(attributes(renderer.nodeFor("inner")?.querySelector("rect"))).toMatchObject({
+    expect(
+      attributes(renderer.nodeFor("inner")?.querySelector("rect")),
+    ).toMatchObject({
       fill: "#defbe6",
       stroke: "#198038",
-      "stroke-dasharray": "6 4"
+      "stroke-dasharray": "6 4",
     });
   });
 
@@ -212,7 +230,7 @@ describe("IBM published visual golden fixtures", () => {
       y: 0,
       w: 200,
       h: 100,
-      style: { stroke: "#1192e8" }
+      style: { stroke: "#1192e8" },
     });
     scene._put({
       id: "group",
@@ -222,7 +240,7 @@ describe("IBM published visual golden fixtures", () => {
       y: 0,
       w: 200,
       h: 100,
-      style: { stroke: "#198038" }
+      style: { stroke: "#198038" },
     });
     scene._put({
       id: "zone",
@@ -232,7 +250,7 @@ describe("IBM published visual golden fixtures", () => {
       x: 0,
       y: 0,
       w: 200,
-      h: 100
+      h: 100,
     });
     scene._put({
       id: "frame",
@@ -243,7 +261,7 @@ describe("IBM published visual golden fixtures", () => {
       x: 0,
       y: 0,
       w: 200,
-      h: 100
+      h: 100,
     });
     renderer.render(scene);
 
@@ -254,20 +272,34 @@ describe("IBM published visual golden fixtures", () => {
       y: "0",
       width: "4",
       height: "32",
-      fill: "#1192e8"
+      fill: "#1192e8",
     });
 
-    const groupRects = renderer.nodeFor("group")?.querySelectorAll(":scope > rect");
+    const groupRects = renderer
+      .nodeFor("group")
+      ?.querySelectorAll(":scope > rect");
     expect(groupRects).toHaveLength(2);
-    expect(attributes(groupRects![1] as Element)).toMatchObject({ width: "4", fill: "#198038" });
+    expect(attributes(groupRects![1] as Element)).toMatchObject({
+      width: "4",
+      fill: "#198038",
+    });
 
-    const zoneRects = renderer.nodeFor("zone")?.querySelectorAll(":scope > rect");
+    const zoneRects = renderer
+      .nodeFor("zone")
+      ?.querySelectorAll(":scope > rect");
     expect(zoneRects).toHaveLength(2);
-    expect(attributes(zoneRects![0] as Element)).toMatchObject({ "stroke-dasharray": "2 2" });
-    expect(attributes(zoneRects![1] as Element)).toMatchObject({ width: "4", fill: "#8d8d8d" });
+    expect(attributes(zoneRects![0] as Element)).toMatchObject({
+      "stroke-dasharray": "2 2",
+    });
+    expect(attributes(zoneRects![1] as Element)).toMatchObject({
+      width: "4",
+      fill: "#8d8d8d",
+    });
 
     // Frame is an ICAD-only presentation affordance with no IBM semantic — no tab.
-    expect(renderer.nodeFor("frame")?.querySelectorAll(":scope > rect")).toHaveLength(1);
+    expect(
+      renderer.nodeFor("frame")?.querySelectorAll(":scope > rect"),
+    ).toHaveLength(1);
   });
 
   it("recolors a container's corner glyph to its own accent, since no tile sits behind it (D25)", () => {
@@ -280,11 +312,13 @@ describe("IBM published visual golden fixtures", () => {
       y: 0,
       w: 200,
       h: 100,
-      style: { stroke: "#1192e8" }
+      style: { stroke: "#1192e8" },
     });
     renderer.render(scene);
 
-    const glyph = renderer.nodeFor("vpc-box")?.querySelector(":scope > svg path");
+    const glyph = renderer
+      .nodeFor("vpc-box")
+      ?.querySelector(":scope > svg path");
     expect(glyph?.getAttribute("fill")).toBe("#1192e8");
   });
 
@@ -299,7 +333,7 @@ describe("IBM published visual golden fixtures", () => {
       w: 300,
       h: 200,
       label: { text: "Kubernetes" },
-      style: { stroke: "#198038" }
+      style: { stroke: "#198038" },
     });
     scene._put({
       id: "group-no-icon",
@@ -310,19 +344,31 @@ describe("IBM published visual golden fixtures", () => {
       w: 300,
       h: 200,
       label: { text: "No Icon" },
-      style: { stroke: "#198038" }
+      style: { stroke: "#198038" },
     });
     renderer.render(scene);
 
-    const withIconLabel = renderer.nodeFor("group-with-icon")?.querySelector("text");
+    const withIconLabel = renderer
+      .nodeFor("group-with-icon")
+      ?.querySelector("text");
     // Icon sits at (12, 12) sized 20x20; label starts 8px past its right edge, baseline
     // roughly centered against it — well above the boundary's bottom edge (y=200).
-    expect(attributes(withIconLabel)).toMatchObject({ x: "40", y: "27", fill: "#161616" });
+    expect(attributes(withIconLabel)).toMatchObject({
+      x: "40",
+      y: "27",
+      fill: "#161616",
+    });
     expect(withIconLabel?.textContent).toBe("Kubernetes");
 
-    const noIconLabel = renderer.nodeFor("group-no-icon")?.querySelector("text");
+    const noIconLabel = renderer
+      .nodeFor("group-no-icon")
+      ?.querySelector("text");
     // No icon to sit beside: label starts where the icon would have been, same baseline.
-    expect(attributes(noIconLabel)).toMatchObject({ x: "12", y: "327", fill: "#161616" });
+    expect(attributes(noIconLabel)).toMatchObject({
+      x: "12",
+      y: "327",
+      fill: "#161616",
+    });
   });
 
   it("renders a Box's and a Zone's own label beside their corner icon too, not just Group's (C7)", () => {
@@ -340,7 +386,7 @@ describe("IBM published visual golden fixtures", () => {
       w: 300,
       h: 200,
       label: { text: "Region" },
-      style: { stroke: "#878d96" }
+      style: { stroke: "#878d96" },
     });
     scene._put({
       id: "zone-1",
@@ -352,16 +398,24 @@ describe("IBM published visual golden fixtures", () => {
       y: 300,
       w: 300,
       h: 200,
-      label: { text: "Zone 1" }
+      label: { text: "Zone 1" },
     });
     renderer.render(scene);
 
     const boxLabel = renderer.nodeFor("region")?.querySelector("text");
-    expect(attributes(boxLabel)).toMatchObject({ x: "40", y: "27", fill: "#161616" });
+    expect(attributes(boxLabel)).toMatchObject({
+      x: "40",
+      y: "27",
+      fill: "#161616",
+    });
     expect(boxLabel?.textContent).toBe("Region");
 
     const zoneLabel = renderer.nodeFor("zone-1")?.querySelector("text");
-    expect(attributes(zoneLabel)).toMatchObject({ x: "40", y: "327", fill: "#161616" });
+    expect(attributes(zoneLabel)).toMatchObject({
+      x: "40",
+      y: "327",
+      fill: "#161616",
+    });
     expect(zoneLabel?.textContent).toBe("Zone 1");
   });
 
@@ -374,7 +428,7 @@ describe("IBM published visual golden fixtures", () => {
         x: 0,
         y,
         w: 48,
-        h: 48
+        h: 48,
       });
       scene._put({
         id: `to-${y}`,
@@ -383,34 +437,66 @@ describe("IBM published visual golden fixtures", () => {
         x: 240,
         y,
         w: 48,
-        h: 48
+        h: 48,
       });
     }
-    scene._put(connector("public-bidirectional", 40, "bidirectional", "public"));
-    scene._put(connector("private-unidirectional", 120, "unidirectional", "private"));
+    scene._put(
+      connector("public-bidirectional", 40, "bidirectional", "public"),
+    );
+    scene._put(
+      connector("private-unidirectional", 120, "unidirectional", "private"),
+    );
     renderer.render(scene);
 
-    expect(attributes(renderer.svg.querySelector("#icad-dot path"))).toMatchObject({
-      fill: "context-stroke"
+    expect(
+      attributes(renderer.svg.querySelector("#icad-dot path")),
+    ).toMatchObject({
+      fill: "context-stroke",
     });
-    expect(attributes(renderer.svg.querySelector("#icad-arrow path"))).toMatchObject({
-      fill: "context-stroke"
+    expect(
+      attributes(renderer.svg.querySelector("#icad-arrow path")),
+    ).toMatchObject({
+      fill: "context-stroke",
     });
-    expect(attributes(renderer.nodeFor("public-bidirectional")?.querySelector("polyline"))).toMatchObject({
+    expect(
+      attributes(
+        renderer.nodeFor("public-bidirectional")?.querySelector("polyline"),
+      ),
+    ).toMatchObject({
       "marker-end": "url(#icad-dot)",
       "marker-start": "url(#icad-dot)",
-      stroke: "#4376BB"
+      stroke: "#4376BB",
     });
-    expect(attributes(renderer.nodeFor("private-unidirectional")?.querySelector("polyline"))).toMatchObject({
+    expect(
+      attributes(
+        renderer.nodeFor("private-unidirectional")?.querySelector("polyline"),
+      ),
+    ).toMatchObject({
       "marker-end": "url(#icad-arrow)",
       "marker-start": "url(#icad-dot)",
-      stroke: "#198038"
+      stroke: "#198038",
     });
   });
 
   it("renders physical connections with hollow box end-caps on both ends", () => {
-    scene._put({ id: "phys-from", type: "box", semantic: "deployedOn", x: 0, y: 0, w: 48, h: 48 });
-    scene._put({ id: "phys-to", type: "box", semantic: "deployedOn", x: 240, y: 0, w: 48, h: 48 });
+    scene._put({
+      id: "phys-from",
+      type: "box",
+      semantic: "deployedOn",
+      x: 0,
+      y: 0,
+      w: 48,
+      h: 48,
+    });
+    scene._put({
+      id: "phys-to",
+      type: "box",
+      semantic: "deployedOn",
+      x: 240,
+      y: 0,
+      w: 48,
+      h: 48,
+    });
     scene._put({
       id: "phys",
       type: "connector",
@@ -423,23 +509,43 @@ describe("IBM published visual golden fixtures", () => {
       to: { elementId: "phys-to", port: "w" },
       connectorType: "physical-connection",
       routing: "manual",
-      waypoints: []
+      waypoints: [],
     });
     renderer.render(scene);
 
-    expect(attributes(renderer.svg.querySelector("#icad-box path"))).toMatchObject({
+    expect(
+      attributes(renderer.svg.querySelector("#icad-box path")),
+    ).toMatchObject({
       stroke: "context-stroke",
-      fill: "none"
+      fill: "none",
     });
-    expect(attributes(renderer.nodeFor("phys")?.querySelector("polyline"))).toMatchObject({
+    expect(
+      attributes(renderer.nodeFor("phys")?.querySelector("polyline")),
+    ).toMatchObject({
       "marker-start": "url(#icad-box)",
-      "marker-end": "url(#icad-box)"
+      "marker-end": "url(#icad-box)",
     });
   });
 
   it("uses IBM's open-V relationship arrowhead, distinct from implementation/extends's closed hollow triangle", () => {
-    scene._put({ id: "rel-from", type: "box", semantic: "deployedOn", x: 0, y: 0, w: 48, h: 48 });
-    scene._put({ id: "rel-to", type: "box", semantic: "deployedOn", x: 240, y: 0, w: 48, h: 48 });
+    scene._put({
+      id: "rel-from",
+      type: "box",
+      semantic: "deployedOn",
+      x: 0,
+      y: 0,
+      w: 48,
+      h: 48,
+    });
+    scene._put({
+      id: "rel-to",
+      type: "box",
+      semantic: "deployedOn",
+      x: 240,
+      y: 0,
+      w: 48,
+      h: 48,
+    });
     const base = {
       type: "connector" as const,
       semantic: "node" as const,
@@ -450,27 +556,49 @@ describe("IBM published visual golden fixtures", () => {
       from: { elementId: "rel-from", port: "e" as const },
       to: { elementId: "rel-to", port: "w" as const },
       routing: "manual" as const,
-      waypoints: []
+      waypoints: [],
     };
     scene._put({ ...base, id: "assoc", connectorType: "association" });
     scene._put({ ...base, id: "impl", connectorType: "implementation" });
     renderer.render(scene);
 
-    expect(attributes(renderer.svg.querySelector("#icad-arrow-open path"))).toMatchObject({
+    expect(
+      attributes(renderer.svg.querySelector("#icad-arrow-open path")),
+    ).toMatchObject({
       stroke: "context-stroke",
-      fill: "none"
+      fill: "none",
     });
-    expect(attributes(renderer.nodeFor("assoc")?.querySelector("polyline"))).toMatchObject({
-      "marker-end": "url(#icad-arrow-open)"
+    expect(
+      attributes(renderer.nodeFor("assoc")?.querySelector("polyline")),
+    ).toMatchObject({
+      "marker-end": "url(#icad-arrow-open)",
     });
-    expect(attributes(renderer.nodeFor("impl")?.querySelector("polyline"))).toMatchObject({
-      "marker-end": "url(#icad-arrow-hollow)"
+    expect(
+      attributes(renderer.nodeFor("impl")?.querySelector("polyline")),
+    ).toMatchObject({
+      "marker-end": "url(#icad-arrow-hollow)",
     });
   });
 
   it("defaults connector stroke-width to 2 and gives logical-connection an even dash (not dash-dot)", () => {
-    scene._put({ id: "log-from", type: "box", semantic: "deployedOn", x: 0, y: 0, w: 48, h: 48 });
-    scene._put({ id: "log-to", type: "box", semantic: "deployedOn", x: 240, y: 0, w: 48, h: 48 });
+    scene._put({
+      id: "log-from",
+      type: "box",
+      semantic: "deployedOn",
+      x: 0,
+      y: 0,
+      w: 48,
+      h: 48,
+    });
+    scene._put({
+      id: "log-to",
+      type: "box",
+      semantic: "deployedOn",
+      x: 240,
+      y: 0,
+      w: 48,
+      h: 48,
+    });
     scene._put({
       id: "log",
       type: "connector",
@@ -483,21 +611,55 @@ describe("IBM published visual golden fixtures", () => {
       to: { elementId: "log-to", port: "w" },
       connectorType: "logical-connection",
       routing: "manual",
-      waypoints: []
+      waypoints: [],
     });
     renderer.render(scene);
 
-    expect(attributes(renderer.nodeFor("log")?.querySelector("polyline"))).toMatchObject({
+    expect(
+      attributes(renderer.nodeFor("log")?.querySelector("polyline")),
+    ).toMatchObject({
       "stroke-width": "2",
-      "stroke-dasharray": "4 3"
+      "stroke-dasharray": "4 3",
     });
   });
 
   it("renders the IBM tunnel band in fixed colors, not the connector's own stroke (D-level fidelity fix)", () => {
-    scene._put({ id: "tun-from", type: "box", semantic: "deployedOn", x: 0, y: 0, w: 48, h: 48 });
-    scene._put({ id: "tun-to", type: "box", semantic: "deployedOn", x: 240, y: 0, w: 48, h: 48 });
-    scene._put({ id: "dtun-from", type: "box", semantic: "deployedOn", x: 0, y: 80, w: 48, h: 48 });
-    scene._put({ id: "dtun-to", type: "box", semantic: "deployedOn", x: 240, y: 80, w: 48, h: 48 });
+    scene._put({
+      id: "tun-from",
+      type: "box",
+      semantic: "deployedOn",
+      x: 0,
+      y: 0,
+      w: 48,
+      h: 48,
+    });
+    scene._put({
+      id: "tun-to",
+      type: "box",
+      semantic: "deployedOn",
+      x: 240,
+      y: 0,
+      w: 48,
+      h: 48,
+    });
+    scene._put({
+      id: "dtun-from",
+      type: "box",
+      semantic: "deployedOn",
+      x: 0,
+      y: 80,
+      w: 48,
+      h: 48,
+    });
+    scene._put({
+      id: "dtun-to",
+      type: "box",
+      semantic: "deployedOn",
+      x: 240,
+      y: 80,
+      w: 48,
+      h: 48,
+    });
     scene._put({
       id: "tunnel",
       type: "connector",
@@ -511,7 +673,7 @@ describe("IBM published visual golden fixtures", () => {
       connectorType: "tunneling-connection",
       flowColor: "public",
       routing: "manual",
-      waypoints: []
+      waypoints: [],
     });
     scene._put({
       id: "double-tunnel",
@@ -525,23 +687,49 @@ describe("IBM published visual golden fixtures", () => {
       to: { elementId: "dtun-to", port: "w" },
       connectorType: "traffic-through-double-tunnel",
       routing: "manual",
-      waypoints: []
+      waypoints: [],
     });
     renderer.render(scene);
 
-    const tunnelBands = renderer.nodeFor("tunnel")?.querySelectorAll("polyline");
+    const tunnelBands = renderer
+      .nodeFor("tunnel")
+      ?.querySelectorAll("polyline");
     expect(tunnelBands).toHaveLength(2); // band + main line
-    expect(attributes(tunnelBands![0] as Element)).toMatchObject({ stroke: "#FFD7D9" });
+    expect(attributes(tunnelBands![0] as Element)).toMatchObject({
+      stroke: "#FFD7D9",
+    });
 
-    const doubleBands = renderer.nodeFor("double-tunnel")?.querySelectorAll("polyline");
+    const doubleBands = renderer
+      .nodeFor("double-tunnel")
+      ?.querySelectorAll("polyline");
     expect(doubleBands).toHaveLength(3); // outer band + inner band + main line
-    expect(attributes(doubleBands![0] as Element)).toMatchObject({ stroke: "#f1c21b" });
-    expect(attributes(doubleBands![1] as Element)).toMatchObject({ stroke: "#FFD7D9" });
+    expect(attributes(doubleBands![0] as Element)).toMatchObject({
+      stroke: "#f1c21b",
+    });
+    expect(attributes(doubleBands![1] as Element)).toMatchObject({
+      stroke: "#FFD7D9",
+    });
   });
 
   it("renders a circled sequence badge at the connector's midpoint, distinct from its text label", () => {
-    scene._put({ id: "seq-from", type: "box", semantic: "deployedOn", x: 0, y: 0, w: 48, h: 48 });
-    scene._put({ id: "seq-to", type: "box", semantic: "deployedOn", x: 240, y: 0, w: 48, h: 48 });
+    scene._put({
+      id: "seq-from",
+      type: "box",
+      semantic: "deployedOn",
+      x: 0,
+      y: 0,
+      w: 48,
+      h: 48,
+    });
+    scene._put({
+      id: "seq-to",
+      type: "box",
+      semantic: "deployedOn",
+      x: 240,
+      y: 0,
+      w: 48,
+      h: 48,
+    });
     scene._put({
       id: "seq",
       type: "connector",
@@ -558,20 +746,42 @@ describe("IBM published visual golden fixtures", () => {
       routing: "manual",
       waypoints: [
         { x: 48, y: 24 },
-        { x: 240, y: 24 }
-      ]
+        { x: 240, y: 24 },
+      ],
     });
     renderer.render(scene);
 
     const badgeCircle = renderer.nodeFor("seq")?.querySelector("circle");
-    expect(attributes(badgeCircle)).toMatchObject({ cx: "144", cy: "24", r: "9" });
-    const texts = [...(renderer.nodeFor("seq")?.querySelectorAll("text") ?? [])].map((t) => t.textContent);
+    expect(attributes(badgeCircle)).toMatchObject({
+      cx: "144",
+      cy: "24",
+      r: "9",
+    });
+    const texts = [
+      ...(renderer.nodeFor("seq")?.querySelectorAll("text") ?? []),
+    ].map((t) => t.textContent);
     expect(texts).toEqual(["calls", "2a"]);
   });
 
   it("omits the sequence badge entirely when unset", () => {
-    scene._put({ id: "noseq-from", type: "box", semantic: "deployedOn", x: 0, y: 0, w: 48, h: 48 });
-    scene._put({ id: "noseq-to", type: "box", semantic: "deployedOn", x: 240, y: 0, w: 48, h: 48 });
+    scene._put({
+      id: "noseq-from",
+      type: "box",
+      semantic: "deployedOn",
+      x: 0,
+      y: 0,
+      w: 48,
+      h: 48,
+    });
+    scene._put({
+      id: "noseq-to",
+      type: "box",
+      semantic: "deployedOn",
+      x: 240,
+      y: 0,
+      w: 48,
+      h: 48,
+    });
     scene._put({
       id: "noseq",
       type: "connector",
@@ -584,7 +794,7 @@ describe("IBM published visual golden fixtures", () => {
       to: { elementId: "noseq-to", port: "w" },
       connectorType: "association",
       routing: "manual",
-      waypoints: []
+      waypoints: [],
     });
     renderer.render(scene);
 
@@ -592,8 +802,24 @@ describe("IBM published visual golden fixtures", () => {
   });
 
   it("renders a structured protocol annotation formatted per IBM's worked example, below the line", () => {
-    scene._put({ id: "ann-from", type: "box", semantic: "deployedOn", x: 0, y: 0, w: 48, h: 48 });
-    scene._put({ id: "ann-to", type: "box", semantic: "deployedOn", x: 240, y: 0, w: 48, h: 48 });
+    scene._put({
+      id: "ann-from",
+      type: "box",
+      semantic: "deployedOn",
+      x: 0,
+      y: 0,
+      w: 48,
+      h: 48,
+    });
+    scene._put({
+      id: "ann-to",
+      type: "box",
+      semantic: "deployedOn",
+      x: 240,
+      y: 0,
+      w: 48,
+      h: 48,
+    });
     scene._put({
       id: "ann",
       type: "connector",
@@ -609,26 +835,61 @@ describe("IBM published visual golden fixtures", () => {
       routing: "manual",
       waypoints: [
         { x: 48, y: 24 },
-        { x: 240, y: 24 }
-      ]
+        { x: 240, y: 24 },
+      ],
     });
     renderer.render(scene);
 
-    const texts = [...(renderer.nodeFor("ann")?.querySelectorAll("text") ?? [])];
+    const texts = [
+      ...(renderer.nodeFor("ann")?.querySelectorAll("text") ?? []),
+    ];
     expect(texts).toHaveLength(1);
     expect(texts[0]?.textContent).toBe("HTTPS TLS1.3:443");
-    expect(attributes(texts[0])).toMatchObject({ x: "144", y: "44", "text-anchor": "middle" });
+    expect(attributes(texts[0])).toMatchObject({
+      x: "144",
+      y: "44",
+      "text-anchor": "middle",
+    });
   });
 
   function domOrder(): (string | null)[] {
     const layer = renderer.svg.querySelector('[data-icad-layer="elements"]')!;
-    return [...layer.children].map((child) => child.getAttribute("data-icad-id"));
+    return [...layer.children].map((child) =>
+      child.getAttribute("data-icad-id"),
+    );
   }
 
   it("reorders existing DOM nodes when z-order changes, not just repainting them in place (C10)", () => {
-    scene._put({ id: "a", type: "box", semantic: "deployedOn", x: 0, y: 0, w: 40, h: 40, z: 1 });
-    scene._put({ id: "b", type: "box", semantic: "deployedOn", x: 0, y: 0, w: 40, h: 40, z: 2 });
-    scene._put({ id: "c", type: "box", semantic: "deployedOn", x: 0, y: 0, w: 40, h: 40, z: 3 });
+    scene._put({
+      id: "a",
+      type: "box",
+      semantic: "deployedOn",
+      x: 0,
+      y: 0,
+      w: 40,
+      h: 40,
+      z: 1,
+    });
+    scene._put({
+      id: "b",
+      type: "box",
+      semantic: "deployedOn",
+      x: 0,
+      y: 0,
+      w: 40,
+      h: 40,
+      z: 2,
+    });
+    scene._put({
+      id: "c",
+      type: "box",
+      semantic: "deployedOn",
+      x: 0,
+      y: 0,
+      w: 40,
+      h: 40,
+      z: 3,
+    });
     renderer.render(scene);
     expect(domOrder()).toEqual(["a", "b", "c"]);
 
@@ -639,26 +900,72 @@ describe("IBM published visual golden fixtures", () => {
   });
 
   it("skips the reorder walk when the id sequence is unchanged, but still applies on add/remove", () => {
-    scene._put({ id: "a", type: "box", semantic: "deployedOn", x: 0, y: 0, w: 40, h: 40 });
-    scene._put({ id: "b", type: "box", semantic: "deployedOn", x: 0, y: 0, w: 40, h: 40 });
+    scene._put({
+      id: "a",
+      type: "box",
+      semantic: "deployedOn",
+      x: 0,
+      y: 0,
+      w: 40,
+      h: 40,
+    });
+    scene._put({
+      id: "b",
+      type: "box",
+      semantic: "deployedOn",
+      x: 0,
+      y: 0,
+      w: 40,
+      h: 40,
+    });
     renderer.render(scene);
     const bNodeBefore = renderer.nodeFor("b");
 
     // An unrelated property edit, same id set/order: re-rendering must not disturb DOM identity.
-    scene._put({ ...(scene.get("a") as SceneElement), label: { text: "renamed" } }, "update");
+    scene._put(
+      { ...(scene.get("a") as SceneElement), label: { text: "renamed" } },
+      "update",
+    );
     renderer.render(scene);
     expect(renderer.nodeFor("b")).toBe(bNodeBefore);
     expect(domOrder()).toEqual(["a", "b"]);
 
     // A genuinely new element (default z) still lands in the right place via the same mechanism.
-    scene._put({ id: "c", type: "box", semantic: "deployedOn", x: 0, y: 0, w: 40, h: 40, z: -1 });
+    scene._put({
+      id: "c",
+      type: "box",
+      semantic: "deployedOn",
+      x: 0,
+      y: 0,
+      w: 40,
+      h: 40,
+      z: -1,
+    });
     renderer.render(scene);
     expect(domOrder()).toEqual(["c", "a", "b"]);
   });
 
   it("renderElements re-renders only the given ids from current scene state, leaving others untouched", () => {
-    scene._put({ id: "a", type: "box", semantic: "deployedOn", x: 0, y: 0, w: 40, h: 40, label: { text: "A" } });
-    scene._put({ id: "b", type: "box", semantic: "deployedOn", x: 0, y: 0, w: 40, h: 40, label: { text: "B" } });
+    scene._put({
+      id: "a",
+      type: "box",
+      semantic: "deployedOn",
+      x: 0,
+      y: 0,
+      w: 40,
+      h: 40,
+      label: { text: "A" },
+    });
+    scene._put({
+      id: "b",
+      type: "box",
+      semantic: "deployedOn",
+      x: 0,
+      y: 0,
+      w: 40,
+      h: 40,
+      label: { text: "B" },
+    });
     renderer.render(scene);
     const bNodeBefore = renderer.nodeFor("b");
 
@@ -667,7 +974,9 @@ describe("IBM published visual golden fixtures", () => {
     scene._put({ ...(scene.get("a") as SceneElement), w: 90 }, "update");
     renderer.renderElements(["a"]);
 
-    expect(attributes(renderer.nodeFor("a")?.querySelector(":scope > rect"))).toMatchObject({ width: "90" });
+    expect(
+      attributes(renderer.nodeFor("a")?.querySelector(":scope > rect")),
+    ).toMatchObject({ width: "90" });
     expect(renderer.nodeFor("b")).toBe(bNodeBefore); // untouched: same DOM node, never re-rendered
   });
 });

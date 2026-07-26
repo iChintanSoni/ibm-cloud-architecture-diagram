@@ -14,7 +14,7 @@ import type { CatalogManifest, IconMeta } from "./types.js";
 export class Catalog {
   constructor(
     private manifest: CatalogManifest,
-    private assets: Map<string, string>
+    private assets: Map<string, string>,
   ) {}
 
   get id(): string {
@@ -43,7 +43,12 @@ export class Catalog {
     const q = query.trim().toLowerCase();
     if (!q) return [];
     return this.manifest.icons.filter((icon) => {
-      const haystack = [icon.id, icon.name, ...(icon.keywords ?? []), ...(icon.aliases ?? [])]
+      const haystack = [
+        icon.id,
+        icon.name,
+        ...(icon.keywords ?? []),
+        ...(icon.aliases ?? []),
+      ]
         .join(" ")
         .toLowerCase();
       return haystack.includes(q);

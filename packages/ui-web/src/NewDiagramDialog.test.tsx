@@ -17,7 +17,7 @@ describe("NewDiagramDialog", () => {
         observe() {}
         unobserve() {}
         disconnect() {}
-      }
+      },
     );
     container = document.createElement("div");
     document.body.appendChild(container);
@@ -39,17 +39,23 @@ describe("NewDiagramDialog", () => {
           hasExistingContent
           onClose={vi.fn()}
           onCreate={onCreate}
-        />
+        />,
       );
     });
 
-    expect(document.body.textContent).toContain("replaces the current document");
-    expect(document.body.querySelectorAll('input[name="icad-diagram-template"]')).toHaveLength(4);
+    expect(document.body.textContent).toContain(
+      "replaces the current document",
+    );
+    expect(
+      document.body.querySelectorAll('input[name="icad-diagram-template"]'),
+    ).toHaveLength(4);
 
-    const detailed = document.body.querySelector<HTMLInputElement>("#icad-template-detailed")!;
+    const detailed = document.body.querySelector<HTMLInputElement>(
+      "#icad-template-detailed",
+    )!;
     act(() => detailed.click());
     const createButton = [...document.body.querySelectorAll("button")].find(
-      (button) => button.textContent?.trim() === "Create diagram"
+      (button) => button.textContent?.trim() === "Create diagram",
     )!;
     act(() => createButton.click());
 

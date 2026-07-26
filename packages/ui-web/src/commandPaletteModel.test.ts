@@ -2,7 +2,12 @@ import { describe, expect, it, vi } from "vitest";
 import { filterCommands, type CommandItem } from "./commandPaletteModel.js";
 
 function command(id: string, label: string, category?: string): CommandItem {
-  return { id, label, run: vi.fn(), ...(category !== undefined ? { category } : {}) };
+  return {
+    id,
+    label,
+    run: vi.fn(),
+    ...(category !== undefined ? { category } : {}),
+  };
 }
 
 describe("filterCommands", () => {
@@ -18,7 +23,10 @@ describe("filterCommands", () => {
   });
 
   it("matches on category as well as label", () => {
-    const commands = [command("a", "Auto", "Theme"), command("b", "Undo", "Edit")];
+    const commands = [
+      command("a", "Auto", "Theme"),
+      command("b", "Undo", "Edit"),
+    ];
     expect(filterCommands(commands, "theme").map((c) => c.id)).toEqual(["a"]);
   });
 

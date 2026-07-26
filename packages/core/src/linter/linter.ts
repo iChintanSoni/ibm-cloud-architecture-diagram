@@ -23,7 +23,9 @@ export class Linter {
       this.context = {};
     } else {
       this.rules = options.rules ?? defaultRules;
-      this.context = { ...(options.catalog ? { catalog: options.catalog } : {}) };
+      this.context = {
+        ...(options.catalog ? { catalog: options.catalog } : {}),
+      };
     }
   }
 

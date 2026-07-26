@@ -6,17 +6,23 @@ import { Catalog, type CatalogManifest } from "@icad/core";
  * workspace package. Assets are bundled eagerly; if the catalog grows large
  * enough for this to matter, switch to lazy `import.meta.glob` imports.
  */
-const manifestModules = import.meta.glob("../../../packages/catalog/2.0.0/index.json", {
-  eager: true,
-  import: "default"
-});
+const manifestModules = import.meta.glob(
+  "../../../packages/catalog/2.0.0/index.json",
+  {
+    eager: true,
+    import: "default",
+  },
+);
 const manifest = Object.values(manifestModules)[0] as CatalogManifest;
 
-const assetModules = import.meta.glob("../../../packages/catalog/2.0.0/icons/**/*.svg", {
-  eager: true,
-  query: "?raw",
-  import: "default"
-}) as Record<string, string>;
+const assetModules = import.meta.glob(
+  "../../../packages/catalog/2.0.0/icons/**/*.svg",
+  {
+    eager: true,
+    query: "?raw",
+    import: "default",
+  },
+) as Record<string, string>;
 
 // Catalog assets on disk are full, standalone SVGs (viewBox 0 0 24 24); `Catalog`
 // expects inner fragments (see packages/core/src/catalog/catalog.ts), so strip the

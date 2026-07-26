@@ -28,18 +28,29 @@ describe("document tools", () => {
   it("doc_create then doc_save then doc_open round-trips through disk", async () => {
     const { client, close } = await createTestClient();
     try {
-      await client.callTool({ name: "doc_create", arguments: { level: "blank" } });
+      await client.callTool({
+        name: "doc_create",
+        arguments: { level: "blank" },
+      });
       await client.callTool({
         name: "element_add_box",
-        arguments: { at: { x: 10, y: 10 } }
+        arguments: { at: { x: 10, y: 10 } },
       });
 
       const filePath = path.join(dir, "roundtrip.icad");
-      const saveResult = await client.callTool({ name: "doc_save", arguments: { path: filePath } });
+      const saveResult = await client.callTool({
+        name: "doc_save",
+        arguments: { path: filePath },
+      });
       expect(saveResult.isError).toBeUndefined();
 
-      const getBefore = await client.callTool({ name: "doc_get", arguments: {} });
-      const before = (getBefore.structuredContent as { document: { elements: unknown[] } }).document;
+      const getBefore = await client.callTool({
+        name: "doc_get",
+        arguments: {},
+      });
+      const before = (
+        getBefore.structuredContent as { document: { elements: unknown[] } }
+      ).document;
       expect(before.elements).toHaveLength(1);
 
       // Reopen the same file into a *different* server/document to prove it actually persisted.
@@ -47,11 +58,16 @@ describe("document tools", () => {
       try {
         const openResult = await other.client.callTool({
           name: "doc_open",
-          arguments: { path: filePath }
+          arguments: { path: filePath },
         });
         expect(openResult.isError).toBeUndefined();
-        const getAfter = await other.client.callTool({ name: "doc_get", arguments: {} });
-        const after = (getAfter.structuredContent as { document: { elements: unknown[] } }).document;
+        const getAfter = await other.client.callTool({
+          name: "doc_get",
+          arguments: {},
+        });
+        const after = (
+          getAfter.structuredContent as { document: { elements: unknown[] } }
+        ).document;
         expect(after.elements).toHaveLength(1);
       } finally {
         await other.close();
@@ -64,20 +80,31 @@ describe("document tools", () => {
   it("doc_create refuses to replace a dirty document without force", async () => {
     const { client, close } = await createTestClient();
     try {
-      await client.callTool({ name: "doc_create", arguments: { level: "blank" } });
-      await client.callTool({ name: "element_add_box", arguments: { at: { x: 0, y: 0 } } });
+      await client.callTool({
+        name: "doc_create",
+        arguments: { level: "blank" },
+      });
+      await client.callTool({
+        name: "element_add_box",
+        arguments: { at: { x: 0, y: 0 } },
+      });
 
-      const blocked = await client.callTool({ name: "doc_create", arguments: { level: "blank" } });
+      const blocked = await client.callTool({
+        name: "doc_create",
+        arguments: { level: "blank" },
+      });
       expect(blocked.isError).toBe(true);
 
       const forced = await client.callTool({
         name: "doc_create",
-        arguments: { level: "blank", force: true }
+        arguments: { level: "blank", force: true },
       });
       expect(forced.isError).toBeUndefined();
 
       const get = await client.callTool({ name: "doc_get", arguments: {} });
-      const document = (get.structuredContent as { document: { elements: unknown[] } }).document;
+      const document = (
+        get.structuredContent as { document: { elements: unknown[] } }
+      ).document;
       expect(document.elements).toHaveLength(0);
     } finally {
       await close();

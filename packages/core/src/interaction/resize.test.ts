@@ -5,7 +5,12 @@ const START = { x: 100, y: 100, w: 200, h: 100 };
 
 describe("resizeBounds", () => {
   it("e: grows width only, from the left edge", () => {
-    expect(resizeBounds(START, "e", 30, 0)).toEqual({ x: 100, y: 100, w: 230, h: 100 });
+    expect(resizeBounds(START, "e", 30, 0)).toEqual({
+      x: 100,
+      y: 100,
+      w: 230,
+      h: 100,
+    });
   });
 
   it("w: shrinks width and moves x, right edge stays anchored", () => {
@@ -21,11 +26,21 @@ describe("resizeBounds", () => {
   });
 
   it("s: grows height only, top edge stays anchored", () => {
-    expect(resizeBounds(START, "s", 0, 25)).toEqual({ x: 100, y: 100, w: 200, h: 125 });
+    expect(resizeBounds(START, "s", 0, 25)).toEqual({
+      x: 100,
+      y: 100,
+      w: 200,
+      h: 125,
+    });
   });
 
   it("se: grows both dimensions from the fixed top-left corner", () => {
-    expect(resizeBounds(START, "se", 10, 20)).toEqual({ x: 100, y: 100, w: 210, h: 120 });
+    expect(resizeBounds(START, "se", 10, 20)).toEqual({
+      x: 100,
+      y: 100,
+      w: 210,
+      h: 120,
+    });
   });
 
   it("nw: top-left corner drag keeps the bottom-right corner fixed", () => {
@@ -84,7 +99,9 @@ describe("resizeBounds", () => {
 
     it("is ignored on edge (non-corner) handles", () => {
       const withLock = resizeBounds(START, "e", 30, 0, { aspectLock: true });
-      const withoutLock = resizeBounds(START, "e", 30, 0, { aspectLock: false });
+      const withoutLock = resizeBounds(START, "e", 30, 0, {
+        aspectLock: false,
+      });
       expect(withLock).toEqual(withoutLock);
     });
   });

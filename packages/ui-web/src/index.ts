@@ -1,14 +1,18 @@
-export { LibraryPanel, type LibraryPanelProps, type LibraryPlacement } from "./LibraryPanel.js";
+export {
+  LibraryPanel,
+  type LibraryPanelProps,
+  type LibraryPlacement,
+} from "./LibraryPanel.js";
 export { InspectorPanel, type InspectorPanelProps } from "./InspectorPanel.js";
 export {
   NewDiagramDialog,
-  type NewDiagramDialogProps
+  type NewDiagramDialogProps,
 } from "./NewDiagramDialog.js";
 export {
   buildLayerTree,
   elementDisplayName,
   eligibleParentElements,
-  type LayerNode
+  type LayerNode,
 } from "./inspectorModel.js";
 export { groupLibraryIcons, type IconGroup } from "./libraryModel.js";
 export {
@@ -16,9 +20,14 @@ export {
   confirmedContainerPresets,
   type ContainerKind,
   type PrimitiveKind,
-  type ContainerPreset
+  type ContainerPreset,
 } from "./presets.js";
-export { TopBar, type TopBarProps, type ThemePreference, type InsertKind } from "./TopBar.js";
+export {
+  TopBar,
+  type TopBarProps,
+  type ThemePreference,
+  type InsertKind,
+} from "./TopBar.js";
 export { CommandPalette, type CommandPaletteProps } from "./CommandPalette.js";
 export { filterCommands, type CommandItem } from "./commandPaletteModel.js";
 export { FindBar, type FindBarProps } from "./FindBar.js";

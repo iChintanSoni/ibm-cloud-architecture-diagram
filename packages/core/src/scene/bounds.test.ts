@@ -3,15 +3,39 @@ import { boundsOf } from "./bounds.js";
 import { Scene } from "./scene.js";
 import type { BoxElement, ConnectorElement, IconNodeElement } from "./types.js";
 
-function box(id: string, rect: { x: number; y: number; w: number; h: number }, parentId?: string): BoxElement {
-  return { id, type: "box", semantic: "deployedOn", ...rect, ...(parentId ? { parentId } : {}) };
+function box(
+  id: string,
+  rect: { x: number; y: number; w: number; h: number },
+  parentId?: string,
+): BoxElement {
+  return {
+    id,
+    type: "box",
+    semantic: "deployedOn",
+    ...rect,
+    ...(parentId ? { parentId } : {}),
+  };
 }
 
-function icon(id: string, rect: { x: number; y: number; w: number; h: number }, parentId?: string): IconNodeElement {
-  return { id, type: "iconNode", semantic: "node", catalogRef: "test/icon", ...rect, ...(parentId ? { parentId } : {}) };
+function icon(
+  id: string,
+  rect: { x: number; y: number; w: number; h: number },
+  parentId?: string,
+): IconNodeElement {
+  return {
+    id,
+    type: "iconNode",
+    semantic: "node",
+    catalogRef: "test/icon",
+    ...rect,
+    ...(parentId ? { parentId } : {}),
+  };
 }
 
-function connector(id: string, waypoints: Array<{ x: number; y: number }>): ConnectorElement {
+function connector(
+  id: string,
+  waypoints: Array<{ x: number; y: number }>,
+): ConnectorElement {
   return {
     id,
     type: "connector",
@@ -24,7 +48,7 @@ function connector(id: string, waypoints: Array<{ x: number; y: number }>): Conn
     to: { elementId: "b", port: "w" },
     connectorType: "association",
     routing: "auto",
-    waypoints
+    waypoints,
   };
 }
 
@@ -60,8 +84,8 @@ describe("boundsOf", () => {
       connector("conn", [
         { x: 0, y: 0 },
         { x: 50, y: 0 },
-        { x: 50, y: 30 }
-      ])
+        { x: 50, y: 30 },
+      ]),
     );
     expect(boundsOf(scene, ["conn"])).toEqual({ x: 0, y: 0, w: 50, h: 30 });
   });
@@ -70,6 +94,11 @@ describe("boundsOf", () => {
     const scene = new Scene();
     scene._put(connector("conn", []));
     scene._put(box("a", { x: 5, y: 5, w: 10, h: 10 }));
-    expect(boundsOf(scene, ["conn", "a"])).toEqual({ x: 5, y: 5, w: 10, h: 10 });
+    expect(boundsOf(scene, ["conn", "a"])).toEqual({
+      x: 5,
+      y: 5,
+      w: 10,
+      h: 10,
+    });
   });
 });

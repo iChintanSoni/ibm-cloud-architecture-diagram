@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { Catalog, createEditor, type CatalogManifest, type Editor } from "@icad/core";
+import {
+  Catalog,
+  createEditor,
+  type CatalogManifest,
+  type Editor,
+} from "@icad/core";
 import { confirmedContainerPresets, type LibraryPlacement } from "@icad/ui-web";
 import { placeLibraryItem } from "./placement";
 
@@ -14,7 +19,7 @@ const manifest: CatalogManifest = {
       category: "compute",
       semantic: "node",
       container: "square",
-      asset: "server.svg"
+      asset: "server.svg",
     },
     {
       id: "test/user",
@@ -22,9 +27,9 @@ const manifest: CatalogManifest = {
       category: "compute",
       semantic: "actor",
       container: "rounded",
-      asset: "user.svg"
-    }
-  ]
+      asset: "user.svg",
+    },
+  ],
 };
 
 describe("library placement", () => {
@@ -34,23 +39,34 @@ describe("library placement", () => {
     document.body.innerHTML = '<div id="canvas"></div>';
     editor = createEditor({
       container: document.querySelector("#canvas")!,
-      catalog: new Catalog(manifest, new Map())
+      catalog: new Catalog(manifest, new Map()),
     });
   });
 
   it("centers an icon at the chosen point and selects the correct semantic API", () => {
     const icon = manifest.icons[0]!;
-    const id = placeLibraryItem(editor, { type: "icon", icon }, { x: 100, y: 100 });
+    const id = placeLibraryItem(
+      editor,
+      { type: "icon", icon },
+      { x: 100, y: 100 },
+    );
     expect(editor.scene.get(id)).toMatchObject({
       type: "iconNode",
       x: 76,
       y: 76,
-      catalogRef: "test/server"
+      catalogRef: "test/server",
     });
 
     const actor = manifest.icons[1]!;
-    const actorId = placeLibraryItem(editor, { type: "icon", icon: actor }, { x: 180, y: 100 });
-    expect(editor.scene.get(actorId)).toMatchObject({ type: "actor", catalogRef: "test/user" });
+    const actorId = placeLibraryItem(
+      editor,
+      { type: "icon", icon: actor },
+      { x: 180, y: 100 },
+    );
+    expect(editor.scene.get(actorId)).toMatchObject({
+      type: "actor",
+      catalogRef: "test/user",
+    });
   });
 
   it("automatically contains a placed icon and preserves the 16px inset", () => {
@@ -58,7 +74,7 @@ describe("library placement", () => {
     const id = placeLibraryItem(
       editor,
       { type: "icon", icon: manifest.icons[0]! },
-      { x: 25, y: 25 }
+      { x: 25, y: 25 },
     );
     expect(editor.scene.get(id)).toMatchObject({ parentId, x: 36, y: 36 });
   });
@@ -71,15 +87,15 @@ describe("library placement", () => {
         name: "IBM Cloud",
         kind: "box",
         color: "#1192e8",
-        cornerIcon: "test/server"
-      }
+        cornerIcon: "test/server",
+      },
     };
     const id = placeLibraryItem(editor, placement, { x: 200, y: 160 });
     expect(editor.scene.get(id)).toMatchObject({
       type: "box",
       label: { text: "IBM Cloud" },
       style: { stroke: "#1192e8" },
-      catalogRef: "test/server"
+      catalogRef: "test/server",
     });
     expect(editor.commands.canUndo()).toBe(true);
     editor.commands.undo();
@@ -91,7 +107,7 @@ describe("library placement", () => {
     const id = placeLibraryItem(
       editor,
       { type: "primitive", kind: "frame" },
-      { x: 600, y: 450 }
+      { x: 600, y: 450 },
     );
 
     expect(editor.scene.get(id)).toMatchObject({
@@ -101,7 +117,7 @@ describe("library placement", () => {
       x: 200,
       y: 200,
       w: 800,
-      h: 500
+      h: 500,
     });
     expect(editor.scene.get(id)?.parentId).toBeUndefined();
     expect(editor.scene.get(parentId)?.type).toBe("box");
@@ -112,15 +128,19 @@ describe("library placement", () => {
       at: { x: 20, y: 20 },
       w: 800,
       h: 500,
-      name: "Overview"
+      name: "Overview",
     });
     const id = placeLibraryItem(
       editor,
       { type: "icon", icon: manifest.icons[0]! },
-      { x: 25, y: 25 }
+      { x: 25, y: 25 },
     );
 
-    expect(editor.scene.get(id)).toMatchObject({ parentId: frameId, x: 36, y: 36 });
+    expect(editor.scene.get(id)).toMatchObject({
+      parentId: frameId,
+      x: 36,
+      y: 36,
+    });
   });
 
   // Regression test: "Availability zone" was the one confirmed preset missing a `cornerIcon` —
@@ -130,7 +150,10 @@ describe("library placement", () => {
   // added without an icon fails loudly instead of shipping invisible.
   it("gives every confirmed container preset a corner icon", () => {
     for (const preset of confirmedContainerPresets) {
-      expect(preset.cornerIcon, `expected "${preset.id}" to have a cornerIcon`).toBeTruthy();
+      expect(
+        preset.cornerIcon,
+        `expected "${preset.id}" to have a cornerIcon`,
+      ).toBeTruthy();
     }
   });
 });

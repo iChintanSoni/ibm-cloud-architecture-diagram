@@ -39,7 +39,7 @@ export class ViewportController {
     this.state = {
       x: next.x ?? this.state.x,
       y: next.y ?? this.state.y,
-      scale: clampScale(next.scale ?? this.state.scale)
+      scale: clampScale(next.scale ?? this.state.scale),
     };
     this.emitter.emit("change", this.state);
   }
@@ -70,11 +70,18 @@ export class ViewportController {
   }
 
   /** Centers on a scene-space rect, fitting it (with padding) into a viewport of `size` pixels. */
-  focusOn(rect: Rect, size: ViewportSize, opts: { padding?: number; maxScale?: number } = {}): void {
+  focusOn(
+    rect: Rect,
+    size: ViewportSize,
+    opts: { padding?: number; maxScale?: number } = {},
+  ): void {
     const padding = opts.padding ?? 48;
     const availW = Math.max(1, size.w - padding * 2);
     const availH = Math.max(1, size.h - padding * 2);
-    const fit = Math.min(availW / Math.max(rect.w, 1), availH / Math.max(rect.h, 1));
+    const fit = Math.min(
+      availW / Math.max(rect.w, 1),
+      availH / Math.max(rect.h, 1),
+    );
     const scale = clampScale(Math.min(fit, opts.maxScale ?? 2));
     const x = rect.x + rect.w / 2 - size.w / (2 * scale);
     const y = rect.y + rect.h / 2 - size.h / (2 * scale);

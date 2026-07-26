@@ -1,5 +1,10 @@
 import { Catalog, type CatalogManifest } from "@icad/core";
-import type { BoxElement, ConnectorElement, FrameElement, IconNodeElement } from "@icad/core";
+import type {
+  BoxElement,
+  ConnectorElement,
+  FrameElement,
+  IconNodeElement,
+} from "@icad/core";
 import { describe, expect, it } from "vitest";
 import { findMatches } from "./findModel.js";
 
@@ -17,9 +22,9 @@ function testCatalog(): Catalog {
         container: "square",
         asset: "vpc",
         keywords: ["vpc"],
-        tier: "ibm-cloud"
-      }
-    ]
+        tier: "ibm-cloud",
+      },
+    ],
   };
   return new Catalog(manifest, new Map([["vpc", "<rect />"]]));
 }
@@ -32,7 +37,7 @@ const icon: IconNodeElement = {
   x: 0,
   y: 0,
   w: 48,
-  h: 48
+  h: 48,
 };
 
 const box: BoxElement = {
@@ -43,7 +48,7 @@ const box: BoxElement = {
   y: 0,
   w: 100,
   h: 100,
-  label: { text: "Payments platform" }
+  label: { text: "Payments platform" },
 };
 
 const frame: FrameElement = {
@@ -55,7 +60,7 @@ const frame: FrameElement = {
   x: 0,
   y: 0,
   w: 800,
-  h: 500
+  h: 500,
 };
 
 const connector: ConnectorElement = {
@@ -70,7 +75,7 @@ const connector: ConnectorElement = {
   to: { elementId: icon.id, port: "w" },
   connectorType: "association",
   routing: "auto",
-  label: { text: "Payments platform gateway" }
+  label: { text: "Payments platform gateway" },
 };
 
 describe("findMatches", () => {
@@ -85,13 +90,19 @@ describe("findMatches", () => {
   });
 
   it("matches by resolved catalog icon name, not just the raw ref", () => {
-    const matches = findMatches([icon, box, frame], testCatalog(), "virtual private cloud");
+    const matches = findMatches(
+      [icon, box, frame],
+      testCatalog(),
+      "virtual private cloud",
+    );
     expect(matches.map((m) => m.id)).toEqual(["icon-1"]);
   });
 
   it("matches frame names and tags them with kind 'frame'", () => {
     const matches = findMatches([icon, box, frame], testCatalog(), "checkout");
-    expect(matches).toEqual([{ id: "frame-1", label: "Checkout flow", type: "frame", kind: "frame" }]);
+    expect(matches).toEqual([
+      { id: "frame-1", label: "Checkout flow", type: "frame", kind: "frame" },
+    ]);
   });
 
   it("excludes connectors even when their label text matches", () => {
@@ -100,6 +111,8 @@ describe("findMatches", () => {
   });
 
   it("is case-insensitive", () => {
-    expect(findMatches([frame], testCatalog(), "CHECKOUT").map((m) => m.id)).toEqual(["frame-1"]);
+    expect(
+      findMatches([frame], testCatalog(), "CHECKOUT").map((m) => m.id),
+    ).toEqual(["frame-1"]);
   });
 });

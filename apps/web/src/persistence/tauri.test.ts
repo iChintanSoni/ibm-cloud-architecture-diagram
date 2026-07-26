@@ -4,12 +4,14 @@ vi.mock("@tauri-apps/plugin-dialog", () => ({ open: vi.fn(), save: vi.fn() }));
 vi.mock("@tauri-apps/plugin-fs", () => ({
   readTextFile: vi.fn(),
   writeTextFile: vi.fn(),
-  writeFile: vi.fn()
+  writeFile: vi.fn(),
 }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn() }));
 const mockSetTheme = vi.fn();
-vi.mock("@tauri-apps/api/window", () => ({ getCurrentWindow: () => ({ setTheme: mockSetTheme }) }));
+vi.mock("@tauri-apps/api/window", () => ({
+  getCurrentWindow: () => ({ setTheme: mockSetTheme }),
+}));
 
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -22,7 +24,7 @@ import {
   openIcadFileNative,
   saveExportNative,
   saveIcadFileNative,
-  setNativeTheme
+  setNativeTheme,
 } from "./tauri";
 
 beforeEach(() => {
@@ -63,7 +65,11 @@ describe("openIcadFileNative", () => {
 
 describe("saveIcadFileNative", () => {
   it("writes directly to an existing path without prompting", async () => {
-    const result = await saveIcadFileNative("{}", "/Users/me/diagram.icad", "diagram.icad");
+    const result = await saveIcadFileNative(
+      "{}",
+      "/Users/me/diagram.icad",
+      "diagram.icad",
+    );
 
     expect(save).not.toHaveBeenCalled();
     expect(writeTextFile).toHaveBeenCalledWith("/Users/me/diagram.icad", "{}");
@@ -76,7 +82,7 @@ describe("saveIcadFileNative", () => {
     const result = await saveIcadFileNative("{}", null, "new.icad");
 
     expect(save).toHaveBeenCalledWith(
-      expect.objectContaining({ defaultPath: "new.icad" })
+      expect.objectContaining({ defaultPath: "new.icad" }),
     );
     expect(writeTextFile).toHaveBeenCalledWith("/Users/me/new.icad", "{}");
     expect(result).toBe("/Users/me/new.icad");
@@ -102,7 +108,10 @@ describe("consumeStartupFile", () => {
     vi.mocked(invoke).mockResolvedValue("/Users/me/startup.icad");
     vi.mocked(readTextFile).mockResolvedValue("{}");
 
-    expect(await consumeStartupFile()).toEqual({ path: "/Users/me/startup.icad", text: "{}" });
+    expect(await consumeStartupFile()).toEqual({
+      path: "/Users/me/startup.icad",
+      text: "{}",
+    });
   });
 });
 
@@ -122,7 +131,10 @@ describe("onNativeFileOpen", () => {
     await emit!({ payload: "/Users/me/relaunched.icad" });
 
     expect(readTextFile).toHaveBeenCalledWith("/Users/me/relaunched.icad");
-    expect(handler).toHaveBeenCalledWith({ path: "/Users/me/relaunched.icad", text: "{}" });
+    expect(handler).toHaveBeenCalledWith({
+      path: "/Users/me/relaunched.icad",
+      text: "{}",
+    });
   });
 });
 
@@ -148,9 +160,12 @@ describe("saveExportNative", () => {
     const result = await saveExportNative(blob, "diagram.png", filters);
 
     expect(save).toHaveBeenCalledWith(
-      expect.objectContaining({ defaultPath: "diagram.png", filters })
+      expect.objectContaining({ defaultPath: "diagram.png", filters }),
     );
-    expect(writeFile).toHaveBeenCalledWith("/Users/me/diagram.png", new Uint8Array([1, 2, 3]));
+    expect(writeFile).toHaveBeenCalledWith(
+      "/Users/me/diagram.png",
+      new Uint8Array([1, 2, 3]),
+    );
     expect(result).toBe("/Users/me/diagram.png");
   });
 

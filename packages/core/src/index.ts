@@ -2,7 +2,11 @@
 export * from "./scene/types.js";
 export { Scene, type SceneChangeEvent } from "./scene/scene.js";
 export { boundsOf } from "./scene/bounds.js";
-export { accessibleName, accessibleRole, type AccessibleRole } from "./scene/accessibleName.js";
+export {
+  accessibleName,
+  accessibleRole,
+  type AccessibleRole,
+} from "./scene/accessibleName.js";
 export { formatConnectorAnnotation } from "./scene/connectorAnnotation.js";
 
 // Commands
@@ -16,16 +20,31 @@ export {
   setManualWaypoints,
   autoRouteConnector,
   batch,
-  updateConformance
+  updateConformance,
 } from "./commands/commands.js";
 export { CommandBus } from "./commands/commandBus.js";
 
 // Interaction
 export { SelectionManager } from "./interaction/selection.js";
-export { hitTest, hitTestAll, hitTestRect, type HitTestOptions } from "./interaction/hitTest.js";
+export {
+  hitTest,
+  hitTestAll,
+  hitTestRect,
+  type HitTestOptions,
+} from "./interaction/hitTest.js";
 export { computeTabOrder } from "./interaction/tabOrder.js";
-export { CanvasController, type CanvasMode, type CanvasControllerOptions } from "./interaction/canvasController.js";
-export { snapMove, PARENT_INSET, type SnapGuide, type SnapResult, type SnapOptions } from "./interaction/snapping.js";
+export {
+  CanvasController,
+  type CanvasMode,
+  type CanvasControllerOptions,
+} from "./interaction/canvasController.js";
+export {
+  snapMove,
+  PARENT_INSET,
+  type SnapGuide,
+  type SnapResult,
+  type SnapOptions,
+} from "./interaction/snapping.js";
 
 // Rendering
 export { SvgRenderer, type ResolvedTheme } from "./render/svgRenderer.js";
@@ -36,17 +55,30 @@ export {
   MIN_SCALE,
   MAX_SCALE,
   type ViewportState,
-  type ViewportSize
+  type ViewportSize,
 } from "./render/viewport.js";
 
 // Routing
-export { routeOrthogonal, pathCrossesObstacles, type Rect, type RoutePort } from "./routing/orthogonalRouter.js";
-export { routeConnectorInScene, connectorPathPoints } from "./routing/routeConnector.js";
+export {
+  routeOrthogonal,
+  pathCrossesObstacles,
+  type Rect,
+  type RoutePort,
+} from "./routing/orthogonalRouter.js";
+export {
+  routeConnectorInScene,
+  connectorPathPoints,
+} from "./routing/routeConnector.js";
 export { pickPorts } from "./routing/pickPorts.js";
 
 // Catalog
 export { Catalog } from "./catalog/catalog.js";
-export type { CatalogManifest, CatalogCategory, IconMeta, IconTier } from "./catalog/types.js";
+export type {
+  CatalogManifest,
+  CatalogCategory,
+  IconMeta,
+  IconTier,
+} from "./catalog/types.js";
 
 // Linter
 export { Linter } from "./linter/linter.js";
@@ -67,14 +99,33 @@ export {
   connectorAnnotationRule,
   nodeWithoutLocationRule,
   westEastFlowRule,
-  iconGeometryRule
+  iconGeometryRule,
 } from "./linter/rules.js";
 export { applyQuickFix, applyQuickFixes } from "./linter/quickFix.js";
-export type { Diagnostic, Rule, RuleCategory, RuleContext, RuleMetadata, Severity } from "./linter/types.js";
+export type {
+  Diagnostic,
+  Rule,
+  RuleCategory,
+  RuleContext,
+  RuleMetadata,
+  Severity,
+} from "./linter/types.js";
 
 // IO
-export { ICAD_FORMAT, ICAD_VERSION, toIcad, fromIcad, applyIcad, type IcadDocument } from "./io/icad.js";
-export { exportSvg, exportPng, type SvgExportOptions, type PngExportOptions } from "./io/export.js";
+export {
+  ICAD_FORMAT,
+  ICAD_VERSION,
+  toIcad,
+  fromIcad,
+  applyIcad,
+  type IcadDocument,
+} from "./io/icad.js";
+export {
+  exportSvg,
+  exportPng,
+  type SvgExportOptions,
+  type PngExportOptions,
+} from "./io/export.js";
 
 // Templates
 export {
@@ -82,7 +133,7 @@ export {
   createTemplateDocument,
   type CreateTemplateDocumentOptions,
   type DiagramTemplate,
-  type DiagramTemplateId
+  type DiagramTemplateId,
 } from "./templates/templates.js";
 
 // Public API
@@ -94,5 +145,5 @@ export {
   type CreateEditorOptions,
   type ElementPropertiesPatch,
   type ExportOptions,
-  type Interaction
+  type Interaction,
 } from "./api/createEditor.js";

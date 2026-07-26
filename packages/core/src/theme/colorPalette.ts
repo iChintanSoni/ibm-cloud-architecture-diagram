@@ -13,9 +13,13 @@ export const PRIMARY_TO_SECONDARY_FILL: Record<string, string> = {
   "#009d9a": "#d9fbfb",
   "#198038": "#defbe6",
   "#878d96": "#f2f4f8",
-  "#8d8d8d": "#f4f4f4"
+  "#8d8d8d": "#f4f4f4",
 };
 
-export const SECONDARY_TO_PRIMARY_FILL: Record<string, string> = Object.fromEntries(
-  Object.entries(PRIMARY_TO_SECONDARY_FILL).map(([primary, secondary]) => [secondary, primary])
-);
+export const SECONDARY_TO_PRIMARY_FILL: Record<string, string> =
+  Object.fromEntries(
+    Object.entries(PRIMARY_TO_SECONDARY_FILL).map(([primary, secondary]) => [
+      secondary,
+      primary,
+    ]),
+  );

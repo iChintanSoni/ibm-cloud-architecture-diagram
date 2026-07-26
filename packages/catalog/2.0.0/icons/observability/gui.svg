@@ -1,1 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 24 24"><g fill="#FFF" fill-rule="nonzero"><circle cx="15" cy="6" r="1"/><circle cx="17.25" cy="6" r="1"/><circle cx="19.5" cy="6" r="1"/><path d="M21 3H3a1.5 1.5 0 0 0-1.5 1.5v15A1.5 1.5 0 0 0 3 21h18a1.5 1.5 0 0 0 1.5-1.5v-15A1.5 1.5 0 0 0 21 3m0 1.5v3H3v-3zM3 9h4.5v10.5H3zm6 10.5V9h12v10.5z"/></g></svg>
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  xmlns:xlink="http://www.w3.org/1999/xlink"
+  viewBox="0 0 24 24"
+>
+  <g fill="#FFF" fill-rule="nonzero">
+    <circle cx="15" cy="6" r="1" />
+    <circle cx="17.25" cy="6" r="1" />
+    <circle cx="19.5" cy="6" r="1" />
+    <path
+      d="M21 3H3a1.5 1.5 0 0 0-1.5 1.5v15A1.5 1.5 0 0 0 3 21h18a1.5 1.5 0 0 0 1.5-1.5v-15A1.5 1.5 0 0 0 21 3m0 1.5v3H3v-3zM3 9h4.5v10.5H3zm6 10.5V9h12v10.5z"
+    />
+  </g>
+</svg>

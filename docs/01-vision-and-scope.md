@@ -12,7 +12,7 @@ with the IBM Cloud stencil library**. That works, but it has friction:
 - **draw.io is a general tool.** It knows nothing about IBM semantics, so it can't validate,
   can't autocomplete a topology, and can't be driven cleanly by an agent.
 - **No first-class file identity.** Diagrams live as generic `.drawio`/`.xml`, not as a format
-  that *means* "IBM Cloud architecture diagram."
+  that _means_ "IBM Cloud architecture diagram."
 - **No agent story.** Architects increasingly want an assistant to draft the first diagram from
   requirements. draw.io has no clean, semantic authoring API for that.
 
@@ -27,12 +27,12 @@ Product name (working): **ICAD — IBM Cloud Architecture Diagrams**. File exten
 
 ## Who it's for
 
-| Persona | Needs |
-|---|---|
-| **Solution Architect** | Fast, on-spec diagrams for proposals and reviews; templates for the IBM diagram levels; clean SVG/PNG export for decks and docs. |
-| **Cloud Developer** | Lightweight, file-in-repo diagrams that live next to code; keyboard-first editing; git-friendly diffs. |
-| **AI Agent** (v2) | A semantic authoring API to generate and validate a diagram from requirements, then hand it to a human to refine. |
-| **Reviewer / Stakeholder** | Receives an SVG that looks right, reads correctly, and can be reopened and edited. |
+| Persona                    | Needs                                                                                                                            |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| **Solution Architect**     | Fast, on-spec diagrams for proposals and reviews; templates for the IBM diagram levels; clean SVG/PNG export for decks and docs. |
+| **Cloud Developer**        | Lightweight, file-in-repo diagrams that live next to code; keyboard-first editing; git-friendly diffs.                           |
+| **AI Agent** (v2)          | A semantic authoring API to generate and validate a diagram from requirements, then hand it to a human to refine.                |
+| **Reviewer / Stakeholder** | Receives an SVG that looks right, reads correctly, and can be reopened and edited.                                               |
 
 ## Goals
 

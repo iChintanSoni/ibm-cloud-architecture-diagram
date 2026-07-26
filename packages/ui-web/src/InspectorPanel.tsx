@@ -11,7 +11,7 @@ import {
   Tag,
   TextInput,
   TreeNode,
-  TreeView
+  TreeView,
 } from "@carbon/react";
 import { ChevronDown, ChevronUp, Play, Stop } from "@carbon/react/icons";
 import type {
@@ -20,14 +20,14 @@ import type {
   ElementPropertiesPatch,
   FrameElement,
   SceneElement,
-  ZoneKind
+  ZoneKind,
 } from "@icad/core";
 import type { ReactNode } from "react";
 import {
   buildLayerTree,
   elementDisplayName,
   eligibleParentElements,
-  type LayerNode
+  type LayerNode,
 } from "./inspectorModel.js";
 
 const CONNECTION_TYPES: ConnectorType[] = [
@@ -35,11 +35,14 @@ const CONNECTION_TYPES: ConnectorType[] = [
   "connection",
   "physical-connection",
   "tunneling-connection",
-  "traffic-through-double-tunnel"
+  "traffic-through-double-tunnel",
 ];
 
 /** The annotation's name field reads "Encapsulation NAME" for these, "Protocol/Application NAME" otherwise (docs/05-ibm-spec-conformance.md#connector-nomenclature). */
-const TUNNEL_TYPES: ConnectorType[] = ["tunneling-connection", "traffic-through-double-tunnel"];
+const TUNNEL_TYPES: ConnectorType[] = [
+  "tunneling-connection",
+  "traffic-through-double-tunnel",
+];
 
 const RELATIONSHIP_TYPES: ConnectorType[] = [
   "dependency",
@@ -47,7 +50,7 @@ const RELATIONSHIP_TYPES: ConnectorType[] = [
   "aggregation",
   "composition",
   "implementation",
-  "extends"
+  "extends",
 ];
 
 const CONNECTOR_TYPES = [...CONNECTION_TYPES, ...RELATIONSHIP_TYPES];
@@ -69,7 +72,7 @@ const CONNECTOR_TYPE_LABELS: Record<ConnectorType, string> = {
   aggregation: "Aggregation",
   composition: "Composition",
   implementation: "Implementation",
-  extends: "Extends"
+  extends: "Extends",
 };
 
 export interface InspectorPanelProps {
@@ -108,7 +111,13 @@ function labelForType(type: SceneElement["type"]): string {
   }
 }
 
-function LayerBranch({ node, onSelect }: { node: LayerNode; onSelect: (id: ElementId) => void }) {
+function LayerBranch({
+  node,
+  onSelect,
+}: {
+  node: LayerNode;
+  onSelect: (id: ElementId) => void;
+}) {
   return (
     <TreeNode
       id={node.element.id}
@@ -135,7 +144,7 @@ function commitNumber(
   id: ElementId,
   field: "x" | "y" | "w" | "h" | "order",
   raw: string | number,
-  onUpdate: InspectorPanelProps["onUpdate"]
+  onUpdate: InspectorPanelProps["onUpdate"],
 ) {
   const value = typeof raw === "number" ? raw : Number(raw);
   if (!Number.isFinite(value)) return;
@@ -147,7 +156,7 @@ function ElementProperties({
   element,
   elements,
   onUpdate,
-  onReparent
+  onReparent,
 }: {
   element: SceneElement;
   elements: SceneElement[];
@@ -168,7 +177,10 @@ function ElementProperties({
     else onUpdate(element.id, { label: { ...element.label, text: value } });
   };
 
-  const commitAnnotation = (field: "name" | "security" | "port", value: string) => {
+  const commitAnnotation = (
+    field: "name" | "security" | "port",
+    value: string,
+  ) => {
     if (element.type !== "connector") return;
     const current = element.annotation ?? { name: "" };
     onUpdate(element.id, { annotation: { ...current, [field]: value } });
@@ -188,7 +200,13 @@ function ElementProperties({
         key={`${element.id}:label:${label}`}
         id={`icad-property-label-${element.id}`}
         size="sm"
-        labelText={element.type === "text" ? "Text" : element.type === "frame" ? "Name" : "Label"}
+        labelText={
+          element.type === "text"
+            ? "Text"
+            : element.type === "frame"
+              ? "Name"
+              : "Label"
+        }
         defaultValue={label}
         onBlur={(event) => commitLabel(event.target.value)}
       />
@@ -204,13 +222,18 @@ function ElementProperties({
                 label={field.toUpperCase()}
                 {...(field === "w" || field === "h" ? { min: 1 } : {})}
                 defaultValue={element[field]}
-                onBlur={(event) => commitNumber(element.id, field, event.target.value, onUpdate)}
+                onBlur={(event) =>
+                  commitNumber(element.id, field, event.target.value, onUpdate)
+                }
                 // The stepper +/- buttons already have focus when clicked (they don't move focus
                 // away from the text input, since it was never focused to begin with), so they
                 // never trigger the input's onBlur above — Carbon's dedicated onClick prop is what
                 // actually fires for a stepper click (onChange would too, but also on every
                 // keystroke while typing, which would spam the undo stack for a manual edit).
-                onClick={(_event, state) => state && commitNumber(element.id, field, state.value, onUpdate)}
+                onClick={(_event, state) =>
+                  state &&
+                  commitNumber(element.id, field, state.value, onUpdate)
+                }
               />
             ))}
           </div>
@@ -220,7 +243,9 @@ function ElementProperties({
             size="sm"
             labelText="Parent container"
             value={element.parentId ?? ""}
-            onChange={(event) => onReparent(element.id, event.target.value || undefined)}
+            onChange={(event) =>
+              onReparent(element.id, event.target.value || undefined)
+            }
           >
             <SelectItem value="" text="Canvas root" />
             {parentOptions.map((parent) => (
@@ -250,7 +275,9 @@ function ElementProperties({
           size="sm"
           labelText="Boundary kind"
           value={element.zoneKind}
-          onChange={(event) => onUpdate(element.id, { zoneKind: event.target.value as ZoneKind })}
+          onChange={(event) =>
+            onUpdate(element.id, { zoneKind: event.target.value as ZoneKind })
+          }
         >
           {(["az", "on-prem"] as const).map((kind) => (
             <SelectItem key={kind} value={kind} text={kind} />
@@ -266,8 +293,12 @@ function ElementProperties({
           label="Presentation order"
           min={0}
           defaultValue={element.order}
-          onBlur={(event) => commitNumber(element.id, "order", event.target.value, onUpdate)}
-          onClick={(_event, state) => state && commitNumber(element.id, "order", state.value, onUpdate)}
+          onBlur={(event) =>
+            commitNumber(element.id, "order", event.target.value, onUpdate)
+          }
+          onClick={(_event, state) =>
+            state && commitNumber(element.id, "order", state.value, onUpdate)
+          }
         />
       )}
 
@@ -279,11 +310,17 @@ function ElementProperties({
             labelText="Connector type"
             value={element.connectorType}
             onChange={(event) =>
-              onUpdate(element.id, { connectorType: event.target.value as ConnectorType })
+              onUpdate(element.id, {
+                connectorType: event.target.value as ConnectorType,
+              })
             }
           >
             {CONNECTOR_TYPES.map((type) => (
-              <SelectItem key={type} value={type} text={CONNECTOR_TYPE_LABELS[type]} />
+              <SelectItem
+                key={type}
+                value={type}
+                text={CONNECTOR_TYPE_LABELS[type]}
+              />
             ))}
           </Select>
           {CONNECTION_TYPES.includes(element.connectorType) && (
@@ -295,7 +332,8 @@ function ElementProperties({
                 value={element.direction ?? "unidirectional"}
                 onChange={(event) =>
                   onUpdate(element.id, {
-                    direction: event.target.value as "unidirectional" | "bidirectional"
+                    direction: event.target.value as
+                      "unidirectional" | "bidirectional",
                   })
                 }
               >
@@ -308,7 +346,9 @@ function ElementProperties({
                 labelText="Flow color"
                 value={element.flowColor ?? "private"}
                 onChange={(event) =>
-                  onUpdate(element.id, { flowColor: event.target.value as "private" | "public" })
+                  onUpdate(element.id, {
+                    flowColor: event.target.value as "private" | "public",
+                  })
                 }
               >
                 <SelectItem value="private" text="Private" />
@@ -318,7 +358,11 @@ function ElementProperties({
                 key={`${element.id}:annotation-name:${element.annotation?.name ?? ""}`}
                 id={`icad-property-annotation-name-${element.id}`}
                 size="sm"
-                labelText={TUNNEL_TYPES.includes(element.connectorType) ? "Encapsulation name" : "Protocol/Application name"}
+                labelText={
+                  TUNNEL_TYPES.includes(element.connectorType)
+                    ? "Encapsulation name"
+                    : "Protocol/Application name"
+                }
                 defaultValue={element.annotation?.name ?? ""}
                 onBlur={(event) => commitAnnotation("name", event.target.value)}
               />
@@ -330,7 +374,9 @@ function ElementProperties({
                   labelText="Encryption/Security"
                   placeholder="e.g. TLS1.3"
                   defaultValue={element.annotation?.security ?? ""}
-                  onBlur={(event) => commitAnnotation("security", event.target.value)}
+                  onBlur={(event) =>
+                    commitAnnotation("security", event.target.value)
+                  }
                 />
                 <TextInput
                   key={`${element.id}:annotation-port:${element.annotation?.port ?? ""}`}
@@ -339,7 +385,9 @@ function ElementProperties({
                   labelText="Port"
                   placeholder="e.g. 443"
                   defaultValue={element.annotation?.port ?? ""}
-                  onBlur={(event) => commitAnnotation("port", event.target.value)}
+                  onBlur={(event) =>
+                    commitAnnotation("port", event.target.value)
+                  }
                 />
               </div>
             </>
@@ -351,7 +399,9 @@ function ElementProperties({
             labelText="Sequence"
             placeholder="e.g. 1, 2a"
             defaultValue={element.sequence ?? ""}
-            onBlur={(event) => onUpdate(element.id, { sequence: event.target.value })}
+            onBlur={(event) =>
+              onUpdate(element.id, { sequence: event.target.value })
+            }
           />
         </>
       )}
@@ -375,10 +425,14 @@ function FramesPanel({
   presentingFrameId,
   onJumpToFrame,
   onTogglePresent,
-  onPresentStep
+  onPresentStep,
 }: Pick<
   InspectorPanelProps,
-  "frames" | "presentingFrameId" | "onJumpToFrame" | "onTogglePresent" | "onPresentStep"
+  | "frames"
+  | "presentingFrameId"
+  | "onJumpToFrame"
+  | "onTogglePresent"
+  | "onPresentStep"
 >) {
   const ordered = [...frames].sort((a, b) => a.order - b.order);
   const presenting = presentingFrameId !== undefined;
@@ -387,7 +441,10 @@ function FramesPanel({
     return (
       <div className="icad-inspector__empty">
         <h2>No frames yet</h2>
-        <p>Add a Frame from the library to split the diagram into sections and drive Find/presentation.</p>
+        <p>
+          Add a Frame from the library to split the diagram into sections and
+          drive Find/presentation.
+        </p>
       </div>
     );
   }
@@ -405,8 +462,22 @@ function FramesPanel({
         </Button>
         {presenting && (
           <>
-            <Button kind="ghost" size="sm" hasIconOnly iconDescription="Previous frame" renderIcon={ChevronUp} onClick={() => onPresentStep(-1)} />
-            <Button kind="ghost" size="sm" hasIconOnly iconDescription="Next frame" renderIcon={ChevronDown} onClick={() => onPresentStep(1)} />
+            <Button
+              kind="ghost"
+              size="sm"
+              hasIconOnly
+              iconDescription="Previous frame"
+              renderIcon={ChevronUp}
+              onClick={() => onPresentStep(-1)}
+            />
+            <Button
+              kind="ghost"
+              size="sm"
+              hasIconOnly
+              iconDescription="Next frame"
+              renderIcon={ChevronDown}
+              onClick={() => onPresentStep(1)}
+            />
           </>
         )}
       </div>
@@ -441,9 +512,12 @@ export function InspectorPanel({
   onPresentStep,
   onSelect,
   onUpdate,
-  onReparent
+  onReparent,
 }: InspectorPanelProps) {
-  const selected = selectedIds.length === 1 ? elements.find((element) => element.id === selectedIds[0]) : undefined;
+  const selected =
+    selectedIds.length === 1
+      ? elements.find((element) => element.id === selectedIds[0])
+      : undefined;
   const layers = buildLayerTree(elements);
 
   return (
@@ -466,8 +540,15 @@ export function InspectorPanel({
               />
             ) : (
               <div className="icad-inspector__empty">
-                <h2>{selectedIds.length > 1 ? `${selectedIds.length} elements selected` : "Nothing selected"}</h2>
-                <p>Select an element on the canvas or in Layers to edit its properties.</p>
+                <h2>
+                  {selectedIds.length > 1
+                    ? `${selectedIds.length} elements selected`
+                    : "Nothing selected"}
+                </h2>
+                <p>
+                  Select an element on the canvas or in Layers to edit its
+                  properties.
+                </p>
               </div>
             )}
           </TabPanel>
@@ -475,13 +556,19 @@ export function InspectorPanel({
             {layers.length > 0 ? (
               <TreeView label="Diagram layers" size="sm" selected={selectedIds}>
                 {layers.map((node) => (
-                  <LayerBranch key={node.element.id} node={node} onSelect={onSelect} />
+                  <LayerBranch
+                    key={node.element.id}
+                    node={node}
+                    onSelect={onSelect}
+                  />
                 ))}
               </TreeView>
             ) : (
               <div className="icad-inspector__empty">
                 <h2>No layers yet</h2>
-                <p>Place an IBM Cloud element to start the diagram hierarchy.</p>
+                <p>
+                  Place an IBM Cloud element to start the diagram hierarchy.
+                </p>
               </div>
             )}
           </TabPanel>

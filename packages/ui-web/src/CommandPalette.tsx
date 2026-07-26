@@ -9,19 +9,29 @@ export interface CommandPaletteProps {
 }
 
 /** Run any action by name (docs/06-editor-ux.md#keyboard-first), opened with Ctrl/Cmd+K. */
-export function CommandPalette({ open, commands, onClose }: CommandPaletteProps) {
+export function CommandPalette({
+  open,
+  commands,
+  onClose,
+}: CommandPaletteProps) {
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const listRef = useRef<HTMLUListElement>(null);
 
-  const results = useMemo(() => filterCommands(commands, query), [commands, query]);
+  const results = useMemo(
+    () => filterCommands(commands, query),
+    [commands, query],
+  );
   const runnable = results.filter((command) => !command.disabled);
 
   useEffect(() => {
     if (!open) return;
-    previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    previousFocusRef.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
     setQuery("");
     setActiveIndex(0);
     inputRef.current?.focus();
@@ -39,7 +49,10 @@ export function CommandPalette({ open, commands, onClose }: CommandPaletteProps)
   useEffect(() => {
     const activeItem = listRef.current?.querySelector('[data-active="true"]');
     // jsdom has no layout engine and doesn't implement scrollIntoView at all.
-    if (activeItem instanceof HTMLElement && typeof activeItem.scrollIntoView === "function") {
+    if (
+      activeItem instanceof HTMLElement &&
+      typeof activeItem.scrollIntoView === "function"
+    ) {
       activeItem.scrollIntoView({ block: "nearest" });
     }
   }, [activeIndex]);
@@ -67,7 +80,9 @@ export function CommandPalette({ open, commands, onClose }: CommandPaletteProps)
             onClose();
           } else if (event.key === "ArrowDown") {
             event.preventDefault();
-            setActiveIndex((index) => Math.min(index + 1, Math.max(runnable.length - 1, 0)));
+            setActiveIndex((index) =>
+              Math.min(index + 1, Math.max(runnable.length - 1, 0)),
+            );
           } else if (event.key === "ArrowUp") {
             event.preventDefault();
             setActiveIndex((index) => Math.max(index - 1, 0));
@@ -91,7 +106,12 @@ export function CommandPalette({ open, commands, onClose }: CommandPaletteProps)
           value={query}
           onChange={(event) => setQuery(event.target.value)}
         />
-        <ul ref={listRef} className="icad-command-palette__list" role="listbox" aria-label="Commands">
+        <ul
+          ref={listRef}
+          className="icad-command-palette__list"
+          role="listbox"
+          aria-label="Commands"
+        >
           {runnable.length === 0 && (
             <li role="presentation" className="icad-command-palette__empty">
               No matching commands
@@ -111,7 +131,11 @@ export function CommandPalette({ open, commands, onClose }: CommandPaletteProps)
               >
                 <span>{command.label}</span>
                 <span className="icad-command-palette__meta">
-                  {command.category && <span className="icad-command-palette__category">{command.category}</span>}
+                  {command.category && (
+                    <span className="icad-command-palette__category">
+                      {command.category}
+                    </span>
+                  )}
                   {command.shortcut && <kbd>{command.shortcut}</kbd>}
                 </span>
               </button>

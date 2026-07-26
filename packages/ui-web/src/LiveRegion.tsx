@@ -11,9 +11,17 @@ export interface LiveRegionProps {
  * update `message` to announce; the host is responsible for briefly clearing
  * it first if the same message needs to be announced twice in a row.
  */
-export function LiveRegion({ message, politeness = "polite" }: LiveRegionProps) {
+export function LiveRegion({
+  message,
+  politeness = "polite",
+}: LiveRegionProps) {
   return (
-    <div className="icad-visually-hidden" role="status" aria-live={politeness} aria-atomic="true">
+    <div
+      className="icad-visually-hidden"
+      role="status"
+      aria-live={politeness}
+      aria-atomic="true"
+    >
       {message}
     </div>
   );

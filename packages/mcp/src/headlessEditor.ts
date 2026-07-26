@@ -31,7 +31,7 @@ const GLOBAL_KEYS = [
   "URL",
   "Blob",
   "MutationObserver",
-  "getComputedStyle"
+  "getComputedStyle",
 ] as const;
 
 let installed = false;
@@ -46,7 +46,7 @@ function installJsdomGlobals(): void {
     Object.defineProperty(globalThis, key, {
       value: windowRecord[key],
       writable: true,
-      configurable: true
+      configurable: true,
     });
   }
   installed = true;

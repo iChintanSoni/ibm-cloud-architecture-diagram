@@ -72,14 +72,14 @@ SVG-only. Full detail in each guide doc's own Limitations section, linked above.
 
 **Start here — the user guide** ([`docs/guide/`](docs/guide/)):
 
-| Doc | What's inside |
-|---|---|
-| [Getting started](docs/guide/01-getting-started.md) | Install, run, create your first diagram |
-| [The web editor](docs/guide/02-web-editor.md) | Every element, interaction, panel, and menu |
-| [The VS Code extension](docs/guide/03-vscode-extension.md) | What it is, how to run it, what differs from web |
-| [The desktop app](docs/guide/04-desktop-app.md) | What's native, how to build it, what's missing |
-| [AI agents & MCP](docs/guide/05-ai-agents-mcp.md) | The 25-tool MCP server, Agent Skills, a worked example |
-| [File format & export](docs/guide/06-file-format-and-export.md) | `.icad` shape, SVG/PNG export |
+| Doc                                                             | What's inside                                          |
+| --------------------------------------------------------------- | ------------------------------------------------------ |
+| [Getting started](docs/guide/01-getting-started.md)             | Install, run, create your first diagram                |
+| [The web editor](docs/guide/02-web-editor.md)                   | Every element, interaction, panel, and menu            |
+| [The VS Code extension](docs/guide/03-vscode-extension.md)      | What it is, how to run it, what differs from web       |
+| [The desktop app](docs/guide/04-desktop-app.md)                 | What's native, how to build it, what's missing         |
+| [AI agents & MCP](docs/guide/05-ai-agents-mcp.md)               | The 25-tool MCP server, Agent Skills, a worked example |
+| [File format & export](docs/guide/06-file-format-and-export.md) | `.icad` shape, SVG/PNG export                          |
 
 **Project internals** — design records for anyone working on ICAD itself, not using it:
 [Decision Log](docs/00-decision-log.md) ·

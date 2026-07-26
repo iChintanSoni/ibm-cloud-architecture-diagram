@@ -59,7 +59,7 @@ custom SVG engine ([D3](00-decision-log.md#d3--svg-dom-rendering--locked)). Ever
   handle, Alt to resize from center), or type exact W/H (and X/Y) into the Properties tab.
   Resizing a container doesn't reflow its children yet (M17).
 
-Source: *IBM_IT Architecture diagrams kit* v1.1, "Prescribed location / Scaling elements" slide.
+Source: _IBM_IT Architecture diagrams kit_ v1.1, "Prescribed location / Scaling elements" slide.
 
 ## Themes
 

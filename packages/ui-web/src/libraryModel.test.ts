@@ -8,7 +8,7 @@ const manifest: CatalogManifest = {
   version: "1",
   categories: [
     { id: "compute", name: "Compute" },
-    { id: "network", name: "Network" }
+    { id: "network", name: "Network" },
   ],
   icons: [
     {
@@ -18,7 +18,7 @@ const manifest: CatalogManifest = {
       semantic: "node",
       container: "square",
       asset: "server.svg",
-      keywords: ["instance"]
+      keywords: ["instance"],
     },
     {
       id: "test/vpc",
@@ -26,19 +26,18 @@ const manifest: CatalogManifest = {
       category: "network",
       semantic: "node",
       container: "square",
-      asset: "vpc.svg"
-    }
-  ]
+      asset: "vpc.svg",
+    },
+  ],
 };
 
 const catalog = new Catalog(manifest, new Map());
 
 describe("library model", () => {
   it("groups the full catalog in manifest category order", () => {
-    expect(groupLibraryIcons(catalog, "").map((group) => group.category.id)).toEqual([
-      "compute",
-      "network"
-    ]);
+    expect(
+      groupLibraryIcons(catalog, "").map((group) => group.category.id),
+    ).toEqual(["compute", "network"]);
   });
 
   it("searches names and keywords and omits empty groups", () => {
@@ -54,7 +53,7 @@ describe("library model", () => {
       "open-shift",
       "availability-zone",
       "region",
-      "vpc"
+      "vpc",
     ]);
   });
 

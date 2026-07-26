@@ -22,11 +22,21 @@ export interface HitTestOptions {
 }
 
 function bboxContains(el: SceneElement, point: Point): boolean {
-  return point.x >= el.x && point.x <= el.x + el.w && point.y >= el.y && point.y <= el.y + el.h;
+  return (
+    point.x >= el.x &&
+    point.x <= el.x + el.w &&
+    point.y >= el.y &&
+    point.y <= el.y + el.h
+  );
 }
 
 function pointInRect(point: Point, rect: Rect): boolean {
-  return point.x >= rect.x && point.x <= rect.x + rect.w && point.y >= rect.y && point.y <= rect.y + rect.h;
+  return (
+    point.x >= rect.x &&
+    point.x <= rect.x + rect.w &&
+    point.y >= rect.y &&
+    point.y <= rect.y + rect.h
+  );
 }
 
 /** Shortest distance from `point` to the segment a→b. */
@@ -35,7 +45,10 @@ function distanceToSegment(point: Point, a: Point, b: Point): number {
   const dy = b.y - a.y;
   const lengthSquared = dx * dx + dy * dy;
   if (lengthSquared === 0) return Math.hypot(point.x - a.x, point.y - a.y);
-  const t = Math.max(0, Math.min(1, ((point.x - a.x) * dx + (point.y - a.y) * dy) / lengthSquared));
+  const t = Math.max(
+    0,
+    Math.min(1, ((point.x - a.x) * dx + (point.y - a.y) * dy) / lengthSquared),
+  );
   return Math.hypot(point.x - (a.x + t * dx), point.y - (a.y + t * dy));
 }
 
@@ -47,8 +60,16 @@ function distanceToPolyline(point: Point, points: Point[]): number {
   return min;
 }
 
-function matches(scene: Scene, el: SceneElement, point: Point, tolerance: number): boolean {
-  if (el.type === "connector") return distanceToPolyline(point, connectorPathPoints(scene, el)) <= tolerance;
+function matches(
+  scene: Scene,
+  el: SceneElement,
+  point: Point,
+  tolerance: number,
+): boolean {
+  if (el.type === "connector")
+    return (
+      distanceToPolyline(point, connectorPathPoints(scene, el)) <= tolerance
+    );
   return bboxContains(el, point);
 }
 
@@ -66,7 +87,11 @@ function containmentDepth(scene: Scene, el: SceneElement): number {
  * because the editor's own placement/grouping flow tends to add a child after its container
  * (C9, docs/10-canvas-parity-plan.md) — not a rule the engine actually enforced.
  */
-export function hitTestAll(scene: Scene, point: Point, options: HitTestOptions = {}): SceneElement[] {
+export function hitTestAll(
+  scene: Scene,
+  point: Point,
+  options: HitTestOptions = {},
+): SceneElement[] {
   const tolerance = options.tolerance ?? DEFAULT_TOLERANCE;
   const elements = scene.all(); // z-order, bottom to top
   const zRank = new Map(elements.map((el, index) => [el.id, index]));
@@ -79,7 +104,11 @@ export function hitTestAll(scene: Scene, point: Point, options: HitTestOptions =
 }
 
 /** The single best (deepest, then topmost) element at `point`, or undefined. */
-export function hitTest(scene: Scene, point: Point, options?: HitTestOptions): SceneElement | undefined {
+export function hitTest(
+  scene: Scene,
+  point: Point,
+  options?: HitTestOptions,
+): SceneElement | undefined {
   return hitTestAll(scene, point, options)[0];
 }
 
@@ -94,8 +123,13 @@ export function hitTestRect(scene: Scene, rect: Rect): SceneElement[] {
   return scene.all().filter((el) => {
     if (el.type === "connector") {
       const points = connectorPathPoints(scene, el);
-      return points.length > 0 && points.every((point) => pointInRect(point, rect));
+      return (
+        points.length > 0 && points.every((point) => pointInRect(point, rect))
+      );
     }
-    return pointInRect({ x: el.x, y: el.y }, rect) && pointInRect({ x: el.x + el.w, y: el.y + el.h }, rect);
+    return (
+      pointInRect({ x: el.x, y: el.y }, rect) &&
+      pointInRect({ x: el.x + el.w, y: el.y + el.h }, rect)
+    );
   });
 }

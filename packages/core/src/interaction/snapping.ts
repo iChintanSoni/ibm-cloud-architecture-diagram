@@ -41,11 +41,15 @@ function nearestGridLine(value: number, gridSize: number): number {
   return Math.round(value / gridSize) * gridSize;
 }
 
-function bestCandidate(candidates: Candidate[], tolerance: number): Candidate | undefined {
+function bestCandidate(
+  candidates: Candidate[],
+  tolerance: number,
+): Candidate | undefined {
   let best: Candidate | undefined;
   for (const candidate of candidates) {
     if (Math.abs(candidate.offset) > tolerance) continue;
-    if (!best || Math.abs(candidate.offset) < Math.abs(best.offset)) best = candidate;
+    if (!best || Math.abs(candidate.offset) < Math.abs(best.offset))
+      best = candidate;
   }
   return best;
 }
@@ -58,14 +62,25 @@ function bestCandidate(candidates: Candidate[], tolerance: number): Candidate | 
  * drag gesture (M16) that feeds the returned `dx`/`dy` into `Editor.beginInteraction()`'s
  * `update()` and renders `guides` as an overlay while the pointer is down.
  */
-export function snapMove(scene: Scene, ids: ElementId[], dx: number, dy: number, options: SnapOptions = {}): SnapResult {
+export function snapMove(
+  scene: Scene,
+  ids: ElementId[],
+  dx: number,
+  dy: number,
+  options: SnapOptions = {},
+): SnapResult {
   const tolerance = options.tolerance ?? DEFAULT_TOLERANCE;
   const gridSize = options.gridSize ?? scene.canvas.grid;
   const moving = new Set(ids.filter((id) => scene.has(id)));
   const bbox = boundsOf(scene, [...moving]);
   if (!bbox || moving.size === 0) return { dx, dy, guides: [] };
 
-  const proposed: Rect = { x: bbox.x + dx, y: bbox.y + dy, w: bbox.w, h: bbox.h };
+  const proposed: Rect = {
+    x: bbox.x + dx,
+    y: bbox.y + dy,
+    w: bbox.w,
+    h: bbox.h,
+  };
 
   const parentIds = new Set([...moving].map((id) => scene.get(id)!.parentId));
   const parentId = parentIds.size === 1 ? [...parentIds][0] : undefined;
@@ -74,7 +89,12 @@ export function snapMove(scene: Scene, ids: ElementId[], dx: number, dy: number,
   const siblings = hasSingleParent
     ? scene
         .all()
-        .filter((el) => el.parentId === parentId && el.type !== "connector" && !moving.has(el.id))
+        .filter(
+          (el) =>
+            el.parentId === parentId &&
+            el.type !== "connector" &&
+            !moving.has(el.id),
+        )
     : [];
 
   const left = proposed.x;
@@ -91,14 +111,24 @@ export function snapMove(scene: Scene, ids: ElementId[], dx: number, dy: number,
     const target = nearestGridLine(edge, gridSize);
     xCandidates.push({
       offset: target - edge,
-      guide: { orientation: "vertical", position: target, start: top, end: bottom }
+      guide: {
+        orientation: "vertical",
+        position: target,
+        start: top,
+        end: bottom,
+      },
     });
   }
   for (const edge of [top, centerY, bottom]) {
     const target = nearestGridLine(edge, gridSize);
     yCandidates.push({
       offset: target - edge,
-      guide: { orientation: "horizontal", position: target, start: left, end: right }
+      guide: {
+        orientation: "horizontal",
+        position: target,
+        start: left,
+        end: right,
+      },
     });
   }
 
@@ -109,19 +139,25 @@ export function snapMove(scene: Scene, ids: ElementId[], dx: number, dy: number,
     const sTop = sibling.y;
     const sBottom = sibling.y + sibling.h;
     const sCenterY = sibling.y + sibling.h / 2;
-    const ySpan = { start: Math.min(top, sTop), end: Math.max(bottom, sBottom) };
-    const xSpan = { start: Math.min(left, sLeft), end: Math.max(right, sRight) };
+    const ySpan = {
+      start: Math.min(top, sTop),
+      end: Math.max(bottom, sBottom),
+    };
+    const xSpan = {
+      start: Math.min(left, sLeft),
+      end: Math.max(right, sRight),
+    };
 
     for (const [edge, target] of [
       [left, sLeft],
       [left, sRight],
       [right, sLeft],
       [right, sRight],
-      [centerX, sCenterX]
+      [centerX, sCenterX],
     ] as const) {
       xCandidates.push({
         offset: target - edge,
-        guide: { orientation: "vertical", position: target, ...ySpan }
+        guide: { orientation: "vertical", position: target, ...ySpan },
       });
     }
     for (const [edge, target] of [
@@ -129,11 +165,11 @@ export function snapMove(scene: Scene, ids: ElementId[], dx: number, dy: number,
       [top, sBottom],
       [bottom, sTop],
       [bottom, sBottom],
-      [centerY, sCenterY]
+      [centerY, sCenterY],
     ] as const) {
       yCandidates.push({
         offset: target - edge,
-        guide: { orientation: "horizontal", position: target, ...xSpan }
+        guide: { orientation: "horizontal", position: target, ...xSpan },
       });
     }
   }
@@ -146,14 +182,21 @@ export function snapMove(scene: Scene, ids: ElementId[], dx: number, dy: number,
   let xGuide = xBest?.guide;
   let yGuide = yBest?.guide;
 
-  const parent = hasSingleParent && parentId !== undefined ? scene.get(parentId) : undefined;
+  const parent =
+    hasSingleParent && parentId !== undefined ? scene.get(parentId) : undefined;
   if (parent) {
     const minX = parent.x + PARENT_INSET;
     const maxX = parent.x + parent.w - PARENT_INSET - bbox.w;
     const minY = parent.y + PARENT_INSET;
     const maxY = parent.y + parent.h - PARENT_INSET - bbox.h;
-    const clampedX = Math.min(Math.max(bbox.x + snappedDx, Math.min(minX, maxX)), Math.max(minX, maxX));
-    const clampedY = Math.min(Math.max(bbox.y + snappedDy, Math.min(minY, maxY)), Math.max(minY, maxY));
+    const clampedX = Math.min(
+      Math.max(bbox.x + snappedDx, Math.min(minX, maxX)),
+      Math.max(minX, maxX),
+    );
+    const clampedY = Math.min(
+      Math.max(bbox.y + snappedDy, Math.min(minY, maxY)),
+      Math.max(minY, maxY),
+    );
     // The inset always wins over a snap candidate, but a guide describing a snap position the
     // clamp then overrode would draw a line the drag no longer actually lands on — drop it.
     if (clampedX !== bbox.x + snappedDx) {
@@ -166,6 +209,8 @@ export function snapMove(scene: Scene, ids: ElementId[], dx: number, dy: number,
     }
   }
 
-  const guides: SnapGuide[] = [xGuide, yGuide].filter((g): g is SnapGuide => g !== undefined);
+  const guides: SnapGuide[] = [xGuide, yGuide].filter(
+    (g): g is SnapGuide => g !== undefined,
+  );
   return { dx: snappedDx, dy: snappedDy, guides };
 }

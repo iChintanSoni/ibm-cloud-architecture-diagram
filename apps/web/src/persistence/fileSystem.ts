@@ -4,11 +4,14 @@
  */
 
 const ICAD_PICKER_TYPES: FilePickerAcceptType[] = [
-  { description: "ICAD diagram", accept: { "application/json": [".icad"] } }
+  { description: "ICAD diagram", accept: { "application/json": [".icad"] } },
 ];
 
 export function supportsFileSystemAccess(): boolean {
-  return typeof window !== "undefined" && typeof window.showOpenFilePicker === "function";
+  return (
+    typeof window !== "undefined" &&
+    typeof window.showOpenFilePicker === "function"
+  );
 }
 
 export interface OpenedIcadFile {
@@ -25,7 +28,9 @@ function isAbort(err: unknown): boolean {
 export async function openIcadFile(): Promise<OpenedIcadFile | null> {
   if (!supportsFileSystemAccess()) return null;
   try {
-    const handles = await window.showOpenFilePicker!({ types: ICAD_PICKER_TYPES });
+    const handles = await window.showOpenFilePicker!({
+      types: ICAD_PICKER_TYPES,
+    });
     const handle = handles[0];
     if (!handle) return null;
     const file = await handle.getFile();
@@ -45,14 +50,17 @@ export async function openIcadFile(): Promise<OpenedIcadFile | null> {
 export async function saveIcadFile(
   content: string,
   handle: FileSystemFileHandle | null,
-  suggestedName: string
+  suggestedName: string,
 ): Promise<FileSystemFileHandle | null> {
   if (!supportsFileSystemAccess()) return null;
 
   let target = handle;
   if (!target) {
     try {
-      target = await window.showSaveFilePicker!({ suggestedName, types: ICAD_PICKER_TYPES });
+      target = await window.showSaveFilePicker!({
+        suggestedName,
+        types: ICAD_PICKER_TYPES,
+      });
     } catch (err) {
       if (isAbort(err)) return null;
       throw err;

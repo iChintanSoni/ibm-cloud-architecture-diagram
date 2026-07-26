@@ -1,4 +1,8 @@
-import type { Editor, Interaction, ResizeInteraction } from "../api/createEditor.js";
+import type {
+  Editor,
+  Interaction,
+  ResizeInteraction,
+} from "../api/createEditor.js";
 import { clientPointToCanvas } from "../render/dom.js";
 import type { Point } from "../render/port.js";
 import { portPoint } from "../render/port.js";
@@ -48,9 +52,15 @@ export interface CanvasControllerOptions {
   onDeleted?: (elements: SceneElement[]) => void;
 }
 
-function parsePortAttr(value: string): { elementId: ElementId; side: PortSide } {
+function parsePortAttr(value: string): {
+  elementId: ElementId;
+  side: PortSide;
+} {
   const separator = value.lastIndexOf(":");
-  return { elementId: value.slice(0, separator), side: value.slice(separator + 1) as PortSide };
+  return {
+    elementId: value.slice(0, separator),
+    side: value.slice(separator + 1) as PortSide,
+  };
 }
 
 /**
@@ -92,9 +102,11 @@ export class CanvasController {
   constructor(
     private editor: Editor,
     private container: HTMLElement,
-    private options: CanvasControllerOptions = {}
+    private options: CanvasControllerOptions = {},
   ) {
-    this.container.addEventListener("wheel", this.handleWheel, { passive: false });
+    this.container.addEventListener("wheel", this.handleWheel, {
+      passive: false,
+    });
     this.container.addEventListener("pointermove", this.handlePointerMove);
     this.container.addEventListener("pointerdown", this.handlePointerDown);
     this.container.addEventListener("pointerup", this.handlePointerUp);
@@ -172,13 +184,16 @@ export class CanvasController {
   private connectAndNotify(
     fromId: ElementId,
     toId: ElementId,
-    exact?: { fromPort: PortSide; toPort: PortSide }
+    exact?: { fromPort: PortSide; toPort: PortSide },
   ): void {
     const from = this.editor.scene.get(fromId);
     const to = this.editor.scene.get(toId);
     if (!from || !to) return;
     const id = exact
-      ? this.editor.connect({ elementId: fromId, port: exact.fromPort }, { elementId: toId, port: exact.toPort })
+      ? this.editor.connect(
+          { elementId: fromId, port: exact.fromPort },
+          { elementId: toId, port: exact.toPort },
+        )
       : this.editor.connectNearest(fromId, toId);
     if (!id) return;
     this.editor.selection.set([id]);
@@ -201,7 +216,8 @@ export class CanvasController {
   };
 
   private capturePointer(pointerId: number): void {
-    if (typeof this.container.setPointerCapture === "function") this.container.setPointerCapture(pointerId);
+    if (typeof this.container.setPointerCapture === "function")
+      this.container.setPointerCapture(pointerId);
   }
 
   private releasePointer(pointerId: number): void {
@@ -235,11 +251,19 @@ export class CanvasController {
 
     if (this.draggingPort) {
       const source = this.editor.scene.get(this.draggingPort.elementId);
-      if (source) this.editor.setConnectorDraftPoints(portPoint(source, this.draggingPort.side), point);
+      if (source)
+        this.editor.setConnectorDraftPoints(
+          portPoint(source, this.draggingPort.side),
+          point,
+        );
     }
 
     const hit = hitTest(this.editor.scene, point);
-    this.editor.setHoveredElement(hit && hit.type !== "connector" && hit.type !== "frame" ? hit.id : undefined);
+    this.editor.setHoveredElement(
+      hit && hit.type !== "connector" && hit.type !== "frame"
+        ? hit.id
+        : undefined,
+    );
   };
 
   // Drag-to-move (M16, docs/10-canvas-parity-plan.md): armed on pointerdown over a selectable
@@ -253,7 +277,9 @@ export class CanvasController {
   private handlePointerDown = (event: PointerEvent): void => {
     const resizeHandle =
       event.target instanceof Element
-        ? event.target.closest<SVGElement>("[data-icad-resize-handle]")?.getAttribute("data-icad-resize-handle")
+        ? event.target
+            .closest<SVGElement>("[data-icad-resize-handle]")
+            ?.getAttribute("data-icad-resize-handle")
         : null;
     // A resize handle only ever renders for the single currently-selected element
     // (svgRenderer.ts's renderOverlays), so that's its unambiguous target — no need to hit-test.
@@ -269,7 +295,7 @@ export class CanvasController {
         handle: resizeHandle as ResizeHandle,
         interaction: this.editor.beginResizeInteraction(id),
         startBounds: { x: el.x, y: el.y, w: el.w, h: el.h },
-        startScenePoint: point
+        startScenePoint: point,
       };
       this.capturePointer(event.pointerId);
       this.setMode({ kind: "resizing" });
@@ -278,14 +304,20 @@ export class CanvasController {
 
     const portAttr =
       event.target instanceof Element
-        ? event.target.closest<SVGElement>("[data-icad-port]")?.getAttribute("data-icad-port")
+        ? event.target
+            .closest<SVGElement>("[data-icad-port]")
+            ?.getAttribute("data-icad-port")
         : null;
     if (portAttr) {
       const { elementId, side } = parsePortAttr(portAttr);
       this.draggingPort = { elementId, side };
       this.capturePointer(event.pointerId);
       const source = this.editor.scene.get(elementId);
-      if (source) this.editor.setConnectorDraftPoints(portPoint(source, side), portPoint(source, side));
+      if (source)
+        this.editor.setConnectorDraftPoints(
+          portPoint(source, side),
+          portPoint(source, side),
+        );
       return;
     }
 
@@ -317,7 +349,7 @@ export class CanvasController {
       interaction: this.editor.beginInteraction(ids),
       startClient: { x: event.clientX, y: event.clientY },
       startScenePoint: point,
-      moved: false
+      moved: false,
     };
     this.capturePointer(event.pointerId);
   };
@@ -367,7 +399,7 @@ export class CanvasController {
     const dy = point.y - resize.startScenePoint.y;
     const bounds = resizeBounds(resize.startBounds, resize.handle, dx, dy, {
       aspectLock: event.shiftKey,
-      fromCenter: event.altKey
+      fromCenter: event.altKey,
     });
     resize.interaction.update(bounds);
   }
@@ -405,12 +437,17 @@ export class CanvasController {
 
     const targetPortAttr =
       event.target instanceof Element
-        ? event.target.closest<SVGElement>("[data-icad-port]")?.getAttribute("data-icad-port")
+        ? event.target
+            .closest<SVGElement>("[data-icad-port]")
+            ?.getAttribute("data-icad-port")
         : null;
     if (targetPortAttr) {
       const target = parsePortAttr(targetPortAttr);
       if (target.elementId !== dragging.elementId) {
-        this.connectAndNotify(dragging.elementId, target.elementId, { fromPort: dragging.side, toPort: target.side });
+        this.connectAndNotify(dragging.elementId, target.elementId, {
+          fromPort: dragging.side,
+          toPort: target.side,
+        });
       }
       return;
     }
@@ -418,7 +455,11 @@ export class CanvasController {
     const point = this.toScenePoint(event.clientX, event.clientY);
     if (!point) return;
     const target = hitTest(this.editor.scene, point);
-    if (target && target.id !== dragging.elementId && target.type !== "connector") {
+    if (
+      target &&
+      target.id !== dragging.elementId &&
+      target.type !== "connector"
+    ) {
       this.connectAndNotify(dragging.elementId, target.id);
     }
   };
@@ -432,7 +473,11 @@ export class CanvasController {
     // A drag-to-connect gesture already handled this interaction on pointerup. Ports are
     // hover-only DOM decorations, not scene elements — this stays DOM-based deliberately (C9,
     // docs/10-canvas-parity-plan.md): it isn't the divergent hit-test path that item closes.
-    if (event.target instanceof Element && event.target.closest("[data-icad-port]")) return;
+    if (
+      event.target instanceof Element &&
+      event.target.closest("[data-icad-port]")
+    )
+      return;
 
     const point = this.toScenePoint(event.clientX, event.clientY);
     const hit = point ? hitTest(this.editor.scene, point) : undefined;
@@ -501,8 +546,12 @@ export class CanvasController {
     // Sync from wherever real DOM focus actually is: handles the bootstrap case where the very
     // first Tab into the canvas lands natively on the roving tabindex="0" element, before any
     // editor.focusElement() call has run.
-    const targetId = event.target instanceof Element ? event.target.getAttribute("data-icad-id") : null;
-    if (targetId && this.editor.focusedElement() !== targetId) this.editor.focusElement(targetId);
+    const targetId =
+      event.target instanceof Element
+        ? event.target.getAttribute("data-icad-id")
+        : null;
+    if (targetId && this.editor.focusedElement() !== targetId)
+      this.editor.focusElement(targetId);
     const focusedId = this.editor.focusedElement();
 
     if (this.mode.kind === "connecting") {
@@ -512,19 +561,23 @@ export class CanvasController {
         this.cancelConnecting();
       } else if (event.key === "Enter" || event.key === " ") {
         event.preventDefault();
-        if (focusedId && focusedId !== fromId) this.connectAndNotify(fromId, focusedId);
+        if (focusedId && focusedId !== fromId)
+          this.connectAndNotify(fromId, focusedId);
         this.cancelConnecting();
       } else if (event.key === "Tab") {
         const order = this.editor.tabOrder();
         const currentIndex = focusedId ? order.indexOf(focusedId) : -1;
         if (currentIndex === -1) return;
-        const atBoundary = event.shiftKey ? currentIndex === 0 : currentIndex === order.length - 1;
+        const atBoundary = event.shiftKey
+          ? currentIndex === 0
+          : currentIndex === order.length - 1;
         if (atBoundary) return;
         event.preventDefault();
         if (event.shiftKey) this.editor.focusPrevious();
         else this.editor.focusNext();
         const nextId = this.editor.focusedElement();
-        if (nextId && nextId !== fromId) this.editor.previewConnectorBetween(fromId, nextId);
+        if (nextId && nextId !== fromId)
+          this.editor.previewConnectorBetween(fromId, nextId);
       }
       return; // swallow every other key (e.g. arrows) while connecting
     }
@@ -533,7 +586,9 @@ export class CanvasController {
       const order = this.editor.tabOrder();
       const currentIndex = focusedId ? order.indexOf(focusedId) : -1;
       if (currentIndex === -1) return; // nothing focused yet: let Tab enter natively
-      const atBoundary = event.shiftKey ? currentIndex === 0 : currentIndex === order.length - 1;
+      const atBoundary = event.shiftKey
+        ? currentIndex === 0
+        : currentIndex === order.length - 1;
       if (atBoundary) return; // let Tab exit to surrounding chrome instead of wrapping
       event.preventDefault();
       if (event.shiftKey) this.editor.focusPrevious();
@@ -549,7 +604,12 @@ export class CanvasController {
       return;
     }
 
-    if (event.key.toLowerCase() === "c" && !event.metaKey && !event.ctrlKey && !event.altKey) {
+    if (
+      event.key.toLowerCase() === "c" &&
+      !event.metaKey &&
+      !event.ctrlKey &&
+      !event.altKey
+    ) {
       const source = focusedId ?? this.editor.selection.get()[0];
       const el = source ? this.editor.scene.get(source) : undefined;
       if (!el || el.type === "connector" || el.type === "frame") return;

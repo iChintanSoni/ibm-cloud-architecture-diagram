@@ -32,8 +32,8 @@ describe("createMcpServer", () => {
           "lint",
           "quickfix_apply",
           "quickfix_apply_all",
-          "ungroup_element"
-        ].sort()
+          "ungroup_element",
+        ].sort(),
       );
     } finally {
       await close();
@@ -44,8 +44,14 @@ describe("createMcpServer", () => {
     const a = await createTestClient();
     const b = await createTestClient();
     try {
-      await a.client.callTool({ name: "doc_create", arguments: { level: "blank" } });
-      const result = await b.client.callTool({ name: "doc_get", arguments: {} });
+      await a.client.callTool({
+        name: "doc_create",
+        arguments: { level: "blank" },
+      });
+      const result = await b.client.callTool({
+        name: "doc_get",
+        arguments: {},
+      });
       expect(result.isError).toBe(true);
     } finally {
       await a.close();

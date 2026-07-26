@@ -8,12 +8,16 @@ not dates.
 Ship a usable, on-spec human editor in the browser.
 
 #### M1 — Core engine skeleton
+
 ✅ **Done** (2026-07-22)
+
 - `packages/core`: scene model, command bus + undo, SVG DOM renderer, pan/zoom, selection,
   hit-testing. Framework-agnostic ([D2](00-decision-log.md#d2--framework-agnostic-typescript-core--thin-shells--locked)).
 
 #### M2 — Icon catalog pipeline
+
 ✅ **Done** (2026-07-23)
+
 - `packages/catalog-build` converts a pinned IBM stencils commit → `packages/catalog` (manifest +
   SVGs): 242 icons across 11 categories (a `groups` category and 35 icons added per
   [D23](00-decision-log.md#d23--catalog-gains-a-groups-icon-category-narrowing-d21--locked)). See
@@ -21,7 +25,9 @@ Ship a usable, on-spec human editor in the browser.
 - `core/catalog` runtime search/resolve.
 
 #### M3 — Semantic elements & containers
+
 ✅ **Done** (2026-07-23)
+
 - Box (`deployedOn`), Group (`deployedTo`), Zone, Actor, IconNode, Text elements, all reachable
   through the public `Editor` API (`addBox`/`addGroup`/`addZone`/`addActor`/`addIcon`/`addText`).
 - Containment/move-with: `Scene.descendantsOf`/`ancestorsOf` walk the `parentId` tree (cycle-safe);
@@ -34,7 +40,9 @@ Ship a usable, on-spec human editor in the browser.
   explicitly out of scope here — [D21](00-decision-log.md#d21--container-presets-are-a-named-shortcut-layer-not-new-element-types--locked) lands them in M7 instead.
 
 #### M4 — Smart connectors
+
 ✅ **Done** (2026-07-23)
+
 - Connectors bind to named ports (`n`/`e`/`s`/`w`/`center`) and route through a grid-based
   orthogonal (Manhattan) router: obstacle-free where possible, fewest bends, mild west→east bias
   per [Layout convention](05-ibm-spec-conformance.md#layout-convention). Obstacles are leaf shapes
@@ -52,7 +60,9 @@ Ship a usable, on-spec human editor in the browser.
   it isn't attached to is flagged, with a "re-route" quick-fix.
 
 #### M5 — `.icad` I/O + export
+
 ✅ **Done** (2026-07-23)
+
 - `core/io`: `toIcad`/`fromIcad`/`applyIcad` round-trip the scene through the single-file JSON
   shape; a migration registry (empty until the schema bumps past v1) feeds into a repair pass that
   keeps a loaded scene always structurally valid regardless of source — a dangling `parentId` is
@@ -64,7 +74,9 @@ Ship a usable, on-spec human editor in the browser.
   discard on reload after a crash ([D10](00-decision-log.md#d10--autosave-draft--crash-recovery--locked)).
 
 #### M6 — Conformance linter
+
 ✅ **Done** (2026-07-23)
+
 - Fourteen IBM-default rules cover semantic/type and visual mismatches, catalog references, palette
   use, containment, labels, connector validity/routing, west→east public flow, and icon geometry.
   Rule severities (`error`/`warn`/`info`/`off`) and the warn/block export gate are configurable per
@@ -76,7 +88,9 @@ Ship a usable, on-spec human editor in the browser.
   and enforces block-on-error when enabled.
 
 #### M7 — Chrome, templates, find, themes (Carbon)
+
 ✅ **Done** (2026-07-23)
+
 - ✅ **Library vertical slice done (2026-07-23):** reusable `packages/ui-web` Carbon library
   panel, catalog search/category browsing, click-to-place icons and native containers, automatic
   containment with the prescribed 16px inset, and the four container presets confirmed by IBM
@@ -85,6 +99,7 @@ Ship a usable, on-spec human editor in the browser.
   confirmed preset per [D24](00-decision-log.md#d24--regionvpcsubnet-are-box-only-availability-zoneon-prem-are-boundary--locked).**
 
 ##### M7.1 — Published-guidance conformance alignment
+
 ✅ **Done** (2026-07-23)
 
 Aligned the implementation with the published
@@ -107,6 +122,7 @@ and used the stencil repository as the supplemental asset/inventory source:
 multi-valued before changing the `.icad` schema or replacing `parentId` with membership relations.
 
 ##### M7.2 — Selection inspector and layers
+
 ✅ **Done** (2026-07-23)
 
 Made placed elements editable and the diagram hierarchy navigable:
@@ -126,6 +142,7 @@ Made placed elements editable and the diagram hierarchy navigable:
 navigate the same object through Layers and Validation without leaving the right inspector.
 
 ##### M7.3 — IBM-level templates and frame authoring
+
 ✅ **Done** (2026-07-23)
 
 Turned the four locked IBM diagram levels into reusable starter documents and completed the first
@@ -149,6 +166,7 @@ frame-authoring slice:
 save/reopen the result as `.icad`, and continue editing through the shared command surface.
 
 ##### M7.4 — Top bar, command palette, find, frame presentation, theme persistence
+
 ✅ **Done** (2026-07-23)
 
 Closed out the remaining M7 chrome: a real pan/zoom camera plus the surfaces that depend on it.
@@ -177,11 +195,13 @@ element or frame by name via Find, step through a presentation, and keep their c
 a reload.
 
 #### M8 — Accessibility to AA
+
 🟡 **In progress** — everything automatable is done, and a live-browser verification pass has since
 found and fixed four real defects the automated suite couldn't see; only the actual human
 VoiceOver/NVDA sign-off pass remains ([Accessibility](07-accessibility.md)).
 
 ##### M8.1 — Baseline canvas keyboard operation, roles/names, CI a11y checks
+
 ✅ **Done** (2026-07-23)
 
 Per the doc's own phasing ("chrome and keyboard operation first, then the screen-reader object
@@ -218,6 +238,7 @@ tree and live regions"), landed the foundational layer everything else builds on
 screen-reader output — those need a live browser pass, tracked below.
 
 ##### M8.2 — Connect/group interactions, nested object tree, live regions, real-browser CI
+
 ✅ **Done** (2026-07-23)
 
 Closed out every remaining M8 item except the manual screen-reader pass:
@@ -240,7 +261,7 @@ Closed out every remaining M8 item except the manual screen-reader pass:
    selection (for Group) the same way a mouse user shift-clicks.
 4. Added the full nested ARIA object tree: containers render `aria-owns` over their children, so
    assistive tech reads containment as real parent/child structure (`Frame > Boundary > Boundary >
-   Group > button`) instead of a flat list — confirmed against a live accessibility tree, not just
+Group > button`) instead of a flat list — confirmed against a live accessibility tree, not just
    jsdom.
 5. Added `LiveRegion` (`packages/ui-web/src/LiveRegion.tsx`, visually-hidden `role="status"`) and
    wired announcements to insert/delete/connect/group/ungroup/quick-fix actions.
@@ -258,6 +279,7 @@ Closed out every remaining M8 item except the manual screen-reader pass:
    underneath; not a product bug, and reproduced cleanly with correct behavior on a fresh diagram.)
 
 ##### M8.3 — Live-browser verification pass; manual sign-off script
+
 ✅ **Verification pass done, human sign-off still pending** (2026-07-23)
 
 Before handing M8 to an actual screen-reader user, drove the real Chrome accessibility tree (the
@@ -279,7 +301,7 @@ violation:
    create-then-immediately-edit/move/connect flow for a keyboard user. Fixed by calling
    `editor.focusElement(id)` there too (`apps/web/src/App.tsx`).
 3. **Cascading delete left dangling connectors.** Deleting a container cascades to its descendants
-   (by design), but a connector attached to one of those descendants from *outside* the deleted
+   (by design), but a connector attached to one of those descendants from _outside_ the deleted
    subtree survived with an endpoint that no longer resolves — surfacing live as an interactive
    element literally named "Connector: unknown element to unknown element". The `.icad` repair pass
    already drops exactly this case on load ([File Format](03-file-format.md#versioning--migration)),
@@ -310,9 +332,11 @@ end, exports a reviewer-grade SVG, reopens it; linter catches common violations;
 Make the same engine machine-authorable and put it where developers live.
 
 #### M9 — MCP server (agent authoring toolset)
+
 ✅ **Done** (2026-07-24)
 
 ##### M9.1 — Catalog, document, authoring, and conformance/SVG-export tools
+
 ✅ **Done** (2026-07-24)
 
 `packages/mcp` — a new workspace package, an MCP server exposing `core/api`'s `Editor` to agents
@@ -346,10 +370,11 @@ over stdio, so "agents and humans drive one engine" per D2/D15
    functions directly. Additionally verified end-to-end over **real stdio**: the compiled server
    spawned as an actual subprocess, driven through `doc_create` → `element_add_icon` →
    `connect_nearest` → `lint` → `quickfix_apply_all` → `export_diagram` → `doc_save`, then reopened
-   in a *second*, independent subprocess via `doc_open` to confirm the round-trip is real, not just
+   in a _second_, independent subprocess via `doc_open` to confirm the round-trip is real, not just
    in-memory.
 
 **Deferred, explicitly** (not silently dropped):
+
 - **PNG export.** `io/export.ts`'s `exportPng` itself requires a real browser canvas 2D context;
   jsdom doesn't implement canvas without the native `canvas` npm package (not installed anywhere in
   this repo, and unproven headless — no existing test coverage to lean on). `export_diagram`
@@ -360,6 +385,7 @@ over stdio, so "agents and humans drive one engine" per D2/D15
 - Agent Skills (M9.2, below) and `apps/vscode` (M10).
 
 ##### M9.2 — Agent Skills
+
 ✅ **Done** (2026-07-24)
 
 `packages/mcp/skills/` — three composable `SKILL.md` packages
@@ -393,12 +419,13 @@ documentation-and-tooling change can self-verify. Tracked as follow-up before th
 edits") are called met.
 
 #### M10 — `apps/vscode`
+
 🟡 **Built and tested; interactive F5 sign-off pending** (2026-07-24) — custom editor for `.icad`,
 diagrams-in-repo next to code.
 
 A new `apps/vscode` package: a VS Code `CustomEditorProvider` (own `CustomDocument`, not
 `CustomTextEditorProvider`) registered for `*.icad`, per [Architecture](02-architecture.md#shells):
-*"core runs in the webview, the extension host handles file I/O."*
+_"core runs in the webview, the extension host handles file I/O."_
 
 1. **Two bundles.** `src/` is the extension host (plain Node, bundled with esbuild to
    `dist/extension.cjs`) — a thin file-I/O and undo/redo relay that never touches `.icad` semantics
@@ -409,8 +436,8 @@ A new `apps/vscode` package: a VS Code `CustomEditorProvider` (own `CustomDocume
    package has a browser-storage dependency, so only `apps/web`'s persistence layer (File System
    Access API, IndexedDB autosave, `localStorage` theme) needed replacing, not the editor itself.
 2. **Undo/redo bridged to VS Code's own stack, not reimplemented.** The webview posts `{type:
-   "edit", content, label}` on `commands.onDispatch` — which never fires during `commands.undo()/
-   redo()` replay (`packages/core/src/commands/commandBus.ts`) — so the host's
+"edit", content, label}` on `commands.onDispatch` — which never fires during `commands.undo()/
+redo()` replay (`packages/core/src/commands/commandBus.ts`) — so the host's
    `onDidChangeCustomDocument` bridge and the engine's own `CommandBus` stay in exact 1:1 sync with
    no feedback loop; a separate `{type: "sync"}` message reports post-undo/redo content back to the
    host without pushing a spurious second stack entry. Ctrl+Z/Ctrl+Shift+Z are handled by VS Code
@@ -447,7 +474,7 @@ conclusive confirmation that opening a `.icad` file actually resolves to our cus
 normal interactive use — every CLI-driven attempt to force that specific check hit VS Code
 multi-instance/file-argument-timing quirks (a file passed as a CLI argument at cold start resolves
 to the default text editor before extension scanning finishes; `--reuse-window` against an isolated
-instance didn't reliably force a fresh open) that are about the *test harness*, not the extension
+instance didn't reliably force a fresh open) that are about the _test harness_, not the extension
 code — no error ever appeared for our code specifically across any of these attempts. An actual
 interactive F5 ("Run ICAD Extension", `.vscode/launch.json`) pass in a real VS Code window — open a
 `.icad` file by double-clicking it, place/connect/group elements, Ctrl+Z/Ctrl+Shift+Z, Save, and a
@@ -460,6 +487,7 @@ GUI/display access to drive a native VS Code window interactively (unlike a web 
 devtools-style automation surface available here).
 
 **Deferred, explicitly** (not silently dropped, same posture as M9.1's PNG-export deferral):
+
 - Real `@vscode/test-electron` integration tests / browser E2E parity with `apps/web/e2e/`.
 - External file-change live-reload (e.g. a git checkout while the editor is open).
 - PNG export from the webview — it has a real `<canvas>` so `exportPng` should work, but SVG export
@@ -477,6 +505,7 @@ them: M8.3's human VoiceOver/NVDA sign-off and M10's interactive F5 VS Code pass
 real device this environment doesn't have; they proceed in parallel with v3, not before it.
 
 #### M11 — `apps/desktop` (Tauri shell)
+
 🟡 **In progress** (2026-07-24) — scaffolded, themed, iconed, builds and bundles headlessly; the
 interactive sign-off, code signing, and DMG packaging are what's left (all need a real machine).
 
@@ -569,6 +598,7 @@ Same "core runs in the webview, the host handles file I/O" split as
    one).
 
 **Not yet done:**
+
 - `.dmg` packaging — confirmed hanging in this specific sandbox (see above), not yet retried
   anywhere with a real WindowServer session.
 - Code signing/notarization (an IBM org/certificate dependency, not a code task — same posture as
@@ -582,6 +612,7 @@ Same "core runs in the webview, the host handles file I/O" split as
 natively; the app runs fully offline post-install.
 
 #### M12 — Performance at scale
+
 🟡 **In progress** — the benchmark landed as [M15 step 7](#m15--interaction-foundations)
 (`packages/core/src/perf/benchmark.test.ts`), per the overlap note this section used to carry.
 What remains here is purely the virtualization decision that benchmark informs.
@@ -611,6 +642,7 @@ counts (✅); virtualization ships only if that benchmark demanded it (it didn't
 un-started), with a11y/keyboard coverage re-verified against the virtualized DOM if it ever does.
 
 #### M13 — Catalog refresh cadence + migration tooling
+
 ⬜ **Not started**
 
 1. Define the refresh trigger: how `packages/catalog-build` re-pins a newer
@@ -656,10 +688,11 @@ drag, no resize, no marquee, and no clipboard.
 for v3 to close. M15–M20 genuinely depend on v3-era stability and should not be.
 
 #### M14 — IBM visual conformance
+
 ✅ **Done**
 
-Renderer and catalog only; no interaction changes. Audited against the *IT architecture diagrams
-kit* v1.1 deck and the IBM 2.0 `.drawio` stencils vendored in
+Renderer and catalog only; no interaction changes. Audited against the _IT architecture diagrams
+kit_ v1.1 deck and the IBM 2.0 `.drawio` stencils vendored in
 `packages/catalog-build/.cache/architecture-icons/`.
 
 1. ✅ **Icon tiles.** IBM's icon is a 48×48 solid category tile with a 24×24 white glyph inset by
@@ -682,10 +715,10 @@ kit* v1.1 deck and the IBM 2.0 `.drawio` stencils vendored in
    Connection" as a caption cell with no edge behind it, not a distinct line style — the schema's
    existing `tunneling-connection` type already rendered correctly (band + solid line + arrow) as
    what IBM actually labels "Traffic Through Tunnel/Encapsulation". Fixed as a Properties-panel
-   display-label correction; no schema or `.icad` change. *(This corrects the original audit
+   display-label correction; no schema or `.icad` change. _(This corrects the original audit
    finding, which misread the raster deck image as implying a 12th connector type — the stencil
    XML, a higher-precedence [normative source](05-ibm-spec-conformance.md#normative-sources),
-   settled it before any code was written against the wrong premise.)*
+   settled it before any code was written against the wrong premise.)_
 4. ✅ **Container sidebar tab** on Group and Zone, not Box alone, colored to each container's own
    accent — IBM's worked examples draw it on every container. Frame excluded (no IBM semantic).
 5. ✅ **Sequencing badge** — a short free-text badge (e.g. "1", "2a") in a small circle at the
@@ -713,6 +746,7 @@ fill, glyph color, connector markers, dash patterns, stroke width, and container
 connector types round-trip through `.icad`, the linter, and MCP with corrected display labels.
 
 #### M15 — Interaction foundations
+
 ✅ **Done.**
 
 No user-visible features; everything after this depends on it. Full detail in
@@ -754,6 +788,7 @@ exactly one undo entry, and runs the linter exactly once; all three shells drive
 the same `CanvasController` with no shell-local interaction code.
 
 #### M16 — The core loop
+
 🟡 **In progress** — M16.1 (drag-to-move) and M16.2 (8-handle resize) have landed; see
 [Canvas parity plan → M16](10-canvas-parity-plan.md#m16--the-core-loop).
 
@@ -798,6 +833,7 @@ follow-up.
 7. ⬜ Alt+click select-through to an occluded element.
 
 #### M17 — The feedback layer
+
 ⬜ **Not started**
 
 Rendered grid and snapping, alignment guides with spacing hints, drop-target highlight, live 16px
@@ -806,17 +842,20 @@ container resize, alternating fills re-derived on reparent, live dimension reado
 space-drag/middle-drag panning.
 
 #### M18 — Arrangement
+
 ⬜ **Not started** — blocked on M15's DOM reordering.
 
 Z-order, 6-way align, distribute, lock/hide, and an interactive Layers tab.
 
 #### M19 — Connector editing
+
 ⬜ **Not started**
 
 Waypoint drag handles (`setConnectorWaypoints` already exists in core, merely unexposed), endpoint
 retargeting, reset-to-auto-routing, and in-place label editing on the line.
 
 #### M20 — Full range on demand
+
 ⬜ **Not started**
 
 Last, because rotation is the most invasive change in the plan. Rotation handle with 15°
@@ -841,7 +880,7 @@ editing throughout; every new capability is reachable from the MCP surface; AA r
 - IBM Design sign-off gates each release ([D17](00-decision-log.md#d17--official--ibm-internal-tool--locked)).
 - Tests grow with features: Vitest (core), Playwright (web + keyboard E2E), CI a11y.
 - Every human-editor capability lands as a **command** so the v2 MCP server inherits it for free.
-  From v4 on, a *gesture* is ephemeral and a *commit* is the command
+  From v4 on, a _gesture_ is ephemeral and a _commit_ is the command
   ([D26](00-decision-log.md#d26--gestures-are-ephemeral-commits-are-commands--locked)) — in-flight
   drag state is deliberately not part of the document, the undo history, or the MCP surface, but
   every committed mutation still is.

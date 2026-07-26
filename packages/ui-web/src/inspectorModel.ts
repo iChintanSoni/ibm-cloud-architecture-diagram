@@ -5,7 +5,10 @@ export interface LayerNode {
   children: LayerNode[];
 }
 
-function hasCyclicParent(element: SceneElement, byId: Map<string, SceneElement>): boolean {
+function hasCyclicParent(
+  element: SceneElement,
+  byId: Map<string, SceneElement>,
+): boolean {
   const visited = new Set([element.id]);
   let parentId = element.parentId;
   while (parentId) {
@@ -20,14 +23,18 @@ function hasCyclicParent(element: SceneElement, byId: Map<string, SceneElement>)
 export function buildLayerTree(elements: SceneElement[]): LayerNode[] {
   const byId = new Map(elements.map((element) => [element.id, element]));
   const nodes = new Map<string, LayerNode>(
-    elements.map((element) => [element.id, { element, children: [] }])
+    elements.map((element) => [element.id, { element, children: [] }]),
   );
   const roots: LayerNode[] = [];
 
   for (const element of elements) {
     const node = nodes.get(element.id)!;
     const parent = element.parentId ? nodes.get(element.parentId) : undefined;
-    if (!parent || element.parentId === element.id || hasCyclicParent(element, byId)) {
+    if (
+      !parent ||
+      element.parentId === element.id ||
+      hasCyclicParent(element, byId)
+    ) {
       roots.push(node);
     } else {
       parent.children.push(node);
@@ -41,12 +48,16 @@ export function elementDisplayName(element: SceneElement): string {
   if (element.type === "text") return element.text.trim() || "Untitled text";
   if (element.type === "frame") return element.name.trim() || "Untitled frame";
   if (element.label?.text.trim()) return element.label.text.trim();
-  if ("catalogRef" in element && element.catalogRef) return element.catalogRef.split("/").at(-1) ?? element.catalogRef;
+  if ("catalogRef" in element && element.catalogRef)
+    return element.catalogRef.split("/").at(-1) ?? element.catalogRef;
   return `Untitled ${element.type}`;
 }
 
 /** Valid container choices, excluding the selected element and its descendants. */
-export function eligibleParentElements(elements: SceneElement[], selectedId: string): SceneElement[] {
+export function eligibleParentElements(
+  elements: SceneElement[],
+  selectedId: string,
+): SceneElement[] {
   const children = new Map<string, string[]>();
   for (const element of elements) {
     if (!element.parentId) continue;
@@ -64,5 +75,7 @@ export function eligibleParentElements(elements: SceneElement[], selectedId: str
     queue.push(...(children.get(id) ?? []));
   }
 
-  return elements.filter((element) => isContainer(element) && !excluded.has(element.id));
+  return elements.filter(
+    (element) => isContainer(element) && !excluded.has(element.id),
+  );
 }

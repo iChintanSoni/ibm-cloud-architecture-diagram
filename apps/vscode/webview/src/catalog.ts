@@ -6,17 +6,23 @@ import { Catalog, type CatalogManifest } from "@icad/core";
  * approach bakes the manifest + SVGs straight into the bundle. Only the relative depth differs
  * (apps/vscode/webview/src is one level deeper than apps/web/src).
  */
-const manifestModules = import.meta.glob("../../../../packages/catalog/2.0.0/index.json", {
-  eager: true,
-  import: "default"
-});
+const manifestModules = import.meta.glob(
+  "../../../../packages/catalog/2.0.0/index.json",
+  {
+    eager: true,
+    import: "default",
+  },
+);
 const manifest = Object.values(manifestModules)[0] as CatalogManifest;
 
-const assetModules = import.meta.glob("../../../../packages/catalog/2.0.0/icons/**/*.svg", {
-  eager: true,
-  query: "?raw",
-  import: "default"
-}) as Record<string, string>;
+const assetModules = import.meta.glob(
+  "../../../../packages/catalog/2.0.0/icons/**/*.svg",
+  {
+    eager: true,
+    query: "?raw",
+    import: "default",
+  },
+) as Record<string, string>;
 
 // Catalog assets on disk are full, standalone SVGs (viewBox 0 0 24 24); `Catalog` expects inner
 // fragments (see packages/core/src/catalog/catalog.ts), so strip the outer <svg> tag here.

@@ -3,7 +3,13 @@ import { Catalog } from "../catalog/catalog.js";
 import type { CatalogManifest } from "../catalog/types.js";
 import { accessibleName, accessibleRole } from "./accessibleName.js";
 import { Scene } from "./scene.js";
-import type { BoxElement, ConnectorElement, FrameElement, IconNodeElement, TextElement } from "./types.js";
+import type {
+  BoxElement,
+  ConnectorElement,
+  FrameElement,
+  IconNodeElement,
+  TextElement,
+} from "./types.js";
 
 function testCatalog(): Catalog {
   const manifest: CatalogManifest = {
@@ -19,9 +25,9 @@ function testCatalog(): Catalog {
         container: "square",
         asset: "vpc",
         keywords: ["vpc"],
-        tier: "ibm-cloud"
-      }
-    ]
+        tier: "ibm-cloud",
+      },
+    ],
   };
   return new Catalog(manifest, new Map([["vpc", "<rect />"]]));
 }
@@ -34,7 +40,7 @@ const box: BoxElement = {
   y: 0,
   w: 200,
   h: 200,
-  label: { text: "VPC" }
+  label: { text: "VPC" },
 };
 
 const icon: IconNodeElement = {
@@ -46,7 +52,7 @@ const icon: IconNodeElement = {
   x: 10,
   y: 10,
   w: 48,
-  h: 48
+  h: 48,
 };
 
 describe("accessibleRole", () => {
@@ -60,33 +66,59 @@ describe("accessibleName", () => {
   it("uses the element's own label when present", () => {
     const scene = new Scene();
     scene._put(box);
-    expect(accessibleName(box, scene, testCatalog())).toBe("Box: VPC, contains 0 elements");
+    expect(accessibleName(box, scene, testCatalog())).toBe(
+      "Box: VPC, contains 0 elements",
+    );
   });
 
   it("counts children in a container's name, pluralizing correctly", () => {
     const scene = new Scene();
     scene._put(box);
     scene._put(icon);
-    expect(accessibleName(box, scene, testCatalog())).toBe("Box: VPC, contains 1 element");
+    expect(accessibleName(box, scene, testCatalog())).toBe(
+      "Box: VPC, contains 1 element",
+    );
   });
 
   it("falls back to the resolved catalog icon name when there is no label", () => {
     const scene = new Scene();
-    const unlabeled: IconNodeElement = { ...icon, id: "icon-2", parentId: undefined };
+    const unlabeled: IconNodeElement = {
+      ...icon,
+      id: "icon-2",
+      parentId: undefined,
+    };
     scene._put(unlabeled);
-    expect(accessibleName(unlabeled, scene, testCatalog())).toBe("Virtual Private Cloud");
+    expect(accessibleName(unlabeled, scene, testCatalog())).toBe(
+      "Virtual Private Cloud",
+    );
   });
 
   it("falls back to a generic name when nothing else is available", () => {
     const scene = new Scene();
-    const bare: IconNodeElement = { ...icon, id: "icon-3", catalogRef: "unknown/ref", parentId: undefined };
+    const bare: IconNodeElement = {
+      ...icon,
+      id: "icon-3",
+      catalogRef: "unknown/ref",
+      parentId: undefined,
+    };
     scene._put(bare);
-    expect(accessibleName(bare, scene, testCatalog())).toBe("Untitled iconNode");
+    expect(accessibleName(bare, scene, testCatalog())).toBe(
+      "Untitled iconNode",
+    );
   });
 
   it("uses text content for text elements", () => {
     const scene = new Scene();
-    const text: TextElement = { id: "text-1", type: "text", semantic: "node", text: "Payments", x: 0, y: 0, w: 10, h: 10 };
+    const text: TextElement = {
+      id: "text-1",
+      type: "text",
+      semantic: "node",
+      text: "Payments",
+      x: 0,
+      y: 0,
+      w: 10,
+      h: 10,
+    };
     scene._put(text);
     expect(accessibleName(text, scene, testCatalog())).toBe("Payments");
   });
@@ -102,10 +134,12 @@ describe("accessibleName", () => {
       x: 0,
       y: 0,
       w: 800,
-      h: 500
+      h: 500,
     };
     scene._put(frame);
-    expect(accessibleName(frame, scene, testCatalog())).toBe("Frame: Checkout flow, contains 0 elements");
+    expect(accessibleName(frame, scene, testCatalog())).toBe(
+      "Frame: Checkout flow, contains 0 elements",
+    );
   });
 
   it("describes a connector by its resolved endpoints and type", () => {
@@ -123,11 +157,11 @@ describe("accessibleName", () => {
       from: { elementId: "box-1", port: "e" },
       to: { elementId: "icon-1", port: "w" },
       connectorType: "association",
-      routing: "auto"
+      routing: "auto",
     };
     scene._put(connector);
     expect(accessibleName(connector, scene, testCatalog())).toBe(
-      "Connector: VPC to Virtual Private Cloud (association)"
+      "Connector: VPC to Virtual Private Cloud (association)",
     );
   });
 
@@ -144,11 +178,11 @@ describe("accessibleName", () => {
       from: { elementId: "missing-from", port: "e" },
       to: { elementId: "missing-to", port: "w" },
       connectorType: "dependency",
-      routing: "auto"
+      routing: "auto",
     };
     scene._put(connector);
     expect(accessibleName(connector, scene, testCatalog())).toBe(
-      "Connector: unknown element to unknown element (dependency)"
+      "Connector: unknown element to unknown element (dependency)",
     );
   });
 });

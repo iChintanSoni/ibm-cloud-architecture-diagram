@@ -23,14 +23,17 @@ export function FindBar({
   onQueryChange,
   onNext,
   onPrevious,
-  onClose
+  onClose,
 }: FindBarProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (!open) return;
-    previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    previousFocusRef.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
     inputRef.current?.focus();
     // Restores focus to whatever opened Find (docs/07-accessibility.md#chrome-the-easy-80).
     return () => previousFocusRef.current?.focus();
@@ -61,11 +64,36 @@ export function FindBar({
         }}
       />
       <span className="icad-find-bar__count">
-        {matches.length === 0 ? "No results" : `${activeIndex + 1} / ${matches.length}`}
+        {matches.length === 0
+          ? "No results"
+          : `${activeIndex + 1} / ${matches.length}`}
       </span>
-      <Button kind="ghost" size="sm" iconDescription="Previous match" hasIconOnly renderIcon={ChevronUp} onClick={onPrevious} disabled={matches.length === 0} />
-      <Button kind="ghost" size="sm" iconDescription="Next match" hasIconOnly renderIcon={ChevronDown} onClick={onNext} disabled={matches.length === 0} />
-      <Button kind="ghost" size="sm" iconDescription="Close find" hasIconOnly renderIcon={Close} onClick={onClose} />
+      <Button
+        kind="ghost"
+        size="sm"
+        iconDescription="Previous match"
+        hasIconOnly
+        renderIcon={ChevronUp}
+        onClick={onPrevious}
+        disabled={matches.length === 0}
+      />
+      <Button
+        kind="ghost"
+        size="sm"
+        iconDescription="Next match"
+        hasIconOnly
+        renderIcon={ChevronDown}
+        onClick={onNext}
+        disabled={matches.length === 0}
+      />
+      <Button
+        kind="ghost"
+        size="sm"
+        iconDescription="Close find"
+        hasIconOnly
+        renderIcon={Close}
+        onClick={onClose}
+      />
     </div>
   );
 }

@@ -1,4 +1,10 @@
-import { clientPointToCanvas, isContainer, type Editor, type Point, type SceneElement } from "@icad/core";
+import {
+  clientPointToCanvas,
+  isContainer,
+  type Editor,
+  type Point,
+  type SceneElement,
+} from "@icad/core";
 
 export { clientPointToCanvas };
 import type { LibraryPlacement } from "@icad/ui-web";
@@ -11,7 +17,7 @@ const CONTAINER_PADDING = 16;
 function containingParent(
   editor: Editor,
   point: Point,
-  size: { w: number; h: number }
+  size: { w: number; h: number },
 ): SceneElement | undefined {
   return editor.scene
     .all()
@@ -23,7 +29,7 @@ function containingParent(
         point.x >= element.x &&
         point.x <= element.x + element.w &&
         point.y >= element.y &&
-        point.y <= element.y + element.h
+        point.y <= element.y + element.h,
     )
     .sort((a, b) => a.w * a.h - b.w * b.h)[0];
 }
@@ -31,23 +37,27 @@ function containingParent(
 function topLeftAt(
   point: Point,
   size: { w: number; h: number },
-  parent?: SceneElement
+  parent?: SceneElement,
 ): Point {
   const centered = { x: point.x - size.w / 2, y: point.y - size.h / 2 };
   if (!parent) return centered;
   return {
     x: Math.min(
       Math.max(centered.x, parent.x + CONTAINER_PADDING),
-      parent.x + parent.w - CONTAINER_PADDING - size.w
+      parent.x + parent.w - CONTAINER_PADDING - size.w,
     ),
     y: Math.min(
       Math.max(centered.y, parent.y + CONTAINER_PADDING),
-      parent.y + parent.h - CONTAINER_PADDING - size.h
-    )
+      parent.y + parent.h - CONTAINER_PADDING - size.h,
+    ),
   };
 }
 
-export function placeLibraryItem(editor: Editor, placement: LibraryPlacement, point: Point): string {
+export function placeLibraryItem(
+  editor: Editor,
+  placement: LibraryPlacement,
+  point: Point,
+): string {
   const size =
     placement.type === "icon"
       ? { w: ICON_SIZE, h: ICON_SIZE }
@@ -64,14 +74,21 @@ export function placeLibraryItem(editor: Editor, placement: LibraryPlacement, po
   if (placement.type === "icon") {
     const label = placement.icon.name;
     return placement.icon.semantic === "actor"
-      ? editor.addActor({ at, label, catalogRef: placement.icon.id, ...parentOption })
+      ? editor.addActor({
+          at,
+          label,
+          catalogRef: placement.icon.id,
+          ...parentOption,
+        })
       : editor.addIcon(placement.icon.id, { at, label, ...parentOption });
   }
 
   if (placement.type === "primitive") {
     if (placement.kind === "box") return editor.addBox({ at, ...parentOption });
-    if (placement.kind === "group") return editor.addGroup({ at, ...parentOption });
-    if (placement.kind === "frame") return editor.addFrame({ at, name: "Untitled frame" });
+    if (placement.kind === "group")
+      return editor.addGroup({ at, ...parentOption });
+    if (placement.kind === "frame")
+      return editor.addFrame({ at, name: "Untitled frame" });
     return editor.addZone({ at, ...parentOption });
   }
 
@@ -81,13 +98,13 @@ export function placeLibraryItem(editor: Editor, placement: LibraryPlacement, po
     label: preset.name,
     style: { stroke: preset.color },
     ...(preset.cornerIcon ? { catalogRef: preset.cornerIcon } : {}),
-    ...parentOption
+    ...parentOption,
   };
   if (preset.kind === "box") return editor.addBox(options);
   if (preset.kind === "group") return editor.addGroup(options);
   return editor.addZone({
     ...options,
-    ...(preset.zoneKind ? { zoneKind: preset.zoneKind } : {})
+    ...(preset.zoneKind ? { zoneKind: preset.zoneKind } : {}),
   });
 }
 
@@ -98,4 +115,3 @@ export function viewportCenter(editor: Editor, canvasEl: HTMLElement): Point {
   const { x, y, scale } = editor.viewport.get();
   return { x: x + rect.width / (2 * scale), y: y + rect.height / (2 * scale) };
 }
-

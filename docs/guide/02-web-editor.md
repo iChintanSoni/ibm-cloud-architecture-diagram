@@ -20,16 +20,16 @@ Library panel, and there's no ruler along the canvas edges.
 
 ## Elements and their IBM semantics
 
-| Element | Border | IBM semantic | Meaning |
-|---|---|---|---|
-| **Box** | solid | `deployedOn` | A location something runs on (a VPC, a server, a cluster). |
-| **Group** | dashed | `deployedTo` | A grouping of services/apps that share a deployment target. |
-| **Zone** ("Boundary") | dashed | `boundary` | A region, availability zone, VPC, subnet, or on-prem boundary. Set the kind in Properties. |
-| **Actor** | rounded | `actor` | A person or external role. |
-| **Icon** (`iconNode`) | — | `node` | A single IBM Cloud service/component from the catalog. |
-| **Text** | — | — | A free-floating label. |
-| **Frame** | dashed, titled | — | A named section used for Find, navigation, and presentation mode — not a diagram element with IBM meaning of its own. |
-| **Connector** | — | connection/relationship | See [Connectors](#connectors) below. |
+| Element               | Border         | IBM semantic            | Meaning                                                                                                               |
+| --------------------- | -------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| **Box**               | solid          | `deployedOn`            | A location something runs on (a VPC, a server, a cluster).                                                            |
+| **Group**             | dashed         | `deployedTo`            | A grouping of services/apps that share a deployment target.                                                           |
+| **Zone** ("Boundary") | dashed         | `boundary`              | A region, availability zone, VPC, subnet, or on-prem boundary. Set the kind in Properties.                            |
+| **Actor**             | rounded        | `actor`                 | A person or external role.                                                                                            |
+| **Icon** (`iconNode`) | —              | `node`                  | A single IBM Cloud service/component from the catalog.                                                                |
+| **Text**              | —              | —                       | A free-floating label.                                                                                                |
+| **Frame**             | dashed, titled | —                       | A named section used for Find, navigation, and presentation mode — not a diagram element with IBM meaning of its own. |
+| **Connector**         | —              | connection/relationship | See [Connectors](#connectors) below.                                                                                  |
 
 Boxes, Groups, Zones, and Frames are all **containers**: dropping or reparenting an element into
 one sets `parentId`, and moving or deleting the container cascades to everything inside it.

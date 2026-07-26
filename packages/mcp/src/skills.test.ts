@@ -9,8 +9,15 @@ import { createTestClient } from "./testClient.js";
  * exist"). Every inline-code token shaped like a tool name (snake_case, or one of the rare
  * bare-word tool names) must be a real registered tool. */
 
-const skillsDir = path.resolve(fileURLToPath(new URL(".", import.meta.url)), "../skills");
-const expectedSkills = ["ibm-diagram-spec", "ibm-diagram-authoring", "ibm-diagram-export"];
+const skillsDir = path.resolve(
+  fileURLToPath(new URL(".", import.meta.url)),
+  "../skills",
+);
+const expectedSkills = [
+  "ibm-diagram-spec",
+  "ibm-diagram-authoring",
+  "ibm-diagram-export",
+];
 
 const bareWordToolNames = new Set(["lint", "connect"]);
 
@@ -27,7 +34,9 @@ function parseFrontmatter(raw: string): Record<string, string> {
 
 function toolLikeTokens(body: string): string[] {
   const tokens = [...body.matchAll(/`([a-z][a-z_]*)`/g)].map((m) => m[1]);
-  return tokens.filter((token) => token.includes("_") || bareWordToolNames.has(token));
+  return tokens.filter(
+    (token) => token.includes("_") || bareWordToolNames.has(token),
+  );
 }
 
 describe("agent skills", () => {
@@ -39,7 +48,10 @@ describe("agent skills", () => {
 
   for (const skill of expectedSkills) {
     it(`${skill}/SKILL.md has valid frontmatter and only references real MCP tools`, async () => {
-      const raw = await readFile(path.join(skillsDir, skill, "SKILL.md"), "utf-8");
+      const raw = await readFile(
+        path.join(skillsDir, skill, "SKILL.md"),
+        "utf-8",
+      );
       const frontmatter = parseFrontmatter(raw);
       expect(frontmatter.name).toBe(skill);
       expect(frontmatter.description?.length).toBeGreaterThan(20);
@@ -50,7 +62,10 @@ describe("agent skills", () => {
         const realToolNames = new Set(tools.map((t) => t.name));
         const referenced = new Set(toolLikeTokens(raw));
         for (const token of referenced) {
-          expect(realToolNames.has(token), `"${token}" in ${skill}/SKILL.md is not a real MCP tool`).toBe(true);
+          expect(
+            realToolNames.has(token),
+            `"${token}" in ${skill}/SKILL.md is not a real MCP tool`,
+          ).toBe(true);
         }
       } finally {
         await close();
@@ -59,8 +74,14 @@ describe("agent skills", () => {
   }
 
   it("ibm-diagram-authoring and ibm-diagram-export both point back to ibm-diagram-spec", async () => {
-    const authoring = await readFile(path.join(skillsDir, "ibm-diagram-authoring", "SKILL.md"), "utf-8");
-    const exportSkill = await readFile(path.join(skillsDir, "ibm-diagram-export", "SKILL.md"), "utf-8");
+    const authoring = await readFile(
+      path.join(skillsDir, "ibm-diagram-authoring", "SKILL.md"),
+      "utf-8",
+    );
+    const exportSkill = await readFile(
+      path.join(skillsDir, "ibm-diagram-export", "SKILL.md"),
+      "utf-8",
+    );
     expect(authoring).toContain("ibm-diagram-spec");
     expect(authoring).toContain("ibm-diagram-export");
     expect(exportSkill).toContain("ibm-diagram-authoring");

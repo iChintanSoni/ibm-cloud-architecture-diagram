@@ -23,11 +23,15 @@ const JSDOM_INCOMPATIBLE_RULES = ["color-contrast", "target-size"];
 
 async function expectNoViolations(container: HTMLElement): Promise<void> {
   const results = await axe.run(container, {
-    rules: Object.fromEntries(JSDOM_INCOMPATIBLE_RULES.map((id) => [id, { enabled: false }]))
+    rules: Object.fromEntries(
+      JSDOM_INCOMPATIBLE_RULES.map((id) => [id, { enabled: false }]),
+    ),
   });
   if (results.violations.length > 0) {
     const report = results.violations
-      .map((v) => `${v.id} (${v.impact}): ${v.help} — ${v.nodes.length} node(s)`)
+      .map(
+        (v) => `${v.id} (${v.impact}): ${v.help} — ${v.nodes.length} node(s)`,
+      )
       .join("\n");
     throw new Error(`Accessibility violations:\n${report}`);
   }
@@ -47,9 +51,9 @@ function testCatalog(): Catalog {
         container: "square",
         asset: "vpc",
         keywords: ["vpc"],
-        tier: "ibm-cloud"
-      }
-    ]
+        tier: "ibm-cloud",
+      },
+    ],
   };
   return new Catalog(manifest, new Map([["vpc", "<rect />"]]));
 }
@@ -77,7 +81,7 @@ function topBarProps(): TopBarProps {
     onOpenCommandPalette: vi.fn(),
     onInsert: vi.fn(),
     themePreference: "auto",
-    onThemeChange: vi.fn()
+    onThemeChange: vi.fn(),
   };
 }
 
@@ -97,8 +101,8 @@ describe("accessibility smoke test (axe-core)", () => {
         removeEventListener: vi.fn(),
         addListener: vi.fn(),
         removeListener: vi.fn(),
-        dispatchEvent: vi.fn()
-      }))
+        dispatchEvent: vi.fn(),
+      })),
     });
     vi.stubGlobal(
       "ResizeObserver",
@@ -106,7 +110,7 @@ describe("accessibility smoke test (axe-core)", () => {
         observe() {}
         unobserve() {}
         disconnect() {}
-      }
+      },
     );
     container = document.createElement("div");
     document.body.appendChild(container);
@@ -125,7 +129,9 @@ describe("accessibility smoke test (axe-core)", () => {
   });
 
   it("LibraryPanel has no structural a11y violations", async () => {
-    act(() => root.render(<LibraryPanel catalog={testCatalog()} onChoose={vi.fn()} />));
+    act(() =>
+      root.render(<LibraryPanel catalog={testCatalog()} onChoose={vi.fn()} />),
+    );
     await expectNoViolations(container);
   });
 
@@ -144,8 +150,8 @@ describe("accessibility smoke test (axe-core)", () => {
           onSelect={vi.fn()}
           onUpdate={vi.fn()}
           onReparent={vi.fn()}
-        />
-      )
+        />,
+      ),
     );
     await expectNoViolations(container);
   });
@@ -153,8 +159,13 @@ describe("accessibility smoke test (axe-core)", () => {
   it("NewDiagramDialog has no structural a11y violations", async () => {
     act(() =>
       root.render(
-        <NewDiagramDialog open hasExistingContent={false} onClose={vi.fn()} onCreate={vi.fn()} />
-      )
+        <NewDiagramDialog
+          open
+          hasExistingContent={false}
+          onClose={vi.fn()}
+          onCreate={vi.fn()}
+        />,
+      ),
     );
     await expectNoViolations(container);
   });
@@ -166,11 +177,11 @@ describe("accessibility smoke test (axe-core)", () => {
           open
           commands={[
             { id: "a", label: "New diagram", category: "File", run: vi.fn() },
-            { id: "b", label: "Undo", category: "Edit", run: vi.fn() }
+            { id: "b", label: "Undo", category: "Edit", run: vi.fn() },
           ]}
           onClose={vi.fn()}
-        />
-      )
+        />,
+      ),
     );
     await expectNoViolations(container);
   });
@@ -181,14 +192,16 @@ describe("accessibility smoke test (axe-core)", () => {
         <FindBar
           open
           query="server"
-          matches={[{ id: "a", label: "Server", type: "iconNode", kind: "element" }]}
+          matches={[
+            { id: "a", label: "Server", type: "iconNode", kind: "element" },
+          ]}
           activeIndex={0}
           onQueryChange={vi.fn()}
           onNext={vi.fn()}
           onPrevious={vi.fn()}
           onClose={vi.fn()}
-        />
-      )
+        />,
+      ),
     );
     await expectNoViolations(container);
   });

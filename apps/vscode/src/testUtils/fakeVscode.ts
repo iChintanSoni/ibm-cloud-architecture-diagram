@@ -11,7 +11,10 @@ export class EventEmitter<T> {
   private listeners: Array<(e: T) => void> = [];
   event = (listener: (e: T) => void) => {
     this.listeners.push(listener);
-    return { dispose: () => (this.listeners = this.listeners.filter((l) => l !== listener)) };
+    return {
+      dispose: () =>
+        (this.listeners = this.listeners.filter((l) => l !== listener)),
+    };
   };
   fire(value: T): void {
     for (const listener of [...this.listeners]) listener(value);
@@ -22,7 +25,10 @@ export class EventEmitter<T> {
 }
 
 export class Uri {
-  private constructor(readonly scheme: string, readonly fsPath: string) {}
+  private constructor(
+    readonly scheme: string,
+    readonly fsPath: string,
+  ) {}
   static file(path: string): Uri {
     return new Uri("file", path);
   }
@@ -41,20 +47,22 @@ export const ColorThemeKind = {
   Light: 1,
   Dark: 2,
   HighContrast: 3,
-  HighContrastLight: 4
+  HighContrastLight: 4,
 } as const;
 
 export const workspace = {
   fs: {
     readFile: vi.fn(async (_uri: Uri): Promise<Uint8Array> => new Uint8Array()),
-    writeFile: vi.fn(async (_uri: Uri, _content: Uint8Array): Promise<void> => undefined),
-    delete: vi.fn(async (_uri: Uri): Promise<void> => undefined)
+    writeFile: vi.fn(
+      async (_uri: Uri, _content: Uint8Array): Promise<void> => undefined,
+    ),
+    delete: vi.fn(async (_uri: Uri): Promise<void> => undefined),
   },
-  asRelativePath: vi.fn((uri: Uri) => uri.fsPath)
+  asRelativePath: vi.fn((uri: Uri) => uri.fsPath),
 };
 
 export const commands = {
-  executeCommand: vi.fn(async (_command: string) => undefined)
+  executeCommand: vi.fn(async (_command: string) => undefined),
 };
 
 export const window = {
@@ -62,7 +70,7 @@ export const window = {
   onDidChangeActiveColorTheme: vi.fn(() => ({ dispose: () => undefined })),
   registerCustomEditorProvider: vi.fn(() => ({ dispose: () => undefined })),
   showSaveDialog: vi.fn(async (): Promise<Uri | undefined> => undefined),
-  showInformationMessage: vi.fn(async () => undefined)
+  showInformationMessage: vi.fn(async () => undefined),
 };
 
 /**
@@ -86,7 +94,7 @@ export function createFakeWebviewPanel() {
       onDidReceiveMessage: (handler: (message: unknown) => void) => {
         messageHandler = handler;
         return { dispose: () => (messageHandler = undefined) };
-      }
+      },
     },
     onDidDispose: (handler: () => void) => {
       disposeHandler = handler;
@@ -99,7 +107,7 @@ export function createFakeWebviewPanel() {
     /** Test helper: simulate VS Code disposing the panel (tab closed). */
     simulateDispose(): void {
       disposeHandler?.();
-    }
+    },
   };
 }
 

@@ -8,7 +8,7 @@ const CONTAINER_TYPE_LABEL: Record<string, string> = {
   box: "Box",
   group: "Group",
   zone: "Boundary",
-  frame: "Frame"
+  frame: "Frame",
 };
 
 /**
@@ -17,7 +17,10 @@ const CONTAINER_TYPE_LABEL: Record<string, string> = {
  * (docs/07-accessibility.md#canvas-the-hard-20).
  */
 export function accessibleRole(element: SceneElement): AccessibleRole {
-  return element.type === "box" || element.type === "group" || element.type === "zone" || element.type === "frame"
+  return element.type === "box" ||
+    element.type === "group" ||
+    element.type === "zone" ||
+    element.type === "frame"
     ? "group"
     : "button";
 }
@@ -39,7 +42,11 @@ function elementName(element: SceneElement, catalog: Catalog): string {
  * child count; connectors describe both endpoints and the connection/
  * relationship type instead of just geometry.
  */
-export function accessibleName(element: SceneElement, scene: Scene, catalog: Catalog): string {
+export function accessibleName(
+  element: SceneElement,
+  scene: Scene,
+  catalog: Catalog,
+): string {
   if (element.type === "connector") {
     const from = scene.get(element.from.elementId);
     const to = scene.get(element.to.elementId);
@@ -52,7 +59,8 @@ export function accessibleName(element: SceneElement, scene: Scene, catalog: Cat
   const containerLabel = CONTAINER_TYPE_LABEL[element.type];
   if (containerLabel) {
     const childCount = scene.childrenOf(element.id).length;
-    const countLabel = childCount === 1 ? "1 element" : `${childCount} elements`;
+    const countLabel =
+      childCount === 1 ? "1 element" : `${childCount} elements`;
     return `${containerLabel}: ${name}, contains ${countLabel}`;
   }
 

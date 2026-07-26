@@ -22,7 +22,10 @@ function openDb(): Promise<IDBDatabase> {
   });
 }
 
-async function withStore<T>(mode: IDBTransactionMode, run: (store: IDBObjectStore) => IDBRequest<T>): Promise<T> {
+async function withStore<T>(
+  mode: IDBTransactionMode,
+  run: (store: IDBObjectStore) => IDBRequest<T>,
+): Promise<T> {
   const db = await openDb();
   try {
     return await new Promise<T>((resolve, reject) => {
@@ -53,7 +56,10 @@ export async function clearDraft(): Promise<void> {
 }
 
 /** Debounces autosave writes so every keystroke/drag doesn't hit IndexedDB. */
-export function debounceAutosave(save: (doc: unknown) => void, delayMs = 800): (doc: unknown) => void {
+export function debounceAutosave(
+  save: (doc: unknown) => void,
+  delayMs = 800,
+): (doc: unknown) => void {
   let timer: ReturnType<typeof setTimeout> | undefined;
   return (doc: unknown) => {
     clearTimeout(timer);

@@ -25,7 +25,9 @@ function connectorPosition(scene: Scene, connector: ConnectorElement): number {
  * ordered by their source element's position since they don't nest.
  */
 export function computeTabOrder(scene: Scene): SceneElement[] {
-  const roots = scene.all().filter((el) => el.type !== "connector" && !el.parentId);
+  const roots = scene
+    .all()
+    .filter((el) => el.type !== "connector" && !el.parentId);
   roots.sort(byPosition);
 
   const out: SceneElement[] = [];

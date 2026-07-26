@@ -14,8 +14,8 @@ export default defineConfig({
     alias: [
       // @ibm/plex's compiled CSS uses webpack's `~pkg/path` convention in font url()s; Vite
       // doesn't resolve that prefix on its own (same fix as apps/web/vite.config.ts).
-      { find: /^~/, replacement: "" }
-    ]
+      { find: /^~/, replacement: "" },
+    ],
   },
   base: "./", // webview assets load from a vscode-webview-resource: origin, not site root
   build: {
@@ -28,8 +28,10 @@ export default defineConfig({
         entryFileNames: "assets/index.js",
         chunkFileNames: "assets/[name]-[hash].js",
         assetFileNames: (assetInfo) =>
-          assetInfo.names?.some((name) => name.endsWith(".css")) ? "assets/index.css" : "assets/[name]-[hash][extname]"
-      }
-    }
-  }
+          assetInfo.names?.some((name) => name.endsWith(".css"))
+            ? "assets/index.css"
+            : "assets/[name]-[hash][extname]",
+      },
+    },
+  },
 });

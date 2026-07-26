@@ -17,9 +17,9 @@ function manifest(): CatalogManifest {
         asset: "vpc",
         keywords: ["vpc", "virtual private cloud"],
         aliases: ["ibm-cloud/gen2-vpc"],
-        tier: "ibm-cloud"
-      }
-    ]
+        tier: "ibm-cloud",
+      },
+    ],
   };
 }
 
@@ -27,7 +27,9 @@ describe("Catalog", () => {
   const catalog = new Catalog(manifest(), new Map([["vpc", "<rect />"]]));
 
   it("resolves by id", () => {
-    expect(catalog.resolve("ibm-cloud/vpc")?.name).toBe("Virtual Private Cloud");
+    expect(catalog.resolve("ibm-cloud/vpc")?.name).toBe(
+      "Virtual Private Cloud",
+    );
   });
 
   it("resolves by alias", () => {

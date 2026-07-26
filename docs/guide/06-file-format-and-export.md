@@ -11,11 +11,19 @@ files stay small and diffs stay clean.
   "format": "icad",
   "version": 1,
   "catalog": { "id": "ibm-cloud", "version": "2.0.0" },
-  "meta": { "title": "…", "diagramLevel": "high-level", "createdAt": "…", "updatedAt": "…" },
+  "meta": {
+    "title": "…",
+    "diagramLevel": "high-level",
+    "createdAt": "…",
+    "updatedAt": "…",
+  },
   "canvas": { "theme": "auto", "grid": 8, "background": "transparent" },
-  "conformance": { "exportGate": "warn", "ruleSeverities": { /* per-rule overrides */ } },
-  "elements": [ /* boxes, groups, zones, actors, icons, text, connectors */ ],
-  "frames": [ /* sectioning + presentation order */ ]
+  "conformance": {
+    "exportGate": "warn",
+    "ruleSeverities": {/* per-rule overrides */},
+  },
+  "elements": [/* boxes, groups, zones, actors, icons, text, connectors */],
+  "frames": [/* sectioning + presentation order */],
 }
 ```
 
@@ -42,8 +50,8 @@ The Export dialog (Ctrl/Cmd via the Export button, File menu, or command palette
 - **PNG** — rasterized from the SVG at 1×, 2×, or 3× scale, with a transparent or white
   background.
 
-Both formats respect the **export gate**: set to *Warn*, the linter's findings are advisory only;
-set to *Block*, export is refused while any `error`-level diagnostic remains. The gate and any
+Both formats respect the **export gate**: set to _Warn_, the linter's findings are advisory only;
+set to _Block_, export is refused while any `error`-level diagnostic remains. The gate and any
 per-rule severity overrides are stored in the document itself (`conformance`), so a team's
 validation policy travels with the file.
 

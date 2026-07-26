@@ -6,7 +6,9 @@ type CarbonTheme = "white" | "g100";
 
 function initialThemeKind(): ThemeKind {
   const body = typeof document !== "undefined" ? document.body : undefined;
-  const dark = body?.classList.contains("vscode-dark") || body?.classList.contains("vscode-high-contrast");
+  const dark =
+    body?.classList.contains("vscode-dark") ||
+    body?.classList.contains("vscode-high-contrast");
   return dark ? "dark" : "light";
 }
 
@@ -23,7 +25,10 @@ function toCarbonTheme(kind: ThemeKind): CarbonTheme {
  * `vscode-high-contrast` body class only seeds the very first paint, before that first message
  * has had a chance to arrive.
  */
-export function useVsCodeTheme(): { kind: ThemeKind; carbonTheme: CarbonTheme } {
+export function useVsCodeTheme(): {
+  kind: ThemeKind;
+  carbonTheme: CarbonTheme;
+} {
   const [kind, setKind] = useState<ThemeKind>(initialThemeKind);
 
   useEffect(
@@ -31,7 +36,7 @@ export function useVsCodeTheme(): { kind: ThemeKind; carbonTheme: CarbonTheme } 
       onHostMessage((message) => {
         if (message.type === "themeKind") setKind(message.kind);
       }),
-    []
+    [],
   );
 
   return { kind, carbonTheme: toCarbonTheme(kind) };

@@ -1,1 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 24 24"><g fill="#FFF" fill-rule="nonzero"><path d="M21 1.5h-9c-.828 0-1.5.672-1.5 1.5v7.5H3c-.828 0-1.5.672-1.5 1.5v10.5h21V3A1.5 1.5 0 0 0 21 1.5M6.75 21v-5.25h3V21zM21 21h-9.75v-6a.75.75 0 0 0-.75-.75H6a.75.75 0 0 0-.75.75v6H3v-9h9V3h9z"/><path d="M13.5 6H15v1.5h-1.5zM18 6h1.5v1.5H18zM13.5 10.5H15V12h-1.5zM18 10.5h1.5V12H18zM13.5 15H15v1.5h-1.5zM18 15h1.5v1.5H18z"/></g></svg>
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  xmlns:xlink="http://www.w3.org/1999/xlink"
+  viewBox="0 0 24 24"
+>
+  <g fill="#FFF" fill-rule="nonzero">
+    <path
+      d="M21 1.5h-9c-.828 0-1.5.672-1.5 1.5v7.5H3c-.828 0-1.5.672-1.5 1.5v10.5h21V3A1.5 1.5 0 0 0 21 1.5M6.75 21v-5.25h3V21zM21 21h-9.75v-6a.75.75 0 0 0-.75-.75H6a.75.75 0 0 0-.75.75v6H3v-9h9V3h9z"
+    />
+    <path
+      d="M13.5 6H15v1.5h-1.5zM18 6h1.5v1.5H18zM13.5 10.5H15V12h-1.5zM18 10.5h1.5V12H18zM13.5 15H15v1.5h-1.5zM18 15h1.5v1.5H18z"
+    />
+  </g>
+</svg>

@@ -25,12 +25,15 @@ export class IcadDocument implements vscode.CustomDocument {
 
   private constructor(
     readonly uri: vscode.Uri,
-    initialContent: string
+    initialContent: string,
   ) {
     this.latestContent = initialContent;
   }
 
-  static async create(uri: vscode.Uri, backupId?: string): Promise<IcadDocument> {
+  static async create(
+    uri: vscode.Uri,
+    backupId?: string,
+  ): Promise<IcadDocument> {
     const source = backupId ? vscode.Uri.parse(backupId) : uri;
     const bytes = await vscode.workspace.fs.readFile(source);
     return new IcadDocument(uri, decoder.decode(bytes));
@@ -49,7 +52,10 @@ export class IcadDocument implements vscode.CustomDocument {
   }
 
   async writeTo(target: vscode.Uri): Promise<void> {
-    await vscode.workspace.fs.writeFile(target, encoder.encode(this.latestContent));
+    await vscode.workspace.fs.writeFile(
+      target,
+      encoder.encode(this.latestContent),
+    );
   }
 
   dispose(): void {

@@ -5,7 +5,7 @@ import {
   Select,
   SelectItem,
   Tag,
-  Theme
+  Theme,
 } from "@carbon/react";
 import {
   CanvasController,
@@ -21,7 +21,7 @@ import {
   type Editor,
   type ExportGate,
   type FrameElement,
-  type SceneElement
+  type SceneElement,
 } from "@icad/core";
 import {
   CommandPalette,
@@ -35,12 +35,21 @@ import {
   findMatches,
   type CommandItem,
   type InsertKind,
-  type LibraryPlacement
+  type LibraryPlacement,
 } from "@icad/ui-web";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createIbmCloudCatalog } from "./catalog";
-import { clearDraft, debounceAutosave, loadDraft, saveDraft } from "./persistence/autosave";
-import { openIcadFile, saveIcadFile, supportsFileSystemAccess } from "./persistence/fileSystem";
+import {
+  clearDraft,
+  debounceAutosave,
+  loadDraft,
+  saveDraft,
+} from "./persistence/autosave";
+import {
+  openIcadFile,
+  saveIcadFile,
+  supportsFileSystemAccess,
+} from "./persistence/fileSystem";
 import {
   consumeStartupFile,
   isTauri,
@@ -48,17 +57,24 @@ import {
   openIcadFileNative,
   saveExportNative,
   saveIcadFileNative,
-  setNativeTheme
+  setNativeTheme,
 } from "./persistence/tauri";
 import { placeLibraryItem, viewportCenter } from "./placement";
-import { loadThemePreference, saveThemePreference } from "./persistence/themePreference";
+import {
+  loadThemePreference,
+  saveThemePreference,
+} from "./persistence/themePreference";
 import { type ThemePreference, useResolvedTheme } from "./useResolvedTheme";
 import { buildValidationView } from "./validation";
 
 /** Ctrl/Cmd+K and Ctrl/Cmd+F stay global; other shortcuts back off while the user is typing. */
 function isEditableTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
-  return target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
+  return (
+    target.tagName === "INPUT" ||
+    target.tagName === "TEXTAREA" ||
+    target.isContentEditable
+  );
 }
 
 function downloadBlob(filename: string, blob: Blob): void {
@@ -85,18 +101,21 @@ export function App() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const fileHandleRef = useRef<FileSystemFileHandle | null>(null);
   const nativeFilePathRef = useRef<string | null>(null);
-  const autosaveRef = useRef(debounceAutosave((doc: unknown) => void saveDraft(doc)));
+  const autosaveRef = useRef(
+    debounceAutosave((doc: unknown) => void saveDraft(doc)),
+  );
   const [catalog] = useState(createIbmCloudCatalog);
 
   const [themePreference, setThemePreferenceState] = useState<ThemePreference>(
-    () => loadThemePreference() ?? "auto"
+    () => loadThemePreference() ?? "auto",
   );
   // Mirrors CanvasController's own mode (D27, docs/00-decision-log.md) for rendering only —
   // CanvasController is the source of truth, this is just what triggers a re-render. The
   // *specific* LibraryPlacement being armed is a ui-web concept core's controller can't know
   // about, so it's tracked separately, only for the Library panel's "armed" highlight.
   const [canvasMode, setCanvasMode] = useState<CanvasMode>({ kind: "idle" });
-  const [activeLibraryPlacement, setActiveLibraryPlacement] = useState<LibraryPlacement>();
+  const [activeLibraryPlacement, setActiveLibraryPlacement] =
+    useState<LibraryPlacement>();
   const [diagnostics, setDiagnostics] = useState<Diagnostic[]>([]);
   const [elements, setElements] = useState<SceneElement[]>([]);
   const [selectedIds, setSelectedIds] = useState<ElementId[]>([]);
@@ -105,7 +124,9 @@ export function App() {
   const [exportOpen, setExportOpen] = useState(false);
   const [exportFormat, setExportFormat] = useState<"svg" | "png">("svg");
   const [pngScale, setPngScale] = useState<1 | 2 | 3>(1);
-  const [pngBackground, setPngBackground] = useState<"transparent" | "white">("transparent");
+  const [pngBackground, setPngBackground] = useState<"transparent" | "white">(
+    "transparent",
+  );
   const [exportGate, setExportGateState] = useState<ExportGate>("warn");
   const [zoomPercent, setZoomPercent] = useState(100);
   const [presentingFrameId, setPresentingFrameId] = useState<ElementId>();
@@ -133,11 +154,11 @@ export function App() {
       elements
         .filter((element): element is FrameElement => element.type === "frame")
         .sort((a, b) => a.order - b.order),
-    [elements]
+    [elements],
   );
   const findMatchesList = useMemo(
     () => findMatches(elements, catalog, findQuery),
-    [elements, catalog, findQuery]
+    [elements, catalog, findQuery],
   );
 
   // Recomputed every render (not tracked in state): editorRef mutations don't cause
@@ -147,9 +168,12 @@ export function App() {
   const canUndo = editorRef.current?.commands.canUndo() ?? false;
   const canRedo = editorRef.current?.commands.canRedo() ?? false;
   const singleSelected =
-    selectedIds.length === 1 ? elements.find((element) => element.id === selectedIds[0]) : undefined;
+    selectedIds.length === 1
+      ? elements.find((element) => element.id === selectedIds[0])
+      : undefined;
   const canGroup = selectedIds.length >= 2;
-  const canUngroup = singleSelected !== undefined && isContainer(singleSelected);
+  const canUngroup =
+    singleSelected !== undefined && isContainer(singleSelected);
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -157,7 +181,7 @@ export function App() {
     const editor = createEditor({
       container: canvasRef.current,
       catalog,
-      theme: themePreference
+      theme: themePreference,
     });
     editorRef.current = editor;
 
@@ -170,12 +194,19 @@ export function App() {
       onConnected: (_id, fromId, toId) => {
         const from = editor.scene.get(fromId);
         const to = editor.scene.get(toId);
-        if (from && to) announce(`Connected ${elementDisplayName(from)} to ${elementDisplayName(to)}`);
+        if (from && to)
+          announce(
+            `Connected ${elementDisplayName(from)} to ${elementDisplayName(to)}`,
+          );
       },
       onDeleted: (deletedElements) => {
         const names = deletedElements.map(elementDisplayName);
-        announce(names.length === 1 ? `${names[0]} deleted` : `${names.length} elements deleted`);
-      }
+        announce(
+          names.length === 1
+            ? `${names[0]} deleted`
+            : `${names.length} elements deleted`,
+        );
+      },
     });
     controllerRef.current = controller;
     const unsubscribeMode = controller.onModeChange((mode) => {
@@ -189,7 +220,9 @@ export function App() {
     let cancelled = false;
     // A file opened via OS double-click/"Open With" (Tauri only) takes priority over
     // an unrelated leftover autosave draft — the user asked for a specific document.
-    const startupFile = isTauri() ? consumeStartupFile() : Promise.resolve(null);
+    const startupFile = isTauri()
+      ? consumeStartupFile()
+      : Promise.resolve(null);
     Promise.all([startupFile, loadDraft()]).then(([opened, draft]) => {
       if (cancelled) return;
       if (opened) {
@@ -217,7 +250,9 @@ export function App() {
       autosaveRef.current(editor.toIcad());
     });
     const unsubscribeSelection = editor.onSelectionChange(setSelectedIds);
-    const unsubscribeViewport = editor.viewport.on((viewport) => setZoomPercent(viewport.scale * 100));
+    const unsubscribeViewport = editor.viewport.on((viewport) =>
+      setZoomPercent(viewport.scale * 100),
+    );
     setElements(editor.scene.all());
     setSelectedIds(editor.selection.get());
     setZoomPercent(editor.viewport.get().scale * 100);
@@ -317,10 +352,18 @@ export function App() {
     if (presentingFrameId === undefined) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (isEditableTarget(event.target)) return;
-      if (event.key === "ArrowRight" || event.key === "ArrowDown" || event.key === "PageDown") {
+      if (
+        event.key === "ArrowRight" ||
+        event.key === "ArrowDown" ||
+        event.key === "PageDown"
+      ) {
         event.preventDefault();
         stepPresentation(1);
-      } else if (event.key === "ArrowLeft" || event.key === "ArrowUp" || event.key === "PageUp") {
+      } else if (
+        event.key === "ArrowLeft" ||
+        event.key === "ArrowUp" ||
+        event.key === "PageUp"
+      ) {
         event.preventDefault();
         stepPresentation(-1);
       } else if (event.key === "Escape") {
@@ -364,7 +407,7 @@ export function App() {
   const saveExport = async (
     filename: string,
     blob: Blob,
-    filters: { name: string; extensions: string[] }[]
+    filters: { name: string; extensions: string[] }[],
   ) => {
     if (isTauri()) {
       await saveExportNative(blob, filename, filters);
@@ -378,27 +421,34 @@ export function App() {
     if (!editor) return;
     const svg = editor.export({ format: "svg" });
     if (typeof svg === "string") {
-      void saveExport("diagram.svg", new Blob([svg], { type: "image/svg+xml" }), [
-        { name: "SVG image", extensions: ["svg"] }
-      ]).then(() => setExportOpen(false));
+      void saveExport(
+        "diagram.svg",
+        new Blob([svg], { type: "image/svg+xml" }),
+        [{ name: "SVG image", extensions: ["svg"] }],
+      ).then(() => setExportOpen(false));
     }
   };
 
   const handleExportPng = () => {
     const editor = editorRef.current;
     if (!editor) return;
-    Promise.resolve(editor.export({ format: "png", scale: pngScale, background: pngBackground })).then(
-      (result) => {
-        if (result instanceof Blob) {
-          void saveExport("diagram.png", result, [{ name: "PNG image", extensions: ["png"] }]).then(() =>
-            setExportOpen(false)
-          );
-        }
+    Promise.resolve(
+      editor.export({
+        format: "png",
+        scale: pngScale,
+        background: pngBackground,
+      }),
+    ).then((result) => {
+      if (result instanceof Blob) {
+        void saveExport("diagram.png", result, [
+          { name: "PNG image", extensions: ["png"] },
+        ]).then(() => setExportOpen(false));
       }
-    );
+    });
   };
 
-  const handleExport = () => (exportFormat === "svg" ? handleExportSvg() : handleExportPng());
+  const handleExport = () =>
+    exportFormat === "svg" ? handleExportSvg() : handleExportPng();
 
   const persistIcad = async (forceSaveAs: boolean) => {
     const editor = editorRef.current;
@@ -408,7 +458,11 @@ export function App() {
     const filename = filenameFor(doc.meta.title);
 
     if (isTauri()) {
-      const path = await saveIcadFileNative(content, forceSaveAs ? null : nativeFilePathRef.current, filename);
+      const path = await saveIcadFileNative(
+        content,
+        forceSaveAs ? null : nativeFilePathRef.current,
+        filename,
+      );
       if (path) {
         nativeFilePathRef.current = path;
         await clearDraft();
@@ -417,7 +471,11 @@ export function App() {
     }
 
     if (supportsFileSystemAccess()) {
-      const handle = await saveIcadFile(content, forceSaveAs ? null : fileHandleRef.current, filename);
+      const handle = await saveIcadFile(
+        content,
+        forceSaveAs ? null : fileHandleRef.current,
+        filename,
+      );
       if (handle) {
         fileHandleRef.current = handle;
         await clearDraft();
@@ -487,8 +545,13 @@ export function App() {
 
   const stepPresentation = (direction: 1 | -1) => {
     if (frames.length === 0) return;
-    const currentIndex = frames.findIndex((frame) => frame.id === presentingFrameId);
-    const nextIndex = (((currentIndex === -1 ? 0 : currentIndex + direction) % frames.length) + frames.length) % frames.length;
+    const currentIndex = frames.findIndex(
+      (frame) => frame.id === presentingFrameId,
+    );
+    const nextIndex =
+      (((currentIndex === -1 ? 0 : currentIndex + direction) % frames.length) +
+        frames.length) %
+      frames.length;
     const next = frames[nextIndex]!;
     setPresentingFrameId(next.id);
     editorRef.current?.selection.set([next.id]);
@@ -535,7 +598,9 @@ export function App() {
 
   const findPrevious = () => {
     if (findMatchesList.length === 0) return;
-    setFindActiveIndex((index) => (index - 1 + findMatchesList.length) % findMatchesList.length);
+    setFindActiveIndex(
+      (index) => (index - 1 + findMatchesList.length) % findMatchesList.length,
+    );
   };
 
   const handleInsert = (kind: InsertKind) => {
@@ -545,12 +610,20 @@ export function App() {
 
     let id: ElementId;
     if (kind === "actor") {
-      id = editor.addActor({ at: { x: center.x - 24, y: center.y - 24 }, label: "Actor" });
+      id = editor.addActor({
+        at: { x: center.x - 24, y: center.y - 24 },
+        label: "Actor",
+      });
     } else if (kind === "text") {
-      id = editor.addText({ at: { x: center.x - 60, y: center.y - 10 }, text: "Text" });
+      id = editor.addText({
+        at: { x: center.x - 60, y: center.y - 10 },
+        text: "Text",
+      });
     } else {
       const placement: LibraryPlacement =
-        kind === "boundary" ? { type: "primitive", kind: "zone" } : { type: "primitive", kind };
+        kind === "boundary"
+          ? { type: "primitive", kind: "zone" }
+          : { type: "primitive", kind };
       id = placeLibraryItem(editor, placement, center);
     }
     editor.selection.set([id]);
@@ -561,7 +634,10 @@ export function App() {
   // Mouse users arm a placement, then click a canvas location for it. A keyboard activation
   // (Enter/Space on the library button) has no click position to give, so it places immediately
   // at the viewport center instead of entering that mouse-only aiming mode (docs/07-accessibility.md#canvas-the-hard-20).
-  const handleChooseFromLibrary = (placement: LibraryPlacement, immediate?: boolean) => {
+  const handleChooseFromLibrary = (
+    placement: LibraryPlacement,
+    immediate?: boolean,
+  ) => {
     const editor = editorRef.current;
     const controller = controllerRef.current;
     if (!editor || !controller || !canvasRef.current) return;
@@ -576,7 +652,11 @@ export function App() {
       });
       return;
     }
-    const id = placeLibraryItem(editor, placement, viewportCenter(editor, canvasRef.current));
+    const id = placeLibraryItem(
+      editor,
+      placement,
+      viewportCenter(editor, canvasRef.current),
+    );
     editor.selection.set([id]);
     editor.focusElement(id);
     announce(`${elementDisplayName(editor.scene.get(id)!)} added`);
@@ -604,11 +684,34 @@ export function App() {
   };
 
   const commands: CommandItem[] = [
-    { id: "new", label: "New diagram…", category: "File", run: () => setNewDiagramOpen(true) },
-    { id: "open", label: "Open .icad…", category: "File", run: () => void handleOpenClick() },
-    { id: "save", label: "Save .icad", category: "File", shortcut: "Ctrl+S", run: handleSaveIcad },
+    {
+      id: "new",
+      label: "New diagram…",
+      category: "File",
+      run: () => setNewDiagramOpen(true),
+    },
+    {
+      id: "open",
+      label: "Open .icad…",
+      category: "File",
+      run: () => void handleOpenClick(),
+    },
+    {
+      id: "save",
+      label: "Save .icad",
+      category: "File",
+      shortcut: "Ctrl+S",
+      run: handleSaveIcad,
+    },
     ...(isTauri() || supportsFileSystemAccess()
-      ? [{ id: "save-as", label: "Save As…", category: "File", run: handleSaveIcadAs }]
+      ? [
+          {
+            id: "save-as",
+            label: "Save As…",
+            category: "File",
+            run: handleSaveIcadAs,
+          },
+        ]
       : []),
     { id: "export", label: "Export…", category: "File", run: openExport },
     {
@@ -617,7 +720,7 @@ export function App() {
       category: "Edit",
       shortcut: "Ctrl+Z",
       disabled: !canUndo,
-      run: () => editorRef.current?.commands.undo()
+      run: () => editorRef.current?.commands.undo(),
     },
     {
       id: "redo",
@@ -625,51 +728,132 @@ export function App() {
       category: "Edit",
       shortcut: "Ctrl+Shift+Z",
       disabled: !canRedo,
-      run: () => editorRef.current?.commands.redo()
+      run: () => editorRef.current?.commands.redo(),
     },
-    { id: "group", label: "Group", category: "Edit", shortcut: "Ctrl+G", disabled: !canGroup, run: handleGroup },
+    {
+      id: "group",
+      label: "Group",
+      category: "Edit",
+      shortcut: "Ctrl+G",
+      disabled: !canGroup,
+      run: handleGroup,
+    },
     {
       id: "ungroup",
       label: "Ungroup",
       category: "Edit",
       shortcut: "Ctrl+Shift+G",
       disabled: !canUngroup,
-      run: handleUngroup
+      run: handleUngroup,
     },
-    { id: "zoom-in", label: "Zoom in", category: "View", run: () => editorRef.current?.zoomIn() },
-    { id: "zoom-out", label: "Zoom out", category: "View", run: () => editorRef.current?.zoomOut() },
-    { id: "zoom-reset", label: "Reset zoom to 100%", category: "View", run: () => editorRef.current?.resetView() },
-    { id: "fit", label: "Fit to content", category: "View", run: () => editorRef.current?.fitToContent() },
-    { id: "find", label: "Find on canvas…", category: "View", shortcut: "Ctrl+F", run: openFind },
-    { id: "theme-auto", label: "Theme: Auto", category: "View", run: () => setThemePreference("auto") },
-    { id: "theme-light", label: "Theme: Light", category: "View", run: () => setThemePreference("light") },
-    { id: "theme-dark", label: "Theme: Dark", category: "View", run: () => setThemePreference("dark") },
-    { id: "insert-box", label: "Insert Box", category: "Insert", run: () => handleInsert("box") },
-    { id: "insert-group", label: "Insert Group", category: "Insert", run: () => handleInsert("group") },
-    { id: "insert-boundary", label: "Insert Boundary", category: "Insert", run: () => handleInsert("boundary") },
-    { id: "insert-actor", label: "Insert Actor", category: "Insert", run: () => handleInsert("actor") },
-    { id: "insert-text", label: "Insert Text", category: "Insert", run: () => handleInsert("text") },
-    { id: "insert-frame", label: "Insert Frame", category: "Insert", run: () => handleInsert("frame") },
+    {
+      id: "zoom-in",
+      label: "Zoom in",
+      category: "View",
+      run: () => editorRef.current?.zoomIn(),
+    },
+    {
+      id: "zoom-out",
+      label: "Zoom out",
+      category: "View",
+      run: () => editorRef.current?.zoomOut(),
+    },
+    {
+      id: "zoom-reset",
+      label: "Reset zoom to 100%",
+      category: "View",
+      run: () => editorRef.current?.resetView(),
+    },
+    {
+      id: "fit",
+      label: "Fit to content",
+      category: "View",
+      run: () => editorRef.current?.fitToContent(),
+    },
+    {
+      id: "find",
+      label: "Find on canvas…",
+      category: "View",
+      shortcut: "Ctrl+F",
+      run: openFind,
+    },
+    {
+      id: "theme-auto",
+      label: "Theme: Auto",
+      category: "View",
+      run: () => setThemePreference("auto"),
+    },
+    {
+      id: "theme-light",
+      label: "Theme: Light",
+      category: "View",
+      run: () => setThemePreference("light"),
+    },
+    {
+      id: "theme-dark",
+      label: "Theme: Dark",
+      category: "View",
+      run: () => setThemePreference("dark"),
+    },
+    {
+      id: "insert-box",
+      label: "Insert Box",
+      category: "Insert",
+      run: () => handleInsert("box"),
+    },
+    {
+      id: "insert-group",
+      label: "Insert Group",
+      category: "Insert",
+      run: () => handleInsert("group"),
+    },
+    {
+      id: "insert-boundary",
+      label: "Insert Boundary",
+      category: "Insert",
+      run: () => handleInsert("boundary"),
+    },
+    {
+      id: "insert-actor",
+      label: "Insert Actor",
+      category: "Insert",
+      run: () => handleInsert("actor"),
+    },
+    {
+      id: "insert-text",
+      label: "Insert Text",
+      category: "Insert",
+      run: () => handleInsert("text"),
+    },
+    {
+      id: "insert-frame",
+      label: "Insert Frame",
+      category: "Insert",
+      run: () => handleInsert("frame"),
+    },
     {
       id: "present",
-      label: presentingFrameId !== undefined ? "Exit presentation" : "Present frames",
+      label:
+        presentingFrameId !== undefined
+          ? "Exit presentation"
+          : "Present frames",
       category: "Frames",
       disabled: presentingFrameId === undefined && frames.length === 0,
-      run: onTogglePresent
+      run: onTogglePresent,
     },
     ...frames.map((frame) => ({
       id: `frame:${frame.id}`,
       label: `Go to frame: ${frame.name.trim() || "Untitled frame"}`,
       category: "Frames",
-      run: () => onJumpToFrame(frame.id)
-    }))
+      run: () => onJumpToFrame(frame.id),
+    })),
   ];
 
   const {
     groups: groupedDiagnostics,
     counts,
     fixableByRule,
-    exportBlocked
+    exportBlocked,
   } = buildValidationView(diagnostics, exportGate);
 
   return (
@@ -680,7 +864,9 @@ export function App() {
           onNew={() => setNewDiagramOpen(true)}
           onOpen={() => void handleOpenClick()}
           onSave={handleSaveIcad}
-          {...(isTauri() || supportsFileSystemAccess() ? { onSaveAs: handleSaveIcadAs } : {})}
+          {...(isTauri() || supportsFileSystemAccess()
+            ? { onSaveAs: handleSaveIcadAs }
+            : {})}
           onExport={openExport}
           onUndo={() => editorRef.current?.commands.undo()}
           onRedo={() => editorRef.current?.commands.redo()}
@@ -714,7 +900,9 @@ export function App() {
         />
 
         <main className="icad-body" aria-label="Diagram editor">
-          <h1 className="icad-visually-hidden">ICAD — IBM Cloud Architecture Diagrams</h1>
+          <h1 className="icad-visually-hidden">
+            ICAD — IBM Cloud Architecture Diagrams
+          </h1>
           <LibraryPanel
             catalog={catalog}
             activePlacement={activeLibraryPlacement}
@@ -724,7 +912,9 @@ export function App() {
             <div
               className="icad-canvas"
               ref={canvasRef}
-              data-placement-active={canvasMode.kind === "placing" ? "true" : "false"}
+              data-placement-active={
+                canvasMode.kind === "placing" ? "true" : "false"
+              }
             />
             {recoveredDraft && (
               <div className="icad-recovered-notification">
@@ -751,8 +941,13 @@ export function App() {
             />
             {canvasMode.kind === "connecting" && (
               <div className="icad-connect-hint" role="status">
-                Connecting from <strong>{elementDisplayName(elements.find((el) => el.id === canvasMode.fromId)!)}</strong> —
-                Tab to a target, Enter to confirm, Esc to cancel.
+                Connecting from{" "}
+                <strong>
+                  {elementDisplayName(
+                    elements.find((el) => el.id === canvasMode.fromId)!,
+                  )}
+                </strong>{" "}
+                — Tab to a target, Enter to confirm, Esc to cancel.
               </div>
             )}
           </div>
@@ -769,14 +964,20 @@ export function App() {
             onUpdate={(id: ElementId, patch: ElementPropertiesPatch) =>
               editorRef.current?.updateElementProperties(id, patch)
             }
-            onReparent={(id, parentId) => editorRef.current?.setElementParent(id, parentId)}
+            onReparent={(id, parentId) =>
+              editorRef.current?.setElementParent(id, parentId)
+            }
             validationContent={
               <>
                 <div className="icad-validation-heading">
                   <h2>Validation</h2>
-                  <span aria-label={`${diagnostics.length} issues`}>{diagnostics.length}</span>
+                  <span aria-label={`${diagnostics.length} issues`}>
+                    {diagnostics.length}
+                  </span>
                 </div>
-                {diagnostics.length === 0 && <p className="icad-muted">No conformance issues found.</p>}
+                {diagnostics.length === 0 && (
+                  <p className="icad-muted">No conformance issues found.</p>
+                )}
                 {groupedDiagnostics.map(
                   ({ severity, items }) =>
                     items.length > 0 && (
@@ -788,7 +989,13 @@ export function App() {
                           {items.map((diagnostic) => (
                             <li key={diagnostic.id}>
                               <Tag
-                                type={severity === "error" ? "red" : severity === "warn" ? "warm-gray" : "blue"}
+                                type={
+                                  severity === "error"
+                                    ? "red"
+                                    : severity === "warn"
+                                      ? "warm-gray"
+                                      : "blue"
+                                }
                               >
                                 {diagnostic.ruleId}
                               </Tag>
@@ -797,7 +1004,10 @@ export function App() {
                                 type="button"
                                 disabled={!diagnostic.elementId}
                                 onClick={() => {
-                                  if (diagnostic.elementId) editorRef.current?.selection.set([diagnostic.elementId]);
+                                  if (diagnostic.elementId)
+                                    editorRef.current?.selection.set([
+                                      diagnostic.elementId,
+                                    ]);
                                 }}
                               >
                                 {diagnostic.message}
@@ -808,21 +1018,33 @@ export function App() {
                                     kind="ghost"
                                     size="sm"
                                     onClick={() => {
-                                      editorRef.current?.applyQuickFix(diagnostic);
-                                      setDiagnostics(editorRef.current?.lint() ?? []);
+                                      editorRef.current?.applyQuickFix(
+                                        diagnostic,
+                                      );
+                                      setDiagnostics(
+                                        editorRef.current?.lint() ?? [],
+                                      );
                                       announce(`Fixed: ${diagnostic.message}`);
                                     }}
                                   >
                                     {diagnostic.quickFixLabel ?? "Fix"}
                                   </Button>
-                                  {(fixableByRule.get(diagnostic.ruleId) ?? 0) > 1 && (
+                                  {(fixableByRule.get(diagnostic.ruleId) ?? 0) >
+                                    1 && (
                                     <Button
                                       kind="ghost"
                                       size="sm"
                                       onClick={() => {
-                                        const count = editorRef.current?.applyQuickFixes(diagnostic.ruleId) ?? 0;
-                                        setDiagnostics(editorRef.current?.lint() ?? []);
-                                        announce(`Fixed ${count} issue${count === 1 ? "" : "s"} of this type`);
+                                        const count =
+                                          editorRef.current?.applyQuickFixes(
+                                            diagnostic.ruleId,
+                                          ) ?? 0;
+                                        setDiagnostics(
+                                          editorRef.current?.lint() ?? [],
+                                        );
+                                        announce(
+                                          `Fixed ${count} issue${count === 1 ? "" : "s"} of this type`,
+                                        );
                                       }}
                                     >
                                       Fix all of this type
@@ -834,28 +1056,39 @@ export function App() {
                           ))}
                         </ul>
                       </section>
-                    )
+                    ),
                 )}
                 <details className="icad-rule-settings">
                   <summary>Rule settings</summary>
-                  <p className="icad-muted">Overrides are saved in this .icad document.</p>
+                  <p className="icad-muted">
+                    Overrides are saved in this .icad document.
+                  </p>
                   {ruleMetadata.map((rule) => (
                     <Select
                       key={rule.id}
                       id={`icad-rule-${rule.id}`}
                       size="sm"
                       labelText={rule.title}
-                      value={editorRef.current?.scene.conformance.ruleSeverities[rule.id] ?? "default"}
+                      value={
+                        editorRef.current?.scene.conformance.ruleSeverities[
+                          rule.id
+                        ] ?? "default"
+                      }
                       onChange={(event) => {
                         const value = event.target.value;
                         editorRef.current?.setRuleSeverity(
                           rule.id,
-                          value === "default" ? undefined : (value as ConformanceSeverity)
+                          value === "default"
+                            ? undefined
+                            : (value as ConformanceSeverity),
                         );
                         setDiagnostics(editorRef.current?.lint() ?? []);
                       }}
                     >
-                      <SelectItem value="default" text={`Default (${rule.defaultSeverity})`} />
+                      <SelectItem
+                        value="default"
+                        text={`Default (${rule.defaultSeverity})`}
+                      />
                       <SelectItem value="error" text="Error" />
                       <SelectItem value="warn" text="Warning" />
                       <SelectItem value="info" text="Info" />
@@ -873,7 +1106,9 @@ export function App() {
           size="sm"
           modalLabel="Export"
           modalHeading="Export diagram"
-          primaryButtonText={exportBlocked ? "Resolve errors to export" : "Export"}
+          primaryButtonText={
+            exportBlocked ? "Resolve errors to export" : "Export"
+          }
           primaryButtonDisabled={exportBlocked}
           secondaryButtonText="Cancel"
           onRequestClose={() => setExportOpen(false)}
@@ -886,20 +1121,29 @@ export function App() {
               <Tag type="warm-gray">{counts.warn} warnings</Tag>
               <Tag type="blue">{counts.info} info</Tag>
             </div>
-            {diagnostics.length === 0 && <p className="icad-muted">Ready to export with no known issues.</p>}
+            {diagnostics.length === 0 && (
+              <p className="icad-muted">
+                Ready to export with no known issues.
+              </p>
+            )}
             {diagnostics.length > 0 && exportGate === "warn" && (
-              <p className="icad-muted">Advisory mode: export remains available with validation issues.</p>
+              <p className="icad-muted">
+                Advisory mode: export remains available with validation issues.
+              </p>
             )}
             {exportBlocked && (
               <p className="icad-export-blocked">
-                Export is blocked because the diagram has error-level diagnostics.
+                Export is blocked because the diagram has error-level
+                diagnostics.
               </p>
             )}
             <Select
               id="icad-export-format"
               labelText="Format"
               value={exportFormat}
-              onChange={(event) => setExportFormat(event.target.value as "svg" | "png")}
+              onChange={(event) =>
+                setExportFormat(event.target.value as "svg" | "png")
+              }
             >
               <SelectItem value="svg" text="SVG (re-editable, per D8)" />
               <SelectItem value="png" text="PNG (raster)" />
@@ -910,7 +1154,9 @@ export function App() {
                   id="icad-export-png-scale"
                   labelText="Scale"
                   value={String(pngScale)}
-                  onChange={(event) => setPngScale(Number(event.target.value) as 1 | 2 | 3)}
+                  onChange={(event) =>
+                    setPngScale(Number(event.target.value) as 1 | 2 | 3)
+                  }
                 >
                   <SelectItem value="1" text="1×" />
                   <SelectItem value="2" text="2×" />
@@ -921,7 +1167,9 @@ export function App() {
                   labelText="Background"
                   value={pngBackground}
                   onChange={(event) =>
-                    setPngBackground(event.target.value as "transparent" | "white")
+                    setPngBackground(
+                      event.target.value as "transparent" | "white",
+                    )
                   }
                 >
                   <SelectItem value="transparent" text="Transparent" />
@@ -951,7 +1199,11 @@ export function App() {
           onClose={() => setNewDiagramOpen(false)}
           onCreate={handleCreateDiagram}
         />
-        <CommandPalette open={paletteOpen} commands={commands} onClose={() => setPaletteOpen(false)} />
+        <CommandPalette
+          open={paletteOpen}
+          commands={commands}
+          onClose={() => setPaletteOpen(false)}
+        />
       </div>
     </Theme>
   );

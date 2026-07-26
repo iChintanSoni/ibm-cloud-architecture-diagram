@@ -1,9 +1,11 @@
 import * as vscode from "vscode";
 
 function nonce(): string {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  const chars =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
   let value = "";
-  for (let i = 0; i < 32; i++) value += chars.charAt(Math.floor(Math.random() * chars.length));
+  for (let i = 0; i < 32; i++)
+    value += chars.charAt(Math.floor(Math.random() * chars.length));
   return value;
 }
 
@@ -13,10 +15,17 @@ function nonce(): string {
  * `base: "./"` so its own internal asset references stay relative); this only wires that bundle up
  * under VS Code's `vscode-webview:` origin and content-security-policy.
  */
-export function getHtmlForWebview(webview: vscode.Webview, extensionUri: vscode.Uri): string {
+export function getHtmlForWebview(
+  webview: vscode.Webview,
+  extensionUri: vscode.Uri,
+): string {
   const webviewDistUri = vscode.Uri.joinPath(extensionUri, "dist", "webview");
-  const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(webviewDistUri, "assets", "index.js"));
-  const styleUri = webview.asWebviewUri(vscode.Uri.joinPath(webviewDistUri, "assets", "index.css"));
+  const scriptUri = webview.asWebviewUri(
+    vscode.Uri.joinPath(webviewDistUri, "assets", "index.js"),
+  );
+  const styleUri = webview.asWebviewUri(
+    vscode.Uri.joinPath(webviewDistUri, "assets", "index.css"),
+  );
   const csp = nonce();
 
   return /* html */ `<!doctype html>

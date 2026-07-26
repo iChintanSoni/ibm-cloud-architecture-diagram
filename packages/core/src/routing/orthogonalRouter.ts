@@ -60,7 +60,13 @@ function dedupeSorted(values: number[]): number[] {
 }
 
 /** True if the axis-aligned segment a→b passes through the padded interior of rect r. */
-function segmentCrossesRect(ax: number, ay: number, bx: number, by: number, r: Rect): boolean {
+function segmentCrossesRect(
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+  r: Rect,
+): boolean {
   const left = r.x - PADDING;
   const right = r.x + r.w + PADDING;
   const top = r.y - PADDING;
@@ -82,11 +88,15 @@ function segmentCrossesRect(ax: number, ay: number, bx: number, by: number, r: R
 }
 
 /** True if any segment of the polyline passes through an obstacle's padded interior. */
-export function pathCrossesObstacles(points: Point[], obstacles: Rect[]): boolean {
+export function pathCrossesObstacles(
+  points: Point[],
+  obstacles: Rect[],
+): boolean {
   for (let i = 0; i < points.length - 1; i += 1) {
     const a = points[i]!;
     const b = points[i + 1]!;
-    if (obstacles.some((r) => segmentCrossesRect(a.x, a.y, b.x, b.y, r))) return true;
+    if (obstacles.some((r) => segmentCrossesRect(a.x, a.y, b.x, b.y, r)))
+      return true;
   }
   return false;
 }
@@ -96,12 +106,19 @@ function simplify(points: Point[]): Point[] {
   const out: Point[] = [];
   for (const p of points) {
     const prev = out[out.length - 1];
-    if (prev && Math.abs(prev.x - p.x) < EPSILON && Math.abs(prev.y - p.y) < EPSILON) continue;
+    if (
+      prev &&
+      Math.abs(prev.x - p.x) < EPSILON &&
+      Math.abs(prev.y - p.y) < EPSILON
+    )
+      continue;
     if (out.length >= 2) {
       const a = out[out.length - 2]!;
       const b = out[out.length - 1]!;
-      const collinearHorizontal = Math.abs(a.y - b.y) < EPSILON && Math.abs(b.y - p.y) < EPSILON;
-      const collinearVertical = Math.abs(a.x - b.x) < EPSILON && Math.abs(b.x - p.x) < EPSILON;
+      const collinearHorizontal =
+        Math.abs(a.y - b.y) < EPSILON && Math.abs(b.y - p.y) < EPSILON;
+      const collinearVertical =
+        Math.abs(a.x - b.x) < EPSILON && Math.abs(b.x - p.x) < EPSILON;
       if (collinearHorizontal || collinearVertical) {
         out.pop();
       }
@@ -134,7 +151,10 @@ class MinHeap {
     while (i > 0) {
       const parent = (i - 1) >> 1;
       if (this.items[parent]!.cost <= this.items[i]!.cost) break;
-      [this.items[parent], this.items[i]] = [this.items[i]!, this.items[parent]!];
+      [this.items[parent], this.items[i]] = [
+        this.items[i]!,
+        this.items[parent]!,
+      ];
       i = parent;
     }
   }
@@ -150,10 +170,21 @@ class MinHeap {
         const l = i * 2 + 1;
         const r = i * 2 + 2;
         let smallest = i;
-        if (l < this.items.length && this.items[l]!.cost < this.items[smallest]!.cost) smallest = l;
-        if (r < this.items.length && this.items[r]!.cost < this.items[smallest]!.cost) smallest = r;
+        if (
+          l < this.items.length &&
+          this.items[l]!.cost < this.items[smallest]!.cost
+        )
+          smallest = l;
+        if (
+          r < this.items.length &&
+          this.items[r]!.cost < this.items[smallest]!.cost
+        )
+          smallest = r;
         if (smallest === i) break;
-        [this.items[smallest], this.items[i]] = [this.items[i]!, this.items[smallest]!];
+        [this.items[smallest], this.items[i]] = [
+          this.items[i]!,
+          this.items[smallest]!,
+        ];
         i = smallest;
       }
     }
@@ -179,19 +210,23 @@ function directRoute(from: RoutePort, to: RoutePort): Point[] {
  * containers (box/group/zone/frame) are deliberately not routed around,
  * since IBM deployment diagrams routinely cross a box or zone boundary.
  */
-export function routeOrthogonal(from: RoutePort, to: RoutePort, obstacles: Rect[]): Point[] {
+export function routeOrthogonal(
+  from: RoutePort,
+  to: RoutePort,
+  obstacles: Rect[],
+): Point[] {
   const startStub = stubPoint(from, to.point);
   const endStub = stubPoint(to, from.point);
 
   const xs = dedupeSorted([
     startStub.x,
     endStub.x,
-    ...obstacles.flatMap((r) => [r.x - PADDING, r.x + r.w + PADDING])
+    ...obstacles.flatMap((r) => [r.x - PADDING, r.x + r.w + PADDING]),
   ]);
   const ys = dedupeSorted([
     startStub.y,
     endStub.y,
-    ...obstacles.flatMap((r) => [r.y - PADDING, r.y + r.h + PADDING])
+    ...obstacles.flatMap((r) => [r.y - PADDING, r.y + r.h + PADDING]),
   ]);
 
   if (xs.length * ys.length > MAX_GRID_NODES) {
@@ -227,21 +262,27 @@ export function routeOrthogonal(from: RoutePort, to: RoutePort, obstacles: Rect[
     }
 
     const neighbors: Array<{ i: number; j: number; dir: Dir }> = [];
-    if (current.i > 0) neighbors.push({ i: current.i - 1, j: current.j, dir: "H" });
-    if (current.i < xs.length - 1) neighbors.push({ i: current.i + 1, j: current.j, dir: "H" });
-    if (current.j > 0) neighbors.push({ i: current.i, j: current.j - 1, dir: "V" });
-    if (current.j < ys.length - 1) neighbors.push({ i: current.i, j: current.j + 1, dir: "V" });
+    if (current.i > 0)
+      neighbors.push({ i: current.i - 1, j: current.j, dir: "H" });
+    if (current.i < xs.length - 1)
+      neighbors.push({ i: current.i + 1, j: current.j, dir: "H" });
+    if (current.j > 0)
+      neighbors.push({ i: current.i, j: current.j - 1, dir: "V" });
+    if (current.j < ys.length - 1)
+      neighbors.push({ i: current.i, j: current.j + 1, dir: "V" });
 
     for (const n of neighbors) {
       const ax = xs[current.i]!;
       const ay = ys[current.j]!;
       const bx = xs[n.i]!;
       const by = ys[n.j]!;
-      if (obstacles.some((r) => segmentCrossesRect(ax, ay, bx, by, r))) continue;
+      if (obstacles.some((r) => segmentCrossesRect(ax, ay, bx, by, r)))
+        continue;
 
       let cost = Math.abs(bx - ax) + Math.abs(by - ay);
       if (n.dir === "H" && bx < ax) cost *= BACKTRACK_PENALTY;
-      if (current.dir !== "start" && current.dir !== n.dir) cost += BEND_PENALTY;
+      if (current.dir !== "start" && current.dir !== n.dir)
+        cost += BEND_PENALTY;
 
       const nextCost = current.cost + cost;
       const nextKey = stateKey(n.i, n.j, n.dir);

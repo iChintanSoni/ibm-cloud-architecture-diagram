@@ -3,7 +3,16 @@ import { Scene } from "./scene.js";
 import type { BoxElement } from "./types.js";
 
 function box(id: string, parentId?: string): BoxElement {
-  return { id, type: "box", semantic: "deployedOn", x: 0, y: 0, w: 100, h: 100, ...(parentId ? { parentId } : {}) };
+  return {
+    id,
+    type: "box",
+    semantic: "deployedOn",
+    x: 0,
+    y: 0,
+    w: 100,
+    h: 100,
+    ...(parentId ? { parentId } : {}),
+  };
 }
 
 describe("Scene", () => {
@@ -50,7 +59,12 @@ describe("Scene", () => {
     scene._put(box("a", "b"));
     scene._put(box("b", "a"));
 
-    expect(scene.descendantsOf("a").map((el) => el.id).sort()).toEqual(["b"]);
+    expect(
+      scene
+        .descendantsOf("a")
+        .map((el) => el.id)
+        .sort(),
+    ).toEqual(["b"]);
     expect(scene.ancestorsOf("a").map((el) => el.id)).toEqual(["b"]);
   });
 
@@ -71,7 +85,10 @@ describe("Scene", () => {
     scene._put(box("mid", "root"));
     scene._put(box("leaf", "mid"));
 
-    expect(scene.ancestorsOf("leaf").map((el) => el.id)).toEqual(["mid", "root"]);
+    expect(scene.ancestorsOf("leaf").map((el) => el.id)).toEqual([
+      "mid",
+      "root",
+    ]);
   });
 
   it("emits change events on put/remove/replace", () => {
@@ -84,9 +101,18 @@ describe("Scene", () => {
     scene._replaceAll([box("b")]);
 
     expect(listener).toHaveBeenCalledTimes(3);
-    expect(listener.mock.calls[0]?.[0]).toMatchObject({ reason: "add", ids: ["a"] });
-    expect(listener.mock.calls[1]?.[0]).toMatchObject({ reason: "remove", ids: ["a"] });
-    expect(listener.mock.calls[2]?.[0]).toMatchObject({ reason: "replace", ids: ["b"] });
+    expect(listener.mock.calls[0]?.[0]).toMatchObject({
+      reason: "add",
+      ids: ["a"],
+    });
+    expect(listener.mock.calls[1]?.[0]).toMatchObject({
+      reason: "remove",
+      ids: ["a"],
+    });
+    expect(listener.mock.calls[2]?.[0]).toMatchObject({
+      reason: "replace",
+      ids: ["b"],
+    });
   });
 
   describe("_transaction", () => {
@@ -137,7 +163,10 @@ describe("Scene", () => {
       });
 
       expect(listener).toHaveBeenCalledTimes(1);
-      expect(listener.mock.calls[0]?.[0]).toMatchObject({ reason: "update", ids: [] });
+      expect(listener.mock.calls[0]?.[0]).toMatchObject({
+        reason: "update",
+        ids: [],
+      });
     });
 
     it("reports 'replace' when the buffered calls mix reasons", () => {
@@ -163,10 +192,13 @@ describe("Scene", () => {
         scene._transaction(() => {
           scene._put(box("a"));
           throw new Error("boom");
-        })
+        }),
       ).toThrow("boom");
       expect(listener).toHaveBeenCalledTimes(1);
-      expect(listener.mock.calls[0]?.[0]).toMatchObject({ reason: "add", ids: ["a"] });
+      expect(listener.mock.calls[0]?.[0]).toMatchObject({
+        reason: "add",
+        ids: ["a"],
+      });
 
       scene._put(box("b"));
       expect(listener).toHaveBeenCalledTimes(2);

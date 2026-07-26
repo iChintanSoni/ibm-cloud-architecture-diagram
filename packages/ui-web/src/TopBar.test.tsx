@@ -5,8 +5,14 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TopBar, type TopBarProps } from "./TopBar.js";
 
-function findByText(container: HTMLElement, tag: string, text: string): HTMLElement | undefined {
-  return [...container.querySelectorAll<HTMLElement>(tag)].find((el) => el.textContent === text);
+function findByText(
+  container: HTMLElement,
+  tag: string,
+  text: string,
+): HTMLElement | undefined {
+  return [...container.querySelectorAll<HTMLElement>(tag)].find(
+    (el) => el.textContent === text,
+  );
 }
 
 function baseProps(overrides: Partial<TopBarProps> = {}): TopBarProps {
@@ -33,7 +39,7 @@ function baseProps(overrides: Partial<TopBarProps> = {}): TopBarProps {
     onInsert: vi.fn(),
     themePreference: "auto",
     onThemeChange: vi.fn(),
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -61,7 +67,9 @@ describe("TopBar", () => {
     for (const label of ["File", "Edit", "View", "Insert", "Help"]) {
       expect(findByText(container, "a", label)).toBeTruthy();
     }
-    expect(container.querySelector(".icad-zoom-indicator")?.textContent).toBe("138%");
+    expect(container.querySelector(".icad-zoom-indicator")?.textContent).toBe(
+      "138%",
+    );
   });
 
   it("runs File > New… and prevents default navigation", () => {
@@ -103,7 +111,16 @@ describe("TopBar", () => {
     const onGroup = vi.fn();
     const onUngroup = vi.fn();
     act(() => {
-      root.render(<TopBar {...baseProps({ onGroup, onUngroup, canGroup: false, canUngroup: true })} />);
+      root.render(
+        <TopBar
+          {...baseProps({
+            onGroup,
+            onUngroup,
+            canGroup: false,
+            canUngroup: true,
+          })}
+        />,
+      );
     });
 
     const groupItem = findByText(container, "a", "Group") as HTMLAnchorElement;
@@ -111,7 +128,11 @@ describe("TopBar", () => {
     act(() => groupItem.click());
     expect(onGroup).not.toHaveBeenCalled();
 
-    const ungroupItem = findByText(container, "a", "Ungroup") as HTMLAnchorElement;
+    const ungroupItem = findByText(
+      container,
+      "a",
+      "Ungroup",
+    ) as HTMLAnchorElement;
     expect(ungroupItem.getAttribute("aria-disabled")).toBeNull();
     act(() => ungroupItem.click());
     expect(onUngroup).toHaveBeenCalled();
@@ -131,12 +152,16 @@ describe("TopBar", () => {
   it("switches theme from the global bar buttons", () => {
     const onThemeChange = vi.fn();
     act(() => {
-      root.render(<TopBar {...baseProps({ onThemeChange, themePreference: "auto" })} />);
+      root.render(
+        <TopBar {...baseProps({ onThemeChange, themePreference: "auto" })} />,
+      );
     });
 
-    const darkButton = [...container.querySelectorAll<HTMLButtonElement>(".icad-theme-switch button")].find(
-      (button) => button.textContent === "dark"
-    )!;
+    const darkButton = [
+      ...container.querySelectorAll<HTMLButtonElement>(
+        ".icad-theme-switch button",
+      ),
+    ].find((button) => button.textContent === "dark")!;
     act(() => darkButton.click());
     expect(onThemeChange).toHaveBeenCalledWith("dark");
   });
@@ -145,14 +170,20 @@ describe("TopBar", () => {
     const onOpenFind = vi.fn();
     const onOpenCommandPalette = vi.fn();
     act(() => {
-      root.render(<TopBar {...baseProps({ onOpenFind, onOpenCommandPalette })} />);
+      root.render(
+        <TopBar {...baseProps({ onOpenFind, onOpenCommandPalette })} />,
+      );
     });
 
-    const findButton = container.querySelector<HTMLButtonElement>('[aria-label="Find on canvas (Ctrl+F)"]')!;
+    const findButton = container.querySelector<HTMLButtonElement>(
+      '[aria-label="Find on canvas (Ctrl+F)"]',
+    )!;
     act(() => findButton.click());
     expect(onOpenFind).toHaveBeenCalled();
 
-    const paletteButton = container.querySelector<HTMLButtonElement>('[aria-label="Command palette (Ctrl+K)"]')!;
+    const paletteButton = container.querySelector<HTMLButtonElement>(
+      '[aria-label="Command palette (Ctrl+K)"]',
+    )!;
     act(() => paletteButton.click());
     expect(onOpenCommandPalette).toHaveBeenCalled();
   });

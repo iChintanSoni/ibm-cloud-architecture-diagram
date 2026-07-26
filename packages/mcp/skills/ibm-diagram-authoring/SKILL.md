@@ -8,18 +8,19 @@ description: Translate a requirements paragraph into an IBM Cloud architecture d
 You are driving the ICAD MCP server (`packages/mcp`), a thin wrapper over the same headless engine
 the human editor uses — every tool call is an undoable command against a real document. Load
 **`ibm-diagram-spec`** alongside this skill for the element/color/connector conventions referenced
-below; this skill is the *workflow*, that one is the *reference*.
+below; this skill is the _workflow_, that one is the _reference_.
 
 ## Workflow
 
 ### 1. Read the requirement like an architect, not a parser
 
 Before calling any tool, identify from the prompt:
+
 - **Actors** — people or external systems initiating traffic (→ `element_add_actor`).
 - **Deployment locations** — regions, VPCs, subnets, on-prem, availability zones (→ `element_add_zone`
-  with the matching `zoneKind`), and the platforms things run *on* (→ `element_add_box`,
+  with the matching `zoneKind`), and the platforms things run _on_ (→ `element_add_box`,
   `deployedOn`).
-- **Workload groupings** — services/apps deployed *to* a location, e.g. an application tier or
+- **Workload groupings** — services/apps deployed _to_ a location, e.g. an application tier or
   security group (→ `element_add_group`, `deployedTo`).
 - **Concrete components** — the actual services/instances (→ `element_add_icon`, resolved through
   `catalog_search`).
@@ -33,12 +34,12 @@ a VPC" means: Zone (`vpc`) → Box or Group for the app tier → icons for gatew
 
 Call `doc_create({ level })` first — every authoring tool errors until a document is open.
 
-| `level` | Use when the requirement is about... |
-|---|---|
-| `system-context` | Actors, external systems, and one solution boundary — no internal detail. |
-| `high-level` | Zones/boxes/groups, key services, and their main flows. Most requests land here. |
-| `detailed` | Concrete deployment: region → VPC → subnet → security group → instances. |
-| `blank` | Freeform, doesn't fit the above, or the user explicitly asked for an empty canvas. |
+| `level`          | Use when the requirement is about...                                               |
+| ---------------- | ---------------------------------------------------------------------------------- |
+| `system-context` | Actors, external systems, and one solution boundary — no internal detail.          |
+| `high-level`     | Zones/boxes/groups, key services, and their main flows. Most requests land here.   |
+| `detailed`       | Concrete deployment: region → VPC → subnet → security group → instances.           |
+| `blank`          | Freeform, doesn't fit the above, or the user explicitly asked for an empty canvas. |
 
 If replacing a document that has unsaved changes, `doc_create` errors unless you pass
 `force: true` — don't pass it reflexively; only when you've confirmed discarding is intended.
@@ -81,8 +82,8 @@ persist (export produces an SVG; saving the document is separate).
 
 ## Worked example
 
-Requirement: *"Customers hit a public API gateway, which routes to an application tier running in a
-private VPC subnet; the app talks to an object storage bucket."*
+Requirement: _"Customers hit a public API gateway, which routes to an application tier running in a
+private VPC subnet; the app talks to an object storage bucket."_
 
 ```
 doc_create({ level: "high-level" })

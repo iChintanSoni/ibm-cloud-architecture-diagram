@@ -8,7 +8,9 @@ import { runCommand, startBlankDiagram } from "./fixtures.js";
  * via region/heading navigation, standing in for tabbing through unrelated chrome.
  */
 test.describe("keyboard-only authoring", () => {
-  test("insert, nudge, connect, group, ungroup, delete, and undo — no mouse", async ({ page }) => {
+  test("insert, nudge, connect, group, ungroup, delete, and undo — no mouse", async ({
+    page,
+  }) => {
     await startBlankDiagram(page);
 
     await runCommand(page, "Insert Box");
@@ -18,7 +20,9 @@ test.describe("keyboard-only authoring", () => {
     // element's outline overlay (a sibling layer, moved in lockstep by previewTransform, D26)
     // carries the same data-icad-id, so the broader selector double-counts whichever element is
     // currently selected.
-    const canvasElements = page.locator('.icad-canvas [data-icad-layer="elements"] > [data-icad-id]');
+    const canvasElements = page.locator(
+      '.icad-canvas [data-icad-layer="elements"] > [data-icad-id]',
+    );
     await expect(canvasElements).toHaveCount(2);
     const first = canvasElements.nth(0);
     const second = canvasElements.nth(1);
@@ -63,7 +67,10 @@ test.describe("keyboard-only authoring", () => {
 
     const connector = page.locator('.icad-canvas [data-icad-type="connector"]');
     await expect(connector).toHaveCount(1);
-    await expect(connector).toHaveAttribute("aria-label", /^Connector: .+ to .+ \(/);
+    await expect(connector).toHaveAttribute(
+      "aria-label",
+      /^Connector: .+ to .+ \(/,
+    );
 
     // Delete the connector, then undo (Ctrl/Cmd+Z) brings it back.
     await connector.focus();
@@ -73,12 +80,16 @@ test.describe("keyboard-only authoring", () => {
     await expect(connector).toHaveCount(1);
   });
 
-  test("Escape cancels an in-progress keyboard connection without creating a connector", async ({ page }) => {
+  test("Escape cancels an in-progress keyboard connection without creating a connector", async ({
+    page,
+  }) => {
     await startBlankDiagram(page);
     await runCommand(page, "Insert Box");
     await runCommand(page, "Insert Box");
 
-    const canvasElements = page.locator('.icad-canvas [data-icad-layer="elements"] > [data-icad-id]');
+    const canvasElements = page.locator(
+      '.icad-canvas [data-icad-layer="elements"] > [data-icad-id]',
+    );
     const first = canvasElements.nth(0);
 
     await first.focus();
@@ -87,14 +98,20 @@ test.describe("keyboard-only authoring", () => {
     await page.keyboard.press("Escape");
 
     await expect(page.getByText(/Connecting from/)).toHaveCount(0);
-    await expect(page.locator('.icad-canvas [data-icad-type="connector"]')).toHaveCount(0);
+    await expect(
+      page.locator('.icad-canvas [data-icad-type="connector"]'),
+    ).toHaveCount(0);
   });
 
-  test("Tab exits the canvas at the last element instead of wrapping (no keyboard trap)", async ({ page }) => {
+  test("Tab exits the canvas at the last element instead of wrapping (no keyboard trap)", async ({
+    page,
+  }) => {
     await startBlankDiagram(page);
     await runCommand(page, "Insert Box");
 
-    const box = page.locator('.icad-canvas [data-icad-layer="elements"] > [data-icad-id]').first();
+    const box = page
+      .locator('.icad-canvas [data-icad-layer="elements"] > [data-icad-id]')
+      .first();
     await box.focus();
     await expect(box).toBeFocused();
 

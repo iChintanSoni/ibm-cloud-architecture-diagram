@@ -11,5 +11,5 @@ if (!container) throw new Error("Missing #root element");
 createRoot(container).render(
   <StrictMode>
     <App />
-  </StrictMode>
+  </StrictMode>,
 );

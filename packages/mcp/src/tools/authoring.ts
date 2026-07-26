@@ -11,7 +11,7 @@ import {
   flowColorSchema,
   placementSchema,
   portRefSchema,
-  zoneKindSchema
+  zoneKindSchema,
 } from "../schemas.js";
 import { fail, ok } from "../toolResult.js";
 import { omitUndefined } from "../util.js";
@@ -23,12 +23,24 @@ const connectOptsSchema = {
   direction: connectorDirectionSchema.optional(),
   flowColor: flowColorSchema.optional(),
   cardinality: cardinalitySchema.optional(),
-  sequence: z.string().optional().describe("Short sequencing/numbering badge shown at the connector's midpoint, e.g. \"1\", \"2a\""),
-  annotation: connectorAnnotationSchema.optional().describe("Structured protocol/encapsulation annotation, e.g. { name: \"HTTPS\", security: \"TLS1.3\", port: \"443\" }"),
-  label: z.string().optional()
+  sequence: z
+    .string()
+    .optional()
+    .describe(
+      'Short sequencing/numbering badge shown at the connector\'s midpoint, e.g. "1", "2a"',
+    ),
+  annotation: connectorAnnotationSchema
+    .optional()
+    .describe(
+      'Structured protocol/encapsulation annotation, e.g. { name: "HTTPS", security: "TLS1.3", port: "443" }',
+    ),
+  label: z.string().optional(),
 };
 
-export function registerAuthoringTools(server: McpServer, state: ServerState): void {
+export function registerAuthoringTools(
+  server: McpServer,
+  state: ServerState,
+): void {
   const editor = () => {
     requireOpenDocument(state);
     return state.editor;
@@ -38,9 +50,15 @@ export function registerAuthoringTools(server: McpServer, state: ServerState): v
     "element_add_icon",
     {
       title: "Add a catalog icon",
-      description: "Places an IBM Cloud catalog icon (from catalog_search) onto the canvas.",
-      inputSchema: { catalogRef: z.string().describe("Icon id from catalog_search, e.g. ibm-cloud/vpc"), ...placementSchema },
-      outputSchema: idOutput
+      description:
+        "Places an IBM Cloud catalog icon (from catalog_search) onto the canvas.",
+      inputSchema: {
+        catalogRef: z
+          .string()
+          .describe("Icon id from catalog_search, e.g. ibm-cloud/vpc"),
+        ...placementSchema,
+      },
+      outputSchema: idOutput,
     },
     ({ catalogRef, ...opts }) => {
       try {
@@ -49,16 +67,17 @@ export function registerAuthoringTools(server: McpServer, state: ServerState): v
       } catch (err) {
         return fail(err);
       }
-    }
+    },
   );
 
   server.registerTool(
     "element_add_box",
     {
       title: "Add a Box (deployedOn container)",
-      description: "Adds a Box — a solid-border deployedOn container (docs/05-ibm-spec-conformance.md).",
+      description:
+        "Adds a Box — a solid-border deployedOn container (docs/05-ibm-spec-conformance.md).",
       inputSchema: containerPlacementSchema,
-      outputSchema: idOutput
+      outputSchema: idOutput,
     },
     (opts) => {
       try {
@@ -67,16 +86,17 @@ export function registerAuthoringTools(server: McpServer, state: ServerState): v
       } catch (err) {
         return fail(err);
       }
-    }
+    },
   );
 
   server.registerTool(
     "element_add_group",
     {
       title: "Add a Group (deployedTo container)",
-      description: "Adds a Group — a dashed-border deployedTo container (docs/05-ibm-spec-conformance.md).",
+      description:
+        "Adds a Group — a dashed-border deployedTo container (docs/05-ibm-spec-conformance.md).",
       inputSchema: containerPlacementSchema,
-      outputSchema: idOutput
+      outputSchema: idOutput,
     },
     (opts) => {
       try {
@@ -85,16 +105,20 @@ export function registerAuthoringTools(server: McpServer, state: ServerState): v
       } catch (err) {
         return fail(err);
       }
-    }
+    },
   );
 
   server.registerTool(
     "element_add_zone",
     {
       title: "Add a Boundary/Zone",
-      description: "Adds a Zone (labelled Boundary in the UI) — a region/AZ/VPC/subnet/on-prem boundary.",
-      inputSchema: { ...containerPlacementSchema, zoneKind: zoneKindSchema.optional() },
-      outputSchema: idOutput
+      description:
+        "Adds a Zone (labelled Boundary in the UI) — a region/AZ/VPC/subnet/on-prem boundary.",
+      inputSchema: {
+        ...containerPlacementSchema,
+        zoneKind: zoneKindSchema.optional(),
+      },
+      outputSchema: idOutput,
     },
     (opts) => {
       try {
@@ -103,7 +127,7 @@ export function registerAuthoringTools(server: McpServer, state: ServerState): v
       } catch (err) {
         return fail(err);
       }
-    }
+    },
   );
 
   server.registerTool(
@@ -112,7 +136,7 @@ export function registerAuthoringTools(server: McpServer, state: ServerState): v
       title: "Add an Actor",
       description: "Adds an Actor (a person/external system) to the canvas.",
       inputSchema: { ...placementSchema, catalogRef: z.string().optional() },
-      outputSchema: idOutput
+      outputSchema: idOutput,
     },
     (opts) => {
       try {
@@ -121,23 +145,24 @@ export function registerAuthoringTools(server: McpServer, state: ServerState): v
       } catch (err) {
         return fail(err);
       }
-    }
+    },
   );
 
   server.registerTool(
     "element_add_text",
     {
       title: "Add a text label",
-      description: "Adds a free-floating text element (not attached to any other element's label).",
+      description:
+        "Adds a free-floating text element (not attached to any other element's label).",
       inputSchema: {
         id: placementSchema.id,
         at: placementSchema.at,
         w: placementSchema.w,
         h: placementSchema.h,
         parentId: placementSchema.parentId,
-        text: z.string()
+        text: z.string(),
       },
-      outputSchema: idOutput
+      outputSchema: idOutput,
     },
     (opts) => {
       try {
@@ -146,7 +171,7 @@ export function registerAuthoringTools(server: McpServer, state: ServerState): v
       } catch (err) {
         return fail(err);
       }
-    }
+    },
   );
 
   server.registerTool(
@@ -162,9 +187,9 @@ export function registerAuthoringTools(server: McpServer, state: ServerState): v
         w: placementSchema.w,
         h: placementSchema.h,
         name: z.string(),
-        order: z.number().optional()
+        order: z.number().optional(),
       },
-      outputSchema: idOutput
+      outputSchema: idOutput,
     },
     (opts) => {
       try {
@@ -173,15 +198,16 @@ export function registerAuthoringTools(server: McpServer, state: ServerState): v
       } catch (err) {
         return fail(err);
       }
-    }
+    },
   );
 
   server.registerTool(
     "element_update",
     {
       title: "Update an element's properties",
-      description: "Applies a partial patch (position, size, label, style, ...) to one element as one undo step.",
-      inputSchema: { id: z.string(), patch: elementPropertiesPatchSchema }
+      description:
+        "Applies a partial patch (position, size, label, style, ...) to one element as one undo step.",
+      inputSchema: { id: z.string(), patch: elementPropertiesPatchSchema },
     },
     ({ id, patch }) => {
       try {
@@ -190,15 +216,16 @@ export function registerAuthoringTools(server: McpServer, state: ServerState): v
       } catch (err) {
         return fail(err);
       }
-    }
+    },
   );
 
   server.registerTool(
     "element_move",
     {
       title: "Nudge elements by a delta",
-      description: "Moves the given elements by (dx, dy) in scene units, cascading to nested contents (move-with).",
-      inputSchema: { ids: z.array(z.string()), dx: z.number(), dy: z.number() }
+      description:
+        "Moves the given elements by (dx, dy) in scene units, cascading to nested contents (move-with).",
+      inputSchema: { ids: z.array(z.string()), dx: z.number(), dy: z.number() },
     },
     ({ ids, dx, dy }) => {
       try {
@@ -207,15 +234,16 @@ export function registerAuthoringTools(server: McpServer, state: ServerState): v
       } catch (err) {
         return fail(err);
       }
-    }
+    },
   );
 
   server.registerTool(
     "element_delete",
     {
       title: "Delete elements",
-      description: "Deletes the given elements and everything nested inside them, as one undo step.",
-      inputSchema: { ids: z.array(z.string()) }
+      description:
+        "Deletes the given elements and everything nested inside them, as one undo step.",
+      inputSchema: { ids: z.array(z.string()) },
     },
     ({ ids }) => {
       try {
@@ -224,7 +252,7 @@ export function registerAuthoringTools(server: McpServer, state: ServerState): v
       } catch (err) {
         return fail(err);
       }
-    }
+    },
   );
 
   server.registerTool(
@@ -234,63 +262,86 @@ export function registerAuthoringTools(server: McpServer, state: ServerState): v
       description:
         "Draws an IBM-typed connector between two exact ports (docs/05-ibm-spec-conformance.md#connector-nomenclature). " +
         "Use connect_nearest instead if you don't want to specify exact ports.",
-      inputSchema: { from: portRefSchema, to: portRefSchema, ...connectOptsSchema },
-      outputSchema: idOutput
+      inputSchema: {
+        from: portRefSchema,
+        to: portRefSchema,
+        ...connectOptsSchema,
+      },
+      outputSchema: idOutput,
     },
     ({ from, to, ...opts }) => {
       try {
         const id = editor().connect(from, to, omitUndefined(opts));
-        return ok({ id }, `Connected ${from.elementId}:${from.port} to ${to.elementId}:${to.port} as ${id}.`);
+        return ok(
+          { id },
+          `Connected ${from.elementId}:${from.port} to ${to.elementId}:${to.port} as ${id}.`,
+        );
       } catch (err) {
         return fail(err);
       }
-    }
+    },
   );
 
   server.registerTool(
     "connect_nearest",
     {
       title: "Connect two elements, auto-picking ports",
-      description: "Draws an IBM-typed connector between two elements, picking a reasonable port pair automatically.",
-      inputSchema: { fromId: z.string(), toId: z.string(), ...connectOptsSchema },
-      outputSchema: idOutput
+      description:
+        "Draws an IBM-typed connector between two elements, picking a reasonable port pair automatically.",
+      inputSchema: {
+        fromId: z.string(),
+        toId: z.string(),
+        ...connectOptsSchema,
+      },
+      outputSchema: idOutput,
     },
     ({ fromId, toId, ...opts }) => {
       try {
         const id = editor().connectNearest(fromId, toId, omitUndefined(opts));
-        if (!id) throw new ToolError(`Cannot connect "${fromId}" to "${toId}" (same id, or one is a connector).`);
+        if (!id)
+          throw new ToolError(
+            `Cannot connect "${fromId}" to "${toId}" (same id, or one is a connector).`,
+          );
         return ok({ id }, `Connected ${fromId} to ${toId} as ${id}.`);
       } catch (err) {
         return fail(err);
       }
-    }
+    },
   );
 
   server.registerTool(
     "group_elements",
     {
       title: "Group elements",
-      description: "Groups 2+ elements into a new Group container sized to their combined bounds.",
+      description:
+        "Groups 2+ elements into a new Group container sized to their combined bounds.",
       inputSchema: { ids: z.array(z.string()), padding: z.number().optional() },
-      outputSchema: idOutput
+      outputSchema: idOutput,
     },
     ({ ids, padding }) => {
       try {
-        const id = editor().groupElements(ids, padding !== undefined ? { padding } : {});
-        if (!id) throw new ToolError("group_elements needs at least 2 known element ids.");
+        const id = editor().groupElements(
+          ids,
+          padding !== undefined ? { padding } : {},
+        );
+        if (!id)
+          throw new ToolError(
+            "group_elements needs at least 2 known element ids.",
+          );
         return ok({ id }, `Grouped ${ids.length} element(s) as ${id}.`);
       } catch (err) {
         return fail(err);
       }
-    }
+    },
   );
 
   server.registerTool(
     "ungroup_element",
     {
       title: "Ungroup a container",
-      description: "Removes a Box/Group/Zone/Frame container but keeps its contents, reparenting them to its own parent.",
-      inputSchema: { id: z.string() }
+      description:
+        "Removes a Box/Group/Zone/Frame container but keeps its contents, reparenting them to its own parent.",
+      inputSchema: { id: z.string() },
     },
     ({ id }) => {
       try {
@@ -298,20 +349,28 @@ export function registerAuthoringTools(server: McpServer, state: ServerState): v
         const before = scoped.scene.get(id);
         if (!before) throw new ToolError(`Unknown element "${id}".`);
         scoped.ungroupElement(id);
-        if (scoped.scene.has(id)) throw new ToolError(`"${id}" is not a container — nothing to ungroup.`);
+        if (scoped.scene.has(id))
+          throw new ToolError(
+            `"${id}" is not a container — nothing to ungroup.`,
+          );
         return ok({ id }, `Ungrouped ${id}.`);
       } catch (err) {
         return fail(err);
       }
-    }
+    },
   );
 
   server.registerTool(
     "frame_reorder",
     {
       title: "Reorder presentation frames",
-      description: "Applies an exact presentation order to every frame in the document, as one undo step.",
-      inputSchema: { frameIds: z.array(z.string()).describe("Every frame id, in the desired presentation order") }
+      description:
+        "Applies an exact presentation order to every frame in the document, as one undo step.",
+      inputSchema: {
+        frameIds: z
+          .array(z.string())
+          .describe("Every frame id, in the desired presentation order"),
+      },
     },
     ({ frameIds }) => {
       try {
@@ -320,6 +379,6 @@ export function registerAuthoringTools(server: McpServer, state: ServerState): v
       } catch (err) {
         return fail(err);
       }
-    }
+    },
   );
 }

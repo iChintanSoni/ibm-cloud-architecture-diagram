@@ -33,7 +33,7 @@ Two things worth knowing before you wire this up:
   catalog from `packages/catalog` relative to its own build output — it isn't a standalone
   package you can point at an arbitrary directory.
 - **Relative `path` arguments** (to `doc_open` / `doc_save` / `export_diagram`) resolve against
-  the *server process's* working directory, not your MCP client's. If your client config sets a
+  the _server process's_ working directory, not your MCP client's. If your client config sets a
   different `cwd`, prefer absolute paths.
 
 No environment variables, API keys, or network access are required — it's fully local and
@@ -42,11 +42,13 @@ offline, reading and writing `.icad` files on disk.
 ## The tools
 
 **Catalog & discovery** — usable before any document is open:
+
 - `catalog_search({ query })` — find IBM icons by name/keyword/alias; returns the `id` to pass as
   `catalogRef`.
 - `catalog_categories()` — list categories.
 
 **Document** — every other tool requires a document opened first:
+
 - `doc_create({ level, force? })` — new document from a template (`blank` | `system-context` |
   `high-level` | `detailed`).
 - `doc_open({ path, force? })` / `doc_save({ path? })`.
@@ -62,6 +64,7 @@ one document per server process for its whole lifetime, not a multi-document ses
 `group_elements`, `ungroup_element`, `frame_reorder`.
 
 **Conformance & export**:
+
 - `lint()` — diagnostics, counts by severity, and which have a quick-fix available.
 - `quickfix_apply({ diagnosticId })` / `quickfix_apply_all({ ruleId? })` — diagnostic ids come
   from the most recent `lint()` call and go stale once used or once the scene changes again.

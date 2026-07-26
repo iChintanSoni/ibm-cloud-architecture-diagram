@@ -1,6 +1,10 @@
 import type { BoxElement, SceneElement } from "@icad/core";
 import { describe, expect, it } from "vitest";
-import { buildLayerTree, elementDisplayName, eligibleParentElements } from "./inspectorModel.js";
+import {
+  buildLayerTree,
+  elementDisplayName,
+  eligibleParentElements,
+} from "./inspectorModel.js";
 
 function box(id: string, parentId?: string, label?: string): BoxElement {
   return {
@@ -12,7 +16,7 @@ function box(id: string, parentId?: string, label?: string): BoxElement {
     w: 100,
     h: 60,
     ...(parentId ? { parentId } : {}),
-    ...(label ? { label: { text: label } } : {})
+    ...(label ? { label: { text: label } } : {}),
   };
 }
 
@@ -30,9 +34,9 @@ describe("inspector model", () => {
         x: 20,
         y: 20,
         w: 48,
-        h: 48
+        h: 48,
       },
-      box("external", undefined, "External")
+      box("external", undefined, "External"),
     ];
 
     const tree = buildLayerTree(elements);
@@ -47,11 +51,9 @@ describe("inspector model", () => {
     const a = box("a", "b");
     const b = box("b", "a");
 
-    expect(buildLayerTree([orphan, a, b]).map((node) => node.element.id)).toEqual([
-      "orphan",
-      "a",
-      "b"
-    ]);
+    expect(
+      buildLayerTree([orphan, a, b]).map((node) => node.element.id),
+    ).toEqual(["orphan", "a", "b"]);
   });
 
   it("excludes self and descendants from parent choices", () => {
@@ -60,9 +62,11 @@ describe("inspector model", () => {
     const grandchild = box("grandchild", "child");
     const other = box("other");
 
-    expect(eligibleParentElements([root, child, grandchild, other], "root").map((el) => el.id)).toEqual([
-      "other"
-    ]);
+    expect(
+      eligibleParentElements([root, child, grandchild, other], "root").map(
+        (el) => el.id,
+      ),
+    ).toEqual(["other"]);
   });
 
   it("chooses a useful display name for each supported naming shape", () => {
@@ -76,8 +80,8 @@ describe("inspector model", () => {
         x: 0,
         y: 0,
         w: 20,
-        h: 20
-      })
+        h: 20,
+      }),
     ).toBe("Notes");
   });
 });

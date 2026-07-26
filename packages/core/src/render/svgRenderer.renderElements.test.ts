@@ -6,15 +6,34 @@ import type { BoxElement, ConnectorElement } from "../scene/types.js";
 import { SvgRenderer } from "./svgRenderer.js";
 
 function testCatalog(): Catalog {
-  const manifest: CatalogManifest = { id: "fixtures", version: "1", categories: [], icons: [] };
+  const manifest: CatalogManifest = {
+    id: "fixtures",
+    version: "1",
+    categories: [],
+    icons: [],
+  };
   return new Catalog(manifest, new Map());
 }
 
 function box(id: string, x: number, y: number): BoxElement {
-  return { id, type: "box", semantic: "deployedOn", x, y, w: 100, h: 60, label: { text: id } };
+  return {
+    id,
+    type: "box",
+    semantic: "deployedOn",
+    x,
+    y,
+    w: 100,
+    h: 60,
+    label: { text: id },
+  };
 }
 
-function connector(id: string, fromId: string, toId: string, opts: Partial<ConnectorElement> = {}): ConnectorElement {
+function connector(
+  id: string,
+  fromId: string,
+  toId: string,
+  opts: Partial<ConnectorElement> = {},
+): ConnectorElement {
   return {
     id,
     type: "connector",
@@ -28,12 +47,16 @@ function connector(id: string, fromId: string, toId: string, opts: Partial<Conne
     connectorType: "association",
     routing: "auto",
     waypoints: [],
-    ...opts
+    ...opts,
   };
 }
 
 function connectorPoints(container: HTMLElement, id: string): string | null {
-  return container.querySelector(`[data-icad-id="${id}"] polyline`)?.getAttribute("points") ?? null;
+  return (
+    container
+      .querySelector(`[data-icad-id="${id}"] polyline`)
+      ?.getAttribute("points") ?? null
+  );
 }
 
 describe("SvgRenderer.renderElements (scoped repaint, M16.1)", () => {
@@ -75,7 +98,12 @@ describe("SvgRenderer.renderElements (scoped repaint, M16.1)", () => {
   it("also repaints a manually-routed connector attached to a moved element (endpoints stay live, only inner waypoints freeze)", () => {
     scene._put(box("a", 0, 0));
     scene._put(box("b", 300, 0));
-    scene._put(connector("c1", "a", "b", { routing: "manual", waypoints: [{ x: 150, y: 42 }] }));
+    scene._put(
+      connector("c1", "a", "b", {
+        routing: "manual",
+        waypoints: [{ x: 150, y: 42 }],
+      }),
+    );
     renderer.render(scene);
     const before = connectorPoints(container, "c1");
 

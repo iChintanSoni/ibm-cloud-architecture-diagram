@@ -1,9 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { pathCrossesObstacles, routeOrthogonal, type Rect } from "./orthogonalRouter.js";
+import {
+  pathCrossesObstacles,
+  routeOrthogonal,
+  type Rect,
+} from "./orthogonalRouter.js";
 
 describe("routeOrthogonal", () => {
   it("routes a direct west->east line between facing ports with no obstacles", () => {
-    const path = routeOrthogonal({ point: { x: 100, y: 30 }, side: "e" }, { point: { x: 300, y: 30 }, side: "w" }, []);
+    const path = routeOrthogonal(
+      { point: { x: 100, y: 30 }, side: "e" },
+      { point: { x: 300, y: 30 }, side: "w" },
+      [],
+    );
 
     expect(path[0]).toEqual({ x: 100, y: 30 });
     expect(path[path.length - 1]).toEqual({ x: 300, y: 30 });
@@ -58,11 +66,15 @@ describe("routeOrthogonal", () => {
       x: (i % 20) * 60,
       y: Math.floor(i / 20) * 60,
       w: 20,
-      h: 20
+      h: 20,
     }));
 
     const start = Date.now();
-    routeOrthogonal({ point: { x: 0, y: 0 }, side: "e" }, { point: { x: 1200, y: 600 }, side: "w" }, obstacles);
+    routeOrthogonal(
+      { point: { x: 0, y: 0 }, side: "e" },
+      { point: { x: 1200, y: 600 }, side: "w" },
+      obstacles,
+    );
     expect(Date.now() - start).toBeLessThan(2000);
   });
 });
@@ -71,16 +83,20 @@ describe("pathCrossesObstacles", () => {
   it("detects a straight segment passing through a rect", () => {
     const points = [
       { x: 0, y: 30 },
-      { x: 400, y: 30 }
+      { x: 400, y: 30 },
     ];
-    expect(pathCrossesObstacles(points, [{ x: 180, y: 0, w: 40, h: 60 }])).toBe(true);
+    expect(pathCrossesObstacles(points, [{ x: 180, y: 0, w: 40, h: 60 }])).toBe(
+      true,
+    );
   });
 
   it("is false when the path clears the obstacle", () => {
     const points = [
       { x: 0, y: 30 },
-      { x: 400, y: 30 }
+      { x: 400, y: 30 },
     ];
-    expect(pathCrossesObstacles(points, [{ x: 180, y: 100, w: 40, h: 60 }])).toBe(false);
+    expect(
+      pathCrossesObstacles(points, [{ x: 180, y: 100, w: 40, h: 60 }]),
+    ).toBe(false);
   });
 });

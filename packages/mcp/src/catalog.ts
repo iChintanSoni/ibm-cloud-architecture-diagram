@@ -11,7 +11,9 @@ import { Catalog, type CatalogManifest } from "@icad/core";
  * this monorepo. That's an accepted constraint for now (matches D4's local-first, single-user
  * scope), not a silent assumption.
  */
-const CATALOG_DIR = fileURLToPath(new URL("../../catalog/2.0.0", import.meta.url));
+const CATALOG_DIR = fileURLToPath(
+  new URL("../../catalog/2.0.0", import.meta.url),
+);
 
 // Catalog assets on disk are full, standalone SVGs (viewBox 0 0 24 24); `Catalog` expects inner
 // fragments (see packages/core/src/catalog/catalog.ts), so strip the outer <svg> tag at load time.
@@ -20,7 +22,9 @@ function stripSvgWrapper(svg: string): string {
 }
 
 export function loadIbmCloudCatalog(): Catalog {
-  const manifest = JSON.parse(readFileSync(path.join(CATALOG_DIR, "index.json"), "utf-8")) as CatalogManifest;
+  const manifest = JSON.parse(
+    readFileSync(path.join(CATALOG_DIR, "index.json"), "utf-8"),
+  ) as CatalogManifest;
   const assets = new Map<string, string>();
   for (const icon of manifest.icons) {
     const raw = readFileSync(path.join(CATALOG_DIR, icon.asset), "utf-8");

@@ -4,7 +4,8 @@ import type { ConformanceSeverity, ElementId } from "../scene/types.js";
 import type { Command } from "../commands/types.js";
 
 export type Severity = Exclude<ConformanceSeverity, "off">;
-export type RuleCategory = "semantics" | "containment" | "labels" | "connectors" | "layout";
+export type RuleCategory =
+  "semantics" | "containment" | "labels" | "connectors" | "layout";
 
 export interface Diagnostic {
   id: string;

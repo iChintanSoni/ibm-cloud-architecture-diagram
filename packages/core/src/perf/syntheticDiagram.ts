@@ -1,7 +1,13 @@
 import { ICAD_FORMAT, ICAD_VERSION, type IcadDocument } from "../io/icad.js";
 import { portPoint } from "../render/port.js";
 import type { CatalogManifest } from "../catalog/types.js";
-import type { BoxElement, ConnectorElement, ElementId, IconNodeElement, SceneElement } from "../scene/types.js";
+import type {
+  BoxElement,
+  ConnectorElement,
+  ElementId,
+  IconNodeElement,
+  SceneElement,
+} from "../scene/types.js";
 
 /**
  * Minimal one-icon catalog for the synthetic diagrams below — a real bundled catalog would work
@@ -22,12 +28,14 @@ export const SYNTHETIC_CATALOG: CatalogManifest = {
       container: "square",
       color: "#0f62fe",
       asset: "vm",
-      tier: "ibm-cloud"
-    }
-  ]
+      tier: "ibm-cloud",
+    },
+  ],
 };
 
-export const SYNTHETIC_ASSETS = new Map([["vm", '<rect width="24" height="24" fill="#ffffff" />']]);
+export const SYNTHETIC_ASSETS = new Map([
+  ["vm", '<rect width="24" height="24" fill="#ffffff" />'],
+]);
 
 const ICONS_PER_CONTAINER = 8;
 const CONTAINER_W = 360;
@@ -73,7 +81,7 @@ export function buildSyntheticDocument(targetCount: number): SyntheticDiagram {
       y: originY,
       w: CONTAINER_W,
       h: CONTAINER_H,
-      z: elements.length
+      z: elements.length,
     };
     elements.push(container);
     if (elements.length >= targetCount) break;
@@ -90,7 +98,7 @@ export function buildSyntheticDocument(targetCount: number): SyntheticDiagram {
         w: ICON_SIZE,
         h: ICON_SIZE,
         parentId: containerId,
-        z: elements.length
+        z: elements.length,
       };
       elements.push(icon);
       icons.push(icon);
@@ -114,7 +122,7 @@ export function buildSyntheticDocument(targetCount: number): SyntheticDiagram {
         connectorType: "association",
         routing: "manual",
         waypoints: [portPoint(from, "e"), portPoint(to, "w")],
-        z: elements.length
+        z: elements.length,
       };
       elements.push(connector);
       if (elements.length >= targetCount) break outer;
@@ -131,11 +139,11 @@ export function buildSyntheticDocument(targetCount: number): SyntheticDiagram {
       title: "Synthetic benchmark diagram",
       diagramLevel: "blank",
       createdAt: new Date(0).toISOString(),
-      updatedAt: new Date(0).toISOString()
+      updatedAt: new Date(0).toISOString(),
     },
     canvas: { theme: "auto", grid: 8, background: "transparent" },
     conformance: { exportGate: "warn", ruleSeverities: {} },
-    elements
+    elements,
   };
 
   return { doc, elementCount: elements.length, sampleIconIds };

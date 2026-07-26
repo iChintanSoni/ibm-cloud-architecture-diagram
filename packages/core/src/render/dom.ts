@@ -3,12 +3,15 @@ import type { Point } from "./port.js";
 export const SVG_NS = "http://www.w3.org/2000/svg";
 
 export function createSvgElement<K extends keyof SVGElementTagNameMap>(
-  tag: K
+  tag: K,
 ): SVGElementTagNameMap[K] {
   return document.createElementNS(SVG_NS, tag) as SVGElementTagNameMap[K];
 }
 
-export function setAttrs(el: SVGElement, attrs: Record<string, string | number | undefined>): void {
+export function setAttrs(
+  el: SVGElement,
+  attrs: Record<string, string | number | undefined>,
+): void {
   for (const [key, value] of Object.entries(attrs)) {
     if (value === undefined) continue;
     el.setAttribute(key, String(value));
@@ -21,7 +24,11 @@ export function setAttrs(el: SVGElement, attrs: Record<string, string | number |
  * framework dependency — moved here from a shell-local `placement.ts` (previously duplicated
  * identically in `apps/web` and `apps/vscode`) so `CanvasController` can use it internally too.
  */
-export function clientPointToCanvas(svg: SVGSVGElement, clientX: number, clientY: number): Point | undefined {
+export function clientPointToCanvas(
+  svg: SVGSVGElement,
+  clientX: number,
+  clientY: number,
+): Point | undefined {
   const matrix = svg.getScreenCTM();
   if (!matrix) return undefined;
   const point = svg.createSVGPoint();

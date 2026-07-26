@@ -45,7 +45,11 @@ describe("ViewportController", () => {
 
   it("focuses on a rect, centering and fitting it within the viewport size", () => {
     const viewport = new ViewportController();
-    viewport.focusOn({ x: 100, y: 100, w: 200, h: 100 }, { w: 400, h: 400 }, { padding: 0 });
+    viewport.focusOn(
+      { x: 100, y: 100, w: 200, h: 100 },
+      { w: 400, h: 400 },
+      { padding: 0 },
+    );
     const state = viewport.get();
     // Fit is bounded by the smaller ratio (400/200=2 vs 400/100=4) => scale 2.
     expect(state.scale).toBe(2);
@@ -56,7 +60,11 @@ describe("ViewportController", () => {
 
   it("caps focusOn scale at maxScale even when the rect is tiny", () => {
     const viewport = new ViewportController();
-    viewport.focusOn({ x: 0, y: 0, w: 10, h: 10 }, { w: 400, h: 400 }, { padding: 0, maxScale: 1.5 });
+    viewport.focusOn(
+      { x: 0, y: 0, w: 10, h: 10 },
+      { w: 400, h: 400 },
+      { padding: 0, maxScale: 1.5 },
+    );
     expect(viewport.get().scale).toBe(1.5);
   });
 

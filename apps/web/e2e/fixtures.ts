@@ -11,7 +11,9 @@ export async function startBlankDiagram(page: Page): Promise<void> {
   // beat after the "open" prop flips — wait for it to fully leave the DOM before proceeding, or
   // an a11y scan run too early flags its (mid-transition, transient) contents.
   await page.locator('[aria-label="New diagram"]').waitFor({ state: "hidden" });
-  await page.locator(".icad-canvas svg[data-icad-root]").waitFor({ state: "visible" });
+  await page
+    .locator(".icad-canvas svg[data-icad-root]")
+    .waitFor({ state: "visible" });
 }
 
 /** Runs one command palette entry by its exact label — Ctrl/Cmd+K, type to filter, Enter to run. */

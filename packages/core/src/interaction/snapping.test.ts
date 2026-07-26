@@ -3,7 +3,14 @@ import { Scene } from "../scene/scene.js";
 import type { BoxElement } from "../scene/types.js";
 import { PARENT_INSET, snapMove } from "./snapping.js";
 
-function box(id: string, x: number, y: number, w: number, h: number, parentId?: string): BoxElement {
+function box(
+  id: string,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  parentId?: string,
+): BoxElement {
   return {
     id,
     type: "box",
@@ -12,7 +19,7 @@ function box(id: string, x: number, y: number, w: number, h: number, parentId?: 
     y,
     w,
     h,
-    ...(parentId ? { parentId } : {})
+    ...(parentId ? { parentId } : {}),
   };
 }
 
@@ -30,7 +37,9 @@ describe("snapMove", () => {
     const result = snapMove(scene, ["a"], 3, 0, { gridSize: 10, tolerance: 4 });
 
     expect(result.dx).toBe(0);
-    expect(result.guides).toContainEqual(expect.objectContaining({ orientation: "vertical", position: 0 }));
+    expect(result.guides).toContainEqual(
+      expect.objectContaining({ orientation: "vertical", position: 0 }),
+    );
   });
 
   it("leaves the delta unchanged when the nearest grid line is outside tolerance", () => {
@@ -51,11 +60,19 @@ describe("snapMove", () => {
 
     // gridSize 1000 keeps the grid from interfering — a's left edge (97) is 3px from b's left
     // edge (100), within tolerance 4.
-    const result = snapMove(scene, ["a"], 97, 0, { gridSize: 1000, tolerance: 4 });
+    const result = snapMove(scene, ["a"], 97, 0, {
+      gridSize: 1000,
+      tolerance: 4,
+    });
 
     expect(result.dx).toBe(100);
     expect(result.guides).toContainEqual(
-      expect.objectContaining({ orientation: "vertical", position: 100, start: 0, end: 20 })
+      expect.objectContaining({
+        orientation: "vertical",
+        position: 100,
+        start: 0,
+        end: 20,
+      }),
     );
   });
 
@@ -65,10 +82,15 @@ describe("snapMove", () => {
     scene._put(box("b", 300, 50, 20, 60)); // center (310, 80)
 
     // a's center-y after a +68 move is 78, 2px from b's center-y (80), within tolerance 4.
-    const result = snapMove(scene, ["a"], 0, 68, { gridSize: 1000, tolerance: 4 });
+    const result = snapMove(scene, ["a"], 0, 68, {
+      gridSize: 1000,
+      tolerance: 4,
+    });
 
     expect(result.dy).toBe(70);
-    expect(result.guides).toContainEqual(expect.objectContaining({ orientation: "horizontal", position: 80 }));
+    expect(result.guides).toContainEqual(
+      expect.objectContaining({ orientation: "horizontal", position: 80 }),
+    );
   });
 
   it("does not snap to elements outside its own parent scope", () => {
@@ -77,7 +99,10 @@ describe("snapMove", () => {
     scene._put(box("a", 10, 10, 20, 20, "parent"));
     scene._put(box("b", 200, 10, 20, 20)); // root level — a different parent than "a"
 
-    const result = snapMove(scene, ["a"], 100, 0, { gridSize: 1000, tolerance: 4 });
+    const result = snapMove(scene, ["a"], 100, 0, {
+      gridSize: 1000,
+      tolerance: 4,
+    });
 
     expect(result.dx).toBe(100);
   });
@@ -87,7 +112,10 @@ describe("snapMove", () => {
     scene._put(box("parent", 0, 0, 200, 200));
     scene._put(box("child", 20, 20, 40, 40, "parent"));
 
-    const result = snapMove(scene, ["child"], 1000, 1000, { gridSize: 1000, tolerance: 4 });
+    const result = snapMove(scene, ["child"], 1000, 1000, {
+      gridSize: 1000,
+      tolerance: 4,
+    });
 
     const max = 200 - PARENT_INSET - 40; // 144 (parent and child are both square here)
     expect(20 + result.dx).toBe(max);
@@ -99,7 +127,10 @@ describe("snapMove", () => {
     scene._put(box("parent", 0, 0, 200, 200));
     scene._put(box("child", 20, 20, 40, 40, "parent"));
 
-    const result = snapMove(scene, ["child"], -1000, -1000, { gridSize: 1000, tolerance: 4 });
+    const result = snapMove(scene, ["child"], -1000, -1000, {
+      gridSize: 1000,
+      tolerance: 4,
+    });
 
     expect(20 + result.dx).toBe(PARENT_INSET);
     expect(20 + result.dy).toBe(PARENT_INSET);
@@ -113,7 +144,10 @@ describe("snapMove", () => {
 
     // The sibling's edges are an exact snap candidate, but landing on them would put "child"
     // outside the parent's bounds, so the clamp must win and the guide must not be reported.
-    const result = snapMove(scene, ["child"], 480, 0, { gridSize: 1000, tolerance: 4 });
+    const result = snapMove(scene, ["child"], 480, 0, {
+      gridSize: 1000,
+      tolerance: 4,
+    });
 
     expect(result.guides.some((g) => g.orientation === "vertical")).toBe(false);
     expect(20 + result.dx).toBe(200 - PARENT_INSET - 40);
@@ -125,14 +159,21 @@ describe("snapMove", () => {
     scene._put(box("b", 100, 0, 40, 40));
 
     // Combined bbox spans x 0..140; left edge at 6 is 2px from the grid line at 8.
-    const result = snapMove(scene, ["a", "b"], 6, 0, { gridSize: 8, tolerance: 4 });
+    const result = snapMove(scene, ["a", "b"], 6, 0, {
+      gridSize: 8,
+      tolerance: 4,
+    });
 
     expect(result.dx).toBe(8);
   });
 
   it("returns the delta unchanged for an unknown or empty selection", () => {
     const scene = new Scene();
-    expect(snapMove(scene, ["missing"], 5, 5)).toEqual({ dx: 5, dy: 5, guides: [] });
+    expect(snapMove(scene, ["missing"], 5, 5)).toEqual({
+      dx: 5,
+      dy: 5,
+      guides: [],
+    });
     expect(snapMove(scene, [], 5, 5)).toEqual({ dx: 5, dy: 5, guides: [] });
   });
 });

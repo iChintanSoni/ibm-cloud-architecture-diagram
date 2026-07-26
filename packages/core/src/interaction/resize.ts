@@ -5,7 +5,16 @@ import type { Rect } from "../routing/orthogonalRouter.js";
  * docs/10-canvas-parity-plan.md): 4 corners + 4 mid-edges. Order is render/hit-test order only,
  * not semantically meaningful.
  */
-export const RESIZE_HANDLES = ["nw", "n", "ne", "e", "se", "s", "sw", "w"] as const;
+export const RESIZE_HANDLES = [
+  "nw",
+  "n",
+  "ne",
+  "e",
+  "se",
+  "s",
+  "sw",
+  "w",
+] as const;
 
 export type ResizeHandle = (typeof RESIZE_HANDLES)[number];
 
@@ -29,16 +38,29 @@ export interface ResizeOptions {
  * enforcement", docs/10-canvas-parity-plan.md#m17--the-feedback-layer); this only derives the
  * geometry a resize gesture previews/commits.
  */
-export function resizeBounds(start: Rect, handle: ResizeHandle, dx: number, dy: number, options: ResizeOptions = {}): Rect {
+export function resizeBounds(
+  start: Rect,
+  handle: ResizeHandle,
+  dx: number,
+  dy: number,
+  options: ResizeOptions = {},
+): Rect {
   const touchesLeft = handle === "w" || handle === "nw" || handle === "sw";
   const touchesRight = handle === "e" || handle === "ne" || handle === "se";
   const touchesTop = handle === "n" || handle === "nw" || handle === "ne";
   const touchesBottom = handle === "s" || handle === "sw" || handle === "se";
-  const isCorner = (touchesLeft || touchesRight) && (touchesTop || touchesBottom);
+  const isCorner =
+    (touchesLeft || touchesRight) && (touchesTop || touchesBottom);
   const centerFactor = options.fromCenter ? 2 : 1;
 
-  let w = touchesLeft || touchesRight ? start.w + (touchesRight ? dx : -dx) * centerFactor : start.w;
-  let h = touchesTop || touchesBottom ? start.h + (touchesBottom ? dy : -dy) * centerFactor : start.h;
+  let w =
+    touchesLeft || touchesRight
+      ? start.w + (touchesRight ? dx : -dx) * centerFactor
+      : start.w;
+  let h =
+    touchesTop || touchesBottom
+      ? start.h + (touchesBottom ? dy : -dy) * centerFactor
+      : start.h;
 
   if (options.aspectLock && isCorner && start.w > 0 && start.h > 0) {
     const ratio = start.w / start.h;

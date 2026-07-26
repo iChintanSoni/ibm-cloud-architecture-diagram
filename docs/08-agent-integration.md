@@ -24,16 +24,19 @@ build incrementally and self-correct via the linter.
 25 tools across four groups (`packages/mcp/src/tools/`):
 
 **Catalog & discovery**
+
 - `catalog_search({ query })` → matching IBM icons (id, name, category, semantic).
 - `catalog_categories()` → the list of icon categories.
 
 **Document**
+
 - `doc_create({ level, force? })` → new `.icad` scene from a template level (`blank` |
   `system-context` | `high-level` | `detailed`).
 - `doc_open({ path, force? })` / `doc_save({ path? })`.
 - `doc_get()` → current scene (elements, frames, meta).
 
 **Authoring**
+
 - `element_add_icon({ catalogRef, at, parentId?, label? })`
 - `element_add_box` / `element_add_group` / `element_add_zone({ zoneKind? })` / `element_add_actor` / `element_add_text` / `element_add_frame({ name, order? })`
 - `element_update({ id, patch })` / `element_move({ ids, dx, dy })` / `element_delete({ ids })`
@@ -43,6 +46,7 @@ build incrementally and self-correct via the linter.
 - `frame_reorder({ frameIds })`
 
 **Conformance & output**
+
 - `lint()` → diagnostics + counts + available quick-fixes.
 - `quickfix_apply({ diagnosticId })` / `quickfix_apply_all({ ruleId? })`.
 - `export_diagram({ format: "svg", embedSource?, path? })` → file/bytes. PNG is deferred (needs a

@@ -8,7 +8,10 @@ import type { CommandItem } from "./commandPaletteModel.js";
 
 /** Controlled Carbon inputs need the native setter so React's change-event plugin fires onChange. */
 function setNativeInputValue(input: HTMLInputElement, value: string): void {
-  const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!;
+  const setter = Object.getOwnPropertyDescriptor(
+    window.HTMLInputElement.prototype,
+    "value",
+  )!.set!;
   setter.call(input, value);
   input.dispatchEvent(new Event("input", { bubbles: true }));
 }
@@ -33,13 +36,15 @@ describe("CommandPalette", () => {
     return [
       { id: "new", label: "New diagram", category: "File", run: vi.fn() },
       { id: "save", label: "Save .icad", category: "File", run: vi.fn() },
-      { id: "undo", label: "Undo", category: "Edit", run: vi.fn() }
+      { id: "undo", label: "Undo", category: "Edit", run: vi.fn() },
     ];
   }
 
   it("renders nothing when closed", () => {
     act(() => {
-      root.render(<CommandPalette open={false} commands={commands()} onClose={vi.fn()} />);
+      root.render(
+        <CommandPalette open={false} commands={commands()} onClose={vi.fn()} />,
+      );
     });
     expect(container.querySelector('[role="dialog"]')).toBeNull();
   });
@@ -53,7 +58,11 @@ describe("CommandPalette", () => {
     });
 
     const options = [...container.querySelectorAll('[role="option"]')];
-    expect(options.map((o) => o.textContent)).toEqual(["New diagramFile", "Save .icadFile", "UndoEdit"]);
+    expect(options.map((o) => o.textContent)).toEqual([
+      "New diagramFile",
+      "Save .icadFile",
+      "UndoEdit",
+    ]);
 
     act(() => (options[1] as HTMLButtonElement).click());
     expect(items[1]?.run).toHaveBeenCalled();
@@ -62,25 +71,40 @@ describe("CommandPalette", () => {
 
   it("filters commands as the query changes", () => {
     act(() => {
-      root.render(<CommandPalette open commands={commands()} onClose={vi.fn()} />);
+      root.render(
+        <CommandPalette open commands={commands()} onClose={vi.fn()} />,
+      );
     });
 
     const input = container.querySelector<HTMLInputElement>("input")!;
     act(() => setNativeInputValue(input, "save"));
 
-    expect([...container.querySelectorAll('[role="option"]')].map((o) => o.textContent)).toEqual(["Save .icadFile"]);
+    expect(
+      [...container.querySelectorAll('[role="option"]')].map(
+        (o) => o.textContent,
+      ),
+    ).toEqual(["Save .icadFile"]);
   });
 
   it("runs the active command on Enter and supports arrow-key navigation", () => {
     const items = commands();
-    const dialog = () => container.querySelector('[role="dialog"]') as HTMLElement;
+    const dialog = () =>
+      container.querySelector('[role="dialog"]') as HTMLElement;
 
     act(() => {
       root.render(<CommandPalette open commands={items} onClose={vi.fn()} />);
     });
 
-    act(() => dialog().dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true })));
-    act(() => dialog().dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })));
+    act(() =>
+      dialog().dispatchEvent(
+        new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }),
+      ),
+    );
+    act(() =>
+      dialog().dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+      ),
+    );
 
     expect(items[1]?.run).toHaveBeenCalled();
     expect(items[0]?.run).not.toHaveBeenCalled();
@@ -97,12 +121,24 @@ describe("CommandPalette", () => {
     act(() =>
       container
         .querySelector('[role="dialog"]')!
-        .dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }))
+        .dispatchEvent(
+          new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+        ),
     );
     expect(onClose).toHaveBeenCalledTimes(1);
-    expect(items.every((c) => (c.run as ReturnType<typeof vi.fn>).mock.calls.length === 0)).toBe(true);
+    expect(
+      items.every(
+        (c) => (c.run as ReturnType<typeof vi.fn>).mock.calls.length === 0,
+      ),
+    ).toBe(true);
 
-    act(() => (container.querySelector(".icad-command-palette__backdrop") as HTMLElement).click());
+    act(() =>
+      (
+        container.querySelector(
+          ".icad-command-palette__backdrop",
+        ) as HTMLElement
+      ).click(),
+    );
     expect(onClose).toHaveBeenCalledTimes(2);
   });
 
@@ -112,17 +148,36 @@ describe("CommandPalette", () => {
     trigger.focus();
     expect(document.activeElement).toBe(trigger);
 
-    act(() => root.render(<CommandPalette open commands={commands()} onClose={vi.fn()} />));
+    act(() =>
+      root.render(
+        <CommandPalette open commands={commands()} onClose={vi.fn()} />,
+      ),
+    );
     expect(document.activeElement).not.toBe(trigger);
 
-    act(() => root.render(<CommandPalette open={false} commands={commands()} onClose={vi.fn()} />));
+    act(() =>
+      root.render(
+        <CommandPalette open={false} commands={commands()} onClose={vi.fn()} />,
+      ),
+    );
     expect(document.activeElement).toBe(trigger);
 
     trigger.remove();
   });
 
   it("resets the query when reopened", () => {
-    const { rerender } = { rerender: (open: boolean) => act(() => root.render(<CommandPalette open={open} commands={commands()} onClose={vi.fn()} />)) };
+    const { rerender } = {
+      rerender: (open: boolean) =>
+        act(() =>
+          root.render(
+            <CommandPalette
+              open={open}
+              commands={commands()}
+              onClose={vi.fn()}
+            />,
+          ),
+        ),
+    };
 
     rerender(true);
     const input = container.querySelector<HTMLInputElement>("input")!;

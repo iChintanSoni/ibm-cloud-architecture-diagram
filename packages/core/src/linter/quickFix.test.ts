@@ -14,7 +14,7 @@ function unlabeledBox(id: string): BoxElement {
     x: 0,
     y: 0,
     w: 100,
-    h: 100
+    h: 100,
   };
 }
 
@@ -25,7 +25,7 @@ describe("quick-fix commands", () => {
       ruleId: "manual",
       severity: "warn",
       category: "layout",
-      message: "Requires user judgment"
+      message: "Requires user judgment",
     };
     expect(() => applyQuickFix(diagnostic)).toThrow(/has no quick-fix/);
   });
@@ -49,7 +49,9 @@ describe("quick-fix commands", () => {
     scene._put(unlabeledBox("b"));
     const bus = new CommandBus(scene);
 
-    bus.dispatch(applyQuickFixes(missingLabelRule(scene), "fix missing labels"));
+    bus.dispatch(
+      applyQuickFixes(missingLabelRule(scene), "fix missing labels"),
+    );
     expect(scene.get("a")?.label?.text).toBe("Untitled");
     expect(scene.get("b")?.label?.text).toBe("Untitled");
 

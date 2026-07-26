@@ -14,20 +14,20 @@ authoring against the MCP server directly.
 
 ## Element semantics
 
-Shapes carry meaning, not just geometry. Pick the element by what it *means*, not what it looks like:
+Shapes carry meaning, not just geometry. Pick the element by what it _means_, not what it looks like:
 
-| Element | MCP tool | IBM semantic | Visual convention |
-|---|---|---|---|
-| **Box** | `element_add_box` | `deployedOn` — a location (logical/virtual/physical) that infra/services are deployed **on** | Solid-border container |
-| **Group** | `element_add_group` | `deployedTo` — grouping of services/apps deployed **to** a box | Dashed-border container |
-| **Zone** (labelled "Boundary" in the UI) | `element_add_zone` | Region / availability zone / VPC / subnet / on-prem boundary | Labeled boundary; set `zoneKind`: `region`\|`az`\|`vpc`\|`subnet`\|`on-prem` |
-| **IconNode** | `element_add_icon` | Standalone component/device, from the catalog | Square container, IBM icon (48×48, 1px outline) |
-| **Actor** | `element_add_actor` | Role/user/external system | Rounded shape |
-| **Connector** | `connect` / `connect_nearest` | Relationship or traffic flow | See nomenclature below |
-| **Frame** | `element_add_frame` | Presentation section, always top-level, never a semantic container | Named, orderable region |
+| Element                                  | MCP tool                      | IBM semantic                                                                                 | Visual convention                                                            |
+| ---------------------------------------- | ----------------------------- | -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| **Box**                                  | `element_add_box`             | `deployedOn` — a location (logical/virtual/physical) that infra/services are deployed **on** | Solid-border container                                                       |
+| **Group**                                | `element_add_group`           | `deployedTo` — grouping of services/apps deployed **to** a box                               | Dashed-border container                                                      |
+| **Zone** (labelled "Boundary" in the UI) | `element_add_zone`            | Region / availability zone / VPC / subnet / on-prem boundary                                 | Labeled boundary; set `zoneKind`: `region`\|`az`\|`vpc`\|`subnet`\|`on-prem` |
+| **IconNode**                             | `element_add_icon`            | Standalone component/device, from the catalog                                                | Square container, IBM icon (48×48, 1px outline)                              |
+| **Actor**                                | `element_add_actor`           | Role/user/external system                                                                    | Rounded shape                                                                |
+| **Connector**                            | `connect` / `connect_nearest` | Relationship or traffic flow                                                                 | See nomenclature below                                                       |
+| **Frame**                                | `element_add_frame`           | Presentation section, always top-level, never a semantic container                           | Named, orderable region                                                      |
 
-Worked example from IBM's own docs: *a virtual server instance is `deployedOn` a subnet and
-`deployedTo` a security group* — model both: a Zone (`subnet`) containing a Box (the instance's
+Worked example from IBM's own docs: _a virtual server instance is `deployedOn` a subnet and
+`deployedTo` a security group_ — model both: a Zone (`subnet`) containing a Box (the instance's
 platform), and separately a Group (the security group) the instance is `deployedTo`. Don't force
 every Group under a Box — the published guidance doesn't require that nesting.
 
@@ -44,26 +44,26 @@ every Group under a Box — the published guidance doesn't require that nesting.
 
 ## Color usage
 
-| Role | Palette weight | Used for |
-|---|---|---|
-| Primary | 50/60 (full saturation) | Outlines, side-bar accents, color blocks, connectors |
-| Secondary | 10 (light tint) or white | Fills only |
-| Alert | Red/Yellow/Green alert tokens | Badges only |
+| Role      | Palette weight                | Used for                                             |
+| --------- | ----------------------------- | ---------------------------------------------------- |
+| Primary   | 50/60 (full saturation)       | Outlines, side-bar accents, color blocks, connectors |
+| Secondary | 10 (light tint) or white      | Fills only                                           |
+| Alert     | Red/Yellow/Green alert tokens | Badges only                                          |
 
 Never rely on color alone — labels and icons must carry meaning too. The nine category colors
 (also baked into each catalog icon's `color` field):
 
-| Category | Primary (outline/connector) | Secondary (10-tint fill) |
-|---|---|---|
-| Security | Red 50 `#fa4d56` | Red 10 `#fff1f1` |
-| DevOps | Magenta 50 `#ee5396` | Magenta 10 `#fff0f7` |
-| Applications | Purple 50 `#a56eff` | Purple 10 `#f6f2ff` |
-| Data & Storage | Blue 60 `#0f62fe` | Blue 10 `#edf5ff` |
-| Network | Cyan 50 `#1192e8` | Cyan 10 `#e5f6ff` |
-| Observability | Teal 50 `#009d9a` | Teal 10 `#d9fbfb` |
-| Compute | Green 60 `#198038` | Green 10 `#defbe6` |
-| Backend / generic location | Cool Gray 50 `#878d96` | Cool Gray 10 `#f2f4f8` |
-| User / Actors | Black `#000000` | — |
+| Category                   | Primary (outline/connector) | Secondary (10-tint fill) |
+| -------------------------- | --------------------------- | ------------------------ |
+| Security                   | Red 50 `#fa4d56`            | Red 10 `#fff1f1`         |
+| DevOps                     | Magenta 50 `#ee5396`        | Magenta 10 `#fff0f7`     |
+| Applications               | Purple 50 `#a56eff`         | Purple 10 `#f6f2ff`      |
+| Data & Storage             | Blue 60 `#0f62fe`           | Blue 10 `#edf5ff`        |
+| Network                    | Cyan 50 `#1192e8`           | Cyan 10 `#e5f6ff`        |
+| Observability              | Teal 50 `#009d9a`           | Teal 10 `#d9fbfb`        |
+| Compute                    | Green 60 `#198038`          | Green 10 `#defbe6`       |
+| Backend / generic location | Cool Gray 50 `#878d96`      | Cool Gray 10 `#f2f4f8`   |
+| User / Actors              | Black `#000000`             | —                        |
 
 In practice: don't hand-set `style.stroke`/`style.fill` unless you're deviating deliberately —
 default element styling already follows this table, and the linter's quick-fixes correct drift.
@@ -81,16 +81,17 @@ Connector **type** is first-class, not just a line style. Pass it as `connectorT
 `connect`/`connect_nearest`. Two families:
 
 ### Connection types — physical/protocol traffic
+
 Each has a `direction`: `unidirectional` (source dot, destination arrow) or `bidirectional` (dots
 at both ends).
 
-| `connectorType` value | Meaning |
-|---|---|
-| `logical-connection` | Logical message exchanged between elements |
-| `connection` | Network connection |
-| `physical-connection` | Physical/cabled connection |
-| `tunneling-connection` | Traffic through a tunnel/encapsulation |
-| `traffic-through-double-tunnel` | Traffic through nested tunnels |
+| `connectorType` value           | Meaning                                    |
+| ------------------------------- | ------------------------------------------ |
+| `logical-connection`            | Logical message exchanged between elements |
+| `connection`                    | Network connection                         |
+| `physical-connection`           | Physical/cabled connection                 |
+| `tunneling-connection`          | Traffic through a tunnel/encapsulation     |
+| `traffic-through-double-tunnel` | Traffic through nested tunnels             |
 
 Set `flowColor`: `"private"` (green) or `"public"` (blue) — independent of the type above, and
 independent of direction. Label connections `[Protocol/Application NAME] [Encryption/Security]:[PORT]`,
@@ -98,14 +99,14 @@ e.g. `label: "HTTPS TLS1.3:443"`.
 
 ### Relationship types — logical, not traffic
 
-| `connectorType` value | Meaning |
-|---|---|
-| `dependency` | Standard — used ~99% of the time, with a description label |
-| `association` | Standard |
-| `aggregation` | UML "has-a" — part can outlive the whole |
-| `composition` | UML "owns-a" — part's lifetime bound to the whole |
-| `implementation` | UML — realizes an interface |
-| `extends` | UML — inheritance |
+| `connectorType` value | Meaning                                                    |
+| --------------------- | ---------------------------------------------------------- |
+| `dependency`          | Standard — used ~99% of the time, with a description label |
+| `association`         | Standard                                                   |
+| `aggregation`         | UML "has-a" — part can outlive the whole                   |
+| `composition`         | UML "owns-a" — part's lifetime bound to the whole          |
+| `implementation`      | UML — realizes an interface                                |
+| `extends`             | UML — inheritance                                          |
 
 `association`/`aggregation`/`composition` may carry `cardinality: { from, to }` (e.g. `"0..N"`).
 Relationships don't take `flowColor` — that's a connection-family concept.

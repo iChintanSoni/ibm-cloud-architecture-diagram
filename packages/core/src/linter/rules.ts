@@ -1,16 +1,26 @@
-import { autoRouteConnector, batch, updateElement } from "../commands/commands.js";
+import {
+  autoRouteConnector,
+  batch,
+  updateElement,
+} from "../commands/commands.js";
 import type { Command } from "../commands/types.js";
 import { pathCrossesObstacles } from "../routing/orthogonalRouter.js";
-import { connectorPathPoints, obstaclesFor } from "../routing/routeConnector.js";
+import {
+  connectorPathPoints,
+  obstaclesFor,
+} from "../routing/routeConnector.js";
 import type { Scene } from "../scene/scene.js";
 import type {
   ConnectorElement,
   ConnectorType,
   PortSide,
   SceneElement,
-  Semantic
+  Semantic,
 } from "../scene/types.js";
-import { PRIMARY_TO_SECONDARY_FILL, SECONDARY_TO_PRIMARY_FILL } from "../theme/colorPalette.js";
+import {
+  PRIMARY_TO_SECONDARY_FILL,
+  SECONDARY_TO_PRIMARY_FILL,
+} from "../theme/colorPalette.js";
 import type { Diagnostic, Rule, RuleMetadata, Severity } from "./types.js";
 
 const LABELED_TYPES = new Set(["box", "group", "zone", "actor"]);
@@ -26,7 +36,7 @@ const VALID_CONNECTOR_TYPES = new Set<ConnectorType>([
   "aggregation",
   "composition",
   "implementation",
-  "extends"
+  "extends",
 ]);
 
 function colorKey(color: string): string {
@@ -40,7 +50,7 @@ function diagnostic(
   elementId: string,
   message: string,
   quickFix?: Command,
-  quickFixLabel?: string
+  quickFixLabel?: string,
 ): Diagnostic {
   return {
     id: `${ruleId}:${elementId}`,
@@ -50,7 +60,7 @@ function diagnostic(
     elementId,
     message,
     ...(quickFix ? { quickFix } : {}),
-    ...(quickFixLabel ? { quickFixLabel } : {})
+    ...(quickFixLabel ? { quickFixLabel } : {}),
   };
 }
 
@@ -67,8 +77,8 @@ export const missingLabelRule: Rule = (scene: Scene): Diagnostic[] => {
         el.id,
         `"${el.id}" (${el.type}) is missing a required label.`,
         updateElement(scene, el.id, { label: { text: "Untitled" } }),
-        "Add label"
-      )
+        "Add label",
+      ),
     );
   }
   return diagnostics;
@@ -98,9 +108,11 @@ export const duplicateLabelRule: Rule = (scene: Scene): Diagnostic[] => {
           "labels",
           el.id,
           `Label "${original}" is used by ${elements.length} elements.`,
-          updateElement(scene, el.id, { label: { ...el.label, text: replacement } }),
-          `Rename to "${replacement}"`
-        )
+          updateElement(scene, el.id, {
+            label: { ...el.label, text: replacement },
+          }),
+          `Rename to "${replacement}"`,
+        ),
       );
     }
   }
@@ -120,8 +132,8 @@ export const catalogIconRule: Rule = (scene, context): Diagnostic[] => {
         "error",
         "semantics",
         el.id,
-        `"${el.id}" references an icon that is not in catalog ${context.catalog.id}@${context.catalog.version}.`
-      )
+        `"${el.id}" references an icon that is not in catalog ${context.catalog.id}@${context.catalog.version}.`,
+      ),
     );
   }
   return diagnostics;
@@ -149,11 +161,14 @@ export const containerSemanticRule: Rule = (scene): Diagnostic[] => {
             scene,
             el.id,
             convert
-              ? ({ type: "group", semantic: "deployedTo" } as Partial<SceneElement>)
-              : ({ semantic: "deployedOn" } as Partial<SceneElement>)
+              ? ({
+                  type: "group",
+                  semantic: "deployedTo",
+                } as Partial<SceneElement>)
+              : ({ semantic: "deployedOn" } as Partial<SceneElement>),
           ),
-          convert ? "Convert to Group" : "Use deployedOn"
-        )
+          convert ? "Convert to Group" : "Use deployedOn",
+        ),
       );
     }
     if (el.type === "group" && semantic !== "deployedTo") {
@@ -169,11 +184,14 @@ export const containerSemanticRule: Rule = (scene): Diagnostic[] => {
             scene,
             el.id,
             convert
-              ? ({ type: "box", semantic: "deployedOn" } as Partial<SceneElement>)
-              : ({ semantic: "deployedTo" } as Partial<SceneElement>)
+              ? ({
+                  type: "box",
+                  semantic: "deployedOn",
+                } as Partial<SceneElement>)
+              : ({ semantic: "deployedTo" } as Partial<SceneElement>),
           ),
-          convert ? "Convert to Box" : "Use deployedTo"
-        )
+          convert ? "Convert to Box" : "Use deployedTo",
+        ),
       );
     }
   }
@@ -196,8 +214,8 @@ export const containerBorderRule: Rule = (scene): Diagnostic[] => {
         el.id,
         `"${el.id}" uses the wrong border style for a ${el.type}.`,
         updateElement(scene, el.id, { style: nextStyle }),
-        wrongBox ? "Use solid border" : "Use dashed border"
-      )
+        wrongBox ? "Use solid border" : "Use dashed border",
+      ),
     );
   }
   return diagnostics;
@@ -219,8 +237,8 @@ export const primaryFillRule: Rule = (scene): Diagnostic[] => {
         el.id,
         `"${el.id}" uses a saturated primary color as a fill; IBM primary colors are for accents.`,
         updateElement(scene, el.id, { style: { fill: secondary } }),
-        `Use ${secondary} tint`
-      )
+        `Use ${secondary} tint`,
+      ),
     );
   }
   return diagnostics;
@@ -242,8 +260,8 @@ export const secondaryStrokeRule: Rule = (scene): Diagnostic[] => {
         el.id,
         `"${el.id}" uses a light fill tint for an outline or connector.`,
         updateElement(scene, el.id, { style: { stroke: primary } }),
-        `Use ${primary} primary`
-      )
+        `Use ${primary} primary`,
+      ),
     );
   }
   return diagnostics;
@@ -255,11 +273,17 @@ export const secondaryStrokeRule: Rule = (scene): Diagnostic[] => {
  * components.
  */
 export const nodeWithoutLocationRule: Rule = (scene): Diagnostic[] => {
-  if (scene.meta.diagramLevel !== "high-level" && scene.meta.diagramLevel !== "detailed") return [];
+  if (
+    scene.meta.diagramLevel !== "high-level" &&
+    scene.meta.diagramLevel !== "detailed"
+  )
+    return [];
   const diagnostics: Diagnostic[] = [];
   for (const el of scene.all()) {
     if (el.type !== "iconNode") continue;
-    const located = scene.ancestorsOf(el.id).some((ancestor) => ancestor.type === "box" || ancestor.type === "zone");
+    const located = scene
+      .ancestorsOf(el.id)
+      .some((ancestor) => ancestor.type === "box" || ancestor.type === "zone");
     if (located) continue;
     diagnostics.push(
       diagnostic(
@@ -267,8 +291,8 @@ export const nodeWithoutLocationRule: Rule = (scene): Diagnostic[] => {
         "warn",
         "containment",
         el.id,
-        `"${el.id}" has no Box or Boundary ancestor in a ${scene.meta.diagramLevel} diagram.`
-      )
+        `"${el.id}" has no Box or Boundary ancestor in a ${scene.meta.diagramLevel} diagram.`,
+      ),
     );
   }
   return diagnostics;
@@ -286,8 +310,8 @@ export const danglingConnectorRule: Rule = (scene: Scene): Diagnostic[] => {
         "error",
         "connectors",
         el.id,
-        `Connector "${el.id}" has an endpoint that no longer exists.`
-      )
+        `Connector "${el.id}" has an endpoint that no longer exists.`,
+      ),
     );
   }
   return diagnostics;
@@ -297,7 +321,8 @@ export const danglingConnectorRule: Rule = (scene: Scene): Diagnostic[] => {
 export const standardConnectorTypeRule: Rule = (scene): Diagnostic[] => {
   const diagnostics: Diagnostic[] = [];
   for (const el of scene.all()) {
-    if (el.type !== "connector" || VALID_CONNECTOR_TYPES.has(el.connectorType)) continue;
+    if (el.type !== "connector" || VALID_CONNECTOR_TYPES.has(el.connectorType))
+      continue;
     diagnostics.push(
       diagnostic(
         "non-standard-connector",
@@ -305,9 +330,11 @@ export const standardConnectorTypeRule: Rule = (scene): Diagnostic[] => {
         "connectors",
         el.id,
         `Connector "${el.id}" uses the non-standard type "${String(el.connectorType)}".`,
-        updateElement(scene, el.id, { connectorType: "association" } as Partial<SceneElement>),
-        "Use Association"
-      )
+        updateElement(scene, el.id, {
+          connectorType: "association",
+        } as Partial<SceneElement>),
+        "Use Association",
+      ),
     );
   }
   return diagnostics;
@@ -330,8 +357,8 @@ export const connectorAnnotationRule: Rule = (scene): Diagnostic[] => {
           "warn",
           "connectors",
           el.id,
-          `Connector "${el.id}" has a protocol/encapsulation annotation with no name.`
-        )
+          `Connector "${el.id}" has a protocol/encapsulation annotation with no name.`,
+        ),
       );
     }
     if (port?.trim() && !/^\d+$/.test(port.trim())) {
@@ -341,8 +368,8 @@ export const connectorAnnotationRule: Rule = (scene): Diagnostic[] => {
           "warn",
           "connectors",
           el.id,
-          `Connector "${el.id}"'s annotation port "${port}" is not a plain port number.`
-        )
+          `Connector "${el.id}"'s annotation port "${port}" is not a plain port number.`,
+        ),
       );
     }
   }
@@ -370,12 +397,21 @@ export const connectorPortRule: Rule = (scene): Diagnostic[] => {
     if (fromEl && toEl) {
       const patched: ConnectorElement = {
         ...el,
-        from: { ...el.from, port: invalidFrom ? nearestPort(fromEl, toEl) : el.from.port },
-        to: { ...el.to, port: invalidTo ? nearestPort(toEl, fromEl) : el.to.port }
+        from: {
+          ...el.from,
+          port: invalidFrom ? nearestPort(fromEl, toEl) : el.from.port,
+        },
+        to: {
+          ...el.to,
+          port: invalidTo ? nearestPort(toEl, fromEl) : el.to.port,
+        },
       };
       quickFix = batch("bind connector to nearest ports", [
-        updateElement(scene, el.id, { from: patched.from, to: patched.to } as Partial<SceneElement>),
-        autoRouteConnector(scene, el.id)
+        updateElement(scene, el.id, {
+          from: patched.from,
+          to: patched.to,
+        } as Partial<SceneElement>),
+        autoRouteConnector(scene, el.id),
       ]);
     }
     diagnostics.push(
@@ -386,8 +422,8 @@ export const connectorPortRule: Rule = (scene): Diagnostic[] => {
         el.id,
         `Connector "${el.id}" has an endpoint that is not bound to a named port.`,
         quickFix,
-        quickFix ? "Bind to nearest ports" : undefined
-      )
+        quickFix ? "Bind to nearest ports" : undefined,
+      ),
     );
   }
   return diagnostics;
@@ -397,15 +433,21 @@ export const connectorPortRule: Rule = (scene): Diagnostic[] => {
  * Connectors whose route crosses a leaf shape it is not attached to can be
  * returned to the obstacle-avoiding router.
  */
-export const connectorCrossesObstacleRule: Rule = (scene: Scene): Diagnostic[] => {
+export const connectorCrossesObstacleRule: Rule = (
+  scene: Scene,
+): Diagnostic[] => {
   const diagnostics: Diagnostic[] = [];
   for (const el of scene.all()) {
     if (el.type !== "connector") continue;
     if (!scene.has(el.from.elementId) || !scene.has(el.to.elementId)) continue;
-    if (!VALID_PORTS.has(el.from.port) || !VALID_PORTS.has(el.to.port)) continue;
+    if (!VALID_PORTS.has(el.from.port) || !VALID_PORTS.has(el.to.port))
+      continue;
 
     const points = connectorPathPoints(scene, el);
-    const obstacles = obstaclesFor(scene, new Set([el.from.elementId, el.to.elementId]));
+    const obstacles = obstaclesFor(
+      scene,
+      new Set([el.from.elementId, el.to.elementId]),
+    );
     if (!pathCrossesObstacles(points, obstacles)) continue;
 
     diagnostics.push(
@@ -416,8 +458,8 @@ export const connectorCrossesObstacleRule: Rule = (scene: Scene): Diagnostic[] =
         el.id,
         `Connector "${el.id}" crosses another shape; a clean orthogonal route is available.`,
         autoRouteConnector(scene, el.id),
-        "Re-route"
-      )
+        "Re-route",
+      ),
     );
   }
   return diagnostics;
@@ -440,8 +482,8 @@ export const westEastFlowRule: Rule = (scene): Diagnostic[] => {
         "warn",
         "layout",
         el.id,
-        `Public connector "${el.id}" flows right-to-left; public entry should read west-to-east.`
-      )
+        `Public connector "${el.id}" flows right-to-left; public entry should read west-to-east.`,
+      ),
     );
   }
   return diagnostics;
@@ -452,7 +494,12 @@ export const iconGeometryRule: Rule = (scene): Diagnostic[] => {
   const diagnostics: Diagnostic[] = [];
   for (const el of scene.all()) {
     if (el.type !== "iconNode") continue;
-    if (el.w === 48 && el.h === 48 && (el.style?.strokeWidth === undefined || el.style.strokeWidth === 1)) continue;
+    if (
+      el.w === 48 &&
+      el.h === 48 &&
+      (el.style?.strokeWidth === undefined || el.style.strokeWidth === 1)
+    )
+      continue;
     diagnostics.push(
       diagnostic(
         "icon-geometry",
@@ -460,51 +507,115 @@ export const iconGeometryRule: Rule = (scene): Diagnostic[] => {
         "layout",
         el.id,
         `"${el.id}" has drifted from the IBM 48×48 container / 1px outline spec.`,
-        updateElement(scene, el.id, { w: 48, h: 48, style: { strokeWidth: 1 } }),
-        "Snap to 48×48"
-      )
+        updateElement(scene, el.id, {
+          w: 48,
+          h: 48,
+          style: { strokeWidth: 1 },
+        }),
+        "Snap to 48×48",
+      ),
     );
   }
   return diagnostics;
 };
 
 export const ruleMetadata: RuleMetadata[] = [
-  { id: "container-semantic", title: "Container semantics", category: "semantics", defaultSeverity: "error" },
-  { id: "container-border", title: "Container border", category: "semantics", defaultSeverity: "warn" },
-  { id: "non-catalog-icon", title: "Catalog icon", category: "semantics", defaultSeverity: "error" },
-  { id: "primary-color-fill", title: "Primary color fill", category: "semantics", defaultSeverity: "warn" },
-  { id: "secondary-color-stroke", title: "Secondary color stroke", category: "semantics", defaultSeverity: "warn" },
-  { id: "node-without-location", title: "Node location", category: "containment", defaultSeverity: "warn" },
-  { id: "missing-label", title: "Required labels", category: "labels", defaultSeverity: "warn" },
-  { id: "duplicate-label", title: "Duplicate labels", category: "labels", defaultSeverity: "warn" },
-  { id: "dangling-connector", title: "Dangling connector", category: "connectors", defaultSeverity: "error" },
-  { id: "non-standard-connector", title: "Connector type", category: "connectors", defaultSeverity: "error" },
+  {
+    id: "container-semantic",
+    title: "Container semantics",
+    category: "semantics",
+    defaultSeverity: "error",
+  },
+  {
+    id: "container-border",
+    title: "Container border",
+    category: "semantics",
+    defaultSeverity: "warn",
+  },
+  {
+    id: "non-catalog-icon",
+    title: "Catalog icon",
+    category: "semantics",
+    defaultSeverity: "error",
+  },
+  {
+    id: "primary-color-fill",
+    title: "Primary color fill",
+    category: "semantics",
+    defaultSeverity: "warn",
+  },
+  {
+    id: "secondary-color-stroke",
+    title: "Secondary color stroke",
+    category: "semantics",
+    defaultSeverity: "warn",
+  },
+  {
+    id: "node-without-location",
+    title: "Node location",
+    category: "containment",
+    defaultSeverity: "warn",
+  },
+  {
+    id: "missing-label",
+    title: "Required labels",
+    category: "labels",
+    defaultSeverity: "warn",
+  },
+  {
+    id: "duplicate-label",
+    title: "Duplicate labels",
+    category: "labels",
+    defaultSeverity: "warn",
+  },
+  {
+    id: "dangling-connector",
+    title: "Dangling connector",
+    category: "connectors",
+    defaultSeverity: "error",
+  },
+  {
+    id: "non-standard-connector",
+    title: "Connector type",
+    category: "connectors",
+    defaultSeverity: "error",
+  },
   {
     id: "connector-not-bound-to-port",
     title: "Connector ports",
     category: "connectors",
-    defaultSeverity: "error"
+    defaultSeverity: "error",
   },
   {
     id: "connector-crosses-obstacle",
     title: "Connector crossing",
     category: "connectors",
-    defaultSeverity: "warn"
+    defaultSeverity: "warn",
   },
   {
     id: "connector-annotation-incomplete",
     title: "Annotation name",
     category: "connectors",
-    defaultSeverity: "warn"
+    defaultSeverity: "warn",
   },
   {
     id: "connector-annotation-invalid-port",
     title: "Annotation port",
     category: "connectors",
-    defaultSeverity: "warn"
+    defaultSeverity: "warn",
   },
-  { id: "west-east-flow-reversal", title: "West-east flow", category: "layout", defaultSeverity: "warn" },
-  { id: "icon-geometry", title: "Icon geometry", category: "layout", defaultSeverity: "warn" }
+  {
+    id: "west-east-flow-reversal",
+    title: "West-east flow",
+    category: "layout",
+    defaultSeverity: "warn",
+  },
+  {
+    id: "icon-geometry",
+    title: "Icon geometry",
+    category: "layout",
+    defaultSeverity: "warn",
+  },
 ];
 
 export const defaultRules: Rule[] = [
@@ -522,5 +633,5 @@ export const defaultRules: Rule[] = [
   connectorCrossesObstacleRule,
   connectorAnnotationRule,
   westEastFlowRule,
-  iconGeometryRule
+  iconGeometryRule,
 ];

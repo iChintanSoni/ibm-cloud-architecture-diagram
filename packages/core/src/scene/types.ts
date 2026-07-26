@@ -6,7 +6,8 @@
 
 export type ElementId = string;
 
-export type Semantic = "deployedOn" | "deployedTo" | "node" | "actor" | "boundary";
+export type Semantic =
+  "deployedOn" | "deployedTo" | "node" | "actor" | "boundary";
 
 export interface Style {
   stroke?: string;
@@ -183,10 +184,16 @@ export type SceneElement =
   | TextElement
   | FrameElement;
 
-export type ContainerElement = BoxElement | GroupElement | ZoneElement | FrameElement;
+export type ContainerElement =
+  BoxElement | GroupElement | ZoneElement | FrameElement;
 
 export function isContainer(el: SceneElement): el is ContainerElement {
-  return el.type === "box" || el.type === "group" || el.type === "zone" || el.type === "frame";
+  return (
+    el.type === "box" ||
+    el.type === "group" ||
+    el.type === "zone" ||
+    el.type === "frame"
+  );
 }
 
 export interface DocumentMeta {

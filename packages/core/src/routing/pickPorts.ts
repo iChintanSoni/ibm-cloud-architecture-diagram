@@ -11,7 +11,10 @@ function centerOf(el: SceneElement): { x: number; y: number } {
  * Used by both mouse drag-to-connect and keyboard connect mode
  * (docs/06-editor-ux.md#core-interactions).
  */
-export function pickPorts(from: SceneElement, to: SceneElement): { from: PortSide; to: PortSide } {
+export function pickPorts(
+  from: SceneElement,
+  to: SceneElement,
+): { from: PortSide; to: PortSide } {
   const a = centerOf(from);
   const b = centerOf(to);
   const dx = b.x - a.x;
