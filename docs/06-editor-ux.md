@@ -52,6 +52,11 @@ custom SVG engine ([D3](00-decision-log.md#d3--svg-dom-rendering--locked)). Ever
   background rubber-bands its contents instead of moving it. Escape steps back out one level.
 - **Snapping:** connector ports, plus grid/sibling-edge/16px-inset snapping live during a
   drag-to-move (M16.1) — alignment guide lines aren't drawn yet (M17). Resize doesn't snap yet either.
+- **Clipboard:** Ctrl/Cmd+C/X/V/D copy/cut/paste/duplicate — a container brings its contents along
+  (and any connector between two copied elements), Ctrl/Cmd+V pastes under the pointer if it's been
+  over the canvas or cascades a small offset otherwise, and duplicate never disturbs a pending
+  copy. Alt-drag an element to drop a moving clone and leave the original in place. Session-only —
+  not the OS clipboard, so paste doesn't cross windows/tabs.
 - **Undo/redo:** unlimited within a session, backed by the command bus.
 
 ## Nesting & spacing

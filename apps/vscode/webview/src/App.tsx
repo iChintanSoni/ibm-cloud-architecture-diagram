@@ -36,6 +36,15 @@ import { onHostMessage, postToHost } from "./vscodeApi";
 import { useVsCodeTheme } from "./useVsCodeTheme";
 import { buildValidationView } from "./validation";
 
+/** Live-region wording for CanvasController's onClipboardAction (M16.5). */
+const CLIPBOARD_VERBS: Record<"copy" | "cut" | "paste" | "duplicate", string> =
+  {
+    copy: "copied",
+    cut: "cut",
+    paste: "pasted",
+    duplicate: "duplicated",
+  };
+
 /** Ctrl/Cmd+K and Ctrl/Cmd+F stay global; other shortcuts back off while the user is typing. */
 function isEditableTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -140,6 +149,15 @@ export function App() {
           names.length === 1
             ? `${names[0]} deleted`
             : `${names.length} elements deleted`,
+        );
+      },
+      onClipboardAction: (action, elements) => {
+        const names = elements.map(elementDisplayName);
+        const verb = CLIPBOARD_VERBS[action];
+        announce(
+          names.length === 1
+            ? `${names[0]} ${verb}`
+            : `${names.length} elements ${verb}`,
         );
       },
     });

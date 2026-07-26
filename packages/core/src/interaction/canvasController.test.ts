@@ -866,6 +866,177 @@ describe("CanvasController", () => {
     });
   });
 
+  describe("clipboard (M16.5, docs/10-canvas-parity-plan.md)", () => {
+    it("Ctrl/Cmd+C then Ctrl/Cmd+V clones the selection, offset, and selects the copy", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
+      editor.selection.set([a]);
+
+      keydown(container, "c", { ctrlKey: true });
+      keydown(container, "v", { ctrlKey: true });
+
+      const selected = editor.selection.get();
+      expect(selected).toHaveLength(1);
+      expect(selected[0]).not.toBe(a);
+      expect(editor.scene.get(selected[0]!)).toMatchObject({ x: 16, y: 16 });
+      expect(editor.scene.get(a)).toMatchObject({ x: 0, y: 0 }); // original untouched
+    });
+
+    it("Ctrl/Cmd+V with no prior copy is a no-op", () => {
+      keydown(container, "v", { ctrlKey: true });
+      expect(editor.commands.canUndo()).toBe(false);
+    });
+
+    it("Ctrl/Cmd+V pastes at the last-tracked pointer position when the mouse has been over the canvas", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 40, h: 20, label: "a" });
+      editor.selection.set([a]);
+      keydown(container, "c", { ctrlKey: true });
+
+      pointerEvent("pointermove", container, 300, 300); // an identity-mapped client point (polyfill)
+
+      keydown(container, "v", { ctrlKey: true });
+
+      // Original bbox (0,0,40,20) centers at (20,10); centering it at (300,300) instead puts the
+      // top-left corner at (280,290).
+      const [pasted] = editor.selection.get();
+      expect(editor.scene.get(pasted!)).toMatchObject({ x: 280, y: 290 });
+    });
+
+    it("Ctrl/Cmd+X cuts: copies then removes the originals, leaving a pasteable clipboard", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
+      editor.selection.set([a]);
+
+      keydown(container, "x", { ctrlKey: true });
+      expect(editor.scene.get(a)).toBeUndefined();
+
+      keydown(container, "v", { ctrlKey: true });
+      const [pasted] = editor.selection.get();
+      expect(editor.scene.get(pasted!)).toMatchObject({ x: 16, y: 16 });
+    });
+
+    it("Ctrl/Cmd+D duplicates in place without touching a pending copy", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
+      const b = editor.addBox({
+        at: { x: 200, y: 0 },
+        w: 50,
+        h: 50,
+        label: "b",
+      });
+      editor.selection.set([b]);
+      keydown(container, "c", { ctrlKey: true }); // pending copy of b
+
+      editor.selection.set([a]);
+      keydown(container, "d", { ctrlKey: true });
+
+      const [duplicated] = editor.selection.get();
+      expect(duplicated).not.toBe(a);
+      expect(editor.scene.get(duplicated!)).toMatchObject({ x: 16, y: 16 });
+
+      // The pending copy of `b` is untouched by the duplicate above.
+      keydown(container, "v", { ctrlKey: true });
+      const [pastedB] = editor.selection.get();
+      expect(editor.scene.get(pastedB!)).toMatchObject({ x: 216, y: 16 });
+    });
+
+    it("Ctrl/Cmd+C/X/D with nothing selected is a no-op", () => {
+      keydown(container, "c", { ctrlKey: true });
+      keydown(container, "x", { ctrlKey: true });
+      keydown(container, "d", { ctrlKey: true });
+      expect(editor.commands.canUndo()).toBe(false);
+    });
+
+    it("reports each clipboard action via onClipboardAction", () => {
+      const onClipboardAction = vi.fn();
+      withOptions({ onClipboardAction });
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
+      editor.selection.set([a]);
+
+      keydown(container, "c", { ctrlKey: true });
+      keydown(container, "v", { ctrlKey: true });
+      keydown(container, "d", { ctrlKey: true });
+
+      expect(onClipboardAction.mock.calls.map((call) => call[0])).toEqual([
+        "copy",
+        "paste",
+        "duplicate",
+      ]);
+    });
+
+    describe("Alt-drag to clone", () => {
+      it("dragging with Alt held leaves the original in place and drags a new duplicate instead", () => {
+        // 48x48 (a multiple of the default 8px grid), spawning the clone at a grid-aligned 16,16
+        // (PASTE_OFFSET) so a grid-multiple drag delta lands every candidate edge exactly on a
+        // grid line — snapMove is then a no-op, the same reasoning drag-to-move's own tests use.
+        const a = editor.addBox({
+          at: { x: 0, y: 0 },
+          w: 48,
+          h: 48,
+          label: "a",
+        });
+
+        drag(container, 25, 25, 57, 25, { altKey: true }); // dx=32, well past DRAG_THRESHOLD
+
+        expect(editor.scene.get(a)).toMatchObject({ x: 0, y: 0 }); // original untouched
+        const selected = editor.selection.get();
+        expect(selected).toHaveLength(1);
+        expect(selected[0]).not.toBe(a);
+        // Clone spawns at a.x + PASTE_OFFSET (16), then the drag's own dx=32 carries it further.
+        expect(editor.scene.get(selected[0]!)).toMatchObject({
+          x: 16 + 32,
+          y: 16,
+        });
+      });
+
+      it("an Alt+click below the drag threshold leaves no duplicate behind", () => {
+        const a = editor.addBox({
+          at: { x: 0, y: 0 },
+          w: 50,
+          h: 50,
+          label: "a",
+        });
+
+        drag(container, 25, 25, 26, 25, { altKey: true }); // dx=1 — short of DRAG_THRESHOLD
+
+        expect(editor.selection.get()).toEqual([a]); // still just the original
+        // A single undo removes only a's own add — no stray duplicate command in between.
+        expect(editor.commands.undo()).toBe(true);
+        expect(editor.scene.get(a)).toBeUndefined();
+        expect(editor.commands.canUndo()).toBe(false);
+      });
+
+      it("lands as two separate undo steps: the duplicate, then the drag", () => {
+        const a = editor.addBox({
+          at: { x: 0, y: 0 },
+          w: 50,
+          h: 50,
+          label: "a",
+        });
+
+        drag(container, 25, 25, 60, 25, { altKey: true });
+        const [clone] = editor.selection.get();
+
+        expect(editor.commands.undo()).toBe(true); // undoes the drag
+        expect(editor.scene.get(clone!)).toMatchObject({ x: 16, y: 16 });
+        expect(editor.commands.undo()).toBe(true); // undoes the duplicate itself
+        expect(editor.scene.get(clone!)).toBeUndefined();
+        expect(editor.scene.get(a)).toBeDefined();
+      });
+
+      it("without Alt, the same drag moves the original — no duplicate", () => {
+        const a = editor.addBox({
+          at: { x: 0, y: 0 },
+          w: 48,
+          h: 48,
+          label: "a",
+        });
+
+        drag(container, 25, 25, 57, 25); // dx=32, a grid multiple — see comment above
+
+        expect(editor.selection.get()).toEqual([a]);
+        expect(editor.scene.get(a)).toMatchObject({ x: 32, y: 0 });
+      });
+    });
+  });
+
   describe("keyboard operability (docs/07-accessibility.md#canvas-the-hard-20)", () => {
     it("Enter selects the currently focused element", () => {
       const id = editor.addBox({

@@ -1,5 +1,5 @@
 import type { Catalog } from "../catalog/catalog.js";
-import { boundsOf } from "../scene/bounds.js";
+import { boundsOf, boundsOfElements } from "../scene/bounds.js";
 import { CommandBus } from "../commands/commandBus.js";
 import {
   addElement,
@@ -151,6 +151,19 @@ export class ExportBlockedError extends Error {
 
 const DEFAULT_CONTAINER_SIZE = { w: 240, h: 160 };
 
+/** Scene-space offset each successive Ctrl/Cmd+V (with no explicit paste point) or duplicate
+ * cascades by — matching the existing 16px buffer convention (`groupElements`'s own default pad),
+ * so a stamped-out staircase of pastes/duplicates stays visually distinguishable. */
+const PASTE_OFFSET = 16;
+
+/** Mirrors this file's own `addXxx()` id-prefix convention (M16.5) so a pasted/duplicated element's
+ * id looks like any other freshly-created one of its type, not a copy-suffixed variant. */
+function clonePrefix(type: SceneElement["type"]): string {
+  if (type === "iconNode") return "icon";
+  if (type === "connector") return "conn";
+  return type;
+}
+
 function resolveTheme(preference: CanvasSettings["theme"]): ResolvedTheme {
   if (preference === "light") return "light";
   if (preference === "dark") return "dark";
@@ -178,6 +191,19 @@ export class Editor {
   private changeEmitter = new Emitter<{ change: SceneChangeEvent }>();
   private resizeObserver?: ResizeObserver;
   private focusedId: ElementId | undefined;
+  /** In-memory clipboard (M16.5) — deep-cloned elements at copy-time, session-only. Deliberately
+   * not the OS clipboard: `apps/vscode`'s webview sandbox makes async `navigator.clipboard`
+   * permissioning inconsistent across shells (the same reason M15 skipped PNG export there), and
+   * an internal clipboard is trivially keyboard-testable with no permission prompt either way —
+   * cross-window paste is out of scope, not an oversight. */
+  private clipboard: SceneElement[] = [];
+  /** The top-level ids `copy()`/`cut()` were actually given, before expansion to descendants/
+   * internal connectors — `paste()` re-selects only these (mapped to their new ids), matching how
+   * a drag/nudge only ever "selects" what the user directly acted on. */
+  private clipboardRootIds: ElementId[] = [];
+  /** Cascades each successive Ctrl/Cmd+V with no explicit paste point a bit further from the
+   * original, standard paste behavior; reset whenever the clipboard is replaced. */
+  private pasteCount = 0;
 
   constructor(options: CreateEditorOptions) {
     this.catalog = options.catalog;
@@ -808,6 +834,183 @@ export class Editor {
       commands.length === 1 ? commands[0]! : batch("delete elements", commands),
     );
     this.selection.clear();
+  }
+
+  /**
+   * `ids` plus every descendant (move-with's own containment expansion) plus any connector whose
+   * *both* endpoints land in that expanded set — a connector between two copied icons should
+   * follow them, but one crossing the copy boundary (only one endpoint inside) can't sensibly be
+   * duplicated, so it's left out. Connectors aren't reached by `descendantsOf` on their own (they
+   * aren't nested via `parentId`), hence the separate pass.
+   */
+  private collectCopySet(ids: ElementId[]): SceneElement[] {
+    const targets = new Set<ElementId>();
+    for (const id of ids) {
+      if (!this.scene.has(id)) continue;
+      targets.add(id);
+      for (const descendant of this.scene.descendantsOf(id))
+        targets.add(descendant.id);
+    }
+    for (const el of this.scene.all()) {
+      if (
+        el.type === "connector" &&
+        targets.has(el.from.elementId) &&
+        targets.has(el.to.elementId)
+      ) {
+        targets.add(el.id);
+      }
+    }
+    return [...targets].map((id) => this.scene.get(id)!);
+  }
+
+  /**
+   * Clones `source` with fresh ids, shifted by `offset` — shared by `paste()` and
+   * `duplicateElements()`. An internal reference (a cloned element's `parentId`, or a cloned
+   * connector's `from`/`to`) remaps to the new id only if the referenced element was *also* part
+   * of `source`; otherwise it's left pointing at the original still-live element — copying a lone
+   * child without its container re-parents the copy under that same original container, exactly
+   * like copying a connector without its endpoints keeps it attached to the same real elements.
+   * Returns an undoable `Command` plus the id map so callers can translate specific source ids
+   * (e.g. the original top-level selection) forward to their pasted counterparts.
+   */
+  private cloneElementsForPaste(
+    source: SceneElement[],
+    offset: { dx: number; dy: number },
+  ): { command: Command; idMap: Map<ElementId, ElementId> } {
+    const idMap = new Map<ElementId, ElementId>();
+    for (const el of source) idMap.set(el.id, generateId(clonePrefix(el.type)));
+
+    const cloned: SceneElement[] = source.map((el) => {
+      const newId = idMap.get(el.id)!;
+      const parentId = el.parentId
+        ? (idMap.get(el.parentId) ?? el.parentId)
+        : el.parentId;
+      if (el.type === "connector") {
+        return {
+          ...el,
+          id: newId,
+          parentId,
+          from: {
+            ...el.from,
+            elementId: idMap.get(el.from.elementId) ?? el.from.elementId,
+          },
+          to: {
+            ...el.to,
+            elementId: idMap.get(el.to.elementId) ?? el.to.elementId,
+          },
+          waypoints: el.waypoints?.map((p) => ({
+            x: p.x + offset.dx,
+            y: p.y + offset.dy,
+          })),
+        } as SceneElement;
+      }
+      return {
+        ...el,
+        id: newId,
+        parentId,
+        x: el.x + offset.dx,
+        y: el.y + offset.dy,
+      } as SceneElement;
+    });
+    const newIds = cloned.map((el) => el.id);
+
+    const command: Command = {
+      label: "paste",
+      do: (s) => {
+        for (const el of cloned) s._put(el, "add");
+        // Auto-routed connectors are re-routed against the now-inserted clones (obstacle
+        // avoidance needs the real scene); a manual connector keeps the shifted waypoints above.
+        for (const el of cloned) {
+          if (el.type === "connector" && el.routing !== "manual") {
+            s._put(
+              { ...el, waypoints: routeConnectorInScene(s, el) },
+              "update",
+            );
+          }
+        }
+      },
+      undo: (s) => {
+        for (const id of newIds) s._remove(id);
+      },
+    };
+    return { command, idMap };
+  }
+
+  /**
+   * Snapshots `ids` (expanded to descendants + internal connectors) into the in-memory clipboard,
+   * ready for `paste()` — no-ops (leaving any existing clipboard contents untouched) if none of
+   * `ids` still exist.
+   */
+  copy(ids: ElementId[]): SceneElement[] {
+    const roots = ids.filter((id) => this.scene.has(id));
+    const set = this.collectCopySet(roots);
+    if (set.length === 0) return [];
+    this.clipboard = set.map((el) => structuredClone(el));
+    this.clipboardRootIds = roots;
+    this.pasteCount = 0;
+    return this.clipboard;
+  }
+
+  /** Copies, then deletes the originals as one undoable step (the copy itself isn't undo history). */
+  cut(ids: ElementId[]): SceneElement[] {
+    const copied = this.copy(ids);
+    if (copied.length === 0) return [];
+    this.deleteElements(this.clipboardRootIds);
+    return copied;
+  }
+
+  /**
+   * Clones the clipboard into the scene as one undoable step and selects the new copies — no-ops
+   * if nothing's been copied yet. `at`, if given, centers the pasted content's combined bounding
+   * box there (mouse-driven "paste at cursor," `CanvasController`'s own last-tracked pointer
+   * point); omitted, each successive press cascades `PASTE_OFFSET` further from the original
+   * (standard paste behavior), so pure-keyboard use — no pointer position to speak of — still
+   * produces a sensible, distinguishable stack.
+   */
+  paste(at?: Point): ElementId[] {
+    if (this.clipboard.length === 0) return [];
+    let dx: number;
+    let dy: number;
+    if (at) {
+      const bbox = boundsOfElements(this.clipboard);
+      dx = bbox ? at.x - (bbox.x + bbox.w / 2) : 0;
+      dy = bbox ? at.y - (bbox.y + bbox.h / 2) : 0;
+    } else {
+      this.pasteCount += 1;
+      dx = PASTE_OFFSET * this.pasteCount;
+      dy = PASTE_OFFSET * this.pasteCount;
+    }
+    const { command, idMap } = this.cloneElementsForPaste(this.clipboard, {
+      dx,
+      dy,
+    });
+    this.commands.dispatch(command);
+    const newRootIds = this.clipboardRootIds
+      .map((id) => idMap.get(id))
+      .filter((id): id is ElementId => id !== undefined);
+    this.selection.set(newRootIds);
+    return newRootIds;
+  }
+
+  /**
+   * Clones `ids` (expanded to descendants + internal connectors) in place, offset by
+   * `PASTE_OFFSET`, as one undoable step, and selects the new copies — deliberately independent of
+   * `copy()`/`cut()`/`paste()`'s clipboard, so duplicating doesn't clobber whatever's pending
+   * there for a later paste elsewhere. Also `CanvasController`'s Alt-drag-clone (M16.5): the drag
+   * itself re-targets onto these returned ids instead of the originals, so the originals stay put.
+   */
+  duplicateElements(ids: ElementId[]): ElementId[] {
+    const roots = ids.filter((id) => this.scene.has(id));
+    const set = this.collectCopySet(roots);
+    if (set.length === 0) return [];
+    const { command, idMap } = this.cloneElementsForPaste(set, {
+      dx: PASTE_OFFSET,
+      dy: PASTE_OFFSET,
+    });
+    this.commands.dispatch(command);
+    const newRootIds = roots.map((id) => idMap.get(id)!);
+    this.selection.set(newRootIds);
+    return newRootIds;
   }
 
   /**

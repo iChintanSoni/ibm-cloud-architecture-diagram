@@ -790,8 +790,8 @@ the same `CanvasController` with no shell-local interaction code.
 #### M16 — The core loop
 
 🟡 **In progress** — M16.1 (drag-to-move), M16.2 (8-handle resize), M16.3 (marquee selection +
-Ctrl/Cmd+A), and M16.4 (double-click to drill into a nested container) have landed; see
-[Canvas parity plan → M16](10-canvas-parity-plan.md#m16--the-core-loop).
+Ctrl/Cmd+A), M16.4 (double-click to drill into a nested container), and M16.5 (clipboard) have
+landed; see [Canvas parity plan → M16](10-canvas-parity-plan.md#m16--the-core-loop).
 
 Drag-to-move, 8-handle resize, marquee (fully-enclosed), select-all, clipboard
 (copy/cut/paste/duplicate/Alt-drag clone), context menus, Alt+click select-through, and
@@ -847,7 +847,25 @@ follow-up.
    render at once per IBM's prescribed model. Keyboard parity: a second Enter on an
    already-selected, already-focused drillable container drills into it, mirroring the two clicks
    in a double-click; Space stays pure toggle-selection and never drills.
-5. ⬜ Clipboard: copy/cut/paste/duplicate, Alt-drag clone, paste-at-cursor.
+5. ✅ **Clipboard**: copy/cut/paste/duplicate, Alt-drag clone, paste-at-cursor. An in-memory
+   `Editor` clipboard, not the OS one — `apps/vscode`'s webview sandbox makes `navigator.clipboard`
+   permissioning inconsistent across shells (the same reason M15 skipped PNG export there), and an
+   internal clipboard needs no permission prompt and is trivially keyboard-testable either way.
+   `copy()` expands to descendants plus any connector with both endpoints copied (one crossing the
+   boundary stays attached to the original, the same rule an uncopied container's own child
+   follows). `paste()`/`duplicateElements()` share one clone engine (`cloneElementsForPaste()`);
+   paste centers on an explicit point (`CanvasController`'s last-tracked pointer position — "paste
+   at cursor") or cascades a 16px offset further each keyboard press with none given.
+   `duplicateElements()` stays independent of the copy/cut/paste clipboard (so duplicating doesn't
+   clobber a pending paste) and is also Alt-drag-clone's engine: a new `cloneOnDrag` flag on the
+   existing `dragging` mode swaps the dragged ids for a fresh duplicate the moment the drag crosses
+   its threshold, leaving the originals untouched. No new keyboard code needed — copy/cut/
+   paste/duplicate are inherently keyboard gestures (Ctrl/Cmd+C/X/V/D), and Alt-drag-clone's own
+   equivalent is that same duplicate plus arrow-key nudge, both already covered. Surfaced and fixed
+   **C14** (canvas parity plan): `SvgRenderer.syncDomOrder()`'s blanket re-append on any scene
+   addition was silently blurring keyboard focus to `<body>` in a real browser (invisible to
+   jsdom), breaking every keyboard shortcut after the first add — now a minimal-move reconciliation
+   that only touches nodes actually out of place.
 6. ⬜ Right-click context menus.
 7. ⬜ Alt+click select-through to an occluded element.
 

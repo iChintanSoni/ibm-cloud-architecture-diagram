@@ -990,6 +990,208 @@ describe("createEditor", () => {
     });
   });
 
+  describe("clipboard (M16.5, docs/10-canvas-parity-plan.md)", () => {
+    it("copy then paste clones with fresh ids, offset by the paste cascade, and selects the copy", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
+
+      editor.copy([a]);
+      const [pasted] = editor.paste();
+
+      expect(pasted).toBeDefined();
+      expect(pasted).not.toBe(a);
+      expect(editor.scene.get(a)).toMatchObject({ x: 0, y: 0 }); // original untouched
+      expect(editor.scene.get(pasted!)).toMatchObject({
+        x: 16,
+        y: 16,
+        w: 50,
+        h: 50,
+        label: { text: "a" },
+      });
+      expect(editor.selection.get()).toEqual([pasted]);
+    });
+
+    it("each successive paste (no explicit point) cascades further from the original", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
+      editor.copy([a]);
+
+      const [first] = editor.paste();
+      const [second] = editor.paste();
+
+      expect(editor.scene.get(first!)).toMatchObject({ x: 16, y: 16 });
+      expect(editor.scene.get(second!)).toMatchObject({ x: 32, y: 32 });
+    });
+
+    it("paste(at) centers the pasted content's combined bbox at the given point", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 40, h: 20, label: "a" });
+      editor.copy([a]);
+
+      const [pasted] = editor.paste({ x: 100, y: 100 });
+
+      // Original bbox is (0,0,40,20), centered at (20,10) — shifting that center to (100,100)
+      // moves the top-left corner to (80,90).
+      expect(editor.scene.get(pasted!)).toMatchObject({ x: 80, y: 90 });
+    });
+
+    it("copying a container also copies its descendants and re-parents them under the new copy", () => {
+      const box = editor.addBox({
+        at: { x: 0, y: 0 },
+        w: 100,
+        h: 100,
+        label: "box",
+      });
+      const icon = editor.addIcon("test/vpc", {
+        at: { x: 20, y: 20 },
+        parentId: box,
+      });
+
+      editor.copy([box]);
+      const [pastedBox] = editor.paste();
+
+      const pastedChildren = editor.scene.childrenOf(pastedBox!);
+      expect(pastedChildren).toHaveLength(1);
+      expect(pastedChildren[0]!.id).not.toBe(icon);
+      expect(pastedChildren[0]).toMatchObject({ x: 36, y: 36 }); // 20+16
+      // Original subtree is completely untouched.
+      expect(editor.scene.get(icon)).toMatchObject({
+        x: 20,
+        y: 20,
+        parentId: box,
+      });
+    });
+
+    it("copies a connector between two copied elements, remapped to the new pair", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
+      const b = editor.addBox({
+        at: { x: 200, y: 0 },
+        w: 50,
+        h: 50,
+        label: "b",
+      });
+      const connId = editor.connectNearest(a, b)!;
+
+      editor.copy([a, b]);
+      const [pastedA, pastedB] = editor.paste();
+
+      const pastedConnectors = editor.scene
+        .all()
+        .filter((el) => el.type === "connector" && el.id !== connId);
+      expect(pastedConnectors).toHaveLength(1);
+      expect(pastedConnectors[0]).toMatchObject({
+        from: { elementId: pastedA },
+        to: { elementId: pastedB },
+      });
+    });
+
+    it("excludes a connector with only one endpoint in the copied set", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
+      const b = editor.addBox({
+        at: { x: 200, y: 0 },
+        w: 50,
+        h: 50,
+        label: "b",
+      });
+      editor.connectNearest(a, b);
+
+      editor.copy([a]); // b, and the connector to it, are left out
+      const pasted = editor.paste();
+
+      expect(pasted).toHaveLength(1); // just the copy of `a`, no connector
+    });
+
+    it("copying a child without its container keeps the copy parented to the same original container", () => {
+      const box = editor.addBox({
+        at: { x: 0, y: 0 },
+        w: 200,
+        h: 200,
+        label: "box",
+      });
+      const icon = editor.addIcon("test/vpc", {
+        at: { x: 20, y: 20 },
+        parentId: box,
+      });
+
+      editor.copy([icon]); // box itself isn't copied
+      const [pastedIcon] = editor.paste();
+
+      expect(editor.scene.get(pastedIcon!)?.parentId).toBe(box);
+    });
+
+    it("paste is undoable as a single step", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
+      editor.copy([a]);
+      const [pasted] = editor.paste();
+
+      expect(editor.commands.undo()).toBe(true);
+      expect(editor.scene.get(pasted!)).toBeUndefined();
+      expect(editor.scene.get(a)).toBeDefined(); // the original, from before copy, is untouched
+    });
+
+    it("cut copies then removes the originals as one undoable step", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
+
+      editor.cut([a]);
+
+      expect(editor.scene.get(a)).toBeUndefined();
+      const [pasted] = editor.paste();
+      expect(editor.scene.get(pasted!)).toMatchObject({ x: 16, y: 16 });
+
+      // One undo restores `a` (the cut), independent of the paste dispatched afterward.
+      editor.commands.undo(); // undoes the paste
+      expect(editor.commands.undo()).toBe(true); // undoes the cut
+      expect(editor.scene.get(a)).toBeDefined();
+    });
+
+    it("paste is a no-op with nothing copied yet", () => {
+      expect(editor.paste()).toEqual([]);
+      expect(editor.commands.canUndo()).toBe(false);
+    });
+
+    it("copy/cut with no existing ids is a no-op and leaves any prior clipboard intact", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
+      editor.copy([a]);
+
+      expect(editor.copy(["missing"])).toEqual([]);
+      expect(editor.cut(["missing"])).toEqual([]);
+
+      const [pasted] = editor.paste();
+      expect(editor.scene.get(pasted!)).toMatchObject({
+        x: 16,
+        y: 16,
+        label: { text: "a" },
+      });
+    });
+
+    it("duplicateElements clones in place without touching the pending clipboard", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
+      const b = editor.addBox({
+        at: { x: 200, y: 0 },
+        w: 50,
+        h: 50,
+        label: "b",
+      });
+      editor.copy([b]); // pending clipboard, unrelated to the duplicate below
+
+      const [duplicated] = editor.duplicateElements([a]);
+
+      expect(duplicated).not.toBe(a);
+      expect(editor.scene.get(duplicated!)).toMatchObject({ x: 16, y: 16 });
+      expect(editor.selection.get()).toEqual([duplicated]);
+
+      // The clipboard from the earlier copy([b]) is untouched — paste() still yields a copy of b.
+      const [pastedB] = editor.paste();
+      expect(editor.scene.get(pastedB!)).toMatchObject({ x: 216, y: 16 });
+    });
+
+    it("duplicateElements is undoable as a single step", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
+      const [duplicated] = editor.duplicateElements([a]);
+
+      expect(editor.commands.undo()).toBe(true);
+      expect(editor.scene.get(duplicated!)).toBeUndefined();
+      expect(editor.scene.get(a)).toBeDefined();
+    });
+  });
+
   describe("connectNearest", () => {
     it("connects two elements using a port pair inferred from their relative position", () => {
       const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });

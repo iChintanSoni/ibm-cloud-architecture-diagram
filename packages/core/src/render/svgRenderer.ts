@@ -513,15 +513,31 @@ export class SvgRenderer {
    * (C10, docs/10-canvas-parity-plan.md): a z-order change repainted the element in place but
    * never actually moved it in the DOM. Guarded by lastOrderSignature so the common case (no
    * element added/removed/re-ordered since the last render) costs one string comparison, not an
-   * O(n) appendChild-as-move-to-end walk.
+   * O(n) walk.
+   *
+   * Walks the *current* DOM order alongside the desired one, moving a node only when it's
+   * actually out of place (`insertBefore` it just ahead of the next-correct node) rather than
+   * unconditionally `appendChild`-ing every element whenever the signature changes at all (C14,
+   * docs/10-canvas-parity-plan.md) — the previous blanket re-append detached-and-reinserted every
+   * node on *any* add/remove/reorder, including ones whose relative position never changed, which
+   * silently blurs keyboard focus off a real element (e.g. Ctrl+D/paste dropping focus to
+   * `<body>`, discovered live in a real browser: jsdom doesn't model focus-on-detach, so no
+   * existing test caught it). A node already immediately after the last-confirmed-in-place one is
+   * left completely untouched, DOM focus included.
    */
   private syncDomOrder(elements: SceneElement[]): void {
     const signature = elements.map((el) => el.id).join(" ");
     if (signature === this.lastOrderSignature) return;
     this.lastOrderSignature = signature;
+    let ref: ChildNode | null = this.layer.firstChild;
     for (const el of elements) {
       const node = this.nodes.get(el.id);
-      if (node) this.layer.appendChild(node);
+      if (!node) continue;
+      if (node === ref) {
+        ref = ref.nextSibling;
+      } else {
+        this.layer.insertBefore(node, ref);
+      }
     }
   }
 

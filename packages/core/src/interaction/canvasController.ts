@@ -32,6 +32,11 @@ interface DragState {
   startClient: Point;
   startScenePoint: Point;
   moved: boolean;
+  /** Alt was held at pointerdown (M16.5): the moment this drag actually starts (crosses
+   * DRAG_THRESHOLD), `ids` gets swapped for a fresh `duplicateElements()` clone so the originals
+   * stay put and the clone is what ends up dragged — mirrored, not applied at pointerdown, so a
+   * below-threshold Alt+click doesn't leave a stray duplicate behind. */
+  cloneOnDrag: boolean;
 }
 
 interface ResizeState {
@@ -81,6 +86,14 @@ export interface CanvasControllerOptions {
    * just their ids, since a shell formatting an announcement needs display names and
    * `scene.get(id)` would already return nothing by the time this fires otherwise. */
   onDeleted?: (elements: SceneElement[]) => void;
+  /** Fired after copy/cut/paste/duplicate (M16.5) with the resulting elements — one callback
+   * rather than four near-identical ones, since every shell formats these the same way ("N
+   * copied"/"cut"/"pasted"/"duplicated"). Alt-drag-clone reports as "duplicate", matching its own
+   * `duplicateElements()` plumbing. */
+  onClipboardAction?: (
+    action: "copy" | "cut" | "paste" | "duplicate",
+    elements: SceneElement[],
+  ) => void;
 }
 
 function parsePortAttr(value: string): {
@@ -107,12 +120,16 @@ function parsePortAttr(value: string): {
  * carve-out), and the canvas's own keyboard operability (Tab/Shift+Tab focus, Enter/Space select
  * — a second Enter on an already-selected drillable container drills into it, M16.4's own keyboard
  * equivalent, arrow-key nudge — drag-to-move's own keyboard equivalent, Delete/Backspace,
- * Ctrl/Cmd+A select-all — marquee's own keyboard equivalent) — see
+ * Ctrl/Cmd+A select-all — marquee's own keyboard equivalent, and Ctrl/Cmd+C/X/V/D copy/cut/paste/
+ * duplicate — M16.5, inherently keyboard gestures with no separate equivalent to add) — see
  * docs/07-accessibility.md#canvas-the-hard-20, a hard requirement this class must keep meeting,
  * not just replicate incidentally. Resize's own keyboard equivalent is the Properties panel's
  * typed X/Y/W/H fields (`InspectorPanel.tsx`), which predate this gesture and already cover it —
  * mirroring how M16.1 found arrow-key nudge already covered drag-to-move; no new keyboard code was
- * needed for resize either.
+ * needed for resize either. Alt-drag-clone (M16.5) is a new `cloneOnDrag` flag on the existing
+ * `dragging` mode, not a mode of its own — the drag re-targets from the original ids onto a fresh
+ * `duplicateElements()` clone the moment it crosses the drag threshold, so the originals stay put
+ * and what's dragged from then on is the copy.
  *
  * Built on Pointer Events with `setPointerCapture` (D27, docs/00-decision-log.md) so a drag
  * survives the cursor leaving the container.
@@ -134,6 +151,10 @@ export class CanvasController {
    * while drilled), so it's tracked and emitted separately from CanvasMode. */
   private drillPath: ElementId[] = [];
   private drillEmitter = new Emitter<{ change: ElementId[] }>();
+  /** Last scene point the pointer was seen at over the canvas (M16.5) — Ctrl/Cmd+V's "paste at
+   * cursor" target. Not reset on pointer-leave: a keyboard-only paste shortly after the mouse was
+   * last over the canvas landing near there is more useful than falling back to an offset paste. */
+  private lastPointerScenePoint: Point | undefined;
   /** A completed element drag or resize still fires a trailing native `click` on release — this
    * swallows exactly that one, so it doesn't re-hit-test at the (now-moved-to/resized-to) release
    * point and stomp the selection the gesture itself already settled. */
@@ -349,6 +370,7 @@ export class CanvasController {
     if (this.mode.kind === "placing") return;
     const point = this.toScenePoint(event.clientX, event.clientY);
     if (!point) return;
+    this.lastPointerScenePoint = point;
 
     if (this.resizeState) {
       this.updateResize(event, point);
@@ -487,6 +509,7 @@ export class CanvasController {
       startClient: { x: event.clientX, y: event.clientY },
       startScenePoint: point,
       moved: false,
+      cloneOnDrag: event.altKey,
     };
     this.capturePointer(event.pointerId);
   };
@@ -541,6 +564,27 @@ export class CanvasController {
       if (Math.hypot(clientDx, clientDy) < DRAG_THRESHOLD) return;
       drag.moved = true;
       this.setMode({ kind: "dragging" });
+
+      // Alt-drag-clone (M16.5): only now, at the exact moment this becomes a real drag — arming
+      // it eagerly at pointerdown would leave a stray duplicate behind a plain Alt+click that
+      // never actually dragged. `duplicateElements` already dispatches its own undoable command
+      // and re-selects the clone; the fresh `beginInteraction` below re-targets the *live* drag
+      // preview onto it, so what visibly moves under the pointer from here on is the clone, not
+      // the originals (which stay exactly where they were).
+      if (drag.cloneOnDrag) {
+        const clonedIds = this.editor.duplicateElements(drag.ids);
+        if (clonedIds.length > 0) {
+          this.options.onClipboardAction?.(
+            "duplicate",
+            clonedIds
+              .map((id) => this.editor.scene.get(id))
+              .filter((el): el is SceneElement => el !== undefined),
+          );
+          drag.interaction.abort(); // no-op: nothing was ever previewed on the originals
+          drag.ids = clonedIds;
+          drag.interaction = this.editor.beginInteraction(clonedIds);
+        }
+      }
     }
 
     let dx = point.x - drag.startScenePoint.x;
@@ -849,6 +893,55 @@ export class CanvasController {
       event.preventDefault();
       this.editor.selection.set(this.editor.scene.all().map((el) => el.id));
       return;
+    }
+
+    // Clipboard (M16.5): copy/cut/duplicate need a selection; paste doesn't. All four are
+    // inherently keyboard-native gestures, so — unlike drag/resize/marquee — there's no separate
+    // "keyboard equivalent" to add; Alt-drag-clone's own equivalent is Ctrl/Cmd+D (this duplicate)
+    // followed by arrow-key nudge, both already covered.
+    if ((event.metaKey || event.ctrlKey) && !event.shiftKey) {
+      const key = event.key.toLowerCase();
+      if (key === "c" || key === "x") {
+        const ids = this.editor.selection.get();
+        if (ids.length === 0) return;
+        event.preventDefault();
+        const copied =
+          key === "c" ? this.editor.copy(ids) : this.editor.cut(ids);
+        if (copied.length > 0)
+          this.options.onClipboardAction?.(
+            key === "c" ? "copy" : "cut",
+            copied,
+          );
+        return;
+      }
+      if (key === "v") {
+        event.preventDefault();
+        const pastedIds = this.editor.paste(this.lastPointerScenePoint);
+        if (pastedIds.length > 0) {
+          this.options.onClipboardAction?.(
+            "paste",
+            pastedIds
+              .map((id) => this.editor.scene.get(id))
+              .filter((el): el is SceneElement => el !== undefined),
+          );
+        }
+        return;
+      }
+      if (key === "d") {
+        const ids = this.editor.selection.get();
+        if (ids.length === 0) return;
+        event.preventDefault();
+        const duplicatedIds = this.editor.duplicateElements(ids);
+        if (duplicatedIds.length > 0) {
+          this.options.onClipboardAction?.(
+            "duplicate",
+            duplicatedIds
+              .map((id) => this.editor.scene.get(id))
+              .filter((el): el is SceneElement => el !== undefined),
+          );
+        }
+        return;
+      }
     }
 
     let selected = this.editor.selection.get();
