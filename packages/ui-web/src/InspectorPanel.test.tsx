@@ -110,6 +110,39 @@ describe("InspectorPanel", () => {
     expect(onUpdate).toHaveBeenCalledWith("vpc", { label: { text: "Production VPC" } });
   });
 
+  it("commits an X/Y/W/H edit from the stepper +/- buttons, not just on blur", () => {
+    // Regression test: the stepper buttons already have focus when clicked (they never move focus
+    // away from the text input, since it was never focused to begin with), so they never fire the
+    // input's onBlur — only NumberInput's own dedicated onClick prop fires for a stepper click.
+    // Wiring only onBlur (as this used to) left the displayed number updating with nothing ever
+    // committed to the element.
+    const onUpdate = vi.fn();
+
+    act(() => {
+      root.render(
+        <InspectorPanel
+          elements={elements}
+          selectedIds={["vpc"]}
+          validationCount={0}
+          validationContent={<p>Validation content</p>}
+          frames={[]}
+          onJumpToFrame={vi.fn()}
+          onTogglePresent={vi.fn()}
+          onPresentStep={vi.fn()}
+          onSelect={vi.fn()}
+          onUpdate={onUpdate}
+          onReparent={vi.fn()}
+        />
+      );
+    });
+
+    const xInput = container.querySelector<HTMLInputElement>("#icad-property-x-vpc")!;
+    const incrementButton = xInput.closest(".cds--number")!.querySelector<HTMLButtonElement>(".up-icon")!;
+    act(() => incrementButton.click());
+
+    expect(onUpdate).toHaveBeenCalledWith("vpc", { x: 11 });
+  });
+
   it("shows IBM's own connector names in the type selector, not the raw kebab-case schema value", () => {
     act(() => {
       root.render(

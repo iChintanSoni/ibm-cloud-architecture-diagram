@@ -134,10 +134,10 @@ function LayerBranch({ node, onSelect }: { node: LayerNode; onSelect: (id: Eleme
 function commitNumber(
   id: ElementId,
   field: "x" | "y" | "w" | "h" | "order",
-  raw: string,
+  raw: string | number,
   onUpdate: InspectorPanelProps["onUpdate"]
 ) {
-  const value = Number(raw);
+  const value = typeof raw === "number" ? raw : Number(raw);
   if (!Number.isFinite(value)) return;
   if ((field === "w" || field === "h") && value < 1) return;
   onUpdate(id, { [field]: value });
@@ -205,6 +205,12 @@ function ElementProperties({
                 {...(field === "w" || field === "h" ? { min: 1 } : {})}
                 defaultValue={element[field]}
                 onBlur={(event) => commitNumber(element.id, field, event.target.value, onUpdate)}
+                // The stepper +/- buttons already have focus when clicked (they don't move focus
+                // away from the text input, since it was never focused to begin with), so they
+                // never trigger the input's onBlur above — Carbon's dedicated onClick prop is what
+                // actually fires for a stepper click (onChange would too, but also on every
+                // keystroke while typing, which would spam the undo stack for a manual edit).
+                onClick={(_event, state) => state && commitNumber(element.id, field, state.value, onUpdate)}
               />
             ))}
           </div>
@@ -261,6 +267,7 @@ function ElementProperties({
           min={0}
           defaultValue={element.order}
           onBlur={(event) => commitNumber(element.id, "order", event.target.value, onUpdate)}
+          onClick={(_event, state) => state && commitNumber(element.id, "order", state.value, onUpdate)}
         />
       )}
 
