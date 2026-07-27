@@ -54,9 +54,10 @@ custom SVG engine ([D3](00-decision-log.md#d3--svg-dom-rendering--locked)). Ever
   container above it, render a faint outline alongside the active selection (IBM's own prescribed
   "both bounding boxes visible" model). While drilled in, a press-drag on that container's own
   background rubber-bands its contents instead of moving it. Escape steps back out one level.
-- **Snapping:** connector ports, plus grid/sibling-edge/16px-inset snapping live during a
-  drag-to-move (M16.1), with alignment guide lines and a live position readout drawn during the drag
-  (M17.2). Resize clamps to the parent's 16px inset and shows a live W×H readout (M17.3), but
+- **Snapping:** connector ports, plus grid/sibling-edge snapping live during a drag-to-move (M16.1),
+  with alignment guide lines and a live position readout drawn during the drag (M17.2). A dragged
+  child's parent grows to fit rather than clamping the drag itself (M17.4). Resize clamps to the
+  parent's 16px inset and shows a live W×H readout (M17.3), but
   doesn't snap to the grid or siblings yet.
 - **Clipboard:** Ctrl/Cmd+C/X/V/D copy/cut/paste/duplicate — a container brings its contents along
   (and any connector between two copied elements), Ctrl/Cmd+V pastes under the pointer if it's been
@@ -73,8 +74,9 @@ custom SVG engine ([D3](00-decision-log.md#d3--svg-dom-rendering--locked)). Ever
 ## Nesting & spacing
 
 - A newly created Group (from grouping a multi-selection) is sized to fit its contents plus a
-  **16px pad** on every side. The same 16px buffer is also a live constraint during drag and
-  resize (M16.1/M17.3): a child can't be dragged or resized past its own parent's inset.
+  **16px pad** on every side. Dragging a child keeps that same buffer too, but by growing the
+  parent to fit rather than stopping the child at a wall (M17.4) — resizing a child, instead, is
+  hard-clamped to the parent's existing inset (M17.3).
 - Alternate white and light-tint fills between nesting levels (parent vs. child container) for
   readability, using the category's secondary color ([Spec Conformance → Color usage](05-ibm-spec-conformance.md#color-usage)).
 - **Resizing:** drag any of a selected element's 8 handles (Shift for aspect lock on a corner

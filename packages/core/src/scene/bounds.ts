@@ -65,3 +65,54 @@ export function boundsOf(scene: Scene, ids: ElementId[]): Rect | undefined {
 
   return boundsOfElements(elements);
 }
+
+/**
+ * Smallest rect containing `bbox` plus `padding` on every side, unioned with `existing` (never
+ * shrinking below it) when given. With no `existing`, this is exactly the sizing
+ * `Editor.groupElements()` already used to size a brand-new container to its contents; with one,
+ * it's `autoFitContainer`'s own "grow to fit, never shrink" rule (M17.4,
+ * docs/10-canvas-parity-plan.md).
+ */
+export function fitRectWithPadding(
+  bbox: Rect,
+  padding: number,
+  existing?: Rect,
+): Rect {
+  const minX = Math.min(bbox.x - padding, existing?.x ?? Infinity);
+  const minY = Math.min(bbox.y - padding, existing?.y ?? Infinity);
+  const maxX = Math.max(
+    bbox.x + bbox.w + padding,
+    existing ? existing.x + existing.w : -Infinity,
+  );
+  const maxY = Math.max(
+    bbox.y + bbox.h + padding,
+    existing ? existing.y + existing.h : -Infinity,
+  );
+  return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
+}
+
+/**
+ * The smallest rect containing every current child of `containerId` plus a `padding` buffer on
+ * every side (M17.4, docs/10-canvas-parity-plan.md) — reuses `fitRectWithPadding`, the same
+ * bbox+padding math `groupElements()` uses at creation time, generalized to an *existing*
+ * container: the result never shrinks below the container's own current bounds (auto-grow only
+ * ever expands — a resize's own explicit shrink-and-reflow is M17.5's job, not this). Returns
+ * `undefined` for an unknown container or one with no children (nothing to fit around, so nothing
+ * to grow for).
+ */
+export function autoFitContainer(
+  scene: Scene,
+  containerId: ElementId,
+  padding = 16,
+): Rect | undefined {
+  const container = scene.get(containerId);
+  if (!container) return undefined;
+  const children = scene.childrenOf(containerId);
+  if (children.length === 0) return undefined;
+  const bbox = boundsOf(
+    scene,
+    children.map((child) => child.id),
+  );
+  if (!bbox) return undefined;
+  return fitRectWithPadding(bbox, padding, container);
+}

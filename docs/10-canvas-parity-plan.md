@@ -429,7 +429,8 @@ is a requirement, not a follow-up.
 ## M17 — The feedback layer
 
 🟡 **In progress** — M17.1 (space+drag and middle-drag panning), M17.2 (grid, alignment guides,
-live gesture readout), and M17.3 (live 16px buffer enforcement on resize) have landed.
+live gesture readout), M17.3 (live 16px buffer enforcement on resize), and M17.4 (containers
+auto-grow on drag) have landed.
 
 1. ✅ **Render the grid.** `SvgRenderer` gained a background layer (`packages/core/src/render/
 svgRenderer.ts`) — a single SVG `<pattern>` tiled at `scene.canvas.grid` spacing (the second real
@@ -476,8 +477,28 @@ setGestureReadout()`) tracks `"x, y"` during drag and `"w × h"` during resize, 
    bounds, so the HUD always matches what's actually previewed/committed, never the raw
    pre-clamp candidate. A parent too small to fit the inset on either axis leaves the candidate
    untouched rather than producing a nonsensical clamp target — an edge case for a container far
-   smaller than its own buffer, not a realistic diagram.
-6. ⬜ **Containers auto-grow** when a child is dragged toward an edge, instead of letting it escape.
+   smaller than its own buffer, not a realistic diagram. _(Drag's own clamp, described above as
+   already existing since M15, was removed by M17.4 right below — this resize-specific one is
+   unaffected and still a hard limit.)_
+6. ✅ **Containers auto-grow** when a child is dragged toward an edge, instead of letting it escape.
+   `snapMove`'s drag-time parent-inset clamp (M15–M17.3's own item 5 above) is gone: a dragged child
+   is no longer stopped at a wall mid-gesture, it goes wherever the pointer takes it. Instead,
+   `Editor`'s `commitMove()` (shared by `beginInteraction().commit()` and `nudgeElements()`, so mouse
+   drag and its keyboard equivalent get this for free alike) grows the moved elements' shared parent
+   to fit afterward, via a new hand-written `autoGrowContainer` command
+   (`packages/core/src/commands/commands.ts`) batched right after `moveElements` — its `do()` calls
+   the new `autoFitContainer(scene, containerId, padding)` (`scene/bounds.ts`) fresh against the
+   _current_ scene, so inside the batch's sequential `do()` walk it naturally sees the move already
+   applied. `autoFitContainer` reuses `groupElements()`'s own bbox+padding sizing math, generalized
+   via a new shared `fitRectWithPadding(bbox, padding, existing?)`: with no `existing` it's exactly
+   `groupElements()`'s creation-time sizing (refactored to call it too, no behavior change there);
+   with the container's own current bounds as `existing`, the result never shrinks below them —
+   auto-grow only ever expands. A no-op (no `_put`, nothing added to the batch's change-event ids)
+   when the container already comfortably contains its children, which is the common case for most
+   drags. Auto-grow only applies when every dragged id shares one _defined_ parent — an ambiguous
+   multi-parent selection or top-level (parentless) elements simply skip it, since there's no single
+   container to grow. Resize's own clamp (item 5) is deliberately unaffected — the roadmap's own
+   wording only ever named "dragged," not resized, for this behavior.
 7. ⬜ **Container resize reflows children**, clamping them inside with the buffer preserved.
 8. ⬜ **Alternating fills re-derive on reparent**, so nesting depth stays visually correct after a
    drag.

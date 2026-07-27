@@ -1,8 +1,13 @@
 import type { Catalog } from "../catalog/catalog.js";
-import { boundsOf, boundsOfElements } from "../scene/bounds.js";
+import {
+  boundsOf,
+  boundsOfElements,
+  fitRectWithPadding,
+} from "../scene/bounds.js";
 import { CommandBus } from "../commands/commandBus.js";
 import {
   addElement,
+  autoGrowContainer,
   autoRouteConnector,
   batch,
   moveElements,
@@ -742,11 +747,35 @@ export class Editor {
     if (!contained) this.focusOnElements([id]);
   }
 
-  /** Nudges every given element by a scene-space delta (e.g. an arrow-key press), reusing move-with semantics. */
+  /** Nudges every given element by a scene-space delta (e.g. an arrow-key press), reusing move-with
+   * semantics — the keyboard equivalent of a mouse drag (M16.1), so it shares that gesture's own
+   * auto-grow behavior too (`commitMove`, M17.4). */
   nudgeElements(ids: ElementId[], dx: number, dy: number): void {
     const existing = ids.filter((id) => this.scene.has(id));
     if (existing.length === 0 || (dx === 0 && dy === 0)) return;
-    this.commands.dispatch(moveElements(this.scene, existing, dx, dy));
+    this.commitMove(existing, dx, dy);
+  }
+
+  /**
+   * Dispatches a committed move as one undo step, growing the moved elements' shared parent to
+   * fit afterward if it no longer comfortably contains them (M17.4, docs/10-canvas-parity-plan.md)
+   * — shared by `nudgeElements` and `beginInteraction()`'s own `commit()`. Auto-grow only applies
+   * when every one of `ids` shares the same defined parent (an ambiguous multi-parent selection, or
+   * top-level elements with no parent at all, simply skips it — there's no single container to
+   * grow). `autoGrowContainer`'s own `do()` reads the *current* scene fresh, so batching it right
+   * after `moveElements` means it naturally sees the move already applied.
+   */
+  private commitMove(ids: ElementId[], dx: number, dy: number): void {
+    const commands: Command[] = [moveElements(this.scene, ids, dx, dy)];
+    const parentIds = new Set(ids.map((id) => this.scene.get(id)?.parentId));
+    if (parentIds.size === 1) {
+      const parentId = [...parentIds][0];
+      if (parentId !== undefined)
+        commands.push(autoGrowContainer(this.scene, parentId));
+    }
+    this.commands.dispatch(
+      commands.length === 1 ? commands[0]! : batch("move elements", commands),
+    );
   }
 
   /**
@@ -758,7 +787,11 @@ export class Editor {
    * move-with and connector-reroute-on-commit semantics are identical, not reimplemented.
    * `ids` may be a partial selection (e.g. just a dragged container) — descendants are resolved
    * and previewed too, since elements are flat DOM siblings that don't inherit a parent's
-   * transform (see `previewTransform`'s own doc comment).
+   * transform (see `previewTransform`'s own doc comment). `commit()` no longer clamps the move to
+   * the dragged elements' own parent's 16px inset the way it used to (M15–M16.1): `snapMove` (the
+   * gesture's own caller, `CanvasController`) stopped doing that in M17.4, and `commit()` grows the
+   * parent to fit instead (`commitMove`) — "auto-grow... instead of letting it escape," not
+   * "refuse to overlap and get stuck."
    */
   beginInteraction(ids: ElementId[]): Interaction {
     const existing = ids.filter((id) => this.scene.has(id));
@@ -780,7 +813,7 @@ export class Editor {
       commit: () => {
         this.renderer.previewTransform(previewIds, 0, 0);
         if (existing.length > 0 && (dx !== 0 || dy !== 0)) {
-          this.commands.dispatch(moveElements(this.scene, existing, dx, dy));
+          this.commitMove(existing, dx, dy);
         }
       },
       abort: () => {
@@ -1044,15 +1077,15 @@ export class Editor {
     const parents = new Set(existing.map((id) => this.scene.get(id)!.parentId));
     const parentId = parents.size === 1 ? [...parents][0] : undefined;
 
+    // Shares its bbox+padding sizing with `autoFitContainer` (M17.4) — no `existing` rect here
+    // since the group doesn't exist in the scene yet, so this is purely "fit the contents."
+    const fitted = fitRectWithPadding(bbox, padding);
     const groupId = generateId("group");
     const group: GroupElement = {
       id: groupId,
       type: "group",
       semantic: "deployedTo",
-      x: bbox.x - padding,
-      y: bbox.y - padding,
-      w: bbox.w + padding * 2,
-      h: bbox.h + padding * 2,
+      ...fitted,
       ...(parentId ? { parentId } : {}),
     };
 

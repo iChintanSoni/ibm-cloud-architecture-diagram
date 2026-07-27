@@ -1,4 +1,5 @@
 import { routeConnectorInScene } from "../routing/routeConnector.js";
+import { autoFitContainer } from "../scene/bounds.js";
 import type { Scene } from "../scene/scene.js";
 import type {
   ConformanceSettings,
@@ -157,6 +158,44 @@ export function moveElements(
         if (el) s._put(el, "update");
       }
       for (const connector of affectedConnectors) s._put(connector, "update");
+    },
+  };
+}
+
+/**
+ * Grows `containerId` to fit its current children plus the 16px buffer, never shrinking it (M17.4,
+ * docs/10-canvas-parity-plan.md) — the counterpart to `moveElements` no longer clamping a dragged
+ * child to its parent's inset (`snapping.ts`'s `snapMove`): instead of stopping the child at a
+ * wall mid-gesture, the parent grows to fit once the move actually commits. Meant to be batched
+ * immediately after a `moveElements` targeting (some of) this container's own children — `do()`
+ * calls `autoFitContainer` fresh against the *current* scene rather than a value computed at
+ * construction time, so within a `batch()` (which runs each sub-command's `do()` in sequence) it
+ * naturally sees the move already applied. A no-op (no `_put`, no ids in the resulting change
+ * event) when the container already comfortably contains its children.
+ */
+export function autoGrowContainer(
+  scene: Scene,
+  containerId: ElementId,
+  padding = 16,
+): Command {
+  const previous = scene.get(containerId);
+  return {
+    label: "auto-grow container",
+    do(s) {
+      const current = s.get(containerId);
+      const fitted = autoFitContainer(s, containerId, padding);
+      if (!current || !fitted) return;
+      if (
+        fitted.x === current.x &&
+        fitted.y === current.y &&
+        fitted.w === current.w &&
+        fitted.h === current.h
+      )
+        return;
+      s._put({ ...current, ...fitted } as SceneElement, "update");
+    },
+    undo(s) {
+      if (previous) s._put(previous, "update");
     },
   };
 }

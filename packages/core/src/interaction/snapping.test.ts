@@ -107,7 +107,13 @@ describe("snapMove", () => {
     expect(result.dx).toBe(100);
   });
 
-  it("clamps the move so a child can't cross its parent's bottom-right inset", () => {
+  // M17.4 removed the parent-inset clamp that used to live here: a dragged child no longer gets
+  // stopped at its parent's buffer mid-gesture (that was M15/M16.1's original "refuse to overlap"
+  // behavior) — instead the parent grows to fit at commit time
+  // (`autoFitContainer`/`Editor.beginInteraction().commit()`, docs/10-canvas-parity-plan.md).
+  // `PARENT_INSET` itself stays exported/used by `clampRectToParentInset` (resize's own, still-hard
+  // limit, M17.3).
+  it("no longer clamps to the parent's inset — the child can be dragged past its bottom-right edge", () => {
     const scene = new Scene();
     scene._put(box("parent", 0, 0, 200, 200));
     scene._put(box("child", 20, 20, 40, 40, "parent"));
@@ -117,12 +123,11 @@ describe("snapMove", () => {
       tolerance: 4,
     });
 
-    const max = 200 - PARENT_INSET - 40; // 144 (parent and child are both square here)
-    expect(20 + result.dx).toBe(max);
-    expect(20 + result.dy).toBe(max);
+    expect(result.dx).toBe(1000);
+    expect(result.dy).toBe(1000);
   });
 
-  it("clamps the move so a child can't cross its parent's top-left inset", () => {
+  it("no longer clamps to the parent's inset — the child can be dragged past its top-left edge", () => {
     const scene = new Scene();
     scene._put(box("parent", 0, 0, 200, 200));
     scene._put(box("child", 20, 20, 40, 40, "parent"));
@@ -132,25 +137,25 @@ describe("snapMove", () => {
       tolerance: 4,
     });
 
-    expect(20 + result.dx).toBe(PARENT_INSET);
-    expect(20 + result.dy).toBe(PARENT_INSET);
+    expect(result.dx).toBe(-1000);
+    expect(result.dy).toBe(-1000);
   });
 
-  it("drops the guide for an axis the parent-inset clamp overrides", () => {
+  it("keeps a sibling-edge guide even where the old parent-inset clamp used to override it", () => {
     const scene = new Scene();
     scene._put(box("parent", 0, 0, 200, 200));
     scene._put(box("child", 20, 20, 40, 40, "parent"));
     scene._put(box("sibling", 500, 500, 40, 40, "parent"));
 
-    // The sibling's edges are an exact snap candidate, but landing on them would put "child"
-    // outside the parent's bounds, so the clamp must win and the guide must not be reported.
     const result = snapMove(scene, ["child"], 480, 0, {
       gridSize: 1000,
       tolerance: 4,
     });
 
-    expect(result.guides.some((g) => g.orientation === "vertical")).toBe(false);
-    expect(20 + result.dx).toBe(200 - PARENT_INSET - 40);
+    expect(result.guides).toContainEqual(
+      expect.objectContaining({ orientation: "vertical", position: 500 }),
+    );
+    expect(20 + result.dx).toBe(500); // lands exactly on the sibling's left edge, unclamped
   });
 
   it("moves multiple selected elements together using their combined bounding box", () => {

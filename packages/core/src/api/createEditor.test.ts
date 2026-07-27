@@ -659,6 +659,81 @@ describe("createEditor", () => {
       expect(editor.scene.get(id)).toBeUndefined();
     });
 
+    it("grows a parent to fit a nudged child that no longer comfortably fits, as one undo step (M17.4)", () => {
+      const parent = editor.addBox({
+        at: { x: 0, y: 0 },
+        w: 200,
+        h: 200,
+        label: "parent",
+      });
+      const child = editor.addIcon("test/vpc", {
+        at: { x: 20, y: 20 },
+        parentId: parent,
+      });
+      const childBefore = { ...editor.scene.get(child)! };
+      const parentBefore = { ...editor.scene.get(parent)! };
+
+      editor.nudgeElements([child], 1000, 1000);
+
+      const childAfter = editor.scene.get(child)!;
+      const parentAfter = editor.scene.get(parent)!;
+      expect(childAfter.x).toBe(childBefore.x + 1000);
+      // The parent grew to keep the child's own 16px buffer, rather than the child getting stuck.
+      expect(parentAfter.x + parentAfter.w).toBe(
+        childAfter.x + childAfter.w + 16,
+      );
+      expect(parentAfter.y + parentAfter.h).toBe(
+        childAfter.y + childAfter.h + 16,
+      );
+      // Its own top-left, never approached, is untouched.
+      expect(parentAfter.x).toBe(parentBefore.x);
+      expect(parentAfter.y).toBe(parentBefore.y);
+
+      // One undo reverts both the child's move and the parent's grow together.
+      expect(editor.commands.undo()).toBe(true);
+      expect(editor.scene.get(child)).toMatchObject(childBefore);
+      expect(editor.scene.get(parent)).toMatchObject(parentBefore);
+    });
+
+    it("does not grow the parent when the nudged child still comfortably fits", () => {
+      const parent = editor.addBox({
+        at: { x: 0, y: 0 },
+        w: 200,
+        h: 200,
+        label: "parent",
+      });
+      const child = editor.addIcon("test/vpc", {
+        at: { x: 20, y: 20 },
+        parentId: parent,
+      });
+      const parentBefore = { ...editor.scene.get(parent)! };
+
+      editor.nudgeElements([child], 5, 5);
+
+      expect(editor.scene.get(parent)).toMatchObject(parentBefore);
+    });
+
+    it("attempts no auto-grow for a top-level (parentless) nudge — one undo entry still", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
+      const b = editor.addBox({
+        at: { x: 200, y: 0 },
+        w: 50,
+        h: 50,
+        label: "b",
+      });
+
+      editor.nudgeElements([a, b], 1000, 1000);
+
+      expect(editor.scene.get(a)).toMatchObject({ x: 1000, y: 1000 });
+      expect(editor.scene.get(b)).toMatchObject({ x: 1200, y: 1000 });
+
+      // Exactly one undo reverts both moves together, proving no separate auto-grow step (a no-op
+      // here — there's no shared parent) was appended on top of it.
+      expect(editor.commands.undo()).toBe(true);
+      expect(editor.scene.get(a)).toMatchObject({ x: 0, y: 0 });
+      expect(editor.scene.get(b)).toMatchObject({ x: 200, y: 0 });
+    });
+
     it("deletes an element and its descendants as one undoable step, then clears selection", () => {
       const parent = editor.addBox({
         at: { x: 0, y: 0 },

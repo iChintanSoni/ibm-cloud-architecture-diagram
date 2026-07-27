@@ -56,11 +56,19 @@ function bestCandidate(
 
 /**
  * Adjusts a proposed move delta so the dragged elements' bounding box snaps to the grid or to a
- * sibling's edge/center, and clamps the result so a child can't cross its parent's 16px inset —
- * a hard constraint, not a snap-if-close candidate, so it always wins regardless of tolerance.
- * Pure and side-effect free: it never touches the scene or the renderer. The intended caller is a
- * drag gesture (M16) that feeds the returned `dx`/`dy` into `Editor.beginInteraction()`'s
- * `update()` and renders `guides` as an overlay while the pointer is down.
+ * sibling's edge/center. Pure and side-effect free: it never touches the scene or the renderer.
+ * The intended caller is a drag gesture (M16) that feeds the returned `dx`/`dy` into
+ * `Editor.beginInteraction()`'s `update()` and renders `guides` as an overlay while the pointer is
+ * down.
+ *
+ * Deliberately does **not** clamp to the parent's 16px inset the way it used to (M15–M17.3): a
+ * dragged child is now let all the way to wherever the pointer takes it, and
+ * `Editor.beginInteraction()`'s own `commit()` grows the parent to fit afterward
+ * (`autoFitContainer`, M17.4, docs/10-canvas-parity-plan.md) rather than stopping the child at a
+ * wall mid-gesture — "auto-grow... instead of letting it escape," not "refuse to overlap and get
+ * stuck." Resize's own inset clamp (`clampRectToParentInset`) is unaffected: that's a distinct,
+ * deliberately kept hard limit (M17.3), since "dragged toward an edge" in the roadmap's own wording
+ * only ever named this gesture, not resize.
  */
 export function snapMove(
   scene: Scene,
@@ -177,39 +185,10 @@ export function snapMove(
   const xBest = bestCandidate(xCandidates, tolerance);
   const yBest = bestCandidate(yCandidates, tolerance);
 
-  let snappedDx = xBest ? dx + xBest.offset : dx;
-  let snappedDy = yBest ? dy + yBest.offset : dy;
-  let xGuide = xBest?.guide;
-  let yGuide = yBest?.guide;
-
-  const parent =
-    hasSingleParent && parentId !== undefined ? scene.get(parentId) : undefined;
-  const bounds = parent ? parentInsetBounds(parent) : undefined;
-  if (bounds) {
-    const { minX, maxX, minY, maxY } = bounds;
-    // Unlike clampRectToParentInset's per-edge clamp (M17.3), a move translates the whole bbox
-    // rigidly — both edges shift by the same amount, so the clamp target is the *position*, not
-    // each edge independently (which would silently shrink the box if it overshoots the inset on
-    // both edges of the same side at once, e.g. a large drag past the boundary).
-    const clampedX = Math.min(
-      Math.max(bbox.x + snappedDx, Math.min(minX, maxX - bbox.w)),
-      Math.max(minX, maxX - bbox.w),
-    );
-    const clampedY = Math.min(
-      Math.max(bbox.y + snappedDy, Math.min(minY, maxY - bbox.h)),
-      Math.max(minY, maxY - bbox.h),
-    );
-    // The inset always wins over a snap candidate, but a guide describing a snap position the
-    // clamp then overrode would draw a line the drag no longer actually lands on — drop it.
-    if (clampedX !== bbox.x + snappedDx) {
-      snappedDx = clampedX - bbox.x;
-      xGuide = undefined;
-    }
-    if (clampedY !== bbox.y + snappedDy) {
-      snappedDy = clampedY - bbox.y;
-      yGuide = undefined;
-    }
-  }
+  const snappedDx = xBest ? dx + xBest.offset : dx;
+  const snappedDy = yBest ? dy + yBest.offset : dy;
+  const xGuide = xBest?.guide;
+  const yGuide = yBest?.guide;
 
   const guides: SnapGuide[] = [xGuide, yGuide].filter(
     (g): g is SnapGuide => g !== undefined,

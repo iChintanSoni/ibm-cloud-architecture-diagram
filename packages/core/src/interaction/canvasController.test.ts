@@ -416,6 +416,44 @@ describe("CanvasController", () => {
       expect(controller.getMode()).toEqual({ kind: "placing" });
     });
 
+    it("grows the parent to fit a child dragged past its edge, instead of stopping it there (M17.4)", () => {
+      const parent = editor.addBox({
+        at: { x: 0, y: 0 },
+        w: 200,
+        h: 200,
+        label: "parent",
+      });
+      const child = editor.addIcon("test/vpc", {
+        at: { x: 20, y: 20 },
+        parentId: parent,
+      });
+
+      // Dragged far past the parent's own bottom-right corner.
+      drag(container, 44, 44, 1000, 1000);
+
+      const childAfter = editor.scene.get(child)!;
+      const parentAfter = editor.scene.get(parent)!;
+      // The child was not clamped/stuck at the parent's old edge — it landed wherever the drag did.
+      expect(childAfter.x).toBeGreaterThan(200);
+      // The parent grew to keep the child's 16px buffer.
+      expect(parentAfter.x + parentAfter.w).toBe(
+        childAfter.x + childAfter.w + 16,
+      );
+      expect(parentAfter.y + parentAfter.h).toBe(
+        childAfter.y + childAfter.h + 16,
+      );
+
+      // Still exactly one undo step for the whole gesture.
+      expect(editor.commands.undo()).toBe(true);
+      expect(editor.scene.get(parent)).toMatchObject({
+        x: 0,
+        y: 0,
+        w: 200,
+        h: 200,
+      });
+      expect(editor.scene.get(child)).toMatchObject({ x: 20, y: 20 });
+    });
+
     it("shows a live position readout while dragging, cleared on commit (M17.2)", () => {
       // Same 96x96/multiples-of-8 setup as the cascade test above, so the snapped position is
       // exactly the raw delta — nothing to disambiguate here.

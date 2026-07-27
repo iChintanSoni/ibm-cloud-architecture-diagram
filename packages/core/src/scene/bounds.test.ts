@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { boundsOf } from "./bounds.js";
+import { autoFitContainer, boundsOf, fitRectWithPadding } from "./bounds.js";
 import { Scene } from "./scene.js";
 import type { BoxElement, ConnectorElement, IconNodeElement } from "./types.js";
 
@@ -99,6 +99,74 @@ describe("boundsOf", () => {
       y: 5,
       w: 10,
       h: 10,
+    });
+  });
+});
+
+describe("fitRectWithPadding (M17.4, docs/10-canvas-parity-plan.md)", () => {
+  it("pads a bare bbox on every side when no existing rect is given", () => {
+    const result = fitRectWithPadding({ x: 10, y: 10, w: 100, h: 50 }, 16);
+    expect(result).toEqual({ x: -6, y: -6, w: 132, h: 82 });
+  });
+
+  it("unions with an existing rect, never shrinking below it", () => {
+    // The bbox already sits with >=16px of buffer inside existing on every side (20 and
+    // 300-120=180 horizontally, 20 and 300-70=230 vertically) — existing wins outright.
+    const result = fitRectWithPadding({ x: 20, y: 20, w: 100, h: 50 }, 16, {
+      x: 0,
+      y: 0,
+      w: 300,
+      h: 300,
+    });
+    expect(result).toEqual({ x: 0, y: 0, w: 300, h: 300 });
+  });
+
+  it("grows past an existing rect only on the side the bbox actually overflows", () => {
+    // Top-left already has >=16px buffer against existing (20 >= 16) so it's untouched; the
+    // bbox's right/bottom edge (220) overflows existing's own (100), so only that side grows.
+    const result = fitRectWithPadding({ x: 20, y: 20, w: 200, h: 200 }, 16, {
+      x: 0,
+      y: 0,
+      w: 100,
+      h: 100,
+    });
+    expect(result).toEqual({ x: 0, y: 0, w: 236, h: 236 });
+  });
+});
+
+describe("autoFitContainer (M17.4, docs/10-canvas-parity-plan.md)", () => {
+  it("returns undefined for an unknown container", () => {
+    const scene = new Scene();
+    expect(autoFitContainer(scene, "missing")).toBeUndefined();
+  });
+
+  it("returns undefined for a container with no children — nothing to fit around", () => {
+    const scene = new Scene();
+    scene._put(box("parent", { x: 0, y: 0, w: 100, h: 100 }));
+    expect(autoFitContainer(scene, "parent")).toBeUndefined();
+  });
+
+  it("leaves the container untouched when it already comfortably contains its children", () => {
+    const scene = new Scene();
+    scene._put(box("parent", { x: 0, y: 0, w: 200, h: 200 }));
+    scene._put(box("child", { x: 20, y: 20, w: 40, h: 40 }, "parent"));
+    expect(autoFitContainer(scene, "parent")).toEqual({
+      x: 0,
+      y: 0,
+      w: 200,
+      h: 200,
+    });
+  });
+
+  it("grows to fit a child that now extends past its bottom-right edge, plus the buffer", () => {
+    const scene = new Scene();
+    scene._put(box("parent", { x: 0, y: 0, w: 200, h: 200 }));
+    scene._put(box("child", { x: 20, y: 20, w: 400, h: 400 }, "parent"));
+    expect(autoFitContainer(scene, "parent")).toEqual({
+      x: 0,
+      y: 0,
+      w: 20 + 400 + 16,
+      h: 20 + 400 + 16,
     });
   });
 });
