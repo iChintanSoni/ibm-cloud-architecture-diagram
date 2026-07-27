@@ -887,7 +887,8 @@ follow-up.
 
 #### M17 — The feedback layer
 
-⬜ **Not started**
+🟡 **In progress** — M17.1 (space+drag and middle-drag panning) has landed; see
+[Canvas parity plan → M17](10-canvas-parity-plan.md#m17--the-feedback-layer).
 
 Rendered grid and snapping, alignment guides with spacing hints, drop-target highlight, live 16px
 buffer enforcement, containers that auto-grow rather than let children escape, child reflow on

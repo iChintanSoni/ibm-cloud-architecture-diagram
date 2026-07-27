@@ -111,6 +111,21 @@ function keydown(
   );
 }
 
+function keyup(
+  target: EventTarget,
+  key: string,
+  opts: Partial<KeyboardEventInit> = {},
+): void {
+  target.dispatchEvent(
+    new KeyboardEvent("keyup", {
+      bubbles: true,
+      cancelable: true,
+      key,
+      ...opts,
+    }),
+  );
+}
+
 // jsdom 29.1.1 implements the PointerEvent constructor (clientX/clientY/pointerId all work) but
 // not setPointerCapture/hasPointerCapture/releasePointerCapture (all undefined) — confirmed by
 // inspection, not assumed; CanvasController guards every call to those three behind a typeof
@@ -1237,6 +1252,125 @@ describe("CanvasController", () => {
       click(container, 125, 25, { altKey: true }); // b, clear of a
 
       expect(editor.selection.get()).toEqual([b]);
+    });
+  });
+
+  describe("space+drag and middle-drag panning (M17.1, docs/10-canvas-parity-plan.md)", () => {
+    it("middle-click drag pans the viewport by the client delta (no scale applied)", () => {
+      pointerEvent("pointerdown", container, 10, 10, { button: 1 });
+      expect(controller.getMode()).toEqual({ kind: "panning" });
+      pointerEvent("pointermove", container, 40, 30, { button: 1 });
+
+      // Grab-panning follows the hand: dragging right/down moves the viewport's scene-space
+      // origin left/up so content visually tracks the cursor (opposite sign from scroll-pan).
+      expect(editor.viewport.get()).toMatchObject({ x: -30, y: -20 });
+
+      pointerEvent("pointerup", container, 40, 30, { button: 1 });
+      expect(controller.getMode()).toEqual({ kind: "idle" });
+    });
+
+    it("middle-click over an element pans instead of selecting or dragging it", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
+      pointerEvent("pointerdown", container, 25, 25, { button: 1 });
+      pointerEvent("pointermove", container, 45, 25, { button: 1 });
+      pointerEvent("pointerup", container, 45, 25, { button: 1 });
+
+      expect(editor.selection.get()).toEqual([]);
+      expect(editor.scene.get(a)).toMatchObject({ x: 0, y: 0 });
+      expect(editor.viewport.get()).toMatchObject({ x: -20, y: 0 });
+    });
+
+    it("holding Space makes a left-button drag pan instead of arming drag-to-move/marquee", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
+      keydown(container, " ");
+
+      pointerEvent("pointerdown", container, 25, 25);
+      expect(controller.getMode()).toEqual({ kind: "panning" });
+      pointerEvent("pointermove", container, 55, 25);
+      expect(editor.viewport.get()).toMatchObject({ x: -30, y: 0 });
+      pointerEvent("pointerup", container, 55, 25);
+
+      // Nothing about the element or the (empty) selection was touched — this was purely a pan.
+      expect(editor.selection.get()).toEqual([]);
+      expect(editor.scene.get(a)).toMatchObject({ x: 0, y: 0 });
+
+      keyup(container, " ");
+      // Space released: an ordinary drag now behaves normally again (drag-to-move, not pan).
+      drag(container, 25, 25, 55, 25);
+      expect(controller.getMode()).toEqual({ kind: "idle" });
+      expect(editor.scene.get(a)?.x).toBeGreaterThan(0);
+    });
+
+    it("releasing Space mid-drag ends the pan even while the pointer is still down", () => {
+      keydown(container, " ");
+      pointerEvent("pointerdown", container, 10, 10);
+      pointerEvent("pointermove", container, 30, 10);
+      expect(editor.viewport.get()).toMatchObject({ x: -20, y: 0 });
+
+      keyup(container, " ");
+      expect(controller.getMode()).toEqual({ kind: "idle" });
+
+      // The pointer never went up, but panning already ended — further movement is a no-op.
+      pointerEvent("pointermove", container, 60, 10);
+      expect(editor.viewport.get()).toMatchObject({ x: -20, y: 0 });
+
+      // The still-pending native pointerup/click for this button must not do anything surprising.
+      pointerEvent("pointerup", container, 60, 10);
+      expect(controller.getMode()).toEqual({ kind: "idle" });
+    });
+
+    it("a middle-click pan is unaffected by Space keyup (only pointerup ends it)", () => {
+      pointerEvent("pointerdown", container, 10, 10, { button: 1 });
+      keyup(container, " "); // no-op: this pan was armed by the middle button, not Space
+      pointerEvent("pointermove", container, 30, 10, { button: 1 });
+
+      expect(controller.getMode()).toEqual({ kind: "panning" });
+      expect(editor.viewport.get()).toMatchObject({ x: -20, y: 0 });
+    });
+
+    it("cursor reflects pan state: grab while Space is held, grabbing while panning, cleared after", () => {
+      expect(container.style.cursor).toBe("");
+
+      keydown(container, " ");
+      expect(container.style.cursor).toBe("grab");
+
+      pointerEvent("pointerdown", container, 10, 10);
+      expect(container.style.cursor).toBe("grabbing");
+
+      pointerEvent("pointerup", container, 10, 10);
+      // Space is still physically held in this scenario, so "grab" (armed), not cleared outright.
+      expect(container.style.cursor).toBe("grab");
+
+      keyup(container, " ");
+      expect(container.style.cursor).toBe("");
+    });
+
+    it("the trailing click after a moved pan does not re-hit-test at the release point", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
+      editor.selection.set([a]);
+      // Release lands over empty space — an unsuppressed click here would clear the selection.
+      pointerEvent("pointerdown", container, 10, 10, { button: 1 });
+      pointerEvent("pointermove", container, 500, 500, { button: 1 });
+      pointerEvent("pointerup", container, 500, 500, { button: 1 });
+      click(container, 500, 500);
+
+      expect(editor.selection.get()).toEqual([a]);
+    });
+
+    it("Space's existing 'select the focused element' behavior still fires when no drag follows", () => {
+      const id = editor.addBox({
+        at: { x: 0, y: 0 },
+        w: 50,
+        h: 50,
+        label: "a",
+      });
+      editor.focusElement(id);
+
+      keydown(container, " ");
+      keyup(container, " ");
+
+      expect(editor.selection.get()).toEqual([id]);
+      expect(container.style.cursor).toBe("");
     });
   });
 

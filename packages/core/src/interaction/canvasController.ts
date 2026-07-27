@@ -19,7 +19,8 @@ export type CanvasMode =
   | { kind: "placing" }
   | { kind: "dragging" }
   | { kind: "resizing" }
-  | { kind: "marquee" };
+  | { kind: "marquee" }
+  | { kind: "panning" };
 
 /** Client-space (zoom-independent) pixels the pointer must move before a mousedown-on-an-element
  * becomes a drag rather than a click. */
@@ -64,6 +65,17 @@ interface MarqueeState {
    * with the enclosed set on every move when the gesture started with Shift held. */
   preSelection: ElementId[];
   additive: boolean;
+  moved: boolean;
+}
+
+/** Space+drag and middle-drag panning (M17.1, docs/10-canvas-parity-plan.md). No drag threshold —
+ * unambiguous the moment either trigger fires, same reasoning M16.2 gave for resize handles. */
+interface PanState {
+  pointerId: number;
+  lastClient: Point;
+  /** Which trigger armed this pan — only a "space"-triggered pan ends early on keyup (mid-drag);
+   * a middle-click pan only ends on its own pointerup, since there's no key to release. */
+  via: "space" | "middle";
   moved: boolean;
 }
 
@@ -165,6 +177,11 @@ export class CanvasController {
   private dragState: DragState | undefined;
   private resizeState: ResizeState | undefined;
   private marqueeState: MarqueeState | undefined;
+  private panState: PanState | undefined;
+  /** Tracked across keydown/keyup (M17.1) so a plain left-button drag pans instead of arming a
+   * marquee/element-drag while Space is held — cleared on keyup and on window blur so it never
+   * gets stuck true if the key-up happens while focus is elsewhere. */
+  private spaceHeld = false;
   /** Ancestor-to-innermost chain of containers currently drilled into (M16.4) — a persistent
    * scope that coexists with `mode` rather than replacing it (you can still drag/resize/marquee
    * while drilled), so it's tracked and emitted separately from CanvasMode. */
@@ -202,7 +219,9 @@ export class CanvasController {
     this.container.addEventListener("dblclick", this.handleDoubleClick);
     this.container.addEventListener("contextmenu", this.handleContextMenu);
     this.container.addEventListener("keydown", this.handleKeyDown);
+    this.container.addEventListener("keyup", this.handleKeyUp);
     window.addEventListener("keydown", this.handleGlobalKeyDown);
+    window.addEventListener("blur", this.handleWindowBlur);
   }
 
   destroy(): void {
@@ -214,7 +233,9 @@ export class CanvasController {
     this.container.removeEventListener("dblclick", this.handleDoubleClick);
     this.container.removeEventListener("contextmenu", this.handleContextMenu);
     this.container.removeEventListener("keydown", this.handleKeyDown);
+    this.container.removeEventListener("keyup", this.handleKeyUp);
     window.removeEventListener("keydown", this.handleGlobalKeyDown);
+    window.removeEventListener("blur", this.handleWindowBlur);
   }
 
   getMode(): CanvasMode {
@@ -417,11 +438,46 @@ export class CanvasController {
     }
   }
 
+  /** Panning cursor feedback (M17.1): "grab" while armed (Space held, not yet dragging) and
+   * "grabbing" while actively panning — mirrors the existing inline `resizeCursor(handle)` styling
+   * already used for resize handles. */
+  private updateCursor(): void {
+    this.container.style.cursor = this.panState
+      ? "grabbing"
+      : this.spaceHeld
+        ? "grab"
+        : "";
+  }
+
+  /** Ends an in-progress pan and restores idle, regardless of what triggered it — shared by
+   * pointerup, Space keyup (mid-drag), and window blur (M17.1). */
+  private endPan(): void {
+    if (!this.panState) return;
+    this.releasePointer(this.panState.pointerId);
+    if (this.panState.moved) this.suppressNextClick = true;
+    this.panState = undefined;
+    this.setMode({ kind: "idle" });
+    this.updateCursor();
+  }
+
+  /** Space/middle-drag panning cleared if focus leaves the window mid-gesture (e.g. Alt-Tab while
+   * holding Space) — otherwise `spaceHeld`/the "grab" cursor could get stuck on with no keyup ever
+   * arriving to clear it. */
+  private handleWindowBlur = (): void => {
+    this.spaceHeld = false;
+    this.endPan();
+    this.updateCursor();
+  };
+
   // Pointer drag-to-connect (docs/06-editor-ux.md#core-interactions): hover a shape to reveal its
   // ports (SvgRenderer draws them), pointerdown on one starts a rubber-band drag; dropping on
   // another element's port uses that exact port, dropping anywhere else on it auto-picks a
   // reasonable pair (connectNearest); dropping on empty canvas cancels.
   private handlePointerMove = (event: PointerEvent): void => {
+    if (this.panState) {
+      this.updatePan(event);
+      return;
+    }
     if (this.mode.kind === "placing") return;
     const point = this.toScenePoint(event.clientX, event.clientY);
     if (!point) return;
@@ -459,6 +515,24 @@ export class CanvasController {
     );
   };
 
+  // Space+drag / middle-drag panning (M17.1, docs/10-canvas-parity-plan.md): no scene/command
+  // involvement at all — purely a `ViewportController` change. Note the sign is the *opposite* of
+  // `handleWheel`'s scroll-pan: a "grab" gesture drags the content along with the cursor (dragging
+  // right moves the viewport's scene-space origin left, so content visually follows the hand),
+  // where scrolling conventionally pans the viewport itself in the scroll direction. Two gestures,
+  // two intuitive conventions — not an inconsistency. No drag threshold, matching resize's own
+  // "grabbing is unambiguous" reasoning (M16.2).
+  private updatePan(event: PointerEvent): void {
+    const pan = this.panState;
+    if (!pan) return;
+    const dxClient = event.clientX - pan.lastClient.x;
+    const dyClient = event.clientY - pan.lastClient.y;
+    if (dxClient !== 0 || dyClient !== 0) pan.moved = true;
+    pan.lastClient = { x: event.clientX, y: event.clientY };
+    const { scale } = this.editor.viewport.get();
+    this.editor.viewport.panBy(-dxClient / scale, -dyClient / scale);
+  }
+
   // Drag-to-move (M16, docs/10-canvas-parity-plan.md): armed on pointerdown over a selectable
   // element, but only becomes a real drag once the pointer has moved DRAG_THRESHOLD client px —
   // short of that, this stays a plain click (handleClick fires normally on release). Selection is
@@ -468,6 +542,25 @@ export class CanvasController {
   // multi-selection is preserved so the group drags together; Shift-clicking an already-selected
   // target is left for handleClick's own toggle-off, not armed as a drag at all.
   private handlePointerDown = (event: PointerEvent): void => {
+    // Space+drag / middle-drag panning (M17.1) takes priority over every other pointerdown
+    // branch below — resize handle, port, element, marquee — same as a resize handle grab takes
+    // priority over hit-testing. Gated on `idle` (matching the resize-handle check just below) to
+    // keep the state machine to one active gesture at a time; middle-click while some other
+    // gesture is already mid-flight is an unsupported chord, not a case this needs to handle.
+    if (this.mode.kind === "idle" && (event.button === 1 || this.spaceHeld)) {
+      event.preventDefault();
+      this.panState = {
+        pointerId: event.pointerId,
+        lastClient: { x: event.clientX, y: event.clientY },
+        via: event.button === 1 ? "middle" : "space",
+        moved: false,
+      };
+      this.capturePointer(event.pointerId);
+      this.setMode({ kind: "panning" });
+      this.updateCursor();
+      return;
+    }
+
     const resizeHandle =
       event.target instanceof Element
         ? event.target
@@ -683,6 +776,11 @@ export class CanvasController {
   private handlePointerUp = (event: PointerEvent): void => {
     this.releasePointer(event.pointerId);
 
+    if (this.panState) {
+      this.endPan();
+      return;
+    }
+
     if (this.resizeState) {
       const { interaction } = this.resizeState;
       this.resizeState = undefined;
@@ -876,6 +974,20 @@ export class CanvasController {
   // confirm, Escape to cancel).
   private handleKeyDown = (event: KeyboardEvent): void => {
     if (this.suspended) return;
+
+    // Space+drag panning (M17.1): tracked here rather than gated to a specific mode, so a
+    // subsequent pointerdown can arm panning regardless of what's currently focused/selected.
+    // Never returns early — Space's existing "select the focused element" meaning (below, and
+    // inside the "connecting" branch's own confirm-key handling) is unaffected: a keyboard-only
+    // user never also fires a pointerdown, so there's no real conflict, only a harmless flag that
+    // arming (handlePointerDown) checks and this event alone never acts on.
+    if (event.key === " ") {
+      if (!event.repeat) {
+        this.spaceHeld = true;
+        this.updateCursor();
+      }
+      event.preventDefault();
+    }
 
     // Sync from wherever real DOM focus actually is: handles the bootstrap case where the very
     // first Tab into the canvas lands natively on the roving tabindex="0" element, before any
@@ -1079,5 +1191,16 @@ export class CanvasController {
       this.editor.deleteElements(selected);
       this.options.onDeleted?.(deleted);
     }
+  };
+
+  // Space+drag panning (M17.1): releasing Space ends a space-triggered pan immediately even if the
+  // mouse button is still down (matching how other direct-manipulation editors treat the key, not
+  // the button, as what defines the gesture) — a middle-click pan has no key to release, so it's
+  // untouched here and only ever ends on its own pointerup.
+  private handleKeyUp = (event: KeyboardEvent): void => {
+    if (event.key !== " ") return;
+    this.spaceHeld = false;
+    if (this.panState?.via === "space") this.endPan();
+    this.updateCursor();
   };
 }

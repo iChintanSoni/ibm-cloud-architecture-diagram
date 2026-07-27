@@ -23,8 +23,8 @@ custom SVG engine ([D3](00-decision-log.md#d3--svg-dom-rendering--locked)). Ever
 - **Left — Library panel:** searchable IBM catalog, grouped by category
   ([Icon Catalog](04-icon-catalog.md)). Click an icon to arm it, then click the canvas to place
   it — there's no drag-and-drop from the panel today.
-- **Center — Canvas:** SVG viewport with pan (scroll) and zoom (Ctrl/Cmd+scroll, or the View menu
-  zoom commands). No visible grid and no rulers.
+- **Center — Canvas:** SVG viewport with pan (scroll, or Space+drag/middle-click-drag, M17.1) and
+  zoom (Ctrl/Cmd+scroll, or the View menu zoom commands). No visible grid and no rulers yet (M17).
 - **Right — Inspector:** four tabs — Properties (the selection), Layers (the containment tree),
   Frames (presentation order), and Validation (the [linter](05-ibm-spec-conformance.md)
   diagnostics).

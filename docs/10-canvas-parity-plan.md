@@ -428,18 +428,38 @@ is a requirement, not a follow-up.
 
 ## M17 — The feedback layer
 
-⬜ **Not started.**
+🟡 **In progress** — M17.1 (space+drag and middle-drag panning) has landed.
 
-- Render the grid; snap to it.
-- Alignment guides with equal-spacing hints, drawn from M15's snapping engine.
-- Drop-target highlight when a drag hovers a container.
-- **Live 16px buffer enforcement** — dragging and resizing snap to the parent inset and refuse to
-  overlap it, rather than the pad applying only at group creation.
-- **Containers auto-grow** when a child is dragged toward an edge, instead of letting it escape.
-- **Container resize reflows children**, clamping them inside with the buffer preserved.
-- **Alternating fills re-derive on reparent**, so nesting depth stays visually correct after a drag.
-- Live position/dimension readout during a gesture.
-- Space+drag and middle-drag panning.
+1. ⬜ Render the grid; snap to it.
+2. ⬜ Alignment guides with equal-spacing hints, drawn from M15's snapping engine.
+3. ⬜ Drop-target highlight when a drag hovers a container.
+4. ⬜ **Live 16px buffer enforcement** — dragging and resizing snap to the parent inset and refuse
+   to overlap it, rather than the pad applying only at group creation.
+5. ⬜ **Containers auto-grow** when a child is dragged toward an edge, instead of letting it escape.
+6. ⬜ **Container resize reflows children**, clamping them inside with the buffer preserved.
+7. ⬜ **Alternating fills re-derive on reparent**, so nesting depth stays visually correct after a
+   drag.
+8. ⬜ Live position/dimension readout during a gesture.
+9. ✅ **Space+drag and middle-drag panning.** A new `panning` mode on `CanvasController`
+   (`packages/core/src/interaction/canvasController.ts`), armed by either a middle-click
+   (`event.button === 1`) or a left-button drag while a tracked `spaceHeld` flag is true — both
+   checked first in `handlePointerDown`, ahead of the resize-handle/port/element/marquee branches,
+   so panning always wins. No drag threshold (same "grabbing is unambiguous" reasoning M16.2 gave
+   for resize handles) and purely a `ViewportController.panBy()` change — no scene, command, or
+   linter involvement at all, so it costs nothing render-wise. Panning follows the hand (dragging
+   right/down moves the viewport's scene-space origin left/up, the opposite sign convention from
+   `handleWheel`'s scroll-pan, which is intentional — two different gestures, two different
+   intuitive directions). Releasing Space ends a space-triggered pan immediately even if the mouse
+   button is still down (mirrors how other direct-manipulation editors treat the _key_, not the
+   button, as what defines the gesture); a middle-click pan only ever ends on its own pointerup,
+   since there's no key to release. `spaceHeld` also clears on window blur so a stuck "grab" cursor
+   can't survive something like Alt-Tab while the key is held. Space's pre-existing "select the
+   focused element" keydown behavior is left completely untouched — a keyboard-only user never also
+   fires a `pointerdown`, so there's no real conflict, only a flag that arming checks and this one
+   key event alone never acts on. Cursor feedback (`grab` while armed, `grabbing` while actively
+   panning) mirrors the existing inline `resizeCursor(handle)` pattern already used for resize
+   handles. No keyboard equivalent needed beyond what already exists: panning the viewport itself
+   has no accessibility requirement distinct from what Find/frame-presentation already provide.
 
 ## M18 — Arrangement
 
