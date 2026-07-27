@@ -1,4 +1,5 @@
 import { routeConnectorInScene } from "../routing/routeConnector.js";
+import type { AlignMove } from "../scene/align.js";
 import { autoFitContainer } from "../scene/bounds.js";
 import type { Scene } from "../scene/scene.js";
 import type {
@@ -299,6 +300,57 @@ export function setZOrder(
         else next.z = z;
         s._put(next, "replace");
       }
+    },
+  };
+}
+
+/**
+ * Applies every `AlignMove` (computed by `computeAlignMoves`, `scene/align.ts`) as one undo step —
+ * one whole-operation command, not `batch()` of N `moveElements` calls, the same reasoning
+ * `setZOrder` gives above: each aligned element can move by a *different* delta, unlike
+ * `moveElements`'s single shared `dx`/`dy`, so the cascade-to-descendants and shared-descendant
+ * dedup that `moveElements` does for one delta has to be redone here per-id.
+ *
+ * Walks `moves` building one `Map<ElementId, delta>`: each id's own delta is recorded first, then
+ * the same delta cascades to `scene.descendantsOf(id)` (move-with, matching `moveElements`) —
+ * both skipped if already present, so a descendant reachable from more than one aligned id (or an
+ * id that is itself both a direct align target and another's descendant) only ever moves once,
+ * first-write-wins by `moves`' own order.
+ */
+export function alignElements(
+  scene: Scene,
+  moves: AlignMove[],
+  label: string,
+): Command {
+  const deltas = new Map<ElementId, { dx: number; dy: number }>();
+  for (const { id, dx, dy } of moves) {
+    if (!deltas.has(id)) deltas.set(id, { dx, dy });
+    for (const descendant of scene.descendantsOf(id)) {
+      if (!deltas.has(descendant.id)) deltas.set(descendant.id, { dx, dy });
+    }
+  }
+  const allIds = new Set(deltas.keys());
+  const previous = new Map([...allIds].map((id) => [id, scene.get(id)]));
+  const affectedConnectors = attachedAutoConnectors(scene, allIds);
+  return {
+    label,
+    do(s) {
+      for (const [id, { dx, dy }] of deltas) {
+        const el = s.get(id);
+        if (el)
+          s._put(
+            { ...el, x: el.x + dx, y: el.y + dy } as SceneElement,
+            "update",
+          );
+      }
+      rerouteConnectors(s, affectedConnectors);
+    },
+    undo(s) {
+      for (const id of allIds) {
+        const el = previous.get(id);
+        if (el) s._put(el, "update");
+      }
+      for (const connector of affectedConnectors) s._put(connector, "update");
     },
   };
 }

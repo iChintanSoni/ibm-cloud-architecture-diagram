@@ -34,6 +34,13 @@ function baseProps(overrides: Partial<TopBarProps> = {}): TopBarProps {
     onBringForward: vi.fn(),
     onSendBackward: vi.fn(),
     canChangeZOrder: false,
+    onAlignLeft: vi.fn(),
+    onAlignCenterHorizontal: vi.fn(),
+    onAlignRight: vi.fn(),
+    onAlignTop: vi.fn(),
+    onAlignMiddle: vi.fn(),
+    onAlignBottom: vi.fn(),
+    canAlign: false,
     zoomPercent: 100,
     onZoomIn: vi.fn(),
     onZoomOut: vi.fn(),
@@ -201,6 +208,69 @@ describe("TopBar", () => {
       ["Bring forward", onBringForward],
       ["Send backward", onSendBackward],
       ["Send to back", onSendToBack],
+    ] as const) {
+      const item = findByText(container, "a", label) as HTMLAnchorElement;
+      expect(item.getAttribute("aria-disabled")).toBeNull();
+      act(() => item.click());
+      expect(handler).toHaveBeenCalled();
+    }
+  });
+
+  it("disables all six align actions until enabled, then invokes each", () => {
+    const onAlignLeft = vi.fn();
+    const onAlignCenterHorizontal = vi.fn();
+    const onAlignRight = vi.fn();
+    const onAlignTop = vi.fn();
+    const onAlignMiddle = vi.fn();
+    const onAlignBottom = vi.fn();
+    act(() => {
+      root.render(
+        <TopBar
+          {...baseProps({
+            onAlignLeft,
+            onAlignCenterHorizontal,
+            onAlignRight,
+            onAlignTop,
+            onAlignMiddle,
+            onAlignBottom,
+            canAlign: false,
+          })}
+        />,
+      );
+    });
+
+    const alignLeftItem = findByText(
+      container,
+      "a",
+      "Align left",
+    ) as HTMLAnchorElement;
+    expect(alignLeftItem.getAttribute("aria-disabled")).toBe("true");
+    act(() => alignLeftItem.click());
+    expect(onAlignLeft).not.toHaveBeenCalled();
+
+    act(() => {
+      root.render(
+        <TopBar
+          {...baseProps({
+            onAlignLeft,
+            onAlignCenterHorizontal,
+            onAlignRight,
+            onAlignTop,
+            onAlignMiddle,
+            onAlignBottom,
+            canAlign: true,
+          })}
+        />,
+      );
+    });
+
+    for (const [label, handler] of [
+      ["Align left", onAlignLeft],
+      ["Align center", onAlignCenterHorizontal],
+      ["Align right", onAlignRight],
+      ["Align top", onAlignTop],
+      ["Align middle", onAlignMiddle],
+      ["Align bottom", onAlignBottom],
     ] as const) {
       const item = findByText(container, "a", label) as HTMLAnchorElement;
       expect(item.getAttribute("aria-disabled")).toBeNull();

@@ -51,7 +51,9 @@ custom SVG engine ([D3](00-decision-log.md#d3--svg-dom-rendering--locked)). Ever
   Ctrl/Cmd+A to select everything. A click always lands on the deepest element at that point;
   Alt+click cycles through every other element sharing it (repeated Alt+clicks at the same spot
   step deeper, wrapping back to the top), replacing the selection outright rather than extending
-  it. No align/distribute commands yet.
+  it. **Align** (Edit menu, command palette, or MCP): left/center/right/top/middle/bottom, moving
+  every selected element to the corresponding edge/center of the whole selection's own bounding box
+  (M18.2); no distribute command yet.
 - **Drilling into a container:** double-click a Box/Zone/Group that has children (or press Enter a
   second time on an already-selected one) to drill into it — its own bounding box, and every
   container above it, render a faint outline alongside the active selection (IBM's own prescribed

@@ -473,4 +473,79 @@ export function registerAuthoringTools(
     "Sent backward",
     (ids) => editor().sendBackward(ids),
   );
+
+  const alignOutput = { ids: z.array(z.string()), changed: z.boolean() };
+  const alignTool = (
+    name: string,
+    title: string,
+    description: string,
+    verb: string,
+    apply: (ids: string[]) => boolean,
+  ): void => {
+    server.registerTool(
+      name,
+      {
+        title,
+        description,
+        inputSchema: { ids: z.array(z.string()) },
+        outputSchema: alignOutput,
+      },
+      ({ ids }) => {
+        try {
+          const changed = apply(ids);
+          return ok(
+            { ids, changed },
+            changed
+              ? `${verb} ${ids.length} element(s).`
+              : `No change — nothing alignable, or already ${verb.toLowerCase()}.`,
+          );
+        } catch (err) {
+          return fail(err);
+        }
+      },
+    );
+  };
+
+  alignTool(
+    "element_align_left",
+    "Align elements left",
+    "Aligns every given element's left edge to the leftmost edge of the whole given selection's bounding box. Requires at least two alignable (non-connector) elements.",
+    "Aligned left",
+    (ids) => editor().alignLeft(ids),
+  );
+  alignTool(
+    "element_align_center_horizontal",
+    "Align elements to horizontal center",
+    "Aligns every given element's horizontal center to the horizontal center of the whole given selection's bounding box. Requires at least two alignable (non-connector) elements.",
+    "Aligned center",
+    (ids) => editor().alignCenterHorizontal(ids),
+  );
+  alignTool(
+    "element_align_right",
+    "Align elements right",
+    "Aligns every given element's right edge to the rightmost edge of the whole given selection's bounding box. Requires at least two alignable (non-connector) elements.",
+    "Aligned right",
+    (ids) => editor().alignRight(ids),
+  );
+  alignTool(
+    "element_align_top",
+    "Align elements top",
+    "Aligns every given element's top edge to the topmost edge of the whole given selection's bounding box. Requires at least two alignable (non-connector) elements.",
+    "Aligned top",
+    (ids) => editor().alignTop(ids),
+  );
+  alignTool(
+    "element_align_middle",
+    "Align elements to vertical middle",
+    "Aligns every given element's vertical center to the vertical center of the whole given selection's bounding box. Requires at least two alignable (non-connector) elements.",
+    "Aligned middle",
+    (ids) => editor().alignMiddle(ids),
+  );
+  alignTool(
+    "element_align_bottom",
+    "Align elements bottom",
+    "Aligns every given element's bottom edge to the bottommost edge of the whole given selection's bounding box. Requires at least two alignable (non-connector) elements.",
+    "Aligned bottom",
+    (ids) => editor().alignBottom(ids),
+  );
 }

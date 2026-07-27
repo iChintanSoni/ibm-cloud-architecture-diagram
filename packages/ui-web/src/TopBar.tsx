@@ -70,6 +70,17 @@ export interface TopBarProps {
    * safe no-op when nothing actually moves (M18, docs/10-canvas-parity-plan.md). */
   canChangeZOrder: boolean;
 
+  onAlignLeft: () => void;
+  onAlignCenterHorizontal: () => void;
+  onAlignRight: () => void;
+  onAlignTop: () => void;
+  onAlignMiddle: () => void;
+  onAlignBottom: () => void;
+  /** Shared across all six align actions, same shallow `>= 2` gate as `canGroup` (M18.2,
+   * docs/10-canvas-parity-plan.md) — the real no-op check (fewer than two alignable elements, or
+   * an already-aligned selection) happens in `Editor.applyAlign`. */
+  canAlign: boolean;
+
   zoomPercent: number;
   onZoomIn: () => void;
   onZoomOut: () => void;
@@ -137,6 +148,13 @@ export function TopBar({
   onBringForward,
   onSendBackward,
   canChangeZOrder,
+  onAlignLeft,
+  onAlignCenterHorizontal,
+  onAlignRight,
+  onAlignTop,
+  onAlignMiddle,
+  onAlignBottom,
+  canAlign,
   zoomPercent,
   onZoomIn,
   onZoomOut,
@@ -191,6 +209,24 @@ export function TopBar({
           </MenuAction>
           <MenuAction onClick={onSendToBack} disabled={!canChangeZOrder}>
             Send to back
+          </MenuAction>
+          <MenuAction onClick={onAlignLeft} disabled={!canAlign}>
+            Align left
+          </MenuAction>
+          <MenuAction onClick={onAlignCenterHorizontal} disabled={!canAlign}>
+            Align center
+          </MenuAction>
+          <MenuAction onClick={onAlignRight} disabled={!canAlign}>
+            Align right
+          </MenuAction>
+          <MenuAction onClick={onAlignTop} disabled={!canAlign}>
+            Align top
+          </MenuAction>
+          <MenuAction onClick={onAlignMiddle} disabled={!canAlign}>
+            Align middle
+          </MenuAction>
+          <MenuAction onClick={onAlignBottom} disabled={!canAlign}>
+            Align bottom
           </MenuAction>
         </HeaderMenu>
         <HeaderMenu menuLinkName="View" aria-label="View">

@@ -7,6 +7,7 @@ import {
 import { CommandBus } from "../commands/commandBus.js";
 import {
   addElement,
+  alignElements,
   autoGrowContainer,
   autoRouteConnector,
   batch,
@@ -74,6 +75,7 @@ import {
   sendToBack,
   type SiblingReorder,
 } from "../scene/zOrder.js";
+import { computeAlignMoves, type AlignMode } from "../scene/align.js";
 
 export interface CreateEditorOptions {
   container: HTMLElement;
@@ -1248,6 +1250,54 @@ export class Editor {
   /** Steps every selected element one position toward the back of its own sibling bracket. */
   sendBackward(ids: ElementId[]): boolean {
     return this.applyZOrder(ids, "send backward", sendBackward);
+  }
+
+  /**
+   * Shared plumbing for the six align commands (M18.2, docs/10-canvas-parity-plan.md). Computes
+   * every alignable element's move via `computeAlignMoves` (which itself excludes connectors and
+   * already-aligned elements) and, on a no-op (fewer than two alignable elements, or nothing that
+   * actually moves), skips the dispatch and returns `false` so callers can skip a live-region
+   * announcement — same convention `applyZOrder` above uses.
+   */
+  private applyAlign(
+    ids: ElementId[],
+    mode: AlignMode,
+    label: string,
+  ): boolean {
+    const moves = computeAlignMoves(this.scene, ids, mode);
+    if (moves.length === 0) return false;
+    this.commands.dispatch(alignElements(this.scene, moves, label));
+    return true;
+  }
+
+  /** Aligns every selected element's left edge to the selection's own leftmost edge. */
+  alignLeft(ids: ElementId[]): boolean {
+    return this.applyAlign(ids, "left", "align left");
+  }
+
+  /** Aligns every selected element's horizontal center to the selection's own horizontal center. */
+  alignCenterHorizontal(ids: ElementId[]): boolean {
+    return this.applyAlign(ids, "centerH", "align center");
+  }
+
+  /** Aligns every selected element's right edge to the selection's own rightmost edge. */
+  alignRight(ids: ElementId[]): boolean {
+    return this.applyAlign(ids, "right", "align right");
+  }
+
+  /** Aligns every selected element's top edge to the selection's own topmost edge. */
+  alignTop(ids: ElementId[]): boolean {
+    return this.applyAlign(ids, "top", "align top");
+  }
+
+  /** Aligns every selected element's vertical center to the selection's own vertical center. */
+  alignMiddle(ids: ElementId[]): boolean {
+    return this.applyAlign(ids, "middle", "align middle");
+  }
+
+  /** Aligns every selected element's bottom edge to the selection's own bottommost edge. */
+  alignBottom(ids: ElementId[]): boolean {
+    return this.applyAlign(ids, "bottom", "align bottom");
   }
 
   /**

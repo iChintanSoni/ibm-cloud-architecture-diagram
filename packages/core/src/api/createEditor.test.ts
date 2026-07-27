@@ -1395,6 +1395,163 @@ describe("createEditor", () => {
     });
   });
 
+  describe("align (M18.2, docs/10-canvas-parity-plan.md)", () => {
+    it("alignLeft/alignCenterHorizontal/alignRight/alignTop/alignMiddle/alignBottom align to the selection's own bbox edge/center, and undo restores exactly", () => {
+      const a = editor.addBox({
+        at: { x: 0, y: 0 },
+        w: 100,
+        h: 100,
+        label: "a",
+      });
+      const b = editor.addBox({
+        at: { x: 50, y: 200 },
+        w: 200,
+        h: 50,
+        label: "b",
+      });
+      // overall bbox: x 0..250, y 0..250
+
+      expect(editor.alignLeft([a, b])).toBe(true);
+      expect(editor.scene.get(b)).toMatchObject({ x: 0 });
+      editor.commands.undo();
+      expect(editor.scene.get(b)).toMatchObject({ x: 50 });
+
+      expect(editor.alignRight([a, b])).toBe(true);
+      expect(editor.scene.get(a)).toMatchObject({ x: 150 });
+      editor.commands.undo();
+      expect(editor.scene.get(a)).toMatchObject({ x: 0 });
+
+      expect(editor.alignCenterHorizontal([a, b])).toBe(true);
+      expect(editor.scene.get(a)).toMatchObject({ x: 75 });
+      expect(editor.scene.get(b)).toMatchObject({ x: 25 });
+      editor.commands.undo();
+      expect(editor.scene.get(a)).toMatchObject({ x: 0 });
+      expect(editor.scene.get(b)).toMatchObject({ x: 50 });
+
+      expect(editor.alignTop([a, b])).toBe(true);
+      expect(editor.scene.get(b)).toMatchObject({ y: 0 });
+      editor.commands.undo();
+      expect(editor.scene.get(b)).toMatchObject({ y: 200 });
+
+      expect(editor.alignBottom([a, b])).toBe(true);
+      expect(editor.scene.get(a)).toMatchObject({ y: 150 });
+      editor.commands.undo();
+      expect(editor.scene.get(a)).toMatchObject({ y: 0 });
+
+      expect(editor.alignMiddle([a, b])).toBe(true);
+      expect(editor.scene.get(a)).toMatchObject({ y: 75 });
+      expect(editor.scene.get(b)).toMatchObject({ y: 100 });
+      editor.commands.undo();
+      expect(editor.scene.get(a)).toMatchObject({ y: 0 });
+      expect(editor.scene.get(b)).toMatchObject({ y: 200 });
+    });
+
+    it("moves a container's children along with it (cascade)", () => {
+      const outer = editor.addBox({
+        at: { x: 0, y: 0 },
+        w: 100,
+        h: 100,
+        label: "outer",
+      });
+      const child = editor.addIcon("test/vpc", {
+        at: { x: 20, y: 20 },
+        parentId: outer,
+      });
+      const solo = editor.addBox({
+        at: { x: 400, y: 0 },
+        w: 100,
+        h: 100,
+        label: "solo",
+      });
+      const childBefore = editor.scene.get(child)!;
+      const outerBefore = editor.scene.get(outer)!;
+
+      expect(editor.alignRight([outer, solo])).toBe(true);
+
+      const outerAfter = editor.scene.get(outer)!;
+      const childAfter = editor.scene.get(child)!;
+      const dx = outerAfter.x - outerBefore.x;
+      expect(dx).not.toBe(0);
+      expect(childAfter.x).toBe(childBefore.x + dx);
+      expect(childAfter.y).toBe(childBefore.y);
+    });
+
+    it("reroutes an attached automatic connector after an aligned endpoint moves, and undo restores its exact waypoints", () => {
+      const a = editor.addBox({
+        at: { x: 0, y: 0 },
+        w: 100,
+        h: 60,
+        label: "A",
+      });
+      const b = editor.addBox({
+        at: { x: 300, y: 200 },
+        w: 100,
+        h: 60,
+        label: "B",
+      });
+      const connectorId = editor.connect(
+        { elementId: a, port: "e" },
+        { elementId: b, port: "w" },
+      );
+      const before = (
+        editor.scene.get(connectorId) as {
+          waypoints?: Array<{ x: number; y: number }>;
+        }
+      ).waypoints;
+
+      expect(editor.alignTop([a, b])).toBe(true);
+      expect(editor.scene.get(b)).toMatchObject({ y: 0 });
+      const after = (
+        editor.scene.get(connectorId) as {
+          waypoints?: Array<{ x: number; y: number }>;
+        }
+      ).waypoints;
+      expect(after).not.toEqual(before);
+
+      editor.commands.undo();
+      expect(editor.scene.get(b)).toMatchObject({ y: 200 });
+      expect(
+        (
+          editor.scene.get(connectorId) as {
+            waypoints?: Array<{ x: number; y: number }>;
+          }
+        ).waypoints,
+      ).toEqual(before);
+    });
+
+    it("excludes a connector from the aligned selection instead of throwing or moving it", () => {
+      const a = editor.addBox({
+        at: { x: 0, y: 0 },
+        w: 100,
+        h: 100,
+        label: "a",
+      });
+      const b = editor.addBox({
+        at: { x: 50, y: 200 },
+        w: 100,
+        h: 100,
+        label: "b",
+      });
+      const connectorId = editor.connect(
+        { elementId: a, port: "e" },
+        { elementId: b, port: "w" },
+      );
+
+      expect(editor.alignLeft([a, b, connectorId])).toBe(true);
+      expect(editor.scene.get(b)).toMatchObject({ x: 0 });
+    });
+
+    it("returns false for fewer than two alignable elements, unknown ids, or an already-aligned selection", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, label: "a" });
+      expect(editor.alignLeft([a])).toBe(false);
+      expect(editor.alignLeft([])).toBe(false);
+      expect(editor.alignLeft(["missing"])).toBe(false);
+
+      const b = editor.addBox({ at: { x: 0, y: 200 }, label: "b" });
+      expect(editor.alignLeft([a, b])).toBe(false);
+    });
+  });
+
   describe("clipboard (M16.5, docs/10-canvas-parity-plan.md)", () => {
     it("copy then paste clones with fresh ids, offset by the paste cascade, and selects the copy", () => {
       const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });

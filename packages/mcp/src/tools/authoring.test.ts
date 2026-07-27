@@ -390,4 +390,99 @@ describe("authoring tools", () => {
     const afterBackward = await siblingIndex();
     expect(afterBackward[aId]).toBeLessThan(afterBackward[bId]!);
   });
+
+  it("align tools move elements to the selection's own bbox edge/center and report changed:false once already aligned", async () => {
+    const a = await client.callTool({
+      name: "element_add_box",
+      arguments: { at: { x: 0, y: 0 }, w: 100, h: 100 },
+    });
+    const b = await client.callTool({
+      name: "element_add_box",
+      arguments: { at: { x: 50, y: 200 }, w: 200, h: 50 },
+    });
+    const aId = (a.structuredContent as { id: string }).id;
+    const bId = (b.structuredContent as { id: string }).id;
+
+    const position = async (id: string): Promise<{ x: number; y: number }> => {
+      const doc = await client.callTool({ name: "doc_get", arguments: {} });
+      const element = (
+        doc.structuredContent as {
+          document: { elements: Array<{ id: string; x: number; y: number }> };
+        }
+      ).document.elements.find((el) => el.id === id)!;
+      return { x: element.x, y: element.y };
+    };
+
+    const left = await client.callTool({
+      name: "element_align_left",
+      arguments: { ids: [aId, bId] },
+    });
+    expect(left.isError).toBeUndefined();
+    expect((left.structuredContent as { changed: boolean }).changed).toBe(true);
+    expect((await position(bId)).x).toBe(0);
+
+    const noop = await client.callTool({
+      name: "element_align_left",
+      arguments: { ids: [aId, bId] },
+    });
+    expect(noop.isError).toBeUndefined();
+    expect((noop.structuredContent as { changed: boolean }).changed).toBe(
+      false,
+    );
+
+    const right = await client.callTool({
+      name: "element_align_right",
+      arguments: { ids: [aId, bId] },
+    });
+    expect(right.isError).toBeUndefined();
+    expect((right.structuredContent as { changed: boolean }).changed).toBe(
+      true,
+    );
+    expect((await position(aId)).x).toBe(100);
+
+    const centerH = await client.callTool({
+      name: "element_align_center_horizontal",
+      arguments: { ids: [aId, bId] },
+    });
+    expect(centerH.isError).toBeUndefined();
+    expect((centerH.structuredContent as { changed: boolean }).changed).toBe(
+      true,
+    );
+
+    const top = await client.callTool({
+      name: "element_align_top",
+      arguments: { ids: [aId, bId] },
+    });
+    expect(top.isError).toBeUndefined();
+    expect((top.structuredContent as { changed: boolean }).changed).toBe(true);
+    expect((await position(bId)).y).toBe(0);
+
+    const bottom = await client.callTool({
+      name: "element_align_bottom",
+      arguments: { ids: [aId, bId] },
+    });
+    expect(bottom.isError).toBeUndefined();
+    expect((bottom.structuredContent as { changed: boolean }).changed).toBe(
+      true,
+    );
+
+    const middle = await client.callTool({
+      name: "element_align_middle",
+      arguments: { ids: [aId, bId] },
+    });
+    expect(middle.isError).toBeUndefined();
+    expect((middle.structuredContent as { changed: boolean }).changed).toBe(
+      true,
+    );
+
+    // A single-element selection is never alignable to anything: always changed:false.
+    const single = await client.callTool({
+      name: "element_align_left",
+      arguments: { ids: [aId] },
+    });
+    expect(single.isError).toBeUndefined();
+    expect((single.structuredContent as { changed: boolean }).changed).toBe(
+      false,
+    );
+  });
 });

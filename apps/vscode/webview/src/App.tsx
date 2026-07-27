@@ -151,6 +151,7 @@ export function App() {
   const canUngroup =
     singleSelected !== undefined && isContainer(singleSelected);
   const canChangeZOrder = selectedIds.length > 0;
+  const canAlign = selectedIds.length >= 2;
 
   // Mounts the editor and wires the host<->webview protocol (shared/protocol.ts). Unlike
   // apps/web's App.tsx, there's no File System Access API / IndexedDB here at all — the extension
@@ -594,6 +595,75 @@ export function App() {
     }
   };
 
+  // Same shape as the z-order handlers above: reachable from the Edit menu and the command
+  // palette, neither of which is a canvas element, so refocusing the first aligned id afterward
+  // keeps DOM focus on the canvas.
+  const handleAlignLeft = () => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    const ids = editor.selection.get();
+    if (editor.alignLeft(ids)) {
+      announce(`Aligned ${ids.length} element(s) left`);
+      const [firstId] = ids;
+      if (firstId) editor.focusElement(firstId);
+    }
+  };
+
+  const handleAlignCenterHorizontal = () => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    const ids = editor.selection.get();
+    if (editor.alignCenterHorizontal(ids)) {
+      announce(`Aligned ${ids.length} element(s) to center`);
+      const [firstId] = ids;
+      if (firstId) editor.focusElement(firstId);
+    }
+  };
+
+  const handleAlignRight = () => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    const ids = editor.selection.get();
+    if (editor.alignRight(ids)) {
+      announce(`Aligned ${ids.length} element(s) right`);
+      const [firstId] = ids;
+      if (firstId) editor.focusElement(firstId);
+    }
+  };
+
+  const handleAlignTop = () => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    const ids = editor.selection.get();
+    if (editor.alignTop(ids)) {
+      announce(`Aligned ${ids.length} element(s) top`);
+      const [firstId] = ids;
+      if (firstId) editor.focusElement(firstId);
+    }
+  };
+
+  const handleAlignMiddle = () => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    const ids = editor.selection.get();
+    if (editor.alignMiddle(ids)) {
+      announce(`Aligned ${ids.length} element(s) to middle`);
+      const [firstId] = ids;
+      if (firstId) editor.focusElement(firstId);
+    }
+  };
+
+  const handleAlignBottom = () => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    const ids = editor.selection.get();
+    if (editor.alignBottom(ids)) {
+      announce(`Aligned ${ids.length} element(s) bottom`);
+      const [firstId] = ids;
+      if (firstId) editor.focusElement(firstId);
+    }
+  };
+
   const commands: CommandItem[] = [
     {
       id: "new",
@@ -684,6 +754,48 @@ export function App() {
       shortcut: "Ctrl+Shift+[",
       disabled: !canChangeZOrder,
       run: handleSendToBack,
+    },
+    {
+      id: "align-left",
+      label: "Align left",
+      category: "Arrange",
+      disabled: !canAlign,
+      run: handleAlignLeft,
+    },
+    {
+      id: "align-center-horizontal",
+      label: "Align center",
+      category: "Arrange",
+      disabled: !canAlign,
+      run: handleAlignCenterHorizontal,
+    },
+    {
+      id: "align-right",
+      label: "Align right",
+      category: "Arrange",
+      disabled: !canAlign,
+      run: handleAlignRight,
+    },
+    {
+      id: "align-top",
+      label: "Align top",
+      category: "Arrange",
+      disabled: !canAlign,
+      run: handleAlignTop,
+    },
+    {
+      id: "align-middle",
+      label: "Align middle",
+      category: "Arrange",
+      disabled: !canAlign,
+      run: handleAlignMiddle,
+    },
+    {
+      id: "align-bottom",
+      label: "Align bottom",
+      category: "Arrange",
+      disabled: !canAlign,
+      run: handleAlignBottom,
     },
     {
       id: "zoom-in",
@@ -918,6 +1030,13 @@ export function App() {
           onBringForward={handleBringForward}
           onSendBackward={handleSendBackward}
           canChangeZOrder={canChangeZOrder}
+          onAlignLeft={handleAlignLeft}
+          onAlignCenterHorizontal={handleAlignCenterHorizontal}
+          onAlignRight={handleAlignRight}
+          onAlignTop={handleAlignTop}
+          onAlignMiddle={handleAlignMiddle}
+          onAlignBottom={handleAlignBottom}
+          canAlign={canAlign}
           zoomPercent={zoomPercent}
           onZoomIn={() => editorRef.current?.zoomIn()}
           onZoomOut={() => editorRef.current?.zoomOut()}

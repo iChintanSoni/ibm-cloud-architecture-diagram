@@ -901,9 +901,10 @@ space-drag/middle-drag panning.
 
 #### M18 — Arrangement
 
-🟡 **In progress** — M18.1 (z-order) landed; align, distribute, lock/hide, and the interactive
-Layers tab remain as their own sub-milestones. Its stated blocker ("M15's DOM reordering") had
-already shipped back when M16 landed, so this was actually unblocked before work started.
+🟡 **In progress** — M18.1 (z-order) and M18.2 (align) landed; distribute, lock/hide, and the
+interactive Layers tab remain as their own sub-milestones. Its stated blocker ("M15's DOM
+reordering") had already shipped back when M16 landed, so this was actually unblocked before work
+started.
 
 Z-order, 6-way align, distribute, lock/hide, and an interactive Layers tab.
 
@@ -917,6 +918,18 @@ keyboard-equivalent (Ctrl/Cmd+`]`/`[`, Shift for the to-front/to-back variants),
 the Edit menu, command palette, right-click menu, and MCP. Full detail, the corruption bug a naive
 per-bracket renumbering scheme would have caused, and the pre-existing `groupElements` bug this
 work found and fixed along the way: [Canvas parity plan → M18.1](10-canvas-parity-plan.md#m181--z-order).
+
+##### M18.2 — Align
+
+✅ **Done.**
+
+`alignLeft`/`alignCenterHorizontal`/`alignRight`/`alignTop`/`alignMiddle`/`alignBottom`, each
+undoable, moving every selected element to the corresponding edge/center of the whole selection's
+own bounding box (never a designated anchor element) — the Figma/Illustrator/PowerPoint
+convention. Connectors in the selection are silently excluded (their position is entirely derived
+from the elements they connect, not independently movable). Reachable from the Edit menu, the
+command palette, and MCP; no context-menu entry or keyboard shortcut, same reasoning M18.1 gave for
+keeping the context menu lean. Full detail: [Canvas parity plan → M18.2](10-canvas-parity-plan.md#m182--align).
 
 #### M19 — Connector editing
 

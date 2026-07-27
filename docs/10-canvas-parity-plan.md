@@ -594,9 +594,9 @@ resize.ts`, alongside `resizeBounds`) clamps each child's _position_ independent
 
 ## M18 — Arrangement
 
-🟡 **In progress** — M18.1 (z-order) done. M18.2 (align), M18.3 (distribute), M18.4 (lock/hide),
-and M18.5 (interactive Layers tab) remain, each its own sub-milestone. The roadmap's stated
-blocker ("M15's DOM reordering") was already resolved back when M16 landed
+🟡 **In progress** — M18.1 (z-order) and M18.2 (align) done. M18.3 (distribute), M18.4
+(lock/hide), and M18.5 (interactive Layers tab) remain, each its own sub-milestone. The roadmap's
+stated blocker ("M15's DOM reordering") was already resolved back when M16 landed
 (`SvgRenderer.syncDomOrder()`), so M18 was actually unblocked before work started here.
 
 Z-order (to front / to back / step), 6-way align, distribute, lock and hide, and turning the
@@ -672,6 +672,52 @@ DOM order end to end); `packages/ui-web/src/TopBar.test.tsx`; an MCP round-trip 
 limitation M10/M11/M8.3 recorded): keyboard focus surviving a z-order reorder (the C15 fix, jsdom
 can't model focus-on-detach either way), and confirming Cmd+`[`/Cmd+`]` don't trigger macOS browser
 back/forward navigation despite this listener's `preventDefault()`.
+
+### M18.2 — Align
+
+✅ **Done.**
+
+`alignLeft`/`alignCenterHorizontal`/`alignRight`/`alignTop`/`alignMiddle`/`alignBottom`, each
+undoable, an Edit-menu entry, a command-palette entry, and an MCP tool per action. No context-menu
+entry and no keyboard shortcut (see point 4 below).
+
+1. **Reference frame: the selection's own bounding box, not an anchor element.** Aligning 2+
+   selected elements moves each one so its edge/center lines up with the corresponding edge/center
+   of the whole selection's union bbox — the Figma/Illustrator/PowerPoint convention, and the only
+   one that doesn't require the UI to expose a way to pick which element is the anchor. A single
+   selected element is always already aligned to itself, so `canAlign` gets the same shallow `>= 2`
+   gate `canGroup` already uses (`apps/web` and `apps/vscode`'s `App.tsx`), with the real no-op
+   check happening inside `Editor.applyAlign`, mirroring `canChangeZOrder`/`applyZOrder`'s own
+   split between a shallow UI gate and the real one.
+2. **Connectors are excluded from the alignable set.** A `ConnectorElement`'s `x`/`y`/`w`/`h` is a
+   degenerate 0x0 rect (`bounds.ts`'s own doc comment); its visual path comes from `waypoints`,
+   themselves derived from the elements it connects (`from`/`to` ports) plus routing. There is no
+   independent position to align it _to_ or move it _by_, so `computeAlignMoves`
+   (`packages/core/src/scene/align.ts`) silently drops any connector present in the given ids
+   before computing alignment — the same way M18.1 scoped z-order to sibling brackets rather than
+   attempting something structurally meaningless.
+3. **`alignElements`** (`commands.ts`) is one whole-operation command, not `batch()` of N
+   `moveElements` calls — the same "one command, not N" reasoning `setZOrder` gives above, but for
+   a different underlying reason: each aligned element can move by a _different_ delta, unlike
+   `moveElements`'s single shared `dx`/`dy`. It rebuilds `moveElements`'s own cascade-to-descendants
+   and shared-descendant dedup ("moved only once") per-id instead, and reroutes any attached
+   auto-connector the same way `moveElements` does.
+4. **No context-menu entry, no keyboard shortcut** — deliberately smaller surface than z-order got.
+   M18.1 kept the context menu to front/back only "to keep the context menu from growing past
+   what's needed"; align has no Illustrator/Figma/PowerPoint _universal_ keyboard convention the
+   way `Ctrl+]`/`[` is for z-order, so the Edit menu and command palette are the two discoverable
+   surfaces — consistent with how most competing tools expose align.
+5. **Menu labels follow PowerPoint's split ("center" = horizontal, "middle" = vertical)** rather
+   than Figma's more explicit "horizontal centers"/"vertical centers," on the read that this tool's
+   enterprise-architecture audience skews Office-adjacent. Internally, `AlignMode` still spells them
+   out unambiguously (`"centerH"`/`"middle"`).
+
+**Tests**: `packages/core/src/scene/align.test.ts` (pure `computeAlignMoves` geometry for all six
+modes, connector exclusion, id dedup/unknown-id filtering, the `< 2` alignable no-op, a container's
+bbox including its descendants); `createEditor.test.ts` (all six methods with undo-restores-exactly,
+a container's children cascading with it, an attached auto-connector rerouting, connector exclusion,
+and the `< 2`/unknown-id/already-aligned no-ops); `packages/ui-web/src/TopBar.test.tsx` (enable/
+disable + invoke, mirroring the z-order test); an MCP round-trip test across all six tools.
 
 ## M19 — Connector editing
 
