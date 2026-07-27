@@ -80,8 +80,6 @@ interface PanState {
   moved: boolean;
 }
 
-/** Scene-space rect spanning two arbitrary points, normalized to a non-negative x/y/w/h regardless
- * of which corner the drag started from. */
 /** Converts a wheel event into a zoom exponent (applied as `2 ** delta`, composable by summing
  * across events — see flushWheel). Ported from d3-zoom's wheelDelta, the cross-browser-tested
  * formula every major web map/canvas library (D3, Mapbox GL, OpenLayers) uses for exactly this
@@ -103,6 +101,8 @@ function wheelZoomDelta(event: WheelEvent): number {
   return -event.deltaY * base * (event.ctrlKey ? 10 : 1);
 }
 
+/** Scene-space rect spanning two arbitrary points, normalized to a non-negative x/y/w/h regardless
+ * of which corner the drag started from. */
 function rectFromPoints(a: Point, b: Point): Rect {
   return {
     x: Math.min(a.x, b.x),
