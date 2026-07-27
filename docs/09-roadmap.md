@@ -888,8 +888,8 @@ follow-up.
 #### M17 — The feedback layer
 
 🟡 **In progress** — M17.1 (space+drag and middle-drag panning), M17.2 (grid, alignment guides,
-live gesture readout), M17.3 (live 16px buffer enforcement on resize), and M17.4 (containers
-auto-grow on drag) have landed; see
+live gesture readout), M17.3 (live 16px buffer enforcement on resize), M17.4 (containers auto-grow
+on drag), and M17.5 (container resize reflows children) have landed; see
 [Canvas parity plan → M17](10-canvas-parity-plan.md#m17--the-feedback-layer).
 
 Rendered grid and snapping, alignment guides with spacing hints, drop-target highlight, live 16px

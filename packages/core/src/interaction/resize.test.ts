@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resizeBounds, resizeCursor } from "./resize.js";
+import { reflowChildren, resizeBounds, resizeCursor } from "./resize.js";
 
 const START = { x: 100, y: 100, w: 200, h: 100 };
 
@@ -104,6 +104,54 @@ describe("resizeBounds", () => {
       });
       expect(withLock).toEqual(withoutLock);
     });
+  });
+});
+
+// Container-resize reflow (M17.5, docs/10-canvas-parity-plan.md) — repositions a child pinched by
+// a shrinking container, never resizes it.
+describe("reflowChildren", () => {
+  const CONTAINER_AFTER = { x: 0, y: 0, w: 100, h: 100 };
+
+  it("leaves a child untouched when it already keeps its own 16px buffer", () => {
+    const children = [{ id: "a", x: 20, y: 20, w: 40, h: 40 }];
+    expect(reflowChildren(children, CONTAINER_AFTER)).toEqual(new Map());
+  });
+
+  it("pulls a child in from the left/top edge it violates", () => {
+    const children = [{ id: "a", x: 5, y: 5, w: 40, h: 40 }];
+    const result = reflowChildren(children, CONTAINER_AFTER);
+    expect(result.get("a")).toEqual({ x: 16, y: 16, w: 40, h: 40 });
+  });
+
+  it("pulls a child in from the right/bottom edge it violates, left/top untouched", () => {
+    const children = [{ id: "a", x: 50, y: 50, w: 40, h: 40 }]; // right/bottom edge at 90, buffer 10
+    const result = reflowChildren(children, CONTAINER_AFTER);
+    expect(result.get("a")).toEqual({ x: 44, y: 44, w: 40, h: 40 }); // 100-16-40
+  });
+
+  it("only touches the children that actually need it, leaving others out of the map entirely", () => {
+    const children = [
+      { id: "fine", x: 20, y: 20, w: 40, h: 40 },
+      { id: "pinched", x: 5, y: 5, w: 40, h: 40 },
+    ];
+    const result = reflowChildren(children, CONTAINER_AFTER);
+    expect(result.has("fine")).toBe(false);
+    expect(result.get("pinched")).toEqual({ x: 16, y: 16, w: 40, h: 40 });
+  });
+
+  it("anchors to the near edge without resizing a child too large to satisfy both sides", () => {
+    // 90-wide child in a 100-wide container: even fully centered it can't keep 16px on both
+    // sides (needs 32 total, has only 10 to spare) — anchors to the near (left/top) edge's own
+    // buffer rather than shrinking the child to fit both.
+    const children = [{ id: "a", x: 5, y: 5, w: 90, h: 90 }];
+    const result = reflowChildren(children, CONTAINER_AFTER);
+    expect(result.get("a")).toEqual({ x: 16, y: 16, w: 90, h: 90 });
+  });
+
+  it("respects a custom padding value", () => {
+    const children = [{ id: "a", x: 1, y: 1, w: 40, h: 40 }];
+    const result = reflowChildren(children, CONTAINER_AFTER, 4);
+    expect(result.get("a")).toEqual({ x: 4, y: 4, w: 40, h: 40 });
   });
 });
 

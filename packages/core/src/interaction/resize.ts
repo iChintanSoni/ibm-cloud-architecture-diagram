@@ -99,3 +99,45 @@ export function resizeCursor(handle: ResizeHandle): string {
       return "nesw-resize";
   }
 }
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
+}
+
+/**
+ * Repositions (never resizes) each child that no longer keeps its own 16px buffer inside
+ * `containerAfter`, clamping it back in — the container-resize counterpart to M17.4's auto-grow
+ * (which handles a *dragged child* pushing its parent outward; this handles a *resized container*
+ * pulling in on its children instead). Pure and scene-independent, mirroring `resizeBounds`'s own
+ * shape: the caller (`Editor.beginResizeInteraction()`) is responsible for reading current children
+ * geometry from the scene and dispatching the returned patches. Only the position needing to move
+ * is a genuine constraint change — a child already comfortably inside `containerAfter` is left
+ * completely out of the returned map, not just unpatched to the same value, so a container resize
+ * that doesn't actually pinch anything commits with no child-touching commands at all.
+ *
+ * A child *wider or taller than `containerAfter`'s own interior* can't satisfy the buffer on both
+ * sides at once without shrinking the child itself, which this deliberately never does (matching
+ * this file's own resize-handle convention of only ever touching one element's own geometry) — it
+ * anchors to the near edge and accepts the overflow on the far one, an edge case for a container
+ * shrunk far below what it actually holds, not a realistic drag.
+ */
+export function reflowChildren(
+  children: ReadonlyArray<{ id: string } & Rect>,
+  containerAfter: Rect,
+  padding = 16,
+): Map<string, Rect> {
+  const patches = new Map<string, Rect>();
+  const minX = containerAfter.x + padding;
+  const maxX = containerAfter.x + containerAfter.w - padding;
+  const minY = containerAfter.y + padding;
+  const maxY = containerAfter.y + containerAfter.h - padding;
+
+  for (const child of children) {
+    const x = clamp(child.x, minX, Math.max(minX, maxX - child.w));
+    const y = clamp(child.y, minY, Math.max(minY, maxY - child.h));
+    if (x !== child.x || y !== child.y) {
+      patches.set(child.id, { x, y, w: child.w, h: child.h });
+    }
+  }
+  return patches;
+}

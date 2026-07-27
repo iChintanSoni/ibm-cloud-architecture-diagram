@@ -588,20 +588,84 @@ describe("CanvasController", () => {
         h: 100,
         label: "parent",
       });
+      // Comfortably clear of the 16px buffer against the shrunk parent below (M17.5's own reflow
+      // is a *separate*, deliberate mechanism this test isn't exercising — see the dedicated
+      // "reflows a child" tests just below).
+      const child = editor.addIcon("test/vpc", {
+        at: { x: 20, y: 20 },
+        parentId: parent,
+      });
+      editor.selection.set([parent]);
+
+      resizeDrag("nw", 0, 0, 2, 2); // dx=2, dy=2 — small enough the child's buffer still holds
+
+      const after = editor.scene.get(parent)!;
+      expect(after).toMatchObject({ x: 2, y: 2, w: 98, h: 98 });
+      expect(after.x + after.w).toBe(100); // bottom-right corner unchanged
+      expect(after.y + after.h).toBe(100);
+      // No move-with cascade — the resize left the child's own position exactly alone.
+      expect(editor.scene.get(child)).toMatchObject({ x: 20, y: 20 });
+    });
+
+    it("reflows a child back inside the 16px buffer when a shrinking resize pinches it (M17.5)", () => {
+      const parent = editor.addBox({
+        at: { x: 0, y: 0 },
+        w: 100,
+        h: 100,
+        label: "parent",
+      });
       const child = editor.addIcon("test/vpc", {
         at: { x: 40, y: 40 },
         parentId: parent,
       });
       editor.selection.set([parent]);
 
-      resizeDrag("nw", 0, 0, 20, 10); // dx=20, dy=10
+      // Bottom-right anchored (nw handle) — the child's own right/bottom buffer against that
+      // fixed edge (100 - (40+48) = 12) was already tight, and shrinking further to the top-left
+      // doesn't help it, so it gets pulled in to restore exactly 16px.
+      resizeDrag("nw", 0, 0, 20, 10);
 
-      const after = editor.scene.get(parent)!;
-      expect(after).toMatchObject({ x: 20, y: 10, w: 80, h: 90 });
-      expect(after.x + after.w).toBe(100); // bottom-right corner unchanged
-      expect(after.y + after.h).toBe(100);
-      // Resize never cascades to descendants — only the resized element's own geometry changes.
+      const parentAfter = editor.scene.get(parent)!;
+      expect(parentAfter).toMatchObject({ x: 20, y: 10, w: 80, h: 90 });
+      const childAfter = editor.scene.get(child)!;
+      expect(childAfter.x + childAfter.w).toBe(
+        parentAfter.x + parentAfter.w - 16,
+      );
+      expect(childAfter.y + childAfter.h).toBe(
+        parentAfter.y + parentAfter.h - 16,
+      );
+      // Position moved, size didn't — reflow repositions, it never resizes a child.
+      expect(childAfter.w).toBe(48);
+      expect(childAfter.h).toBe(48);
+
+      // Still exactly one undo step for the whole gesture, child included.
+      expect(editor.commands.undo()).toBe(true);
+      expect(editor.scene.get(parent)).toMatchObject({
+        x: 0,
+        y: 0,
+        w: 100,
+        h: 100,
+      });
       expect(editor.scene.get(child)).toMatchObject({ x: 40, y: 40 });
+    });
+
+    it("leaves a child untouched when the resize doesn't actually pinch its own buffer", () => {
+      const parent = editor.addBox({
+        at: { x: 0, y: 0 },
+        w: 200,
+        h: 200,
+        label: "parent",
+      });
+      const child = editor.addIcon("test/vpc", {
+        at: { x: 80, y: 80 },
+        parentId: parent,
+      });
+      editor.selection.set([parent]);
+
+      // Grows the container (se handle) — never pinches anything, so nothing should reflow.
+      resizeDrag("se", 200, 200, 400, 400);
+
+      expect(editor.scene.get(child)).toMatchObject({ x: 80, y: 80 });
     });
 
     it("Shift locks the aspect ratio on a corner handle", () => {

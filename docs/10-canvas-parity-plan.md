@@ -429,8 +429,8 @@ is a requirement, not a follow-up.
 ## M17 — The feedback layer
 
 🟡 **In progress** — M17.1 (space+drag and middle-drag panning), M17.2 (grid, alignment guides,
-live gesture readout), M17.3 (live 16px buffer enforcement on resize), and M17.4 (containers
-auto-grow on drag) have landed.
+live gesture readout), M17.3 (live 16px buffer enforcement on resize), M17.4 (containers auto-grow
+on drag), and M17.5 (container resize reflows children) have landed.
 
 1. ✅ **Render the grid.** `SvgRenderer` gained a background layer (`packages/core/src/render/
 svgRenderer.ts`) — a single SVG `<pattern>` tiled at `scene.canvas.grid` spacing (the second real
@@ -499,7 +499,23 @@ setGestureReadout()`) tracks `"x, y"` during drag and `"w × h"` during resize, 
    multi-parent selection or top-level (parentless) elements simply skip it, since there's no single
    container to grow. Resize's own clamp (item 5) is deliberately unaffected — the roadmap's own
    wording only ever named "dragged," not resized, for this behavior.
-7. ⬜ **Container resize reflows children**, clamping them inside with the buffer preserved.
+7. ✅ **Container resize reflows children**, clamping them inside with the buffer preserved. The
+   resize counterpart to item 6's drag-time auto-grow: shrinking a container pulls its direct
+   children back in rather than letting them poke out or growing the container back to fit. A new
+   pure `reflowChildren(children, containerAfter, padding)` (`packages/core/src/interaction/
+resize.ts`, alongside `resizeBounds`) clamps each child's _position_ independently per axis —
+   mirroring `clampRectToParentInset`'s (item 5) own per-edge reasoning, not `snapMove`'s whole-bbox
+   one, since each child can be pinched on a different side than its siblings. Never resizes a
+   child: one too large to satisfy the buffer on both sides at once (rare — a container shrunk far
+   below what it actually holds) anchors to the near edge and accepts overflow on the far one,
+   rather than shrinking the child itself. Wired into `Editor.beginResizeInteraction()`'s
+   `commit()`: computed directly from the scene's _current_ (pre-commit) children geometry — unlike
+   auto-grow's own `autoGrowContainer`, this doesn't need the lazy-`do()`-reads-current-scene trick,
+   since nothing else in the same batch changes a child's position before reflow needs to read it —
+   and folded into the same `batch()` as the container's own `updateElement`, so a resize that
+   pinches N children still commits as one undo step, all children included. A resize that doesn't
+   actually pinch anything (most of them) adds no child-touching commands at all, the same
+   "no-op stays cheap" posture `autoGrowContainer` already takes.
 8. ⬜ **Alternating fills re-derive on reparent**, so nesting depth stays visually correct after a
    drag.
 9. ✅ **Space+drag and middle-drag panning.** A new `panning` mode on `CanvasController`

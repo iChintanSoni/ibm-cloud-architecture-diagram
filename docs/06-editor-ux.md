@@ -82,7 +82,8 @@ custom SVG engine ([D3](00-decision-log.md#d3--svg-dom-rendering--locked)). Ever
 - **Resizing:** drag any of a selected element's 8 handles (Shift for aspect lock on a corner
   handle, Alt to resize from center), or type exact W/H (and X/Y) into the Properties tab. Clamped
   to the resized element's own parent's 16px inset (M17.3) — grid/sibling snapping isn't wired into
-  resize yet, only the buffer. Resizing a container doesn't reflow its children yet (M17).
+  resize yet, only the buffer. Shrinking a container repositions (never resizes) any direct children
+  that no longer keep their own 16px buffer inside it (M17.5).
 
 Source: _IBM_IT Architecture diagrams kit_ v1.1, "Prescribed location / Scaling elements" slide.
 

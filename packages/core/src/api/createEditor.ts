@@ -18,6 +18,7 @@ import {
   updateElement,
 } from "../commands/commands.js";
 import type { Command } from "../commands/types.js";
+import { reflowChildren } from "../interaction/resize.js";
 import { SelectionManager } from "../interaction/selection.js";
 import type { SnapGuide } from "../interaction/snapping.js";
 import { computeTabOrder } from "../interaction/tabOrder.js";
@@ -828,12 +829,16 @@ export class Editor {
    * linter until `commit()`. Unlike `beginInteraction()`'s move, this deliberately does **not**
    * use move-with/`moveElements`: an edge/corner handle that shifts the element's own x or y (e.g.
    * dragging the west edge) must not cascade that shift onto descendants the way a real move does
-   * — only the resized element's own geometry changes, so this dispatches a bare `updateElement`
-   * patch instead. Children reflowing to stay inside a resized container is explicitly deferred to
-   * M17 ("container resize reflows children"). Parent-inset clamping (M17.3) is the caller's job
-   * (`CanvasController` applies `clampRectToParentInset` before calling `update()`), mirroring how
-   * `beginInteraction()`'s own move preview takes whatever delta `CanvasController` already ran
-   * through `snapMove` — this method previews/commits exactly the geometry it's given either way.
+   * — only the resized element's own geometry changes directly, so this dispatches a bare
+   * `updateElement` patch for it rather than `moveElements`. Parent-inset clamping (M17.3) is the
+   * caller's job (`CanvasController` applies `clampRectToParentInset` before calling `update()`),
+   * mirroring how `beginInteraction()`'s own move preview takes whatever delta `CanvasController`
+   * already ran through `snapMove` — this method previews exactly the geometry it's given either
+   * way. `commit()` additionally reflows any direct children back inside the new bounds (M17.4's
+   * own "auto-grow" for a *dragged child* has a resize counterpart here: shrinking a container
+   * pulls its children back in, `reflowChildren`, rather than letting them poke out or growing the
+   * container back) as extra `updateElement` patches in the same batch — still one undo step,
+   * children included.
    */
   beginResizeInteraction(id: ElementId): ResizeInteraction {
     const original = this.scene.get(id);
@@ -846,15 +851,28 @@ export class Editor {
       commit: () => {
         this.renderer.previewResize(id, null);
         if (
-          original &&
-          latest &&
-          (latest.x !== original.x ||
-            latest.y !== original.y ||
-            latest.w !== original.w ||
-            latest.h !== original.h)
+          !original ||
+          !latest ||
+          (latest.x === original.x &&
+            latest.y === original.y &&
+            latest.w === original.w &&
+            latest.h === original.h)
         ) {
-          this.commands.dispatch(updateElement(this.scene, id, latest));
+          return;
         }
+        const commands: Command[] = [updateElement(this.scene, id, latest)];
+        const children = this.scene.childrenOf(id);
+        if (children.length > 0) {
+          const patches = reflowChildren(children, latest);
+          for (const [childId, patch] of patches) {
+            commands.push(updateElement(this.scene, childId, patch));
+          }
+        }
+        this.commands.dispatch(
+          commands.length === 1
+            ? commands[0]!
+            : batch("resize element", commands),
+        );
       },
       abort: () => {
         this.renderer.previewResize(id, null);
