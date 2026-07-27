@@ -103,6 +103,29 @@ test.describe("keyboard-only authoring", () => {
     ).toHaveCount(0);
   });
 
+  test("arrow-key nudge still works immediately after a z-order command from the palette", async ({
+    page,
+  }) => {
+    await startBlankDiagram(page);
+    await runCommand(page, "Insert Box");
+
+    const box = page
+      .locator('.icad-canvas [data-icad-layer="elements"] > [data-icad-id]')
+      .first();
+    await box.focus();
+    await page.keyboard.press("Enter"); // select the focused element
+
+    // The command palette (like the Edit menu and context menu) isn't a canvas element, so
+    // running a z-order command from it must not permanently strand DOM focus there — the very
+    // next arrow key still has to reach the canvas and nudge the selection.
+    await runCommand(page, "Bring to front");
+
+    const rect = box.locator("rect").first();
+    const xBefore = Number(await rect.getAttribute("x"));
+    await page.keyboard.press("ArrowRight");
+    await expect(rect).toHaveAttribute("x", String(xBefore + 1));
+  });
+
   test("Tab exits the canvas at the last element instead of wrapping (no keyboard trap)", async ({
     page,
   }) => {

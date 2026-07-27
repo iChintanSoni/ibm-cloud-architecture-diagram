@@ -545,36 +545,53 @@ export function App() {
     announce(`Ungrouped ${name}`);
   };
 
+  // Each handler is reachable from the Edit menu, the context menu, and the command palette, none
+  // of which are canvas elements — refocusing the first reordered id afterward keeps DOM focus on
+  // the canvas so arrow-key nudging keeps working immediately after a z-order action (it would
+  // otherwise stay on the menu item that was clicked, which CanvasController's keydown handler
+  // never sees since it's scoped to the canvas container).
   const handleBringToFront = () => {
     const editor = editorRef.current;
     if (!editor) return;
     const ids = editor.selection.get();
-    if (editor.bringToFront(ids))
+    if (editor.bringToFront(ids)) {
       announce(`Brought ${ids.length} element(s) to front`);
+      const [firstId] = ids;
+      if (firstId) editor.focusElement(firstId);
+    }
   };
 
   const handleSendToBack = () => {
     const editor = editorRef.current;
     if (!editor) return;
     const ids = editor.selection.get();
-    if (editor.sendToBack(ids))
+    if (editor.sendToBack(ids)) {
       announce(`Sent ${ids.length} element(s) to back`);
+      const [firstId] = ids;
+      if (firstId) editor.focusElement(firstId);
+    }
   };
 
   const handleBringForward = () => {
     const editor = editorRef.current;
     if (!editor) return;
     const ids = editor.selection.get();
-    if (editor.bringForward(ids))
+    if (editor.bringForward(ids)) {
       announce(`Brought ${ids.length} element(s) forward`);
+      const [firstId] = ids;
+      if (firstId) editor.focusElement(firstId);
+    }
   };
 
   const handleSendBackward = () => {
     const editor = editorRef.current;
     if (!editor) return;
     const ids = editor.selection.get();
-    if (editor.sendBackward(ids))
+    if (editor.sendBackward(ids)) {
       announce(`Sent ${ids.length} element(s) backward`);
+      const [firstId] = ids;
+      if (firstId) editor.focusElement(firstId);
+    }
   };
 
   const commands: CommandItem[] = [
