@@ -29,6 +29,11 @@ function baseProps(overrides: Partial<TopBarProps> = {}): TopBarProps {
     onUngroup: vi.fn(),
     canGroup: false,
     canUngroup: false,
+    onBringToFront: vi.fn(),
+    onSendToBack: vi.fn(),
+    onBringForward: vi.fn(),
+    onSendBackward: vi.fn(),
+    canChangeZOrder: false,
     zoomPercent: 100,
     onZoomIn: vi.fn(),
     onZoomOut: vi.fn(),
@@ -51,6 +56,14 @@ describe("TopBar", () => {
 
   beforeEach(() => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      },
+    );
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
@@ -59,6 +72,7 @@ describe("TopBar", () => {
   afterEach(() => {
     act(() => root.unmount());
     container.remove();
+    vi.unstubAllGlobals();
   });
 
   it("renders the File/Edit/View/Insert/Help menus and the zoom indicator", () => {
@@ -140,6 +154,61 @@ describe("TopBar", () => {
     expect(onUngroup).toHaveBeenCalled();
   });
 
+  it("disables all four z-order actions until enabled, then invokes each", () => {
+    const onBringToFront = vi.fn();
+    const onSendToBack = vi.fn();
+    const onBringForward = vi.fn();
+    const onSendBackward = vi.fn();
+    act(() => {
+      root.render(
+        <TopBar
+          {...baseProps({
+            onBringToFront,
+            onSendToBack,
+            onBringForward,
+            onSendBackward,
+            canChangeZOrder: false,
+          })}
+        />,
+      );
+    });
+
+    const bringToFrontItem = findByText(
+      container,
+      "a",
+      "Bring to front",
+    ) as HTMLAnchorElement;
+    expect(bringToFrontItem.getAttribute("aria-disabled")).toBe("true");
+    act(() => bringToFrontItem.click());
+    expect(onBringToFront).not.toHaveBeenCalled();
+
+    act(() => {
+      root.render(
+        <TopBar
+          {...baseProps({
+            onBringToFront,
+            onSendToBack,
+            onBringForward,
+            onSendBackward,
+            canChangeZOrder: true,
+          })}
+        />,
+      );
+    });
+
+    for (const [label, handler] of [
+      ["Bring to front", onBringToFront],
+      ["Bring forward", onBringForward],
+      ["Send backward", onSendBackward],
+      ["Send to back", onSendToBack],
+    ] as const) {
+      const item = findByText(container, "a", label) as HTMLAnchorElement;
+      expect(item.getAttribute("aria-disabled")).toBeNull();
+      act(() => item.click());
+      expect(handler).toHaveBeenCalled();
+    }
+  });
+
   it("inserts a frame via the Insert menu", () => {
     const onInsert = vi.fn();
     act(() => {
@@ -151,7 +220,7 @@ describe("TopBar", () => {
     expect(onInsert).toHaveBeenCalledWith("frame");
   });
 
-  it("switches theme from the global bar buttons", () => {
+  it("switches theme from the overflow menu in the global bar", () => {
     const onThemeChange = vi.fn();
     act(() => {
       root.render(
@@ -159,13 +228,32 @@ describe("TopBar", () => {
       );
     });
 
-    const darkButton = [
-      ...container.querySelectorAll<HTMLButtonElement>(
-        ".icad-theme-switch button",
-      ),
-    ].find((button) => button.textContent === "dark")!;
-    act(() => darkButton.click());
+    const trigger = container.querySelector<HTMLButtonElement>(
+      ".icad-theme-menu button",
+    )!;
+    act(() => trigger.click());
+
+    const darkItem = findByText(
+      document.body,
+      "button",
+      "Dark",
+    ) as HTMLButtonElement;
+    act(() => darkItem.click());
     expect(onThemeChange).toHaveBeenCalledWith("dark");
+  });
+
+  it("reflects the current theme preference in the overflow menu's accessible name", () => {
+    act(() => {
+      root.render(<TopBar {...baseProps({ themePreference: "dark" })} />);
+    });
+
+    const trigger = container.querySelector<HTMLButtonElement>(
+      ".icad-theme-menu button",
+    )!;
+    const labelledBy = trigger.getAttribute("aria-labelledby");
+    expect(document.getElementById(labelledBy!)?.textContent).toBe(
+      "Theme: Dark",
+    );
   });
 
   it("opens find and the command palette from the global bar", () => {

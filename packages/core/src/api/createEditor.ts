@@ -14,6 +14,7 @@ import {
   removeElement,
   reparentElement,
   setManualWaypoints,
+  setZOrder,
   updateConformance,
   updateElement,
 } from "../commands/commands.js";
@@ -65,6 +66,14 @@ import {
 } from "../templates/templates.js";
 import { generateId } from "../util/id.js";
 import { Emitter } from "../util/emitter.js";
+import {
+  bringForward,
+  bringToFront,
+  paintOrder,
+  sendBackward,
+  sendToBack,
+  type SiblingReorder,
+} from "../scene/zOrder.js";
 
 export interface CreateEditorOptions {
   container: HTMLElement;
@@ -1140,6 +1149,12 @@ export class Editor {
     const commands: Command[] = [
       addElement(group),
       ...existing.map((id) => reparentElement(this.scene, id, groupId)),
+      // Without this, the new group (added with no explicit z, tied at 0 with everything else)
+      // paints *over* the members it was just built to contain — Map insertion order puts a
+      // just-added element last, and containerFill() is always opaque (docs/10-canvas-parity-plan.md
+      // M18). No overrides needed: setZOrder's do() recomputes paintOrder() fresh once this batch's
+      // earlier add/reparent sub-commands have actually run, so it sees the group's real containment.
+      setZOrder(this.scene, undefined, "group elements"),
     ];
     this.commands.dispatch(batch("group elements", commands));
     this.selection.set([groupId]);
@@ -1180,6 +1195,59 @@ export class Editor {
     };
     this.commands.dispatch(command);
     this.selection.set(children.map((child) => child.id));
+  }
+
+  /**
+   * Shared plumbing for the four z-order commands below (docs/10-canvas-parity-plan.md M18).
+   * `reorder` is applied per sibling bracket (elements sharing a parent) among `ids`, never
+   * globally — the renderer paints one flat, non-nested list (`scene.all()`), so a global z change
+   * on a container could push it in front of its own descendants; scoping to siblings makes that
+   * structurally impossible. Returns `false` on a no-op (empty/unknown selection, or already at
+   * the requested position) so callers can skip a live-region announcement, mirroring how
+   * `ungroupElement`'s own no-op is guarded at the call site.
+   */
+  private applyZOrder(
+    ids: ElementId[],
+    label: string,
+    reorder: SiblingReorder,
+  ): boolean {
+    const selected = new Set(ids.filter((id) => this.scene.has(id)));
+    if (selected.size === 0) return false;
+    const overrides = new Map<ElementId | undefined, ElementId[]>();
+    for (const parentId of new Set(
+      [...selected].map((id) => this.scene.get(id)!.parentId),
+    )) {
+      const bracket = this.scene
+        .all()
+        .filter((el) => el.parentId === parentId)
+        .map((el) => el.id);
+      overrides.set(parentId, reorder(bracket, selected));
+    }
+    const order = paintOrder(this.scene, overrides);
+    if (order.every((id, index) => this.scene.get(id)?.z === index))
+      return false;
+    this.commands.dispatch(setZOrder(this.scene, overrides, label));
+    return true;
+  }
+
+  /** Moves every selected element to the front of its own sibling bracket. */
+  bringToFront(ids: ElementId[]): boolean {
+    return this.applyZOrder(ids, "bring to front", bringToFront);
+  }
+
+  /** Moves every selected element to the back of its own sibling bracket. */
+  sendToBack(ids: ElementId[]): boolean {
+    return this.applyZOrder(ids, "send to back", sendToBack);
+  }
+
+  /** Steps every selected element one position toward the front of its own sibling bracket. */
+  bringForward(ids: ElementId[]): boolean {
+    return this.applyZOrder(ids, "bring forward", bringForward);
+  }
+
+  /** Steps every selected element one position toward the back of its own sibling bracket. */
+  sendBackward(ids: ElementId[]): boolean {
+    return this.applyZOrder(ids, "send backward", sendBackward);
   }
 
   /**

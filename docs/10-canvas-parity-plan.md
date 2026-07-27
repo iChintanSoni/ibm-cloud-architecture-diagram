@@ -42,6 +42,7 @@ competitor and must not regress.
 | C12 | `CommandBus` has no coalescing, so any per-frame gesture would flood the undo stack                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | [`commandBus.ts`](../packages/core/src/commands/commandBus.ts)                                                                                                                                                     |
 | C13 | Every `Scene` change — including a single-element `dispatch()`/`undo()`/`redo()` — re-runs a full-scene `SvgRenderer.render()` **and** a full-scene `Linter.run()`, not just for the changed ids. Cost scales with total diagram size, not gesture size: on the benchmark below, nudging 10 of 2000 elements and undoing it costs ~2s each, roughly what re-rendering the whole diagram from scratch costs. The ephemeral preview path (D26) avoids this during a drag itself, but `Interaction.commit()` still dispatches through this same full-scene path once at the end — [M16](#m16--the-core-loop)'s drag-to-move should budget for a multi-second freeze on commit at realistic diagram sizes unless render/lint are made incremental (scoped to the changed ids) before or during that milestone. _(Found while building M15.7's benchmark harness, not in the original audit. **Resolved in M16.1**: `Scene._transaction()` coalesces a command's `_put`/`_remove` calls into one change event — it turned out to be worse than this note implies, since a cascading move of N elements was N full-scene passes, not one — and `createEditor.ts`'s subscription now repaints only the affected ids for a position-only change instead of the whole scene.)_ | [`createEditor.ts`](../packages/core/src/api/createEditor.ts) constructor's `scene.on()` subscription; [`benchmark.test.ts`](../packages/core/src/perf/benchmark.test.ts)                                          |
 | C14 | `syncDomOrder()` (C10's own fix) reconciled a z-order change by unconditionally `appendChild`-ing **every** element whenever the id-sequence signature changed at all — including elements whose relative position hadn't actually moved. `appendChild` on an already-attached node is a real detach-then-reinsert, which silently blurs DOM focus off it. Invisible to every existing test (jsdom doesn't model focus-on-detach), and only surfaced live in a real browser while building M16.5: focus a placed element, then Ctrl+D/paste/duplicate (any add, which always changes the signature) — focus drops to `<body>`, silently breaking every further keyboard shortcut, since `CanvasController`'s keydown listener is scoped to the canvas container and a `<body>`-targeted key event never bubbles into it. **Resolved**: `syncDomOrder()` now walks the desired order alongside the _actual_ current DOM order, `insertBefore`-ing a node only when it's genuinely out of place; an already-correctly-positioned node (the common case for anything not itself reordered) is never touched at all.                                                                                                                                                      | [`svgRenderer.ts` `syncDomOrder()`](../packages/core/src/render/svgRenderer.ts)                                                                                                                                    |
+| C15 | C14's minimal-move fix reduces _unnecessary_ reorders, but can't help when the reorder itself is the intended change — exactly what every M18.1 z-order command does. `insertBefore` on an attached, focused element is still a detach-then-reinsert, which still blurs DOM focus off it in a real browser (jsdom doesn't model focus-on-detach, so no automated test can catch a regression here either). **Resolved**: `syncDomOrder()` now captures `document.activeElement` before the reorder walk and restores focus to it afterward if it lost focus and was inside the elements layer.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | [`svgRenderer.ts` `syncDomOrder()`](../packages/core/src/render/svgRenderer.ts)                                                                                                                                    |
 
 ### Missing vs. both competitors
 
@@ -593,10 +594,84 @@ resize.ts`, alongside `resizeBounds`) clamps each child's _position_ independent
 
 ## M18 — Arrangement
 
-⬜ **Not started.** Blocked on M15's DOM reordering.
+🟡 **In progress** — M18.1 (z-order) done. M18.2 (align), M18.3 (distribute), M18.4 (lock/hide),
+and M18.5 (interactive Layers tab) remain, each its own sub-milestone. The roadmap's stated
+blocker ("M15's DOM reordering") was already resolved back when M16 landed
+(`SvgRenderer.syncDomOrder()`), so M18 was actually unblocked before work started here.
 
 Z-order (to front / to back / step), 6-way align, distribute, lock and hide, and turning the
 read-only Layers tab into an interactive one.
+
+### M18.1 — Z-order
+
+✅ **Done.**
+
+`bringToFront`/`sendToBack`/`bringForward`/`sendBackward`, each undoable, each with a keyboard
+shortcut (Ctrl/Cmd+`]`/`[`, Shift for the to-front/to-back variants — the standard Illustrator/
+Figma/PowerPoint bindings), an Edit-menu entry, a command-palette entry, a context-menu entry
+(front/back only — step forward/backward stay reachable via keyboard/palette/menu, keeping the
+context menu from growing past what's needed), and an MCP tool per action.
+
+1. **`z` already existed** (`BaseElement.z?: number`, defaulting to `0`) but nothing ever let a
+   user or agent change it — only `templates.ts` hand-assigned it, purely to keep containers
+   behind their own content. `locked`/`hidden` genuinely don't exist yet (M18.4).
+2. **Z-order operations are scoped to siblings** (elements sharing a `parentId`, including
+   top-level), never global. `SvgRenderer` paints `Scene.all()` — a single flat, non-nested
+   list — into one `<g>` layer; a _global_ "bring to front" on a container would push its z above
+   its own descendants and visually paint its (always-opaque, `containerFill()`) fill over its own
+   children. `hitTestAll` already sorts by containment depth before z, so hit-testing was never at
+   risk — only the renderer was.
+3. **Sibling scoping alone isn't enough.** A naive "renumber this bracket to dense sequential
+   indices" scheme still corrupts nesting, because the _absolute_ values assigned to one bracket
+   can land between an unrelated container's z and that container's own descendants (traced
+   against the real `system-context` template's `frame:-100 → solution:-20 → cloud:-10 →
+customer:0` shape). The fix: after computing the new sibling order for the affected bracket(s),
+   renumber the **whole document** by `paintOrder()` (`packages/core/src/scene/zOrder.ts`) — a
+   pre-order DFS of the containment tree, siblings in z-order, so every container is always
+   immediately followed by its own whole subtree. `interaction/tabOrder.ts` already builds this
+   same shape (for keyboard tab order, sorted by position instead of z) — direct precedent for the
+   traversal itself.
+4. **`setZOrder`** (`commands.ts`) is one whole-document-renumbering command, not N commands in a
+   `batch()` — renumbering is inherently a whole-document property, not something to reconstruct
+   from per-element coalescing. It recomputes `paintOrder()` fresh inside `do()` rather than from a
+   value captured at construction time (mirroring `autoGrowContainer`'s own "read fresh" pattern),
+   which matters for composed use: see the `groupElements` fix below. Reports its `_put`s as
+   `"replace"`, the same reason and for the same cause as `reparentElement` — `SvgRenderer.
+renderElements()` (the `"update"`-reason fast path) never reorders DOM nodes, only the full
+   `render()` path (reached via any other reason) calls `syncDomOrder()`.
+5. **Fixed a pre-existing, unrelated bug found while tracing this**: `groupElements()` creates a
+   new Group with no explicit `z`; `Map.set` on an existing key preserves insertion order, so with
+   everything tied at `z=0` the just-created group (inserted last) painted _over_ the members it
+   was built to contain. `groupElements` now appends one `setZOrder(scene, undefined, "group
+elements")` to its existing batch, self-healing via the same primitive.
+6. **C15** (defects table above): a z-order command is, by definition, a genuine DOM reorder of
+   whatever's currently focused — C14's minimal-move fix reduces _unnecessary_ reorders but can't
+   avoid this one. `syncDomOrder()` now restores focus if the reorder walk knocked it out.
+7. Every M16/M17-established surface got the same four actions: `apps/web` and `apps/vscode`'s
+   `App.tsx` (handlers, keyboard, palette, context menu, Edit menu), `TopBar.tsx` (shared
+   `canChangeZOrder` gate, same shallow "is anything selected" check `canGroup` already uses — each
+   command is a safe no-op when nothing actually moves), and four `packages/mcp` tools
+   (`element_bring_to_front`/`element_send_to_back`/`element_bring_forward`/
+   `element_send_backward`), surfacing a `changed` boolean so an agent can tell "already at front"
+   apart from "moved."
+8. **Left for M18.5, not fixed here**: the (still read-only) Layers tab already visibly reorders
+   rows for free — `buildLayerTree` derives its tree from `App.tsx`'s `elements` state, which is
+   `editor.scene.all()`, already z-sorted — but it preserves _ascending_ z order, so "bring to
+   front" moves a row to the **bottom** of its sibling list, the inverse of Figma/Illustrator/
+   PowerPoint's top-row-is-frontmost convention. Flagged for M18.5 to address deliberately.
+
+**Tests**: `packages/core/src/scene/zOrder.test.ts` (pure reorder/traversal logic, including a
+property-based check that `paintOrder` never lets a container follow its own descendant, and the
+exact corruption a dense per-bracket scheme would cause); `commandBus.test.ts` (`setZOrder`'s
+`"replace"` reason, skip-unchanged, undo-restores-exactly including deleting a previously-unset
+`z`); `createEditor.test.ts` (all four ops, sibling scoping, a regression test built on the real
+template shape, multi-select spanning two parents as one undo step, no spurious undo entry, and
+DOM order end to end); `packages/ui-web/src/TopBar.test.tsx`; an MCP round-trip test per tool.
+
+**Not yet verified — needs a live browser** (this environment has no GUI/display access, the same
+limitation M10/M11/M8.3 recorded): keyboard focus surviving a z-order reorder (the C15 fix, jsdom
+can't model focus-on-detach either way), and confirming Cmd+`[`/Cmd+`]` don't trigger macOS browser
+back/forward navigation despite this listener's `preventDefault()`.
 
 ## M19 — Connector editing
 

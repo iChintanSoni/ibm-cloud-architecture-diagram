@@ -1059,6 +1059,22 @@ describe("createEditor", () => {
       expect(editor.selection.get()).toEqual([groupId]);
     });
 
+    it("paints the new group behind its own members, not over them (M18.1 fix — a freshly-added group with no explicit z used to tie at 0 with everything else, and Map insertion order put it last)", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
+      const b = editor.addBox({
+        at: { x: 200, y: 100 },
+        w: 50,
+        h: 50,
+        label: "b",
+      });
+
+      const groupId = editor.groupElements([a, b]);
+
+      const order = editor.scene.all().map((el) => el.id);
+      expect(order.indexOf(groupId!)).toBeLessThan(order.indexOf(a));
+      expect(order.indexOf(groupId!)).toBeLessThan(order.indexOf(b));
+    });
+
     it("nests the new group under a shared parent", () => {
       const parent = editor.addBox({
         at: { x: 0, y: 0 },
@@ -1197,6 +1213,185 @@ describe("createEditor", () => {
       // A single undo fully removes the icon, proving no ungroup command was pushed in between.
       editor.commands.undo();
       expect(editor.scene.get(icon)).toBeUndefined();
+    });
+  });
+
+  describe("z-order (M18.1, docs/10-canvas-parity-plan.md)", () => {
+    function paintOrderIds(): string[] {
+      return editor.scene.all().map((el) => el.id);
+    }
+
+    function domOrder(): (string | null)[] {
+      const layer = container.querySelector('[data-icad-layer="elements"]')!;
+      return [...layer.children].map((child) =>
+        child.getAttribute("data-icad-id"),
+      );
+    }
+
+    it("bringToFront/sendToBack/bringForward/sendBackward reorder within a sibling bracket, and undo restores exactly", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, label: "a" });
+      const b = editor.addBox({ at: { x: 100, y: 0 }, label: "b" });
+      const c = editor.addBox({ at: { x: 200, y: 0 }, label: "c" });
+      expect(paintOrderIds()).toEqual([a, b, c]);
+
+      expect(editor.bringToFront([a])).toBe(true);
+      expect(paintOrderIds()).toEqual([b, c, a]);
+      editor.commands.undo();
+      expect(paintOrderIds()).toEqual([a, b, c]);
+
+      expect(editor.sendToBack([c])).toBe(true);
+      expect(paintOrderIds()).toEqual([c, a, b]);
+      editor.commands.undo();
+      expect(paintOrderIds()).toEqual([a, b, c]);
+
+      expect(editor.bringForward([a])).toBe(true);
+      expect(paintOrderIds()).toEqual([b, a, c]);
+      editor.commands.undo();
+      expect(paintOrderIds()).toEqual([a, b, c]);
+
+      expect(editor.sendBackward([c])).toBe(true);
+      expect(paintOrderIds()).toEqual([a, c, b]);
+      editor.commands.undo();
+      expect(paintOrderIds()).toEqual([a, b, c]);
+    });
+
+    it("scopes to siblings — reordering inside one container never reorders an unrelated sibling container's own children", () => {
+      const left = editor.addBox({ at: { x: 0, y: 0 }, w: 200, h: 200 });
+      const right = editor.addBox({ at: { x: 300, y: 0 }, w: 200, h: 200 });
+      const leftA = editor.addIcon("test/vpc", {
+        at: { x: 10, y: 10 },
+        parentId: left,
+      });
+      const leftB = editor.addIcon("test/vpc", {
+        at: { x: 60, y: 10 },
+        parentId: left,
+      });
+      const rightA = editor.addIcon("test/vpc", {
+        at: { x: 310, y: 10 },
+        parentId: right,
+      });
+
+      editor.bringToFront([leftA]);
+
+      const order = paintOrderIds();
+      expect(order.indexOf(leftB)).toBeLessThan(order.indexOf(leftA));
+      // "right" and its own child are untouched by a bracket that doesn't include them.
+      const rightOrder = editor.scene.childrenOf(right).map((el) => el.id);
+      expect(rightOrder).toEqual([rightA]);
+    });
+
+    it("regression: sending a container's sibling to the back never lets that container paint after its own descendants (the dense-per-bracket-renumbering bug this design avoids)", () => {
+      // Mirrors the real system-context template shape: deeply-negative-z containers nested
+      // several levels deep, default-z leaves — the exact shape that broke a naive
+      // "z = index within this bracket" renumbering scheme.
+      const frame = editor.addFrame({ at: { x: 0, y: 0 }, name: "Frame" });
+      const outer = editor.addBox({
+        at: { x: 10, y: 10 },
+        w: 500,
+        h: 500,
+        parentId: frame,
+        label: "outer",
+      });
+      const inner = editor.addBox({
+        at: { x: 20, y: 20 },
+        w: 300,
+        h: 300,
+        parentId: outer,
+        label: "inner",
+      });
+      const leafInInner = editor.addIcon("test/vpc", {
+        at: { x: 30, y: 30 },
+        parentId: inner,
+      });
+      const sibling = editor.addBox({
+        at: { x: 400, y: 10 },
+        w: 50,
+        h: 50,
+        parentId: frame,
+        label: "sibling",
+      });
+
+      editor.sendToBack([sibling]);
+
+      const order = paintOrderIds();
+      const indexOf = (id: string) => order.indexOf(id);
+      for (const [ancestor, descendant] of [
+        [frame, outer],
+        [frame, inner],
+        [frame, leafInInner],
+        [frame, sibling],
+        [outer, inner],
+        [outer, leafInInner],
+        [inner, leafInInner],
+      ]) {
+        expect(indexOf(ancestor!)).toBeLessThan(indexOf(descendant!));
+      }
+    });
+
+    it("multi-select spanning two different parents reorders both brackets as one undo step", () => {
+      const left = editor.addBox({ at: { x: 0, y: 0 }, w: 200, h: 200 });
+      const right = editor.addBox({ at: { x: 300, y: 0 }, w: 200, h: 200 });
+      const leftA = editor.addIcon("test/vpc", {
+        at: { x: 10, y: 10 },
+        parentId: left,
+      });
+      const leftB = editor.addIcon("test/vpc", {
+        at: { x: 60, y: 10 },
+        parentId: left,
+      });
+      const rightA = editor.addIcon("test/vpc", {
+        at: { x: 310, y: 10 },
+        parentId: right,
+      });
+      const rightB = editor.addIcon("test/vpc", {
+        at: { x: 360, y: 10 },
+        parentId: right,
+      });
+
+      expect(editor.bringToFront([leftA, rightA])).toBe(true);
+      const order = paintOrderIds();
+      expect(order.indexOf(leftB)).toBeLessThan(order.indexOf(leftA));
+      expect(order.indexOf(rightB)).toBeLessThan(order.indexOf(rightA));
+
+      editor.commands.undo();
+      expect(paintOrderIds().indexOf(leftA)).toBeLessThan(
+        paintOrderIds().indexOf(leftB),
+      );
+      expect(paintOrderIds().indexOf(rightA)).toBeLessThan(
+        paintOrderIds().indexOf(rightB),
+      );
+    });
+
+    it("returns false and pushes no undo entry for an empty or unknown selection, or once nothing moves further", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, label: "a" });
+      editor.addBox({ at: { x: 100, y: 0 }, label: "b" });
+
+      expect(editor.bringToFront([])).toBe(false);
+      expect(editor.bringToFront(["missing"])).toBe(false);
+
+      // "a" is added first, so it's already at the back of a fresh bracket — but the very first
+      // z op on this document still legitimately normalizes untouched z values (a real write, a
+      // real undo entry). Canonicalize once so the *second* identical call is the genuine no-op.
+      editor.sendToBack([a]);
+      const canonicalOrder = paintOrderIds();
+
+      expect(editor.sendToBack([a])).toBe(false);
+      expect(paintOrderIds()).toEqual(canonicalOrder);
+
+      // No undo entry was pushed for that no-op call: undoing once reverts past it, all the way
+      // back to before the canonicalizing call.
+      editor.commands.undo();
+      expect(editor.scene.get(a)?.z).toBeUndefined();
+    });
+
+    it("reorders the live DOM to match the new paint order (command -> scene -> syncDomOrder -> DOM)", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, label: "a" });
+      const b = editor.addBox({ at: { x: 100, y: 0 }, label: "b" });
+      const c = editor.addBox({ at: { x: 200, y: 0 }, label: "c" });
+      expect(domOrder()).toEqual([a, b, c]);
+
+      editor.bringToFront([a]);
+      expect(domOrder()).toEqual([b, c, a]);
     });
   });
 

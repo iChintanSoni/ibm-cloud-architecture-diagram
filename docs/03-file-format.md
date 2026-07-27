@@ -54,7 +54,10 @@ Elements are a discriminated union on `type`. Shared fields:
   "parentId": "el_box1", // container membership (moves-with)
   "label": { "text": "VPC", "position": "s" },
   "style": {/* stroke, fill, dashed, color token */},
-  "z": 12,
+  "z": 12, // paint order — global, but maintained as a pre-order traversal of containment (M18.1,
+  // docs/10-canvas-parity-plan.md), so a container's z is always lower than every one of
+  // its own descendants'. Absent on most elements until a z-order command first touches
+  // their sibling bracket; defaults to 0 when unset.
 }
 ```
 

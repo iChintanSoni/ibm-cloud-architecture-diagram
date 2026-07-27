@@ -7,6 +7,7 @@ import {
   moveElements,
   reparentElement,
   removeElement,
+  setZOrder,
   updateConformance,
   updateElement,
 } from "./commands.js";
@@ -268,6 +269,52 @@ describe("CommandBus", () => {
     expect(() => reparentElement(scene, "parent", "child")).toThrow(
       /descendant/,
     );
+  });
+
+  it("setZOrder reports reason 'replace', not 'update' — SvgRenderer.syncDomOrder() only runs on the full render() path, which only a non-'update' reason reaches", () => {
+    const scene = new Scene();
+    const bus = new CommandBus(scene);
+    bus.dispatch(addElement(box("a")));
+    bus.dispatch(addElement(box("b")));
+
+    const reasons: string[] = [];
+    scene.on((event) => reasons.push(event.reason));
+
+    bus.dispatch(setZOrder(scene, undefined, "z-order"));
+    expect(reasons).toEqual(["replace"]);
+  });
+
+  it("setZOrder renumbers by paintOrder, skips ids already at their target index, and undoes back exactly — including deleting z for an element that had none", () => {
+    const scene = new Scene();
+    const bus = new CommandBus(scene);
+    bus.dispatch(addElement(box("a"))); // z left unset, defaults to 0
+    bus.dispatch(addElement(box("b")));
+    scene._put({ ...scene.get("b")!, z: 1 }, "update"); // already at its target index (1)
+
+    const touched: string[] = [];
+    scene.on((event) => touched.push(...event.ids));
+
+    bus.dispatch(setZOrder(scene, undefined, "z-order"));
+    expect(scene.get("a")).toMatchObject({ z: 0 });
+    expect(scene.get("b")).toMatchObject({ z: 1 });
+    expect(touched).toEqual(["a"]); // b was already correct — never _put
+
+    bus.undo();
+    expect(scene.get("a")?.z).toBeUndefined();
+    expect(scene.get("b")).toMatchObject({ z: 1 });
+  });
+
+  it("setZOrder applies the given overrides for one sibling bracket", () => {
+    const scene = new Scene();
+    const bus = new CommandBus(scene);
+    bus.dispatch(addElement(box("a")));
+    bus.dispatch(addElement(box("b")));
+
+    bus.dispatch(
+      setZOrder(scene, new Map([[undefined, ["b", "a"]]]), "z-order"),
+    );
+    expect(scene.get("b")).toMatchObject({ z: 0 });
+    expect(scene.get("a")).toMatchObject({ z: 1 });
   });
 
   it("re-routes an auto connector attached to a moved element, and undoes back", () => {

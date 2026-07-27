@@ -308,10 +308,9 @@
   padding-right: 0.5rem;
 }
 
-.icad-theme-switch {
+.icad-theme-menu {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
   margin-left: 0.5rem;
 }
 

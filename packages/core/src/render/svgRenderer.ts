@@ -612,11 +612,19 @@ export class SvgRenderer {
    * `<body>`, discovered live in a real browser: jsdom doesn't model focus-on-detach, so no
    * existing test caught it). A node already immediately after the last-confirmed-in-place one is
    * left completely untouched, DOM focus included.
+   *
+   * C14's minimal-move fix only reduces *unnecessary* reorders — it can't help a z-order command
+   * (M18), whose whole point is a genuine reorder of the focused node itself: `insertBefore` on an
+   * attached, focused element is still a detach-then-reinsert, which still blurs it in a real
+   * browser (C15, docs/10-canvas-parity-plan.md; again invisible to jsdom). Explicitly restore
+   * focus below if the reorder is what knocked it out.
    */
   private syncDomOrder(elements: SceneElement[]): void {
     const signature = elements.map((el) => el.id).join(" ");
     if (signature === this.lastOrderSignature) return;
     this.lastOrderSignature = signature;
+    const activeBefore = this.layer.ownerDocument?.activeElement ?? null;
+    const hadFocus = activeBefore !== null && this.layer.contains(activeBefore);
     let ref: ChildNode | null = this.layer.firstChild;
     for (const el of elements) {
       const node = this.nodes.get(el.id);
@@ -626,6 +634,9 @@ export class SvgRenderer {
       } else {
         this.layer.insertBefore(node, ref);
       }
+    }
+    if (hadFocus && this.layer.ownerDocument?.activeElement !== activeBefore) {
+      (activeBefore as SVGElement).focus();
     }
   }
 

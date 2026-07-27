@@ -150,6 +150,7 @@ export function App() {
   const canGroup = selectedIds.length >= 2;
   const canUngroup =
     singleSelected !== undefined && isContainer(singleSelected);
+  const canChangeZOrder = selectedIds.length > 0;
 
   // Mounts the editor and wires the host<->webview protocol (shared/protocol.ts). Unlike
   // apps/web's App.tsx, there's no File System Access API / IndexedDB here at all — the extension
@@ -311,6 +312,16 @@ export function App() {
       } else if (meta && event.key.toLowerCase() === "g") {
         event.preventDefault();
         handleGroup();
+      } else if (meta && (event.key === "]" || event.key === "}")) {
+        // event.key for Shift+] is "}", not "]" — brackets don't case-fold the way letters do, so
+        // both characters must be matched and the shift/step distinction read off event.shiftKey.
+        event.preventDefault();
+        if (event.shiftKey) handleBringToFront();
+        else handleBringForward();
+      } else if (meta && (event.key === "[" || event.key === "{")) {
+        event.preventDefault();
+        if (event.shiftKey) handleSendToBack();
+        else handleSendBackward();
       }
     };
     window.addEventListener("keydown", onKeyDown);
@@ -534,6 +545,38 @@ export function App() {
     announce(`Ungrouped ${name}`);
   };
 
+  const handleBringToFront = () => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    const ids = editor.selection.get();
+    if (editor.bringToFront(ids))
+      announce(`Brought ${ids.length} element(s) to front`);
+  };
+
+  const handleSendToBack = () => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    const ids = editor.selection.get();
+    if (editor.sendToBack(ids))
+      announce(`Sent ${ids.length} element(s) to back`);
+  };
+
+  const handleBringForward = () => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    const ids = editor.selection.get();
+    if (editor.bringForward(ids))
+      announce(`Brought ${ids.length} element(s) forward`);
+  };
+
+  const handleSendBackward = () => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    const ids = editor.selection.get();
+    if (editor.sendBackward(ids))
+      announce(`Sent ${ids.length} element(s) backward`);
+  };
+
   const commands: CommandItem[] = [
     {
       id: "new",
@@ -592,6 +635,38 @@ export function App() {
       shortcut: "Ctrl+Shift+G",
       disabled: !canUngroup,
       run: handleUngroup,
+    },
+    {
+      id: "bring-to-front",
+      label: "Bring to front",
+      category: "Arrange",
+      shortcut: "Ctrl+Shift+]",
+      disabled: !canChangeZOrder,
+      run: handleBringToFront,
+    },
+    {
+      id: "bring-forward",
+      label: "Bring forward",
+      category: "Arrange",
+      shortcut: "Ctrl+]",
+      disabled: !canChangeZOrder,
+      run: handleBringForward,
+    },
+    {
+      id: "send-backward",
+      label: "Send backward",
+      category: "Arrange",
+      shortcut: "Ctrl+[",
+      disabled: !canChangeZOrder,
+      run: handleSendBackward,
+    },
+    {
+      id: "send-to-back",
+      label: "Send to back",
+      category: "Arrange",
+      shortcut: "Ctrl+Shift+[",
+      disabled: !canChangeZOrder,
+      run: handleSendToBack,
     },
     {
       id: "zoom-in",
@@ -772,6 +847,20 @@ export function App() {
       run: handleUngroup,
     },
     {
+      id: "ctx-bring-to-front",
+      label: "Bring to front",
+      shortcut: "Ctrl+Shift+]",
+      disabled: !canChangeZOrder,
+      run: handleBringToFront,
+    },
+    {
+      id: "ctx-send-to-back",
+      label: "Send to back",
+      shortcut: "Ctrl+Shift+[",
+      disabled: !canChangeZOrder,
+      run: handleSendToBack,
+    },
+    {
       id: "ctx-select-all",
       label: "Select All",
       shortcut: "Ctrl+A",
@@ -807,6 +896,11 @@ export function App() {
           onUngroup={handleUngroup}
           canGroup={canGroup}
           canUngroup={canUngroup}
+          onBringToFront={handleBringToFront}
+          onSendToBack={handleSendToBack}
+          onBringForward={handleBringForward}
+          onSendBackward={handleSendBackward}
+          canChangeZOrder={canChangeZOrder}
           zoomPercent={zoomPercent}
           onZoomIn={() => editorRef.current?.zoomIn()}
           onZoomOut={() => editorRef.current?.zoomOut()}

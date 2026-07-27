@@ -9,6 +9,7 @@ import type {
   SceneElement,
   ConformanceSeverity,
 } from "../scene/types.js";
+import { paintOrder } from "../scene/zOrder.js";
 import type { Command } from "./types.js";
 
 /** Auto-routed connectors whose `from`/`to` is one of `ids` — these need rerouting after a move/resize. */
@@ -249,6 +250,55 @@ export function reparentElement(
     },
     undo(s) {
       s._put(previous, "replace");
+    },
+  };
+}
+
+/**
+ * Renumbers the whole document's `z` to `paintOrder(scene, overrides)`, one undo step —
+ * bring-to-front/send-to-back/step commands always renumber the whole document, not just the
+ * elements that moved, since `paintOrder`'s pre-order-DFS invariant (every container immediately
+ * followed by its whole subtree) is a property of the *entire* z assignment, not any one sibling
+ * bracket in isolation (docs/10-canvas-parity-plan.md M18). Skips `_put` for any id already at
+ * its target index, mirroring `reorderFrames`'s own "skip unchanged" pattern.
+ *
+ * `do()` recomputes `paintOrder` fresh against the *current* scene rather than a value captured
+ * at construction time — the same reason `autoGrowContainer` (above) reads `autoFitContainer`
+ * fresh: composed into a `batch()` after other structural changes (e.g. `groupElements`'s reparents
+ * into a not-yet-existing group), a construction-time snapshot would still reflect the pre-batch
+ * scene. `overrides` themselves are plain id lists, not z-dependent, so they stay valid regardless
+ * of when `do()` actually runs.
+ *
+ * Reports its `_put`s as reason **"replace"**, not "update" — the same reason, and for the same
+ * cause, as `reparentElement` above: a z-order change is exactly the kind of change
+ * `SvgRenderer.renderElements()` (the "update"-reason fast path) explicitly does not handle,
+ * since it never reorders DOM nodes — only the full `render()` path (reached via a non-"update"
+ * reason) calls `syncDomOrder()`.
+ */
+export function setZOrder(
+  scene: Scene,
+  overrides: Map<ElementId | undefined, ElementId[]> | undefined,
+  label: string,
+): Command {
+  const previous = new Map(scene.all().map((el) => [el.id, el.z]));
+  return {
+    label,
+    do(s) {
+      paintOrder(s, overrides).forEach((id, index) => {
+        const current = s.get(id);
+        if (!current || current.z === index) return;
+        s._put({ ...current, z: index } as SceneElement, "replace");
+      });
+    },
+    undo(s) {
+      for (const [id, z] of previous) {
+        const current = s.get(id);
+        if (!current || current.z === z) continue;
+        const next = { ...current } as SceneElement;
+        if (z === undefined) delete next.z;
+        else next.z = z;
+        s._put(next, "replace");
+      }
     },
   };
 }

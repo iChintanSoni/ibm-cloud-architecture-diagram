@@ -7,11 +7,32 @@ import {
   HeaderMenuItem,
   HeaderName,
   HeaderNavigation,
+  OverflowMenu,
+  OverflowMenuItem,
 } from "@carbon/react";
-import { Flash, Search } from "@carbon/react/icons";
-import type { MouseEvent, ReactNode } from "react";
+import {
+  AsleepFilled,
+  Automatic,
+  Flash,
+  LightFilled,
+  Search,
+} from "@carbon/react/icons";
+import type { ElementType, MouseEvent, ReactNode } from "react";
 
 export type ThemePreference = "auto" | "light" | "dark";
+
+const THEME_ICONS: Record<ThemePreference, ElementType> = {
+  auto: Automatic,
+  light: LightFilled,
+  dark: AsleepFilled,
+};
+
+const THEME_LABELS: Record<ThemePreference, string> = {
+  auto: "Auto",
+  light: "Light",
+  dark: "Dark",
+};
+
 export type InsertKind =
   "box" | "group" | "boundary" | "actor" | "text" | "frame";
 
@@ -40,6 +61,14 @@ export interface TopBarProps {
   onUngroup: () => void;
   canGroup: boolean;
   canUngroup: boolean;
+
+  onBringToFront: () => void;
+  onSendToBack: () => void;
+  onBringForward: () => void;
+  onSendBackward: () => void;
+  /** Shared across all four z-order actions, same shallow gate as `canGroup` — each command is a
+   * safe no-op when nothing actually moves (M18, docs/10-canvas-parity-plan.md). */
+  canChangeZOrder: boolean;
 
   zoomPercent: number;
   onZoomIn: () => void;
@@ -103,6 +132,11 @@ export function TopBar({
   onUngroup,
   canGroup,
   canUngroup,
+  onBringToFront,
+  onSendToBack,
+  onBringForward,
+  onSendBackward,
+  canChangeZOrder,
   zoomPercent,
   onZoomIn,
   onZoomOut,
@@ -146,6 +180,18 @@ export function TopBar({
           <MenuAction onClick={onUngroup} disabled={!canUngroup}>
             Ungroup
           </MenuAction>
+          <MenuAction onClick={onBringToFront} disabled={!canChangeZOrder}>
+            Bring to front
+          </MenuAction>
+          <MenuAction onClick={onBringForward} disabled={!canChangeZOrder}>
+            Bring forward
+          </MenuAction>
+          <MenuAction onClick={onSendBackward} disabled={!canChangeZOrder}>
+            Send backward
+          </MenuAction>
+          <MenuAction onClick={onSendToBack} disabled={!canChangeZOrder}>
+            Send to back
+          </MenuAction>
         </HeaderMenu>
         <HeaderMenu menuLinkName="View" aria-label="View">
           <MenuAction onClick={onZoomIn}>Zoom in</MenuAction>
@@ -158,24 +204,6 @@ export function TopBar({
           </MenuAction>
           <MenuAction onClick={onToggleGrid}>
             {gridVisible ? "Hide grid" : "Show grid"}
-          </MenuAction>
-          <MenuAction
-            onClick={() => onThemeChange("auto")}
-            disabled={themePreference === "auto"}
-          >
-            Theme: Auto
-          </MenuAction>
-          <MenuAction
-            onClick={() => onThemeChange("light")}
-            disabled={themePreference === "light"}
-          >
-            Theme: Light
-          </MenuAction>
-          <MenuAction
-            onClick={() => onThemeChange("dark")}
-            disabled={themePreference === "dark"}
-          >
-            Theme: Dark
           </MenuAction>
         </HeaderMenu>
         <HeaderMenu menuLinkName="Insert" aria-label="Insert">
@@ -207,17 +235,30 @@ export function TopBar({
         >
           <Flash size={20} />
         </HeaderGlobalAction>
-        <div className="icad-theme-switch">
-          {(["auto", "light", "dark"] as const).map((option) => (
-            <Button
-              key={option}
-              kind={themePreference === option ? "primary" : "ghost"}
-              size="sm"
-              onClick={() => onThemeChange(option)}
-            >
-              {option}
-            </Button>
-          ))}
+        <div className="icad-theme-menu">
+          <OverflowMenu
+            aria-label="Theme"
+            renderIcon={THEME_ICONS[themePreference]}
+            iconDescription={`Theme: ${THEME_LABELS[themePreference]}`}
+            size="sm"
+            flipped
+          >
+            <OverflowMenuItem
+              itemText="Auto"
+              disabled={themePreference === "auto"}
+              onClick={() => onThemeChange("auto")}
+            />
+            <OverflowMenuItem
+              itemText="Light"
+              disabled={themePreference === "light"}
+              onClick={() => onThemeChange("light")}
+            />
+            <OverflowMenuItem
+              itemText="Dark"
+              disabled={themePreference === "dark"}
+              onClick={() => onThemeChange("dark")}
+            />
+          </OverflowMenu>
         </div>
         <div className="icad-topbar__export">
           <Button kind="primary" size="sm" onClick={onExport}>

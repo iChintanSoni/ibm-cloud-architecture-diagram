@@ -412,4 +412,65 @@ export function registerAuthoringTools(
       }
     },
   );
+
+  const zOrderOutput = { ids: z.array(z.string()), changed: z.boolean() };
+  const zOrderTool = (
+    name: string,
+    title: string,
+    description: string,
+    verb: string,
+    apply: (ids: string[]) => boolean,
+  ): void => {
+    server.registerTool(
+      name,
+      {
+        title,
+        description,
+        inputSchema: { ids: z.array(z.string()) },
+        outputSchema: zOrderOutput,
+      },
+      ({ ids }) => {
+        try {
+          const changed = apply(ids);
+          return ok(
+            { ids, changed },
+            changed
+              ? `${verb} ${ids.length} element(s).`
+              : `No change — already ${verb.toLowerCase()}.`,
+          );
+        } catch (err) {
+          return fail(err);
+        }
+      },
+    );
+  };
+
+  zOrderTool(
+    "element_bring_to_front",
+    "Bring elements to front",
+    "Moves every given element to the front (top) of its own sibling bracket — elements sharing the same parent container, or the top level. Never changes order across different containers.",
+    "Brought to front",
+    (ids) => editor().bringToFront(ids),
+  );
+  zOrderTool(
+    "element_send_to_back",
+    "Send elements to back",
+    "Moves every given element to the back (bottom) of its own sibling bracket — elements sharing the same parent container, or the top level. Never changes order across different containers.",
+    "Sent to back",
+    (ids) => editor().sendToBack(ids),
+  );
+  zOrderTool(
+    "element_bring_forward",
+    "Bring elements forward",
+    "Steps every given element one position toward the front within its own sibling bracket.",
+    "Brought forward",
+    (ids) => editor().bringForward(ids),
+  );
+  zOrderTool(
+    "element_send_backward",
+    "Send elements backward",
+    "Steps every given element one position toward the back within its own sibling bracket.",
+    "Sent backward",
+    (ids) => editor().sendBackward(ids),
+  );
 }

@@ -51,7 +51,7 @@ custom SVG engine ([D3](00-decision-log.md#d3--svg-dom-rendering--locked)). Ever
   Ctrl/Cmd+A to select everything. A click always lands on the deepest element at that point;
   Alt+click cycles through every other element sharing it (repeated Alt+clicks at the same spot
   step deeper, wrapping back to the top), replacing the selection outright rather than extending
-  it. No align/distribute/z-order commands yet.
+  it. No align/distribute commands yet.
 - **Drilling into a container:** double-click a Box/Zone/Group that has children (or press Enter a
   second time on an already-selected one) to drill into it — its own bounding box, and every
   container above it, render a faint outline alongside the active selection (IBM's own prescribed
@@ -67,6 +67,10 @@ custom SVG engine ([D3](00-decision-log.md#d3--svg-dom-rendering--locked)). Ever
   over the canvas or cascades a small offset otherwise, and duplicate never disturbs a pending
   copy. Alt-drag an element to drop a moving clone and leave the original in place. Session-only —
   not the OS clipboard, so paste doesn't cross windows/tabs.
+- **Z-order:** Ctrl/Cmd+`]`/`[` step an element forward/backward, Shift brings it all the way to
+  front/back — scoped to its own sibling bracket (elements sharing a parent), never global, so a
+  container can never end up painted over its own contents. Also reachable from the Edit menu, the
+  command palette, and (front/back only) the right-click menu.
 - **Right-click context menu**, contextual to the hit target (the Menu key or Shift+F10 opens the
   same menu at whatever's focused/selected): Cut/Copy/Paste/Duplicate/Delete/Group/Ungroup/Select
   All. Right-clicking an unselected element selects it first; a member of an existing

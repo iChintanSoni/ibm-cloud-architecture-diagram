@@ -901,9 +901,22 @@ space-drag/middle-drag panning.
 
 #### M18 — Arrangement
 
-⬜ **Not started** — blocked on M15's DOM reordering.
+🟡 **In progress** — M18.1 (z-order) landed; align, distribute, lock/hide, and the interactive
+Layers tab remain as their own sub-milestones. Its stated blocker ("M15's DOM reordering") had
+already shipped back when M16 landed, so this was actually unblocked before work started.
 
 Z-order, 6-way align, distribute, lock/hide, and an interactive Layers tab.
+
+##### M18.1 — Z-order
+
+✅ **Done.**
+
+`bringToFront`/`bringForward`/`sendBackward`/`sendToBack`, each undoable, scoped to siblings (a
+container never leapfrogs its own descendants — the renderer paints one flat, non-nested list),
+keyboard-equivalent (Ctrl/Cmd+`]`/`[`, Shift for the to-front/to-back variants), and reachable from
+the Edit menu, command palette, right-click menu, and MCP. Full detail, the corruption bug a naive
+per-bracket renumbering scheme would have caused, and the pre-existing `groupElements` bug this
+work found and fixed along the way: [Canvas parity plan → M18.1](10-canvas-parity-plan.md#m181--z-order).
 
 #### M19 — Connector editing
 

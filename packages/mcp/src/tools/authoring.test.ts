@@ -309,4 +309,85 @@ describe("authoring tools", () => {
       .sort((x, y) => x.order - y.order);
     expect(frames.map((f) => f.id)).toEqual([bId, aId]);
   });
+
+  it("z-order tools reorder siblings and report changed:false once nothing moves further", async () => {
+    const a = await client.callTool({
+      name: "element_add_box",
+      arguments: { at: { x: 0, y: 0 } },
+    });
+    const b = await client.callTool({
+      name: "element_add_box",
+      arguments: { at: { x: 300, y: 0 } },
+    });
+    const aId = (a.structuredContent as { id: string }).id;
+    const bId = (b.structuredContent as { id: string }).id;
+
+    const siblingIndex = async (): Promise<Record<string, number>> => {
+      const doc = await client.callTool({ name: "doc_get", arguments: {} });
+      const elements = (
+        doc.structuredContent as {
+          document: { elements: Array<{ id: string }> };
+        }
+      ).document.elements;
+      return Object.fromEntries(elements.map((el, index) => [el.id, index]));
+    };
+
+    // a was added first, so it's already behind b — but the very first z op on a document still
+    // legitimately normalizes untouched z values (a real write), so canonicalize once before the
+    // real no-op check.
+    await client.callTool({
+      name: "element_send_to_back",
+      arguments: { ids: [aId] },
+    });
+    const noop = await client.callTool({
+      name: "element_send_to_back",
+      arguments: { ids: [aId] },
+    });
+    expect(noop.isError).toBeUndefined();
+    expect((noop.structuredContent as { changed: boolean }).changed).toBe(
+      false,
+    );
+
+    const front = await client.callTool({
+      name: "element_bring_to_front",
+      arguments: { ids: [aId] },
+    });
+    expect(front.isError).toBeUndefined();
+    expect((front.structuredContent as { changed: boolean }).changed).toBe(
+      true,
+    );
+    const afterFront = await siblingIndex();
+    expect(afterFront[aId]).toBeGreaterThan(afterFront[bId]!);
+
+    const back = await client.callTool({
+      name: "element_send_to_back",
+      arguments: { ids: [aId] },
+    });
+    expect(back.isError).toBeUndefined();
+    expect((back.structuredContent as { changed: boolean }).changed).toBe(true);
+    const afterBack = await siblingIndex();
+    expect(afterBack[aId]).toBeLessThan(afterBack[bId]!);
+
+    const forward = await client.callTool({
+      name: "element_bring_forward",
+      arguments: { ids: [aId] },
+    });
+    expect(forward.isError).toBeUndefined();
+    expect((forward.structuredContent as { changed: boolean }).changed).toBe(
+      true,
+    );
+    const afterForward = await siblingIndex();
+    expect(afterForward[aId]).toBeGreaterThan(afterForward[bId]!);
+
+    const backward = await client.callTool({
+      name: "element_send_backward",
+      arguments: { ids: [aId] },
+    });
+    expect(backward.isError).toBeUndefined();
+    expect((backward.structuredContent as { changed: boolean }).changed).toBe(
+      true,
+    );
+    const afterBackward = await siblingIndex();
+    expect(afterBackward[aId]).toBeLessThan(afterBackward[bId]!);
+  });
 });
