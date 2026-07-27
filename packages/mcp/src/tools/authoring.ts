@@ -220,6 +220,37 @@ export function registerAuthoringTools(
   );
 
   server.registerTool(
+    "element_reparent",
+    {
+      title: "Change an element's containing Box/Group/Zone/Frame",
+      description:
+        "Moves an element into a different container (or to the canvas root, with no parentId), as one undo step. Position is unchanged — only containment membership. Rejects a cycle (an element can't become its own descendant's child) and a non-container target, the same as the human editor's own Properties panel.",
+      inputSchema: {
+        id: z.string(),
+        parentId: z
+          .string()
+          .optional()
+          .describe(
+            "Containing Box/Group/Zone/Frame id; omit to lift to the canvas root",
+          ),
+      },
+    },
+    ({ id, parentId }) => {
+      try {
+        editor().setElementParent(id, parentId);
+        return ok(
+          { id },
+          parentId
+            ? `Reparented ${id} into ${parentId}.`
+            : `Moved ${id} to the canvas root.`,
+        );
+      } catch (err) {
+        return fail(err);
+      }
+    },
+  );
+
+  server.registerTool(
     "element_move",
     {
       title: "Nudge elements by a delta",

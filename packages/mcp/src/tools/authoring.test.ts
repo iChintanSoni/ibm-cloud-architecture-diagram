@@ -224,6 +224,63 @@ describe("authoring tools", () => {
     ).toHaveLength(0);
   });
 
+  it("element_reparent changes containment without touching position, and rejects a cycle", async () => {
+    const box = await client.callTool({
+      name: "element_add_box",
+      arguments: { at: { x: 0, y: 0 }, w: 200, h: 200 },
+    });
+    const boxId = (box.structuredContent as { id: string }).id;
+    const icon = await client.callTool({
+      name: "element_add_icon",
+      arguments: {
+        catalogRef: (
+          (
+            await client.callTool({
+              name: "catalog_search",
+              arguments: { query: "vpc" },
+            })
+          ).structuredContent as { icons: Array<{ id: string }> }
+        ).icons[0]!.id,
+        at: { x: 500, y: 500 },
+      },
+    });
+    const iconId = (icon.structuredContent as { id: string }).id;
+
+    const reparented = await client.callTool({
+      name: "element_reparent",
+      arguments: { id: iconId, parentId: boxId },
+    });
+    expect(reparented.isError).toBeUndefined();
+
+    const doc = await client.callTool({ name: "doc_get", arguments: {} });
+    const element = (
+      doc.structuredContent as {
+        document: {
+          elements: Array<{
+            id: string;
+            x: number;
+            y: number;
+            parentId?: string;
+          }>;
+        };
+      }
+    ).document.elements.find((el) => el.id === iconId)!;
+    expect(element.parentId).toBe(boxId);
+    expect(element).toMatchObject({ x: 500, y: 500 }); // position untouched
+
+    const liftedToRoot = await client.callTool({
+      name: "element_reparent",
+      arguments: { id: iconId },
+    });
+    expect(liftedToRoot.isError).toBeUndefined();
+
+    const cycle = await client.callTool({
+      name: "element_reparent",
+      arguments: { id: boxId, parentId: boxId },
+    });
+    expect(cycle.isError).toBe(true);
+  });
+
   it("frame_reorder applies an exact presentation order", async () => {
     const a = await client.callTool({
       name: "element_add_frame",

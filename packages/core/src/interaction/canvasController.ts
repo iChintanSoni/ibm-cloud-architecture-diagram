@@ -7,6 +7,7 @@ import { clientPointToCanvas } from "../render/dom.js";
 import type { Point } from "../render/port.js";
 import { portPoint } from "../render/port.js";
 import type { Rect } from "../routing/orthogonalRouter.js";
+import { isContainer } from "../scene/types.js";
 import type { ElementId, PortSide, SceneElement } from "../scene/types.js";
 import { Emitter } from "../util/emitter.js";
 import { hitTest, hitTestAll, hitTestRect } from "./hitTest.js";
@@ -772,7 +773,33 @@ export class CanvasController {
         at: { x, y },
       });
     }
-    drag.interaction.update(finalDx, finalDy);
+    const dropTargetId = this.dropTargetAt(point, drag.ids);
+    this.editor.setDropTarget(dropTargetId);
+    drag.interaction.update(finalDx, finalDy, dropTargetId);
+  }
+
+  // Drop-target detection (M17.6, docs/10-canvas-parity-plan.md): the deepest container under the
+  // pointer's *current* scene point — hitTestAll's own deepest-first stack means a point over a
+  // nested leaf (e.g. hovering a sibling icon inside the real target container) still resolves to
+  // that container, not just a bare-background hit. Excludes the dragged selection's own current
+  // shared parent (nothing new would happen), every one of the dragged ids, and any of their own
+  // descendants (a cycle `reparentElement` would otherwise throw constructing) — mirrors
+  // `reparentElement`'s own `isSelfOrDescendant` guard so this never promises a drop that would
+  // then fail at commit.
+  private dropTargetAt(
+    point: Point,
+    draggedIds: ElementId[],
+  ): ElementId | undefined {
+    const scene = this.editor.scene;
+    const currentParentId = scene.sharedParentId(draggedIds);
+    const stack = hitTestAll(scene, point);
+    const target = stack.find(
+      (hit) =>
+        isContainer(hit) &&
+        hit.id !== currentParentId &&
+        !draggedIds.some((id) => scene.isSelfOrDescendant(id, hit.id)),
+    );
+    return target?.id;
   }
 
   // 8-handle resize (M16.2, docs/10-canvas-parity-plan.md): unlike drag-to-move there's no
@@ -832,6 +859,7 @@ export class CanvasController {
       }
       this.editor.setSnapGuides([]);
       this.editor.setGestureReadout(undefined);
+      this.editor.setDropTarget(undefined);
       this.setMode({ kind: "idle" });
       return;
     }
@@ -977,6 +1005,7 @@ export class CanvasController {
       interaction.abort();
       this.editor.setSnapGuides([]);
       this.editor.setGestureReadout(undefined);
+      this.editor.setDropTarget(undefined);
       this.releasePointer(pointerId);
       this.setMode({ kind: "idle" });
       return;

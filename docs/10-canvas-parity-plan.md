@@ -430,7 +430,8 @@ is a requirement, not a follow-up.
 
 🟡 **In progress** — M17.1 (space+drag and middle-drag panning), M17.2 (grid, alignment guides,
 live gesture readout), M17.3 (live 16px buffer enforcement on resize), M17.4 (containers auto-grow
-on drag), and M17.5 (container resize reflows children) have landed.
+on drag), M17.5 (container resize reflows children), and M17.6 (drop-target highlight and
+drag-to-reparent) have landed.
 
 1. ✅ **Render the grid.** `SvgRenderer` gained a background layer (`packages/core/src/render/
 svgRenderer.ts`) — a single SVG `<pattern>` tiled at `scene.canvas.grid` spacing (the second real
@@ -459,7 +460,48 @@ setGestureReadout()`) tracks `"x, y"` during drag and `"w × h"` during resize, 
    the guides. Fixed dark-on-light styling regardless of the diagram's own resolved theme — this is
    transient gesture chrome, not diagram content, the same posture the validation badge already
    takes.
-4. ⬜ Drop-target highlight when a drag hovers a container.
+4. ✅ **Drop-target highlight, and the drag-to-reparent it makes meaningful.** There was previously
+   no way to drag an element between containers at all — `beginInteraction().commit()` only ever
+   dispatched `moveElements`. `CanvasController.updateDrag` now hit-tests the pointer's _current_
+   scene point every move (`hitTestAll`'s own deepest-first stack, so hovering a leaf nested inside
+   the real target container still resolves to that container, not just a bare-background hit) for
+   the deepest `isContainer()` element (Box/Group/Zone/Frame) that isn't the dragged selection's own
+   current shared parent (`Scene.sharedParentId`, a new method also shared with item 6's own
+   auto-grow) and isn't one of the dragged ids or their own descendant
+   (`Scene.isSelfOrDescendant`, mirroring `reparentElement`'s own cycle guard so the highlight never
+   promises a drop that would then throw). A new `SvgRenderer.setDropTarget()` outlines it live in
+   an affirmative green (Carbon Green 50, `#24a148` — deliberately distinct from the blue
+   selection/drill family and the magenta guides). `Interaction.update()` gained a third,
+   optional `dropTargetId` parameter so `commit()` knows what the _last_ hovered target was;
+   `Editor.commitMove()` reparents every dragged id into it (plus auto-grows it, item 6's own
+   mechanism, reused directly) instead of just growing the _current_ parent, when one was set — all
+   still one undo step. `Editor.setElementParent()` (the pre-existing Properties-panel path) is
+   unchanged; this is an additive path through the same `reparentElement` command. Also exposed as
+   a new `element_reparent` MCP tool (`packages/mcp/src/tools/authoring.ts`) — `reparentElement`
+   has existed as a command since M3 but was never reachable by an agent.
+
+   **Two real bugs found and fixed building this** (neither ever exercised before, since no
+   existing caller batched `reparentElement` the way this gesture does):
+   - `reparentElement`'s `do()` built its patched element from a `previous` snapshot captured at
+     _construction_ time, not the scene's current state. Batching it right after `moveElements`
+     targeting the same id (exactly what drag-to-reparent needs) silently clobbered the just-applied
+     move back to its pre-move position when the reparent's own `do()` ran. Fixed to read fresh
+     (`s.get(id)`) inside `do()`, mirroring `updateElement`'s own pattern.
+   - `reparentElement` reported its `_put` as reason `"update"` — safe when batched alongside a
+     genuine `"add"`/`"remove"` (`groupElements`/`ungroupElement`'s own long-standing usage, which
+     coalesces the whole batch to `"replace"` and forces a full render regardless), but M17.6's own
+     move+reparent+auto-grow batch is _entirely_ `"update"`-reason commands, so it stayed on
+     `createEditor.ts`'s scoped `renderElements(event.ids)` fast path — which only repaints the ids
+     a `Scene._transaction` actually `_put`, never the _old_ parent (whose own scene object nothing
+     in the batch ever touches, even though its child list just shrank). Confirmed live: the
+     accessibility tree kept nesting a reparented element under its stale previous parent, with a
+     stale "contains N elements" name on both ends. Fixed by reporting `"replace"` instead — the
+     same reason the batch-coalescing rule already uses as its own "something structural happened"
+     fallback — which forces the full `render()` path unconditionally. This also directly resolves
+     item 8's own "alternating fills re-derive on reparent" concern (a full render re-derives every
+     element's fill from its live ancestor depth, not just the moved one), confirmed live and
+     covered by a regression test; see item 8 for the descendant-cascade follow-up test.
+
 5. ✅ **Live 16px buffer enforcement on resize.** Drag already clamped to the parent inset
    (`snapMove`, M15); resize didn't (M16.2's own note: "No grid/sibling/inset snapping yet"). Rather
    than force one shared clamp function onto both — a move translates a fixed-size bbox rigidly, so

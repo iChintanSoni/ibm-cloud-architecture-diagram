@@ -106,6 +106,17 @@ export class Scene {
     return this.descendantsOf(ancestorId).some((el) => el.id === id);
   }
 
+  /** The single `parentId` every one of `ids` shares, or `undefined` if they don't all share one
+   * — including the case where every id is top-level (no single container to point at), which a
+   * caller distinguishes from "ambiguous" the same way either way: there's nothing to act on.
+   * Used by auto-grow (M17.4) and drag-to-reparent's own "already in this container" check
+   * (M17.6, docs/10-canvas-parity-plan.md). */
+  sharedParentId(ids: ElementId[]): ElementId | undefined {
+    if (ids.length === 0) return undefined;
+    const parentIds = new Set(ids.map((id) => this.get(id)?.parentId));
+    return parentIds.size === 1 ? [...parentIds][0] : undefined;
+  }
+
   /** Containing elements from immediate parent up to the root, cycle-safe. */
   ancestorsOf(id: ElementId): SceneElement[] {
     const result: SceneElement[] = [];

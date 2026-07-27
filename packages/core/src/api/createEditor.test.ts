@@ -232,6 +232,45 @@ describe("createEditor", () => {
     );
   });
 
+  it("re-derives the old parent's aria-owns/child count and the moved container's own alternating fill on reparent (M17.6 fix)", () => {
+    const a = editor.addBox({ at: { x: 0, y: 0 }, w: 300, h: 300, label: "a" });
+    const b = editor.addBox({
+      at: { x: 20, y: 20 },
+      w: 200,
+      h: 200,
+      parentId: a,
+      label: "b",
+    });
+    const c = editor.addBox({
+      at: { x: 40, y: 40 },
+      w: 100,
+      h: 100,
+      parentId: b,
+      label: "c",
+    });
+    const nodeOf = (id: string) =>
+      container.querySelector(`[data-icad-id="${id}"]`)!;
+    // c is 2 containers deep under a (a > b > c) — an even depth, so it starts on the same
+    // (non-white) fill family as "a" itself.
+    const fillBefore = nodeOf(c).querySelector("rect")?.getAttribute("fill");
+
+    editor.setElementParent(c, a); // now only 1 container deep (a > c) — depth parity flips
+
+    // "b" no longer owns "c" — a fix regression (this used to leave "b"'s aria-owns/accessible
+    // name stale, still claiming "c" as a child, since reparentElement's own "update"-reason
+    // change event never repainted "b" — only "c" itself was ever `_put`).
+    expect(nodeOf(b).getAttribute("aria-owns")).toBeNull();
+    expect(nodeOf(b).getAttribute("aria-label")).toContain("0 elements");
+    // "a" still owns "b" (never moved) and now also directly owns "c" too.
+    expect(nodeOf(a).getAttribute("aria-owns")?.split(" ")).toEqual(
+      expect.arrayContaining([b, c]),
+    );
+
+    // "c" itself re-renders at its new (odd) depth, flipping its alternating fill.
+    const fillAfter = nodeOf(c).querySelector("rect")?.getAttribute("fill");
+    expect(fillAfter).not.toBe(fillBefore);
+  });
+
   it("notifies shell listeners when selection changes", () => {
     const id = editor.addBox({ at: { x: 0, y: 0 }, label: "VPC" });
     const seen: string[][] = [];
@@ -876,6 +915,65 @@ describe("createEditor", () => {
       editor.commands.undo();
       expect(editor.scene.get(id)).toBeUndefined();
       expect(editor.commands.canUndo()).toBe(false);
+    });
+
+    it("reparents into update()'s dropTargetId on commit, growing it to fit, as one undo step (M17.6)", () => {
+      const box = editor.addBox({
+        at: { x: 300, y: 0 },
+        w: 60,
+        h: 60,
+        label: "box",
+      });
+      const icon = editor.addIcon("test/vpc", { at: { x: 0, y: 0 } });
+      const boxBefore = { ...editor.scene.get(box)! };
+
+      const interaction = editor.beginInteraction([icon]);
+      interaction.update(320, 20, box); // lands the 48x48 icon inside "box", which is too small
+
+      interaction.commit();
+
+      const iconAfter = editor.scene.get(icon)!;
+      expect(iconAfter.parentId).toBe(box);
+      expect(iconAfter).toMatchObject({ x: 320, y: 20 });
+      const boxAfter = editor.scene.get(box)!;
+      expect(boxAfter.w).toBeGreaterThan(boxBefore.w); // grew to keep the icon's own buffer
+
+      editor.commands.undo();
+      expect(editor.scene.get(icon)?.parentId).toBeUndefined();
+      expect(editor.scene.get(icon)).toMatchObject({ x: 0, y: 0 });
+      expect(editor.scene.get(box)).toMatchObject(boxBefore);
+    });
+
+    it("does not reparent when dropTargetId matches the element's own current parent", () => {
+      const parent = editor.addBox({
+        at: { x: 0, y: 0 },
+        w: 200,
+        h: 200,
+        label: "parent",
+      });
+      const child = editor.addIcon("test/vpc", {
+        at: { x: 20, y: 20 },
+        parentId: parent,
+      });
+
+      const interaction = editor.beginInteraction([child]);
+      interaction.update(5, 5, parent); // "moving into" the parent it's already in
+
+      interaction.commit();
+
+      expect(editor.scene.get(child)).toMatchObject({
+        parentId: parent,
+        x: 25,
+        y: 25,
+      });
+      // One undo reverts the whole thing back to the original add-with-parent — proving no
+      // separate reparent command was pushed on top of the move.
+      editor.commands.undo();
+      expect(editor.scene.get(child)).toMatchObject({
+        parentId: parent,
+        x: 20,
+        y: 20,
+      });
     });
 
     it("also moves the element's own selection outline in lockstep during the preview", () => {

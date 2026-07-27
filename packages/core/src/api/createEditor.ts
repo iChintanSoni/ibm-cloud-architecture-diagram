@@ -109,8 +109,12 @@ export interface ComplianceSummary {
 
 /** An in-progress ephemeral gesture returned by `Editor.beginInteraction` (D26). */
 export interface Interaction {
-  /** Applies a scene-space delta as a live preview. Call repeatedly, e.g. once per pointer-move. */
-  update(dx: number, dy: number): void;
+  /** Applies a scene-space delta as a live preview. Call repeatedly, e.g. once per pointer-move.
+   * `dropTargetId` (M17.6, docs/10-canvas-parity-plan.md) is the container currently under the
+   * pointer that this drag would reparent into if released now, or `undefined` for none —
+   * `CanvasController` recomputes it every move, and only the last value passed in before
+   * `commit()` is used. */
+  update(dx: number, dy: number, dropTargetId?: ElementId): void;
   /** Dispatches the accumulated delta as one undoable command; no-ops if nothing moved. */
   commit(): void;
   /** Discards the preview and restores the pre-interaction visual state. Never touches the scene. */
@@ -758,19 +762,31 @@ export class Editor {
   }
 
   /**
-   * Dispatches a committed move as one undo step, growing the moved elements' shared parent to
-   * fit afterward if it no longer comfortably contains them (M17.4, docs/10-canvas-parity-plan.md)
-   * — shared by `nudgeElements` and `beginInteraction()`'s own `commit()`. Auto-grow only applies
-   * when every one of `ids` shares the same defined parent (an ambiguous multi-parent selection, or
-   * top-level elements with no parent at all, simply skips it — there's no single container to
-   * grow). `autoGrowContainer`'s own `do()` reads the *current* scene fresh, so batching it right
-   * after `moveElements` means it naturally sees the move already applied.
+   * Dispatches a committed move as one undo step — shared by `nudgeElements` and
+   * `beginInteraction()`'s own `commit()`. With no `dropTargetId`, grows the moved elements' shared
+   * parent to fit afterward if it no longer comfortably contains them (M17.4,
+   * docs/10-canvas-parity-plan.md); this only applies when every one of `ids` shares the same
+   * defined parent (an ambiguous multi-parent selection, or top-level elements with no parent at
+   * all, simply skips it — there's no single container to grow). With one, reparents every one of
+   * `ids` into it instead (M17.6) and grows *that* container to fit — `CanvasController` has
+   * already confirmed it differs from their current shared parent and isn't one of `ids` or their
+   * own descendant (a cycle `reparentElement` would otherwise throw on) before ever setting it.
+   * `autoGrowContainer`'s own `do()` reads the *current* scene fresh, so batching it last means it
+   * naturally sees the move/reparent already applied.
    */
-  private commitMove(ids: ElementId[], dx: number, dy: number): void {
+  private commitMove(
+    ids: ElementId[],
+    dx: number,
+    dy: number,
+    dropTargetId?: ElementId,
+  ): void {
     const commands: Command[] = [moveElements(this.scene, ids, dx, dy)];
-    const parentIds = new Set(ids.map((id) => this.scene.get(id)?.parentId));
-    if (parentIds.size === 1) {
-      const parentId = [...parentIds][0];
+    if (dropTargetId !== undefined) {
+      for (const id of ids)
+        commands.push(reparentElement(this.scene, id, dropTargetId));
+      commands.push(autoGrowContainer(this.scene, dropTargetId));
+    } else {
+      const parentId = this.scene.sharedParentId(ids);
       if (parentId !== undefined)
         commands.push(autoGrowContainer(this.scene, parentId));
     }
@@ -804,17 +820,31 @@ export class Editor {
     const previewIds = [...targets];
     let dx = 0;
     let dy = 0;
+    let dropTargetId: ElementId | undefined;
 
     return {
-      update: (nextDx, nextDy) => {
+      update: (nextDx, nextDy, nextDropTargetId) => {
         dx = nextDx;
         dy = nextDy;
+        dropTargetId = nextDropTargetId;
         this.renderer.previewTransform(previewIds, dx, dy);
       },
       commit: () => {
         this.renderer.previewTransform(previewIds, 0, 0);
-        if (existing.length > 0 && (dx !== 0 || dy !== 0)) {
-          this.commitMove(existing, dx, dy);
+        // Reparenting (M17.6) counts as a real change even on a net-zero delta (rare — e.g. a
+        // drag that lands back at its start point while still over a different container) —
+        // dropTargetId already excludes the elements' own current shared parent
+        // (CanvasController's own check), so "set" here always means "actually different."
+        const reparenting =
+          dropTargetId !== undefined &&
+          dropTargetId !== this.scene.sharedParentId(existing);
+        if (existing.length > 0 && (dx !== 0 || dy !== 0 || reparenting)) {
+          this.commitMove(
+            existing,
+            dx,
+            dy,
+            reparenting ? dropTargetId : undefined,
+          );
         }
       },
       abort: () => {
@@ -1243,6 +1273,12 @@ export class Editor {
   /** Shows or hides the background grid (M17.2) — a view preference, not part of the document. */
   setGridVisible(visible: boolean): void {
     this.renderer.setGridVisible(visible);
+  }
+
+  /** Highlights the container a live drag would reparent into if released now (M17.6,
+   * docs/10-canvas-parity-plan.md) — pass `undefined` to clear it. */
+  setDropTarget(id: ElementId | undefined): void {
+    this.renderer.setDropTarget(id);
   }
 
   destroy(): void {

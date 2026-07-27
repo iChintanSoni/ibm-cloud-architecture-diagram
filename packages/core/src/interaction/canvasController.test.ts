@@ -507,6 +507,125 @@ describe("CanvasController", () => {
     });
   });
 
+  describe("drag-to-reparent (M17.6, docs/10-canvas-parity-plan.md)", () => {
+    it("highlights a container hovered mid-drag, cleared on release", () => {
+      const box = editor.addBox({
+        at: { x: 300, y: 0 },
+        w: 100,
+        h: 100,
+        label: "box",
+      });
+      const icon = editor.addIcon("test/vpc", { at: { x: 0, y: 0 } });
+
+      pointerEvent("pointerdown", container, 24, 24);
+      pointerEvent("pointermove", container, 340, 40); // over "box", clear of its threshold
+
+      expect(
+        container.querySelector(`[data-icad-drop-target="${box}"]`),
+      ).not.toBeNull();
+
+      pointerEvent("pointerup", container, 340, 40);
+      expect(container.querySelector("[data-icad-drop-target]")).toBeNull();
+      expect(editor.scene.get(icon)?.parentId).toBe(box);
+    });
+
+    it("reparents into the hovered container on release, growing it to fit, as one undo step", () => {
+      const box = editor.addBox({
+        at: { x: 300, y: 0 },
+        w: 60,
+        h: 60,
+        label: "box",
+      });
+      const icon = editor.addIcon("test/vpc", { at: { x: 0, y: 0 } });
+      const boxBefore = { ...editor.scene.get(box)! };
+
+      drag(container, 24, 24, 340, 40); // lands inside "box" — a 48x48 icon needs 80x80 to fit
+
+      const after = editor.scene.get(icon)!;
+      expect(after.parentId).toBe(box);
+      const boxAfter = editor.scene.get(box)!;
+      // The box grew to keep the icon's own 16px buffer, since its original 60x60 didn't fit it.
+      expect(boxAfter.w).toBeGreaterThan(boxBefore.w);
+
+      // One undo reverts the move, the reparent, and the auto-grow together.
+      expect(editor.commands.undo()).toBe(true);
+      expect(editor.scene.get(icon)?.parentId).toBeUndefined();
+      expect(editor.scene.get(icon)).toMatchObject({ x: 0, y: 0 });
+      expect(editor.scene.get(box)).toMatchObject(boxBefore);
+    });
+
+    it("never highlights the dragged selection's own current parent", () => {
+      const parent = editor.addBox({
+        at: { x: 0, y: 0 },
+        w: 200,
+        h: 200,
+        label: "parent",
+      });
+      const child = editor.addIcon("test/vpc", {
+        at: { x: 20, y: 20 },
+        parentId: parent,
+      });
+
+      // A small drag, still fully inside "parent" — never a new target.
+      pointerEvent("pointerdown", container, 44, 44);
+      pointerEvent("pointermove", container, 60, 60);
+
+      expect(container.querySelector("[data-icad-drop-target]")).toBeNull();
+
+      pointerEvent("pointerup", container, 60, 60);
+      expect(editor.scene.get(child)?.parentId).toBe(parent);
+    });
+
+    it("never highlights the dragged container itself or its own descendant", () => {
+      const outer = editor.addBox({
+        at: { x: 0, y: 0 },
+        w: 300,
+        h: 300,
+        label: "outer",
+      });
+      const inner = editor.addBox({
+        at: { x: 20, y: 20 },
+        w: 200,
+        h: 200,
+        parentId: outer,
+        label: "inner",
+      });
+      editor.selection.set([outer]);
+
+      // Drag "outer" (and its descendant "inner" along with it) around inside itself — the
+      // pointer is always over one of the two, never a legitimate external target.
+      pointerEvent("pointerdown", container, 10, 10);
+      pointerEvent("pointermove", container, 50, 50);
+
+      expect(container.querySelector("[data-icad-drop-target]")).toBeNull();
+
+      pointerEvent("pointerup", container, 50, 50);
+      expect(editor.scene.get(inner)?.parentId).toBe(outer);
+    });
+
+    it("Escape aborts a drag without reparenting, clearing the highlight", () => {
+      const box = editor.addBox({
+        at: { x: 300, y: 0 },
+        w: 100,
+        h: 100,
+        label: "box",
+      });
+      const icon = editor.addIcon("test/vpc", { at: { x: 0, y: 0 } });
+
+      pointerEvent("pointerdown", container, 24, 24);
+      pointerEvent("pointermove", container, 340, 40);
+      expect(
+        container.querySelector(`[data-icad-drop-target="${box}"]`),
+      ).not.toBeNull();
+
+      keydown(window, "Escape");
+
+      expect(container.querySelector("[data-icad-drop-target]")).toBeNull();
+      expect(editor.scene.get(icon)?.parentId).toBeUndefined();
+      expect(editor.scene.get(icon)).toMatchObject({ x: 0, y: 0 });
+    });
+  });
+
   describe("8-handle resize (M16.2, docs/10-canvas-parity-plan.md)", () => {
     function resizeHandle(handleId: string): Element {
       const el = container.querySelector(

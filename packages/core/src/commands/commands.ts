@@ -205,12 +205,26 @@ export function autoGrowContainer(
  * lifts it to the top level. Throws on a cycle (assigning an element as its
  * own descendant's child), which would hang move-with/cascading-delete.
  *
- * Reports its `_put` as reason "update": today every caller (`groupElements`, `ungroupElement`)
- * batches it alongside an "add"/"remove", which coalesces the dispatch's reason to "replace" and
- * forces a full render (`Scene._transaction`, `createEditor.ts`'s `scene.on()` subscription) — a
- * reparent changes both the old and new parent's `aria-owns` list, which the "update"-reason fast
- * render path does not repaint. A future gesture that dispatches this alone (e.g. drag-to-reparent)
- * would need to account for that, not rely on this reason as-is.
+ * Reports its `_put` as reason **"replace"**, not "update" (a real bug, found and fixed building
+ * M17.6, docs/10-canvas-parity-plan.md): a reparent changes the *old* parent's `aria-owns` list and
+ * child count too, not just the moved element's own `parentId` — but the old parent's own scene
+ * object is never itself `_put`, so `createEditor.ts`'s "update"-reason fast path
+ * (`SvgRenderer.renderElements(event.ids)`, scoped to only the ids a `Scene._transaction` actually
+ * touched) never repaints it, leaving its `aria-owns` stale (still claiming a child that has since
+ * left) — confirmed live: the accessibility tree kept showing a reparented element nested under
+ * its *previous* parent. `groupElements`/`ungroupElement` never surfaced this because they always
+ * batch a reparent alongside a genuine "add"/"remove", which already coalesced the whole batch's
+ * reason away from "update" (`Scene._transaction`'s `batchedReasons.size > 1` rule); M17.6's own
+ * move+reparent+auto-grow batch is the first caller where every *other* sub-command also reports
+ * "update", so reparenting had to stop pretending to be one — "replace" (already the batch
+ * coalescing's own "mixed/structural change" fallback) forces the full `render()` path
+ * unconditionally, which re-derives every element's `aria-owns`, "contains N elements" accessible
+ * name, and alternating fill depth in one pass, not just the moved element's own.
+ *
+ * `do()` also reads the element's *current* state fresh (mirroring `updateElement`'s own pattern)
+ * rather than reusing a `previous` snapshot captured at construction time — a second real bug the
+ * same M17.6 batch surfaced: constructing `next` from a stale construction-time snapshot would
+ * silently clobber a position change `moveElements` already applied earlier in the same batch.
  */
 export function reparentElement(
   scene: Scene,
@@ -224,15 +238,17 @@ export function reparentElement(
       `Cannot reparent "${id}" into its own descendant "${parentId}"`,
     );
   }
-  const next = { ...previous, parentId } as SceneElement;
-  if (parentId === undefined) delete next.parentId;
   return {
     label: "reparent element",
     do(s) {
-      s._put(next, "update");
+      const current = s.get(id);
+      if (!current) return;
+      const next = { ...current, parentId } as SceneElement;
+      if (parentId === undefined) delete next.parentId;
+      s._put(next, "replace");
     },
     undo(s) {
-      s._put(previous, "update");
+      s._put(previous, "replace");
     },
   };
 }

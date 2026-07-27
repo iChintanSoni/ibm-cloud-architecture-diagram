@@ -38,7 +38,10 @@ custom SVG engine ([D3](00-decision-log.md#d3--svg-dom-rendering--locked)). Ever
   box/group/zone sets containment (`parentId`) automatically.
 - **Containers:** insert a Box (solid, `deployedOn`) or Group (dashed, `deployedTo`) from the
   Insert menu or Library panel; child elements move with the container. Convert types via the
-  linter quick-fix or Properties.
+  linter quick-fix or Properties. **Drag an element over a different container to reparent it there
+  on release** (M17.6) — the container under the pointer highlights green while dragging (growing
+  to fit if needed), or edit "Parent container" directly in Properties for the same change without
+  a drag.
 - **Connectors:** hover a shape to reveal ports; drag port→port to connect, or focus a source,
   press `c`, Tab to a target, and press Enter. Orthogonal auto-routing with obstacle avoidance;
   there's no gesture for manually editing a connector's waypoints yet. Pick the IBM connector type

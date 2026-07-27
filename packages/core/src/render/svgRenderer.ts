@@ -390,6 +390,9 @@ export class SvgRenderer {
    * selection's dashed one, so both are visible at once per IBM's prescribed model. Empty outside
    * a drill scope. */
   private drillPath: string[] = [];
+  /** Container a live drag would reparent into if released now (M17.6,
+   * docs/10-canvas-parity-plan.md) — `undefined` outside a drag or when nothing valid is hovered. */
+  private dropTargetId: string | undefined;
   private currentScene?: Scene;
   /** Live resize preview geometry (M16.2, docs/10-canvas-parity-plan.md), keyed by element id —
    * checked by renderOverlays() so the selection outline/handles track the previewed bbox rather
@@ -755,6 +758,13 @@ export class SvgRenderer {
    */
   setDrillPath(ids: string[]): void {
     this.drillPath = ids;
+    if (this.currentScene) this.renderOverlays(this.currentScene);
+  }
+
+  /** Highlights the container a live drag would reparent into if released now (M17.6,
+   * docs/10-canvas-parity-plan.md) — pass `undefined` to clear it. */
+  setDropTarget(id: string | undefined): void {
+    this.dropTargetId = id;
     if (this.currentScene) this.renderOverlays(this.currentScene);
   }
 
@@ -1289,6 +1299,29 @@ export class SvgRenderer {
         "stroke-opacity": 0.35,
       });
       this.overlayLayer.appendChild(outline);
+    }
+
+    // Drop-target highlight (M17.6, docs/10-canvas-parity-plan.md): a distinct affirmative green
+    // (Carbon Green 50), not the blue selection/drill family or the magenta guides — reads as "drop
+    // here," not "this is selected" or "the canvas is telling you something about alignment."
+    if (this.dropTargetId) {
+      const raw = scene.get(this.dropTargetId);
+      if (raw && raw.type !== "connector") {
+        const el = this.geometryOf(raw);
+        const highlight = createSvgElement("rect");
+        highlight.setAttribute("data-icad-drop-target", this.dropTargetId);
+        setAttrs(highlight, {
+          x: el.x,
+          y: el.y,
+          width: el.w,
+          height: el.h,
+          fill: "#24a148",
+          "fill-opacity": 0.12,
+          stroke: "#24a148",
+          "stroke-width": 2,
+        });
+        this.overlayLayer.appendChild(highlight);
+      }
     }
 
     for (const rawId of this.selectedIds) {

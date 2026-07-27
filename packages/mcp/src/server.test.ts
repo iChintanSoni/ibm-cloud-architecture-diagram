@@ -25,6 +25,7 @@ describe("createMcpServer", () => {
           "element_add_zone",
           "element_delete",
           "element_move",
+          "element_reparent",
           "element_update",
           "export_diagram",
           "frame_reorder",

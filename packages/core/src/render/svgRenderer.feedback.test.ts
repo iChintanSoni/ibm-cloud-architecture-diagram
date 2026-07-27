@@ -137,4 +137,27 @@ describe("SvgRenderer feedback layer (M17.2, docs/10-canvas-parity-plan.md)", ()
       expect(container.querySelector("[data-icad-gesture-readout]")).toBeNull();
     });
   });
+
+  describe("drop-target highlight (M17.6, docs/10-canvas-parity-plan.md)", () => {
+    it("renders and clears an affirmative highlight over the target container", () => {
+      scene._put(box("parent", 0, 0));
+      renderer.render(scene);
+
+      renderer.setDropTarget("parent");
+      const highlight = container.querySelector("[data-icad-drop-target]")!;
+      expect(highlight).not.toBeNull();
+      expect(highlight.getAttribute("stroke")).toBe("#24a148");
+      expect(highlight.getAttribute("x")).toBe("0");
+      expect(highlight.getAttribute("width")).toBe("100");
+
+      renderer.setDropTarget(undefined);
+      expect(container.querySelector("[data-icad-drop-target]")).toBeNull();
+    });
+
+    it("renders nothing for an id no longer in the scene", () => {
+      renderer.render(scene);
+      renderer.setDropTarget("missing");
+      expect(container.querySelector("[data-icad-drop-target]")).toBeNull();
+    });
+  });
 });
