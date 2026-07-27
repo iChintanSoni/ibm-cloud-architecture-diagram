@@ -271,6 +271,43 @@ describe("createEditor", () => {
     expect(fillAfter).not.toBe(fillBefore);
   });
 
+  it("re-derives a reparented container's own descendants' fill too, not just its own (M17.7)", () => {
+    const a = editor.addBox({ at: { x: 0, y: 0 }, w: 400, h: 400, label: "a" });
+    const b = editor.addBox({
+      at: { x: 20, y: 20 },
+      w: 300,
+      h: 300,
+      parentId: a,
+      label: "b",
+    });
+    const c = editor.addBox({
+      at: { x: 40, y: 40 },
+      w: 200,
+      h: 200,
+      parentId: b,
+      label: "c",
+    });
+    const d = editor.addBox({
+      at: { x: 60, y: 60 },
+      w: 100,
+      h: 100,
+      parentId: c,
+      label: "d",
+    });
+    const nodeOf = (id: string) =>
+      container.querySelector(`[data-icad-id="${id}"]`)!;
+    // "d" is 3 containers deep (a > b > c > d) before the reparent below.
+    const dFillBefore = nodeOf(d).querySelector("rect")?.getAttribute("fill");
+
+    // Reparents "c" (with "d" still nested inside it) directly under "a" — "d" itself is never
+    // passed to setElementParent, but its own ancestor depth shifts from 3 to 2 as a side effect
+    // of its parent "c" moving up one level.
+    editor.setElementParent(c, a);
+
+    const dFillAfter = nodeOf(d).querySelector("rect")?.getAttribute("fill");
+    expect(dFillAfter).not.toBe(dFillBefore);
+  });
+
   it("notifies shell listeners when selection changes", () => {
     const id = editor.addBox({ at: { x: 0, y: 0 }, label: "VPC" });
     const seen: string[][] = [];

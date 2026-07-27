@@ -428,10 +428,12 @@ is a requirement, not a follow-up.
 
 ## M17 — The feedback layer
 
-🟡 **In progress** — M17.1 (space+drag and middle-drag panning), M17.2 (grid, alignment guides,
-live gesture readout), M17.3 (live 16px buffer enforcement on resize), M17.4 (containers auto-grow
-on drag), M17.5 (container resize reflows children), and M17.6 (drop-target highlight and
-drag-to-reparent) have landed.
+✅ **Done.** All 7 items have landed: M17.1 (space+drag and middle-drag panning), M17.2 (grid,
+alignment guides, live gesture readout), M17.3 (live 16px buffer enforcement on resize), M17.4
+(containers auto-grow on drag), M17.5 (container resize reflows children), M17.6 (drop-target
+highlight and drag-to-reparent, plus the reparent-render bug fix it surfaced), and M17.7
+(alternating fills re-derive on reparent — landed as a direct consequence of M17.6's own fix, closed
+out with its own descendant-cascade regression test).
 
 1. ✅ **Render the grid.** `SvgRenderer` gained a background layer (`packages/core/src/render/
 svgRenderer.ts`) — a single SVG `<pattern>` tiled at `scene.canvas.grid` spacing (the second real
@@ -558,8 +560,16 @@ resize.ts`, alongside `resizeBounds`) clamps each child's _position_ independent
    pinches N children still commits as one undo step, all children included. A resize that doesn't
    actually pinch anything (most of them) adds no child-touching commands at all, the same
    "no-op stays cheap" posture `autoGrowContainer` already takes.
-8. ⬜ **Alternating fills re-derive on reparent**, so nesting depth stays visually correct after a
-   drag.
+8. ✅ **Alternating fills re-derive on reparent**, so nesting depth stays visually correct after a
+   drag. Landed as a side effect of item 4's own bug fix, not separate work: forcing a full
+   `render()` on every reparent (the `"replace"`-reason fix) re-derives every element's
+   `containerFill()` from its live ancestor depth in the same pass that fixes the `aria-owns`
+   staleness, since both come from the exact same root cause (the old "update"-reason fast path
+   never touching anything but the moved id itself). Confirmed live and covered by two regression
+   tests: the reparented container's own fill flips correctly, and — the case the fast path would
+   still have missed even with a narrower, id-list-based fix — a reparented container's own
+   _un-touched descendants_ (never themselves passed to `setElementParent`, only carried along)
+   re-derive theirs too, since their ancestor depth shifted as a side effect of their parent moving.
 9. ✅ **Space+drag and middle-drag panning.** A new `panning` mode on `CanvasController`
    (`packages/core/src/interaction/canvasController.ts`), armed by either a middle-click
    (`event.button === 1`) or a left-button drag while a tracked `spaceHeld` flag is true — both
