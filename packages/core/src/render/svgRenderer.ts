@@ -4,6 +4,7 @@ import {
   resizeCursor,
   type ResizeHandle,
 } from "../interaction/resize.js";
+import type { SnapGuide } from "../interaction/snapping.js";
 import { computeTabOrder } from "../interaction/tabOrder.js";
 import type { Diagnostic, Severity } from "../linter/types.js";
 import { accessibleName, accessibleRole } from "../scene/accessibleName.js";
@@ -72,17 +73,41 @@ const CONTAINER_LABEL_GAP = 8;
 const SIDEBAR_TAB_WIDTH = 4;
 const SIDEBAR_TAB_HEIGHT = 32;
 
+/** Background grid (M17.2). Fixed global id, same precedent as `MARKER_DEFS`' own ids — every
+ * `SvgRenderer` instance defines identical markup for it, so accidental duplicate ids across
+ * multiple live instances in one document (already true of markers, e.g. in tests) resolve to the
+ * same visual result regardless of which instance's `<defs>` the browser matches first. */
+const GRID_PATTERN_ID = "icad-grid-pattern";
+/** Side length of the single tiled grid rect, scene units — large enough that no realistic pan
+ * ever scrolls past its edge (docs/09-roadmap.md#m12--performance-at-scale's benchmark tops out at
+ * 2,000 elements, nowhere near this span) without needing to track/resize it against the live
+ * viewport. */
+const GRID_EXTENT = 1_000_000;
+
 export type ResolvedTheme = "light" | "dark";
 
 interface Palette {
   stroke: string;
   zone: string;
   frame: string;
+  /** Faint background grid stroke (M17.2, docs/10-canvas-parity-plan.md) — deliberately not one
+   * of the 9 IBM category colors; it's chrome, not diagram content. */
+  grid: string;
 }
 
 const PALETTES: Record<ResolvedTheme, Palette> = {
-  light: { stroke: "#161616", zone: "#8d8d8d", frame: "#a8a8a8" },
-  dark: { stroke: "#f4f4f4", zone: "#a8a8a8", frame: "#6f6f6f" },
+  light: {
+    stroke: "#161616",
+    zone: "#8d8d8d",
+    frame: "#a8a8a8",
+    grid: "#e0e0e0",
+  },
+  dark: {
+    stroke: "#f4f4f4",
+    zone: "#a8a8a8",
+    frame: "#6f6f6f",
+    grid: "#333333",
+  },
 };
 
 /**
@@ -340,6 +365,12 @@ export class SvgRenderer {
   readonly svg: SVGSVGElement;
   private layer: SVGGElement;
   private overlayLayer: SVGGElement;
+  private gridPattern: SVGPatternElement;
+  private gridPatternPath: SVGPathElement;
+  private gridRect: SVGRectElement;
+  /** Last grid spacing applied to the pattern — guards against re-setting identical attributes on
+   * every render() call, mirroring lastOrderSignature's own cheap-no-op-when-unchanged shape. */
+  private lastGridSize: number | undefined;
   private nodes = new Map<string, SVGElement>();
   private palette: Palette;
   private diagnostics: Diagnostic[] = [];
@@ -348,6 +379,12 @@ export class SvgRenderer {
   private hoveredPortsId: string | undefined;
   private draftConnector: { from: Point; to: Point } | undefined;
   private marqueeRect: Rect | undefined;
+  /** Alignment guide lines (M17.2, docs/10-canvas-parity-plan.md) — the exact `SnapGuide[]`
+   * `snapMove()` already computes during drag; empty outside an in-progress drag. */
+  private snapGuides: SnapGuide[] = [];
+  /** Live position/dimension HUD (M17.2) shown during drag/resize — cleared (`undefined`) outside
+   * a gesture. `at` is where the label anchors, scene-space. */
+  private gestureReadout: { text: string; at: Point } | undefined;
   /** Ancestor-to-innermost chain of containers currently "drilled into" (M16.4,
    * docs/10-canvas-parity-plan.md) — rendered as a faint outline each, distinct from the active
    * selection's dashed one, so both are visible at once per IBM's prescribed model. Empty outside
@@ -407,7 +444,41 @@ export class SvgRenderer {
       marker.appendChild(path);
       defs.appendChild(marker);
     }
+    // Background grid (M17.2, docs/10-canvas-parity-plan.md): an SVG <pattern>, not per-line
+    // elements — patternUnits="userSpaceOnUse" tiles in the same scene-space coordinate system
+    // the viewBox already maps, so it scales and pans for free with zero extra work on pan/zoom
+    // and costs a constant handful of DOM nodes regardless of diagram size or zoom level.
+    this.gridPatternPath = createSvgElement("path");
+    setAttrs(this.gridPatternPath, {
+      fill: "none",
+      stroke: this.palette.grid,
+      "stroke-width": 1,
+    });
+    this.gridPattern = createSvgElement("pattern");
+    setAttrs(this.gridPattern, {
+      id: GRID_PATTERN_ID,
+      patternUnits: "userSpaceOnUse",
+    });
+    this.gridPattern.appendChild(this.gridPatternPath);
+    defs.appendChild(this.gridPattern);
     this.svg.appendChild(defs);
+
+    // A single huge tiled rect rather than sizing it to the current viewport — cheap (one DOM
+    // node; the browser only ever rasterizes the visible slice of a tiled pattern fill) and never
+    // needs resizing/repositioning as the viewport pans or zooms, unlike per-line grid rendering
+    // would. Bottommost layer: below both elements and overlays, and never a hit-test/pointer
+    // target (`elements` fill this.layer, not this rect).
+    this.gridRect = createSvgElement("rect");
+    setAttrs(this.gridRect, {
+      x: -GRID_EXTENT / 2,
+      y: -GRID_EXTENT / 2,
+      width: GRID_EXTENT,
+      height: GRID_EXTENT,
+      fill: `url(#${GRID_PATTERN_ID})`,
+    });
+    this.gridRect.setAttribute("aria-hidden", "true");
+    this.gridRect.setAttribute("pointer-events", "none");
+    this.svg.appendChild(this.gridRect);
 
     this.layer = createSvgElement("g");
     this.layer.setAttribute("data-icad-layer", "elements");
@@ -422,9 +493,17 @@ export class SvgRenderer {
     this.container.appendChild(this.svg);
   }
 
-  /** Updates the resolved theme; call render(scene) afterwards to repaint. */
+  /** Updates the resolved theme; call render(scene) afterwards to repaint. Recolors the grid
+   * immediately (cheap, scene-independent) rather than waiting on the caller's render(). */
   setTheme(theme: ResolvedTheme): void {
     this.palette = PALETTES[theme];
+    this.gridPatternPath.setAttribute("stroke", this.palette.grid);
+  }
+
+  /** Shows or hides the background grid (M17.2, docs/10-canvas-parity-plan.md) — a view
+   * preference, not part of the document, mirroring theme's own "call any time" shape. */
+  setGridVisible(visible: boolean): void {
+    this.gridRect.style.display = visible ? "" : "none";
   }
 
   /** Applies the camera (docs/06-editor-ux.md#core-interactions) as the root SVG's viewBox. */
@@ -446,6 +525,12 @@ export class SvgRenderer {
 
   render(scene: Scene): void {
     this.currentScene = scene;
+    if (scene.canvas.grid !== this.lastGridSize) {
+      this.lastGridSize = scene.canvas.grid;
+      const size = scene.canvas.grid;
+      setAttrs(this.gridPattern, { width: size, height: size });
+      this.gridPatternPath.setAttribute("d", `M ${size} 0 L 0 0 0 ${size}`);
+    }
     const elements = scene.all();
     const seen = new Set<string>();
 
@@ -645,6 +730,20 @@ export class SvgRenderer {
    * (`hitTestRect` + `selection.set()`) on every move — this only draws the drag rectangle itself. */
   setMarqueeRect(rect: Rect | undefined): void {
     this.marqueeRect = rect;
+    if (this.currentScene) this.renderOverlays(this.currentScene);
+  }
+
+  /** Alignment guide lines (M17.2, docs/10-canvas-parity-plan.md) — the exact `SnapGuide[]`
+   * `snapMove()` returns during a live drag; pass `[]` to clear at drag end/abort. */
+  setSnapGuides(guides: SnapGuide[]): void {
+    this.snapGuides = guides;
+    if (this.currentScene) this.renderOverlays(this.currentScene);
+  }
+
+  /** Live position/dimension HUD shown during a drag or resize gesture (M17.2,
+   * docs/10-canvas-parity-plan.md) — pass `undefined` to clear it at commit/abort. */
+  setGestureReadout(readout: { text: string; at: Point } | undefined): void {
+    this.gestureReadout = readout;
     if (this.currentScene) this.renderOverlays(this.currentScene);
   }
 
@@ -1375,6 +1474,59 @@ export class SvgRenderer {
         "stroke-dasharray": "4 3",
       });
       this.overlayLayer.appendChild(rect);
+    }
+
+    // Alignment guides (M17.2, docs/10-canvas-parity-plan.md): a distinct color from the blue
+    // selection/marquee family so a guide reads as "the canvas telling you something" rather than
+    // "part of the current selection."
+    for (const guide of this.snapGuides) {
+      const line = createSvgElement("line");
+      const isVertical = guide.orientation === "vertical";
+      setAttrs(line, {
+        x1: isVertical ? guide.position : guide.start,
+        y1: isVertical ? guide.start : guide.position,
+        x2: isVertical ? guide.position : guide.end,
+        y2: isVertical ? guide.end : guide.position,
+        stroke: "#ee5396",
+        "stroke-width": 1,
+        "stroke-dasharray": "2 2",
+      });
+      this.overlayLayer.appendChild(line);
+    }
+
+    // Live position/dimension HUD (M17.2): fixed dark-on-light styling regardless of the diagram's
+    // own resolved theme, matching the validation badge's own precedent of theme-independent
+    // overlay chrome — this is transient gesture chrome, not diagram content.
+    if (this.gestureReadout) {
+      const { text, at } = this.gestureReadout;
+      const paddingX = 6;
+      const height = 18;
+      // No text-measurement API is reliably available off a real layout pass (and this is a
+      // best-effort HUD, not something export or a screenshot diff ever depends on) — approximated
+      // from character count, matching this file's other pragmatic size estimates.
+      const width = text.length * 6.5 + paddingX * 2;
+      const g = createSvgElement("g");
+      g.setAttribute("data-icad-gesture-readout", "true");
+      const bg = createSvgElement("rect");
+      setAttrs(bg, {
+        x: at.x,
+        y: at.y - height,
+        width,
+        height,
+        rx: 3,
+        fill: "#161616",
+      });
+      g.appendChild(bg);
+      const label = createSvgElement("text");
+      setAttrs(label, {
+        x: at.x + paddingX,
+        y: at.y - height / 2 + 4,
+        fill: "#ffffff",
+        "font-size": 11,
+      });
+      label.textContent = text;
+      g.appendChild(label);
+      this.overlayLayer.appendChild(g);
     }
   }
 }

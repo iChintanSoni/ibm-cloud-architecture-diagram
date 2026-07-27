@@ -14,6 +14,7 @@ import {
 } from "../commands/commands.js";
 import type { Command } from "../commands/types.js";
 import { SelectionManager } from "../interaction/selection.js";
+import type { SnapGuide } from "../interaction/snapping.js";
 import { computeTabOrder } from "../interaction/tabOrder.js";
 import { applyIcad, toIcad, type IcadDocument } from "../io/icad.js";
 import { exportPng, exportSvg } from "../io/export.js";
@@ -1171,6 +1172,23 @@ export class Editor {
   /** Faint outline(s) for the container(s) currently drilled into (M16.4) — pass `[]` to clear. */
   setDrillPath(ids: ElementId[]): void {
     this.renderer.setDrillPath(ids);
+  }
+
+  /** Alignment guide lines during a live drag (M17.2) — the exact `SnapGuide[]` `snapMove()`
+   * already returns; pass `[]` to clear at drag end/abort. */
+  setSnapGuides(guides: SnapGuide[]): void {
+    this.renderer.setSnapGuides(guides);
+  }
+
+  /** Live position/dimension HUD during a drag or resize gesture (M17.2) — pass `undefined` to
+   * clear it at commit/abort. */
+  setGestureReadout(readout: { text: string; at: Point } | undefined): void {
+    this.renderer.setGestureReadout(readout);
+  }
+
+  /** Shows or hides the background grid (M17.2) — a view preference, not part of the document. */
+  setGridVisible(visible: boolean): void {
+    this.renderer.setGridVisible(visible);
   }
 
   destroy(): void {

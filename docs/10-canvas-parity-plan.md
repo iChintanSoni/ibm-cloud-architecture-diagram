@@ -428,18 +428,43 @@ is a requirement, not a follow-up.
 
 ## M17 — The feedback layer
 
-🟡 **In progress** — M17.1 (space+drag and middle-drag panning) has landed.
+🟡 **In progress** — M17.1 (space+drag and middle-drag panning) and M17.2 (grid, alignment guides,
+live gesture readout) have landed.
 
-1. ⬜ Render the grid; snap to it.
-2. ⬜ Alignment guides with equal-spacing hints, drawn from M15's snapping engine.
-3. ⬜ Drop-target highlight when a drag hovers a container.
-4. ⬜ **Live 16px buffer enforcement** — dragging and resizing snap to the parent inset and refuse
+1. ✅ **Render the grid.** `SvgRenderer` gained a background layer (`packages/core/src/render/
+svgRenderer.ts`) — a single SVG `<pattern>` tiled at `scene.canvas.grid` spacing (the second real
+   reader of that field, after `snapMove`; C11's "dead field" finding is fully closed now) behind a
+   single huge `<rect fill="url(#icad-grid-pattern)">`. `patternUnits="userSpaceOnUse"` tiles in the
+   same scene-space coordinate system the viewBox already maps, so it scales and pans for free with
+   zero extra per-frame work — one DOM node regardless of zoom or diagram size, unlike per-line grid
+   rendering. Toggled from `TopBar`'s View menu (`Show grid`/`Hide grid`, `packages/ui-web/src/
+TopBar.tsx`) via a new `gridVisible`/`onToggleGrid` prop pair, persisted in `apps/web` via a new
+   `persistence/gridPreference.ts` mirroring `themePreference.ts`'s own shape; `apps/vscode`'s
+   webview defaults it on with no persistence (a cosmetic-only view preference, the same
+   narrower-parity posture that shell already takes on PNG export). Recolors instantly on theme
+   change (no `render()` call required, matching `setTheme()`'s own existing "call any time" shape).
+   **Snapping to it already existed** (`snapMove()`'s grid-snap candidates, wired into drag since
+   M16.1) — this step was purely the missing visual.
+2. ✅ **Alignment guides.** The exact `SnapGuide[]` `snapMove()` already computed during drag (M15)
+   but never rendered — `CanvasController.updateDrag` now passes them to a new `SvgRenderer.
+setSnapGuides()`, drawn as thin dashed magenta lines (`#ee5396`, deliberately distinct from the
+   blue selection/marquee family so a guide reads as "the canvas telling you something," not "part
+   of the selection") in the overlay layer, cleared on drag end/abort. A locked axis's own guide
+   (Shift axis-lock) is filtered out too — its delta is forced to 0 regardless of what `snapMove`
+   found there, so drawing it would describe a snap that isn't actually being applied.
+3. ✅ **Live position/dimension readout.** A small dark HUD label (`SvgRenderer.
+setGestureReadout()`) tracks `"x, y"` during drag and `"w × h"` during resize, anchored just
+   above the moving/resizing element's current top-left corner, cleared on commit/abort alongside
+   the guides. Fixed dark-on-light styling regardless of the diagram's own resolved theme — this is
+   transient gesture chrome, not diagram content, the same posture the validation badge already
+   takes.
+4. ⬜ Drop-target highlight when a drag hovers a container.
+5. ⬜ **Live 16px buffer enforcement** — dragging and resizing snap to the parent inset and refuse
    to overlap it, rather than the pad applying only at group creation.
-5. ⬜ **Containers auto-grow** when a child is dragged toward an edge, instead of letting it escape.
-6. ⬜ **Container resize reflows children**, clamping them inside with the buffer preserved.
-7. ⬜ **Alternating fills re-derive on reparent**, so nesting depth stays visually correct after a
+6. ⬜ **Containers auto-grow** when a child is dragged toward an edge, instead of letting it escape.
+7. ⬜ **Container resize reflows children**, clamping them inside with the buffer preserved.
+8. ⬜ **Alternating fills re-derive on reparent**, so nesting depth stays visually correct after a
    drag.
-8. ⬜ Live position/dimension readout during a gesture.
 9. ✅ **Space+drag and middle-drag panning.** A new `panning` mode on `CanvasController`
    (`packages/core/src/interaction/canvasController.ts`), armed by either a middle-click
    (`event.button === 1`) or a left-button drag while a tracked `spaceHeld` flag is true — both

@@ -63,6 +63,10 @@ import {
 } from "./persistence/tauri";
 import { placeLibraryItem, viewportCenter } from "./placement";
 import {
+  loadGridPreference,
+  saveGridPreference,
+} from "./persistence/gridPreference";
+import {
   loadThemePreference,
   saveThemePreference,
 } from "./persistence/themePreference";
@@ -146,6 +150,11 @@ export function App() {
   const [themePreference, setThemePreferenceState] = useState<ThemePreference>(
     () => loadThemePreference() ?? "auto",
   );
+  // Background grid visibility (M17.2, docs/10-canvas-parity-plan.md) — a view preference like
+  // theme, independent of any one `.icad` document.
+  const [gridVisible, setGridVisibleState] = useState<boolean>(
+    () => loadGridPreference() ?? true,
+  );
   // Mirrors CanvasController's own mode (D27, docs/00-decision-log.md) for rendering only —
   // CanvasController is the source of truth, this is just what triggers a re-render. The
   // *specific* LibraryPlacement being armed is a ui-web concept core's controller can't know
@@ -189,6 +198,12 @@ export function App() {
     saveThemePreference(preference);
   };
 
+  const toggleGridVisible = () => {
+    const next = !gridVisible;
+    setGridVisibleState(next);
+    saveGridPreference(next);
+  };
+
   const frames = useMemo(
     () =>
       elements
@@ -224,6 +239,7 @@ export function App() {
       theme: themePreference,
     });
     editorRef.current = editor;
+    editor.setGridVisible(gridVisible);
 
     // The canvas's own pointer + keyboard interaction, as one state machine (D27,
     // docs/00-decision-log.md) — wheel pan/zoom, click-to-select, drag-to-connect, and the
@@ -333,6 +349,10 @@ export function App() {
   useEffect(() => {
     editorRef.current?.setTheme(themePreference);
   }, [themePreference]);
+
+  useEffect(() => {
+    editorRef.current?.setGridVisible(gridVisible);
+  }, [gridVisible]);
 
   // Native window chrome (Tauri only): "auto" hands theming back to the OS (matching an
   // unset window `theme` config); an explicit light/dark choice forces the titlebar to
@@ -1049,6 +1069,8 @@ export function App() {
           onInsert={handleInsert}
           themePreference={themePreference}
           onThemeChange={setThemePreference}
+          gridVisible={gridVisible}
+          onToggleGrid={toggleGridVisible}
         />
         <input
           ref={fileInputRef}

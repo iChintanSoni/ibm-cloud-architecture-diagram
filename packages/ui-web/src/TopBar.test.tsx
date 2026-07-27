@@ -39,6 +39,8 @@ function baseProps(overrides: Partial<TopBarProps> = {}): TopBarProps {
     onInsert: vi.fn(),
     themePreference: "auto",
     onThemeChange: vi.fn(),
+    gridVisible: true,
+    onToggleGrid: vi.fn(),
     ...overrides,
   };
 }
@@ -186,5 +188,29 @@ describe("TopBar", () => {
     )!;
     act(() => paletteButton.click());
     expect(onOpenCommandPalette).toHaveBeenCalled();
+  });
+
+  it("toggles the grid from the View menu, labeled by its current state (M17.2)", () => {
+    const onToggleGrid = vi.fn();
+    act(() => {
+      root.render(
+        <TopBar {...baseProps({ onToggleGrid, gridVisible: true })} />,
+      );
+    });
+
+    const hideItem = findByText(
+      container,
+      "a",
+      "Hide grid",
+    ) as HTMLAnchorElement;
+    act(() => hideItem.click());
+    expect(onToggleGrid).toHaveBeenCalled();
+
+    act(() => {
+      root.render(
+        <TopBar {...baseProps({ onToggleGrid, gridVisible: false })} />,
+      );
+    });
+    expect(findByText(container, "a", "Show grid")).toBeTruthy();
   });
 });

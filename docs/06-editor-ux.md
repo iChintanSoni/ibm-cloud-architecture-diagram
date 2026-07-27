@@ -24,7 +24,8 @@ custom SVG engine ([D3](00-decision-log.md#d3--svg-dom-rendering--locked)). Ever
   ([Icon Catalog](04-icon-catalog.md)). Click an icon to arm it, then click the canvas to place
   it — there's no drag-and-drop from the panel today.
 - **Center — Canvas:** SVG viewport with pan (scroll, or Space+drag/middle-click-drag, M17.1) and
-  zoom (Ctrl/Cmd+scroll, or the View menu zoom commands). No visible grid and no rulers yet (M17).
+  zoom (Ctrl/Cmd+scroll, or the View menu zoom commands). A toggleable background grid (View >
+  Show/Hide grid, M17.2) — no rulers yet.
 - **Right — Inspector:** four tabs — Properties (the selection), Layers (the containment tree),
   Frames (presentation order), and Validation (the [linter](05-ibm-spec-conformance.md)
   diagnostics).
@@ -54,7 +55,8 @@ custom SVG engine ([D3](00-decision-log.md#d3--svg-dom-rendering--locked)). Ever
   "both bounding boxes visible" model). While drilled in, a press-drag on that container's own
   background rubber-bands its contents instead of moving it. Escape steps back out one level.
 - **Snapping:** connector ports, plus grid/sibling-edge/16px-inset snapping live during a
-  drag-to-move (M16.1) — alignment guide lines aren't drawn yet (M17). Resize doesn't snap yet either.
+  drag-to-move (M16.1), with alignment guide lines and a live position readout drawn during the drag
+  (M17.2). Resize shows a live W×H readout too, but doesn't itself snap yet.
 - **Clipboard:** Ctrl/Cmd+C/X/V/D copy/cut/paste/duplicate — a container brings its contents along
   (and any connector between two copied elements), Ctrl/Cmd+V pastes under the pointer if it's been
   over the canvas or cascades a small offset otherwise, and duplicate never disturbs a pending

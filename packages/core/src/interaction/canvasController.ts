@@ -751,8 +751,27 @@ export class CanvasController {
     // could otherwise reintroduce a tiny delta on the axis the user asked to freeze.
     const finalDx = lockAxis === "x" ? 0 : snapped.dx;
     const finalDy = lockAxis === "y" ? 0 : snapped.dy;
-    // Guide-line rendering is M17's ("alignment guides ... drawn from M15's snapping engine",
-    // docs/10-canvas-parity-plan.md) — snapping itself is fully applied here, just not drawn yet.
+    // Alignment guides + live position readout (M17.2, docs/10-canvas-parity-plan.md) — cleared
+    // together at drag end/abort (handlePointerUp/handleGlobalKeyDown). A locked axis's own guide
+    // is dropped too (its delta is forced to 0 regardless of what snapMove found there, so drawing
+    // it would describe a snap that isn't actually being applied).
+    const guides = snapped.guides.filter((guide) =>
+      lockAxis === "x"
+        ? guide.orientation !== "vertical"
+        : lockAxis === "y"
+          ? guide.orientation !== "horizontal"
+          : true,
+    );
+    this.editor.setSnapGuides(guides);
+    const bbox = this.editor.boundsOf(drag.ids);
+    if (bbox) {
+      const x = bbox.x + finalDx;
+      const y = bbox.y + finalDy;
+      this.editor.setGestureReadout({
+        text: `${Math.round(x)}, ${Math.round(y)}`,
+        at: { x, y },
+      });
+    }
     drag.interaction.update(finalDx, finalDy);
   }
 
@@ -770,6 +789,12 @@ export class CanvasController {
       aspectLock: event.shiftKey,
       fromCenter: event.altKey,
     });
+    // Live dimension readout (M17.2, docs/10-canvas-parity-plan.md) — cleared at resize end/abort
+    // (handlePointerUp/handleGlobalKeyDown), same lifecycle as drag's own position readout.
+    this.editor.setGestureReadout({
+      text: `${Math.round(bounds.w)} × ${Math.round(bounds.h)}`,
+      at: { x: bounds.x, y: bounds.y },
+    });
     resize.interaction.update(bounds);
   }
 
@@ -785,6 +810,7 @@ export class CanvasController {
       const { interaction } = this.resizeState;
       this.resizeState = undefined;
       interaction.commit();
+      this.editor.setGestureReadout(undefined);
       this.suppressNextClick = true;
       this.setMode({ kind: "idle" });
       return;
@@ -799,6 +825,8 @@ export class CanvasController {
       } else {
         interaction.abort();
       }
+      this.editor.setSnapGuides([]);
+      this.editor.setGestureReadout(undefined);
       this.setMode({ kind: "idle" });
       return;
     }
@@ -933,6 +961,7 @@ export class CanvasController {
       const { interaction, pointerId } = this.resizeState;
       this.resizeState = undefined;
       interaction.abort();
+      this.editor.setGestureReadout(undefined);
       this.releasePointer(pointerId);
       this.setMode({ kind: "idle" });
       return;
@@ -941,6 +970,8 @@ export class CanvasController {
       const { interaction, pointerId } = this.dragState;
       this.dragState = undefined;
       interaction.abort();
+      this.editor.setSnapGuides([]);
+      this.editor.setGestureReadout(undefined);
       this.releasePointer(pointerId);
       this.setMode({ kind: "idle" });
       return;

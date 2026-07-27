@@ -82,6 +82,8 @@ function topBarProps(): TopBarProps {
     onInsert: vi.fn(),
     themePreference: "auto",
     onThemeChange: vi.fn(),
+    gridVisible: true,
+    onToggleGrid: vi.fn(),
   };
 }
 

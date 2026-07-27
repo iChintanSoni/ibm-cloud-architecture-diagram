@@ -53,6 +53,11 @@ export interface TopBarProps {
 
   themePreference: ThemePreference;
   onThemeChange: (preference: ThemePreference) => void;
+
+  /** Background grid visibility (M17.2, docs/10-canvas-parity-plan.md) — a view preference, not
+   * part of the document. */
+  gridVisible: boolean;
+  onToggleGrid: () => void;
 }
 
 function action(handler: () => void): (event: MouseEvent) => void {
@@ -108,6 +113,8 @@ export function TopBar({
   onInsert,
   themePreference,
   onThemeChange,
+  gridVisible,
+  onToggleGrid,
 }: TopBarProps) {
   return (
     <Header aria-label="ICAD — IBM Cloud Architecture Diagrams">
@@ -148,6 +155,9 @@ export function TopBar({
           <MenuAction onClick={onOpenFind}>Find on canvas…</MenuAction>
           <MenuAction onClick={onOpenCommandPalette}>
             Command palette…
+          </MenuAction>
+          <MenuAction onClick={onToggleGrid}>
+            {gridVisible ? "Hide grid" : "Show grid"}
           </MenuAction>
           <MenuAction
             onClick={() => onThemeChange("auto")}

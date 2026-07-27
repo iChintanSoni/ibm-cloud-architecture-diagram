@@ -414,6 +414,58 @@ describe("CanvasController", () => {
       expect(editor.scene.get(a)).toMatchObject({ x: 0, y: 0 });
       expect(controller.getMode()).toEqual({ kind: "placing" });
     });
+
+    it("shows a live position readout while dragging, cleared on commit (M17.2)", () => {
+      // Same 96x96/multiples-of-8 setup as the cascade test above, so the snapped position is
+      // exactly the raw delta — nothing to disambiguate here.
+      editor.addBox({ at: { x: 0, y: 0 }, w: 96, h: 96, label: "a" });
+      pointerEvent("pointerdown", container, 8, 8);
+      pointerEvent("pointermove", container, 40, 24); // dx=32, dy=16
+
+      expect(
+        container.querySelector("[data-icad-gesture-readout] text")
+          ?.textContent,
+      ).toBe("32, 16");
+
+      pointerEvent("pointerup", container, 40, 24);
+      expect(container.querySelector("[data-icad-gesture-readout]")).toBeNull();
+    });
+
+    it("draws alignment guide lines while snapping, cleared on release (M17.2)", () => {
+      editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
+      pointerEvent("pointerdown", container, 25, 25);
+      pointerEvent("pointermove", container, 30, 25); // dx=5 — within the default snap tolerance
+
+      const guideLines = container.querySelectorAll(
+        '[data-icad-layer="overlays"] line[stroke="#ee5396"]',
+      );
+      expect(guideLines.length).toBeGreaterThan(0);
+
+      pointerEvent("pointerup", container, 30, 25);
+      expect(
+        container.querySelectorAll(
+          '[data-icad-layer="overlays"] line[stroke="#ee5396"]',
+        ),
+      ).toHaveLength(0);
+    });
+
+    it("Escape aborts a drag and clears its readout and guides too (M17.2)", () => {
+      editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
+      pointerEvent("pointerdown", container, 25, 25);
+      pointerEvent("pointermove", container, 60, 25);
+      expect(
+        container.querySelector("[data-icad-gesture-readout]"),
+      ).not.toBeNull();
+
+      keydown(window, "Escape");
+
+      expect(container.querySelector("[data-icad-gesture-readout]")).toBeNull();
+      expect(
+        container.querySelectorAll(
+          '[data-icad-layer="overlays"] line[stroke="#ee5396"]',
+        ),
+      ).toHaveLength(0);
+    });
   });
 
   describe("8-handle resize (M16.2, docs/10-canvas-parity-plan.md)", () => {
@@ -575,6 +627,37 @@ describe("CanvasController", () => {
       click(container, 500, 500);
 
       expect(editor.selection.get()).toEqual([a]);
+    });
+
+    it("shows a live W×H readout while resizing, cleared on commit (M17.2)", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
+      editor.selection.set([a]);
+
+      pointerEvent("pointerdown", resizeHandle("se"), 50, 50);
+      pointerEvent("pointermove", container, 90, 70); // +40 w, +20 h
+
+      expect(
+        container.querySelector("[data-icad-gesture-readout] text")
+          ?.textContent,
+      ).toBe("90 × 70");
+
+      pointerEvent("pointerup", container, 90, 70);
+      expect(container.querySelector("[data-icad-gesture-readout]")).toBeNull();
+    });
+
+    it("Escape aborts a resize and clears its readout too (M17.2)", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
+      editor.selection.set([a]);
+
+      pointerEvent("pointerdown", resizeHandle("se"), 50, 50);
+      pointerEvent("pointermove", container, 90, 70);
+      expect(
+        container.querySelector("[data-icad-gesture-readout]"),
+      ).not.toBeNull();
+
+      keydown(window, "Escape");
+
+      expect(container.querySelector("[data-icad-gesture-readout]")).toBeNull();
     });
   });
 

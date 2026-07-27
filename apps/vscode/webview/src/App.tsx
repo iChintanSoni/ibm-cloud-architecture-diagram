@@ -113,6 +113,10 @@ export function App() {
   const [findQuery, setFindQuery] = useState("");
   const [findActiveIndex, setFindActiveIndex] = useState(0);
   const [announcement, setAnnouncement] = useState("");
+  // Background grid visibility (M17.2, docs/10-canvas-parity-plan.md) — defaults on, no
+  // persistence in this shell (unlike apps/web's localStorage): a cosmetic-only view preference,
+  // the same narrower-parity posture this shell already takes on PNG export.
+  const [gridVisible, setGridVisible] = useState(true);
 
   // Live region for meaningful changes (docs/07-accessibility.md#canvas-the-hard-20): briefly
   // clears first so the same message announces again even if it repeats back to back.
@@ -156,6 +160,7 @@ export function App() {
 
     const editor = createEditor({ container: canvasRef.current, catalog });
     editorRef.current = editor;
+    editor.setGridVisible(gridVisible);
 
     // The canvas's own pointer + keyboard interaction, as one state machine (D27,
     // docs/00-decision-log.md) — wheel pan/zoom, click-to-select, drag-to-connect, and the
@@ -268,6 +273,10 @@ export function App() {
   useEffect(() => {
     editorRef.current?.setTheme(themeKind);
   }, [themeKind]);
+
+  useEffect(() => {
+    editorRef.current?.setGridVisible(gridVisible);
+  }, [gridVisible]);
 
   // Global command palette / find / zoom shortcuts (docs/06-editor-ux.md#keyboard-first).
   // Deliberately excludes Ctrl/Cmd+Z / Shift+Z / Y: VS Code owns undo/redo for the active custom
@@ -810,6 +819,8 @@ export function App() {
           onThemeChange={() => {
             /* VS Code drives theme; see useVsCodeTheme.ts. */
           }}
+          gridVisible={gridVisible}
+          onToggleGrid={() => setGridVisible((visible) => !visible)}
         />
 
         <main className="icad-body" aria-label="Diagram editor">
