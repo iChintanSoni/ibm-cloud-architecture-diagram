@@ -164,6 +164,32 @@ function drag(
   pointerEvent("pointerup", target, x2, y2, opts);
 }
 
+function wheel(
+  target: EventTarget,
+  x: number,
+  y: number,
+  deltaY: number,
+  opts: Partial<WheelEventInit> = {},
+): void {
+  target.dispatchEvent(
+    new WheelEvent("wheel", {
+      bubbles: true,
+      cancelable: true,
+      clientX: x,
+      clientY: y,
+      deltaY,
+      ...opts,
+    }),
+  );
+}
+
+/** Wheel zoom/pan are accumulated and flushed on the next animation frame rather than applied
+ * synchronously (see CanvasController's pendingZoom/pendingPan doc comment) — tests that dispatch
+ * wheel events must wait a real frame for the effect to land. */
+function nextFrame(): Promise<void> {
+  return new Promise((resolve) => requestAnimationFrame(() => resolve()));
+}
+
 describe("CanvasController", () => {
   let container: HTMLDivElement;
   let editor: Editor;
@@ -1586,6 +1612,61 @@ describe("CanvasController", () => {
       click(container, 125, 25, { altKey: true }); // b, clear of a
 
       expect(editor.selection.get()).toEqual([b]);
+    });
+  });
+
+  describe("wheel zoom/pan batching (docs/06-editor-ux.md#core-interactions)", () => {
+    it("Ctrl+scroll zooms toward the cursor after the next animation frame", async () => {
+      wheel(container, 10, 10, -100, { ctrlKey: true });
+      // Not applied synchronously — flushed on the next animation frame instead.
+      expect(editor.viewport.get().scale).toBe(1);
+
+      await nextFrame();
+      // wheelZoomDelta(-100, ctrlKey pixel mode) = 100 * 0.002 * 10 = 2, so 2**2.
+      expect(editor.viewport.get().scale).toBeCloseTo(4, 5);
+    });
+
+    it("plain scroll pans instead of zooming, batched the same way", async () => {
+      wheel(container, 10, 10, 40, { deltaX: 20 });
+      expect(editor.viewport.get()).toMatchObject({ x: 0, y: 0 });
+
+      await nextFrame();
+      expect(editor.viewport.get()).toMatchObject({ x: 20, y: 40 });
+    });
+
+    it("batches every wheel event within a frame into a single viewport update", async () => {
+      const onChange = vi.fn();
+      const unsubscribe = editor.viewport.on(onChange);
+
+      // Three separate ctrlKey wheel ticks landing in the same frame — as a fast trackpad pinch
+      // would fire them — summing to the same total deltaY as the single-event case above.
+      wheel(container, 10, 10, -50, { ctrlKey: true });
+      wheel(container, 10, 10, -30, { ctrlKey: true });
+      wheel(container, 10, 10, -20, { ctrlKey: true });
+      expect(onChange).not.toHaveBeenCalled();
+
+      await nextFrame();
+      // One viewport update for three wheel events, not three — the point of batching.
+      expect(onChange).toHaveBeenCalledTimes(1);
+      expect(editor.viewport.get().scale).toBeCloseTo(4, 5);
+
+      unsubscribe();
+    });
+
+    it("amplifies a pinch's (ctrlKey) deltaY 10x relative to an unmodified wheel delta of the same magnitude", async () => {
+      // A trackpad pinch is reported as a far more conservative deltaY than an equivalent-speed
+      // two-finger pan, so it needs boosting to feel as responsive — see wheelZoomDelta's doc
+      // comment. -10 * 0.002 (pixel-mode base) * 10 (ctrlKey boost) = 0.2, so 2**0.2.
+      wheel(container, 10, 10, -10, { ctrlKey: true });
+      await nextFrame();
+      expect(editor.viewport.get().scale).toBeCloseTo(2 ** 0.2, 5);
+    });
+
+    it("scales a line-mode wheel delta (deltaMode: 1) by its own, much larger base multiplier", async () => {
+      // -2 * 0.05 (line-mode base) * 10 (ctrlKey boost) = 1, so 2**1 exactly.
+      wheel(container, 10, 10, -2, { ctrlKey: true, deltaMode: 1 });
+      await nextFrame();
+      expect(editor.viewport.get().scale).toBeCloseTo(2, 5);
     });
   });
 

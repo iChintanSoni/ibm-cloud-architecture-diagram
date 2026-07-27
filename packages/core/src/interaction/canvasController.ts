@@ -82,6 +82,27 @@ interface PanState {
 
 /** Scene-space rect spanning two arbitrary points, normalized to a non-negative x/y/w/h regardless
  * of which corner the drag started from. */
+/** Converts a wheel event into a zoom exponent (applied as `2 ** delta`, composable by summing
+ * across events — see flushWheel). Ported from d3-zoom's wheelDelta, the cross-browser-tested
+ * formula every major web map/canvas library (D3, Mapbox GL, OpenLayers) uses for exactly this
+ * problem, rather than an invented constant:
+ *
+ * - `deltaMode` varies by device/browser (0 = pixels, the common case; 1 = lines; 2 = pages) and
+ *   each mode's raw magnitude is wildly different, so the base multiplier is chosen per mode.
+ * - Trackpad pinch-to-zoom (recognized by the OS as a "magnify" gesture, distinct from a "scroll"
+ *   gesture — see handleWheel's doc comment) is reported as `wheel` events with `ctrlKey: true` in
+ *   every major browser, including Safari, but at a far more conservative deltaY magnitude than an
+ *   equivalent-speed two-finger scroll-pan's deltaX/deltaY. Without the 10x compensation here, zoom
+ *   would always feel weaker than pan for the same physical gesture speed — which is exactly what
+ *   was reported (docs/06-editor-ux.md#core-interactions). A real Ctrl+wheel from a physical mouse
+ *   hits this same branch and gets the same boost; that's fine; both are "the user asked to zoom
+ *   fast," just via different hardware.
+ */
+function wheelZoomDelta(event: WheelEvent): number {
+  const base = event.deltaMode === 1 ? 0.05 : event.deltaMode === 2 ? 1 : 0.002;
+  return -event.deltaY * base * (event.ctrlKey ? 10 : 1);
+}
+
 function rectFromPoints(a: Point, b: Point): Rect {
   return {
     x: Math.min(a.x, b.x),
@@ -204,6 +225,15 @@ export class CanvasController {
   private suppressNextClick = false;
   private onPlace: ((point: Point) => void) | undefined;
   private suspended = false;
+  /** Wheel events (especially a trackpad pinch) can fire far faster than the display refreshes —
+   * applying zoomBy/panBy synchronously per event forces a layout read (svgRenderer.applyViewport's
+   * getBoundingClientRect) and a full app re-render on every one of them, which is expensive enough
+   * that the browser starts coalescing/dropping events under load. Accumulating deltas here and
+   * flushing once per animation frame caps that cost at the display refresh rate regardless of how
+   * many wheel events land in between. */
+  private pendingZoom: { delta: number; focal: Point | undefined } | undefined;
+  private pendingPan: { dx: number; dy: number } | undefined;
+  private wheelFrame: number | undefined;
 
   constructor(
     private editor: Editor,
@@ -237,6 +267,7 @@ export class CanvasController {
     this.container.removeEventListener("keyup", this.handleKeyUp);
     window.removeEventListener("keydown", this.handleGlobalKeyDown);
     window.removeEventListener("blur", this.handleWindowBlur);
+    if (this.wheelFrame !== undefined) cancelAnimationFrame(this.wheelFrame);
   }
 
   getMode(): CanvasMode {
@@ -410,17 +441,44 @@ export class CanvasController {
   }
 
   // Scroll pans, Ctrl/Cmd+scroll zooms toward the cursor (docs/06-editor-ux.md#core-interactions).
-  // Non-passive so preventDefault actually stops page scroll.
+  // Non-passive so preventDefault actually stops page scroll. Deltas are accumulated and applied
+  // via flushWheel() at most once per animation frame rather than synchronously here — see
+  // pendingZoom/pendingPan's doc comment for why.
   private handleWheel = (event: WheelEvent): void => {
     const svg = this.svg();
     if (!svg) return;
     event.preventDefault();
     if (event.ctrlKey || event.metaKey) {
       const focal = clientPointToCanvas(svg, event.clientX, event.clientY);
-      this.editor.viewport.zoomBy(Math.exp(-event.deltaY * 0.01), focal);
+      this.pendingZoom = {
+        delta: (this.pendingZoom?.delta ?? 0) + wheelZoomDelta(event),
+        focal,
+      };
     } else {
+      this.pendingPan = {
+        dx: (this.pendingPan?.dx ?? 0) + event.deltaX,
+        dy: (this.pendingPan?.dy ?? 0) + event.deltaY,
+      };
+    }
+    if (this.wheelFrame === undefined) {
+      this.wheelFrame = requestAnimationFrame(this.flushWheel);
+    }
+  };
+
+  private flushWheel = (): void => {
+    this.wheelFrame = undefined;
+    if (this.pendingZoom) {
+      const { delta, focal } = this.pendingZoom;
+      this.pendingZoom = undefined;
+      // 2**delta factors compose by summing exponents, so batching every event's wheelZoomDelta
+      // into one sum before a single exponentiation reproduces applying zoomBy per-event exactly.
+      this.editor.viewport.zoomBy(2 ** delta, focal);
+    }
+    if (this.pendingPan) {
+      const { dx, dy } = this.pendingPan;
+      this.pendingPan = undefined;
       const { scale } = this.editor.viewport.get();
-      this.editor.viewport.panBy(event.deltaX / scale, event.deltaY / scale);
+      this.editor.viewport.panBy(dx / scale, dy / scale);
     }
   };
 
