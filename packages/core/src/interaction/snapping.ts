@@ -184,18 +184,20 @@ export function snapMove(
 
   const parent =
     hasSingleParent && parentId !== undefined ? scene.get(parentId) : undefined;
-  if (parent) {
-    const minX = parent.x + PARENT_INSET;
-    const maxX = parent.x + parent.w - PARENT_INSET - bbox.w;
-    const minY = parent.y + PARENT_INSET;
-    const maxY = parent.y + parent.h - PARENT_INSET - bbox.h;
+  const bounds = parent ? parentInsetBounds(parent) : undefined;
+  if (bounds) {
+    const { minX, maxX, minY, maxY } = bounds;
+    // Unlike clampRectToParentInset's per-edge clamp (M17.3), a move translates the whole bbox
+    // rigidly — both edges shift by the same amount, so the clamp target is the *position*, not
+    // each edge independently (which would silently shrink the box if it overshoots the inset on
+    // both edges of the same side at once, e.g. a large drag past the boundary).
     const clampedX = Math.min(
-      Math.max(bbox.x + snappedDx, Math.min(minX, maxX)),
-      Math.max(minX, maxX),
+      Math.max(bbox.x + snappedDx, Math.min(minX, maxX - bbox.w)),
+      Math.max(minX, maxX - bbox.w),
     );
     const clampedY = Math.min(
-      Math.max(bbox.y + snappedDy, Math.min(minY, maxY)),
-      Math.max(minY, maxY),
+      Math.max(bbox.y + snappedDy, Math.min(minY, maxY - bbox.h)),
+      Math.max(minY, maxY - bbox.h),
     );
     // The inset always wins over a snap candidate, but a guide describing a snap position the
     // clamp then overrode would draw a line the drag no longer actually lands on — drop it.
@@ -214,3 +216,59 @@ export function snapMove(
   );
   return { dx: snappedDx, dy: snappedDy, guides };
 }
+
+/** The parent-inset boundary a child's edges must stay within — `undefined` if the parent is too
+ * small to fit even one inset pair on each axis (an edge case for a container far smaller than its
+ * own buffer, not a realistic diagram; callers leave the candidate untouched rather than fight it). */
+function parentInsetBounds(
+  parent: Rect,
+): { minX: number; maxX: number; minY: number; maxY: number } | undefined {
+  const minX = parent.x + PARENT_INSET;
+  const maxX = parent.x + parent.w - PARENT_INSET;
+  const minY = parent.y + PARENT_INSET;
+  const maxY = parent.y + parent.h - PARENT_INSET;
+  if (minX >= maxX || minY >= maxY) return undefined;
+  return { minX, maxX, minY, maxY };
+}
+
+function clampNumber(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
+}
+
+/**
+ * Clamps a candidate rect (M17.3, docs/10-canvas-parity-plan.md) so none of its four edges cross
+ * its own parent's 16px inset — a hard constraint, not a snap-if-close candidate. Unlike
+ * `snapMove`'s own clamp (which translates a fixed-size bbox as a whole), each edge here is
+ * clamped independently: a resize handle only ever moves a subset of the four edges, and the
+ * anchored ones are already valid coming into the gesture (the box was valid before it started),
+ * so this only ever caps the edge(s) actually being dragged — reusing this for a *move* would be
+ * wrong, since overshooting the inset on both edges of the same side would clamp them to the same
+ * point and silently collapse the box to `MIN_SIZE` instead of just repositioning it.
+ */
+export function clampRectToParentInset(
+  scene: Scene,
+  parentId: ElementId | undefined,
+  rect: Rect,
+): Rect {
+  const parent = parentId !== undefined ? scene.get(parentId) : undefined;
+  const bounds = parent ? parentInsetBounds(parent) : undefined;
+  if (!bounds) return rect;
+  const { minX, maxX, minY, maxY } = bounds;
+
+  const left = clampNumber(rect.x, minX, maxX);
+  const right = clampNumber(rect.x + rect.w, minX, maxX);
+  const top = clampNumber(rect.y, minY, maxY);
+  const bottom = clampNumber(rect.y + rect.h, minY, maxY);
+
+  return {
+    x: Math.min(left, right),
+    y: Math.min(top, bottom),
+    w: Math.max(MIN_RESIZE_CLAMP_SIZE, Math.abs(right - left)),
+    h: Math.max(MIN_RESIZE_CLAMP_SIZE, Math.abs(bottom - top)),
+  };
+}
+
+/** Matches `interaction/resize.ts`'s own `MIN_SIZE` floor — kept as a separate literal rather than
+ * importing it, to avoid a cross-module dependency for one shared constant; both are the
+ * Properties panel's own W/H field minimum (`InspectorPanel.tsx`'s `min: 1`). */
+const MIN_RESIZE_CLAMP_SIZE = 1;

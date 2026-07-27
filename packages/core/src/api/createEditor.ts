@@ -797,7 +797,10 @@ export class Editor {
    * dragging the west edge) must not cascade that shift onto descendants the way a real move does
    * — only the resized element's own geometry changes, so this dispatches a bare `updateElement`
    * patch instead. Children reflowing to stay inside a resized container is explicitly deferred to
-   * M17 ("container resize reflows children").
+   * M17 ("container resize reflows children"). Parent-inset clamping (M17.3) is the caller's job
+   * (`CanvasController` applies `clampRectToParentInset` before calling `update()`), mirroring how
+   * `beginInteraction()`'s own move preview takes whatever delta `CanvasController` already ran
+   * through `snapMove` — this method previews/commits exactly the geometry it's given either way.
    */
   beginResizeInteraction(id: ElementId): ResizeInteraction {
     const original = this.scene.get(id);

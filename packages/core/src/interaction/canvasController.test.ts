@@ -6,6 +6,7 @@ import {
   CanvasController,
   type CanvasControllerOptions,
 } from "./canvasController.js";
+import { PARENT_INSET } from "./snapping.js";
 
 // jsdom implements neither SVGSVGElement.getScreenCTM nor createSVGPoint (confirmed: calling
 // either throws "not a function"), so clientPointToCanvas — and every CanvasController handler
@@ -658,6 +659,35 @@ describe("CanvasController", () => {
       keydown(window, "Escape");
 
       expect(container.querySelector("[data-icad-gesture-readout]")).toBeNull();
+    });
+
+    it("clamps a resize so a child can't grow past its parent's 16px inset (M17.3)", () => {
+      const parent = editor.addBox({
+        at: { x: 0, y: 0 },
+        w: 200,
+        h: 200,
+        label: "parent",
+      });
+      const child = editor.addBox({
+        at: { x: 20, y: 20 },
+        w: 40,
+        h: 40,
+        parentId: parent,
+        label: "child",
+      });
+      editor.selection.set([child]);
+
+      // Drag the se handle far past the parent's own bounds.
+      pointerEvent("pointerdown", resizeHandle("se"), 60, 60);
+      pointerEvent("pointermove", container, 1000, 1000);
+      pointerEvent("pointerup", container, 1000, 1000);
+
+      const after = editor.scene.get(child)!;
+      expect(after.x + after.w).toBe(200 - PARENT_INSET);
+      expect(after.y + after.h).toBe(200 - PARENT_INSET);
+      // The anchored top-left corner never moved.
+      expect(after.x).toBe(20);
+      expect(after.y).toBe(20);
     });
   });
 

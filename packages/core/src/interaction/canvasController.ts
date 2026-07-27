@@ -11,7 +11,7 @@ import type { ElementId, PortSide, SceneElement } from "../scene/types.js";
 import { Emitter } from "../util/emitter.js";
 import { hitTest, hitTestAll, hitTestRect } from "./hitTest.js";
 import { resizeBounds, type ResizeHandle } from "./resize.js";
-import { snapMove } from "./snapping.js";
+import { clampRectToParentInset, snapMove } from "./snapping.js";
 
 export type CanvasMode =
   | { kind: "idle" }
@@ -777,20 +777,25 @@ export class CanvasController {
 
   // 8-handle resize (M16.2, docs/10-canvas-parity-plan.md): unlike drag-to-move there's no
   // threshold — grabbing a handle is unambiguous, so this is "resizing" from the first pointermove.
-  // No grid/sibling/inset snapping (M17's own item, "live 16px buffer enforcement... rather than
-  // the pad applying only at group creation") and no move-with — resizeBounds/beginResizeInteraction
-  // only ever touch the one resized element, not its descendants.
+  // No move-with — resizeBounds/beginResizeInteraction only ever touch the one resized element,
+  // not its descendants. Parent-inset clamping (M17.3) mirrors drag's own layering: this class
+  // already owns calling snapMove() for drag, so it owns calling clampRectToParentInset() here too
+  // — beginResizeInteraction() just previews/commits whatever geometry it's given either way.
   private updateResize(event: PointerEvent, point: Point): void {
     const resize = this.resizeState;
     if (!resize) return;
     const dx = point.x - resize.startScenePoint.x;
     const dy = point.y - resize.startScenePoint.y;
-    const bounds = resizeBounds(resize.startBounds, resize.handle, dx, dy, {
+    const raw = resizeBounds(resize.startBounds, resize.handle, dx, dy, {
       aspectLock: event.shiftKey,
       fromCenter: event.altKey,
     });
+    const parentId = this.editor.scene.get(resize.id)?.parentId;
+    const bounds = clampRectToParentInset(this.editor.scene, parentId, raw);
     // Live dimension readout (M17.2, docs/10-canvas-parity-plan.md) — cleared at resize end/abort
-    // (handlePointerUp/handleGlobalKeyDown), same lifecycle as drag's own position readout.
+    // (handlePointerUp/handleGlobalKeyDown), same lifecycle as drag's own position readout. Reads
+    // the clamped bounds, not the raw candidate, so the HUD always matches what's actually
+    // previewed/committed.
     this.editor.setGestureReadout({
       text: `${Math.round(bounds.w)} × ${Math.round(bounds.h)}`,
       at: { x: bounds.x, y: bounds.y },

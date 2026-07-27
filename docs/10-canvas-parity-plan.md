@@ -428,8 +428,8 @@ is a requirement, not a follow-up.
 
 ## M17 — The feedback layer
 
-🟡 **In progress** — M17.1 (space+drag and middle-drag panning) and M17.2 (grid, alignment guides,
-live gesture readout) have landed.
+🟡 **In progress** — M17.1 (space+drag and middle-drag panning), M17.2 (grid, alignment guides,
+live gesture readout), and M17.3 (live 16px buffer enforcement on resize) have landed.
 
 1. ✅ **Render the grid.** `SvgRenderer` gained a background layer (`packages/core/src/render/
 svgRenderer.ts`) — a single SVG `<pattern>` tiled at `scene.canvas.grid` spacing (the second real
@@ -459,8 +459,24 @@ setGestureReadout()`) tracks `"x, y"` during drag and `"w × h"` during resize, 
    transient gesture chrome, not diagram content, the same posture the validation badge already
    takes.
 4. ⬜ Drop-target highlight when a drag hovers a container.
-5. ⬜ **Live 16px buffer enforcement** — dragging and resizing snap to the parent inset and refuse
-   to overlap it, rather than the pad applying only at group creation.
+5. ✅ **Live 16px buffer enforcement on resize.** Drag already clamped to the parent inset
+   (`snapMove`, M15); resize didn't (M16.2's own note: "No grid/sibling/inset snapping yet"). Rather
+   than force one shared clamp function onto both — a move translates a fixed-size bbox rigidly, so
+   clamping its _position_ is correct, but a resize handle only ever moves a subset of the box's
+   four edges independently, and reusing a whole-bbox clamp there would silently collapse the box
+   to 1px if both edges of the same side overshot the inset at once — `snapping.ts` gained a second,
+   resize-specific export, `clampRectToParentInset(scene, parentId, rect)`, sharing only the
+   boundary-computation building block (`parentInsetBounds`) with `snapMove`'s own clamp. Each of the
+   four edges is clamped independently to `[parent + inset, parent + size - inset]`; an anchored
+   edge a handle didn't touch is already valid (the box was valid before the gesture started) so
+   clamping is a no-op there, and only the dragged edge(s) actually get capped. Wired into
+   `CanvasController.updateResize` (not `Editor.beginResizeInteraction()`) — the same layering drag
+   already uses, where `CanvasController` owns calling `snapMove()` and `Editor` just
+   previews/commits whatever geometry it's given. The live W×H readout (M17.2) reads the _clamped_
+   bounds, so the HUD always matches what's actually previewed/committed, never the raw
+   pre-clamp candidate. A parent too small to fit the inset on either axis leaves the candidate
+   untouched rather than producing a nonsensical clamp target — an edge case for a container far
+   smaller than its own buffer, not a realistic diagram.
 6. ⬜ **Containers auto-grow** when a child is dragged toward an edge, instead of letting it escape.
 7. ⬜ **Container resize reflows children**, clamping them inside with the buffer preserved.
 8. ⬜ **Alternating fills re-derive on reparent**, so nesting depth stays visually correct after a

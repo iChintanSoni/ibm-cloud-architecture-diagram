@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Scene } from "../scene/scene.js";
 import type { BoxElement } from "../scene/types.js";
-import { PARENT_INSET, snapMove } from "./snapping.js";
+import { clampRectToParentInset, PARENT_INSET, snapMove } from "./snapping.js";
 
 function box(
   id: string,
@@ -175,5 +175,76 @@ describe("snapMove", () => {
       guides: [],
     });
     expect(snapMove(scene, [], 5, 5)).toEqual({ dx: 5, dy: 5, guides: [] });
+  });
+});
+
+// Resize's own parent-inset clamp (M17.3, docs/10-canvas-parity-plan.md) — unlike snapMove's
+// whole-bbox clamp above (a move translates rigidly), each edge here is independent: a resize
+// handle only ever moves a subset of the four edges, so only the edge(s) actually dragged should
+// ever be capped.
+describe("clampRectToParentInset", () => {
+  it("leaves an already-valid rect untouched", () => {
+    const scene = new Scene();
+    scene._put(box("parent", 0, 0, 200, 200));
+    const rect = { x: 20, y: 20, w: 40, h: 40 };
+
+    expect(clampRectToParentInset(scene, "parent", rect)).toEqual(rect);
+  });
+
+  it("clamps the left/top edges without touching the anchored right/bottom edges", () => {
+    const scene = new Scene();
+    scene._put(box("parent", 0, 0, 200, 200));
+    // west-handle drag: left edge pushed past the inset, right edge (60) stays anchored.
+    const rect = { x: -100, y: 20, w: 160, h: 40 };
+
+    const result = clampRectToParentInset(scene, "parent", rect);
+
+    expect(result.x).toBe(PARENT_INSET);
+    expect(result.x + result.w).toBe(60); // right edge unchanged
+    expect(result.y).toBe(20);
+    expect(result.h).toBe(40);
+  });
+
+  it("clamps the right/bottom edges without touching the anchored left/top edges", () => {
+    const scene = new Scene();
+    scene._put(box("parent", 0, 0, 200, 200));
+    // se-handle drag: right/bottom edges pushed past the inset, top-left (20,20) stays anchored.
+    const rect = { x: 20, y: 20, w: 1000, h: 1000 };
+
+    const result = clampRectToParentInset(scene, "parent", rect);
+
+    expect(result.x).toBe(20);
+    expect(result.y).toBe(20);
+    expect(result.x + result.w).toBe(200 - PARENT_INSET);
+    expect(result.y + result.h).toBe(200 - PARENT_INSET);
+  });
+
+  it("floors width/height at 1 rather than collapsing past it", () => {
+    const scene = new Scene();
+    scene._put(box("parent", 0, 0, 200, 200));
+    // Both edges pushed past the *same* boundary — a degenerate case a real resize handle
+    // wouldn't produce (its anchor stays put), but the floor still guards against it.
+    const rect = { x: -500, y: 20, w: 10, h: 40 };
+
+    const result = clampRectToParentInset(scene, "parent", rect);
+
+    expect(result.w).toBeGreaterThanOrEqual(1);
+  });
+
+  it("returns the rect unchanged for an undefined or unknown parent", () => {
+    const scene = new Scene();
+    const rect = { x: -100, y: -100, w: 40, h: 40 };
+
+    expect(clampRectToParentInset(scene, undefined, rect)).toEqual(rect);
+    expect(clampRectToParentInset(scene, "missing", rect)).toEqual(rect);
+  });
+
+  it("leaves the rect untouched against a parent too small to fit the inset on both sides", () => {
+    const scene = new Scene();
+    // 10 < 2 * PARENT_INSET (32) on both axes — no valid inset window exists.
+    scene._put(box("tiny-parent", 0, 0, 10, 10));
+    const rect = { x: 100, y: 100, w: 40, h: 40 };
+
+    expect(clampRectToParentInset(scene, "tiny-parent", rect)).toEqual(rect);
   });
 });

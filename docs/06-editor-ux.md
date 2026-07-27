@@ -56,7 +56,8 @@ custom SVG engine ([D3](00-decision-log.md#d3--svg-dom-rendering--locked)). Ever
   background rubber-bands its contents instead of moving it. Escape steps back out one level.
 - **Snapping:** connector ports, plus grid/sibling-edge/16px-inset snapping live during a
   drag-to-move (M16.1), with alignment guide lines and a live position readout drawn during the drag
-  (M17.2). Resize shows a live W×H readout too, but doesn't itself snap yet.
+  (M17.2). Resize clamps to the parent's 16px inset and shows a live W×H readout (M17.3), but
+  doesn't snap to the grid or siblings yet.
 - **Clipboard:** Ctrl/Cmd+C/X/V/D copy/cut/paste/duplicate — a container brings its contents along
   (and any connector between two copied elements), Ctrl/Cmd+V pastes under the pointer if it's been
   over the canvas or cascades a small offset otherwise, and duplicate never disturbs a pending
@@ -72,13 +73,14 @@ custom SVG engine ([D3](00-decision-log.md#d3--svg-dom-rendering--locked)). Ever
 ## Nesting & spacing
 
 - A newly created Group (from grouping a multi-selection) is sized to fit its contents plus a
-  **16px pad** on every side — that's the one place the 16px buffer is actively applied today,
-  not a general snap/pad rule enforced on every container edit.
+  **16px pad** on every side. The same 16px buffer is also a live constraint during drag and
+  resize (M16.1/M17.3): a child can't be dragged or resized past its own parent's inset.
 - Alternate white and light-tint fills between nesting levels (parent vs. child container) for
   readability, using the category's secondary color ([Spec Conformance → Color usage](05-ibm-spec-conformance.md#color-usage)).
 - **Resizing:** drag any of a selected element's 8 handles (Shift for aspect lock on a corner
-  handle, Alt to resize from center), or type exact W/H (and X/Y) into the Properties tab.
-  Resizing a container doesn't reflow its children yet (M17).
+  handle, Alt to resize from center), or type exact W/H (and X/Y) into the Properties tab. Clamped
+  to the resized element's own parent's 16px inset (M17.3) — grid/sibling snapping isn't wired into
+  resize yet, only the buffer. Resizing a container doesn't reflow its children yet (M17).
 
 Source: _IBM_IT Architecture diagrams kit_ v1.1, "Prescribed location / Scaling elements" slide.
 
