@@ -12,6 +12,8 @@ describe("createMcpServer", () => {
           "catalog_search",
           "connect",
           "connect_nearest",
+          "connector_reset_routing",
+          "connector_retarget",
           "doc_create",
           "doc_get",
           "doc_open",

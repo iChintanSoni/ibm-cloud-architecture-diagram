@@ -98,6 +98,8 @@ export interface InspectorPanelProps {
   onSelect: (id: ElementId) => void;
   onUpdate: (id: ElementId, patch: ElementPropertiesPatch) => void;
   onReparent: (id: ElementId, parentId: ElementId | undefined) => void;
+  /** Resets a manually-routed connector back to auto-routing (M19). */
+  onResetConnectorRouting?: (id: ElementId) => void;
   /** Toggles lock on a single element from the Layers tab (M18.5). */
   onToggleLockElement: (id: ElementId) => void;
   /** Toggles hide on a single element from the Layers tab (M18.5). */
@@ -208,11 +210,13 @@ function ElementProperties({
   elements,
   onUpdate,
   onReparent,
+  onResetConnectorRouting,
 }: {
   element: SceneElement;
   elements: SceneElement[];
   onUpdate: InspectorPanelProps["onUpdate"];
   onReparent: InspectorPanelProps["onReparent"];
+  onResetConnectorRouting?: InspectorPanelProps["onResetConnectorRouting"];
 }) {
   const parentOptions = eligibleParentElements(elements, element.id);
   const label =
@@ -454,6 +458,17 @@ function ElementProperties({
               onUpdate(element.id, { sequence: event.target.value })
             }
           />
+
+          {/* Reset-to-auto-routing (M19): only shown when the connector has manual waypoints. */}
+          {element.routing === "manual" && onResetConnectorRouting && (
+            <Button
+              kind="ghost"
+              size="sm"
+              onClick={() => onResetConnectorRouting(element.id)}
+            >
+              Reset routing
+            </Button>
+          )}
         </>
       )}
 
@@ -584,6 +599,7 @@ export function InspectorPanel({
   onSelect,
   onUpdate,
   onReparent,
+  onResetConnectorRouting,
   onToggleLockElement,
   onToggleHideElement,
 }: InspectorPanelProps) {
@@ -610,6 +626,7 @@ export function InspectorPanel({
                 elements={elements}
                 onUpdate={onUpdate}
                 onReparent={onReparent}
+                onResetConnectorRouting={onResetConnectorRouting}
               />
             ) : (
               <div className="icad-inspector__empty">

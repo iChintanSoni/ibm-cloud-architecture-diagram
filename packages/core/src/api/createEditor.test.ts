@@ -468,6 +468,74 @@ describe("createEditor", () => {
     expect(reRouted.waypoints).not.toEqual([{ x: 150, y: 200 }]);
   });
 
+  it("retargets a connector to a new endpoint and re-routes it automatically", () => {
+    const a = editor.addBox({ at: { x: 0, y: 0 }, w: 100, h: 60, label: "A" });
+    const b = editor.addBox({
+      at: { x: 300, y: 0 },
+      w: 100,
+      h: 60,
+      label: "B",
+    });
+    const c = editor.addBox({
+      at: { x: 300, y: 200 },
+      w: 100,
+      h: 60,
+      label: "C",
+    });
+    const connId = editor.connect(
+      { elementId: a, port: "e" },
+      { elementId: b, port: "w" },
+    );
+
+    // Retarget the `to` endpoint from B to C.
+    editor.retargetConnector(connId, undefined, { elementId: c, port: "w" });
+    const after = editor.scene.get(connId) as {
+      to: { elementId: string };
+      routing?: string;
+    };
+    expect(after.to.elementId).toBe(c);
+    // Auto-routing connector should have been re-routed.
+    expect(after.routing ?? "auto").toBe("auto");
+
+    // Undo brings back the original `to`.
+    editor.commands.undo();
+    const restored = editor.scene.get(connId) as { to: { elementId: string } };
+    expect(restored.to.elementId).toBe(b);
+  });
+
+  it("retargets a manual connector without touching its waypoints", () => {
+    const a = editor.addBox({ at: { x: 0, y: 0 }, w: 100, h: 60, label: "A" });
+    const b = editor.addBox({
+      at: { x: 300, y: 0 },
+      w: 100,
+      h: 60,
+      label: "B",
+    });
+    const c = editor.addBox({
+      at: { x: 300, y: 200 },
+      w: 100,
+      h: 60,
+      label: "C",
+    });
+    const connId = editor.connect(
+      { elementId: a, port: "e" },
+      { elementId: b, port: "w" },
+    );
+    const manualWps = [{ x: 150, y: 30 }];
+    editor.setConnectorWaypoints(connId, manualWps);
+
+    editor.retargetConnector(connId, undefined, { elementId: c, port: "w" });
+    const after = editor.scene.get(connId) as {
+      to: { elementId: string };
+      routing?: string;
+      waypoints?: Array<{ x: number; y: number }>;
+    };
+    expect(after.to.elementId).toBe(c);
+    // Manual routing: waypoints unchanged.
+    expect(after.routing).toBe("manual");
+    expect(after.waypoints).toEqual(manualWps);
+  });
+
   it("undoes and redoes through the shared command bus", () => {
     const id = editor.addBox({ at: { x: 0, y: 0 }, label: "VPC" });
     expect(editor.scene.has(id)).toBe(true);

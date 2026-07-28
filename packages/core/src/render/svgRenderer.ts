@@ -398,6 +398,10 @@ export class SvgRenderer {
    * checked by renderOverlays() so the selection outline/handles track the previewed bbox rather
    * than the last-committed one. Empty outside an in-progress resize gesture. */
   private previewGeometry = new Map<string, Rect>();
+  /** Live waypoint preview (M19): inner waypoints being dragged, not yet committed to the scene —
+   * checked by renderElement/renderOverlays so the connector path and handles update live. Cleared
+   * on commit/abort. */
+  private previewWaypoints = new Map<string, Array<{ x: number; y: number }>>();
   /** Guards syncDomOrder's reorder walk (C10, docs/10-canvas-parity-plan.md) — the id sequence
    * last reconciled into the DOM, so an unchanged z-order costs one string comparison, not an
    * O(n) appendChild-as-move-to-end pass on every render. */
@@ -731,6 +735,27 @@ export class SvgRenderer {
   private geometryOf(el: SceneElement): SceneElement {
     const preview = this.previewGeometry.get(el.id);
     return preview ? ({ ...el, ...preview } as SceneElement) : el;
+  }
+
+  /**
+   * Live waypoint drag preview (M19): re-renders a connector at a candidate waypoints array
+   * without touching the scene, the command bus, or the linter. Pass `null` to restore the
+   * last-committed waypoints. Also redraws overlays so the handles track the preview path.
+   */
+  previewConnectorWaypoints(
+    id: string,
+    waypoints: Array<{ x: number; y: number }> | null,
+  ): void {
+    if (!this.currentScene) return;
+    const committed = this.currentScene.get(id);
+    if (!committed || committed.type !== "connector") return;
+    if (waypoints) this.previewWaypoints.set(id, waypoints);
+    else this.previewWaypoints.delete(id);
+    const merged: ConnectorElement = waypoints
+      ? ({ ...committed, waypoints } as ConnectorElement)
+      : (committed as ConnectorElement);
+    this.nodes.set(id, this.renderElement(merged, this.currentScene));
+    this.renderOverlays(this.currentScene);
   }
 
   /** Shows (or clears, when either point is omitted) a rubber-band preview line while drawing a connector. */
@@ -1348,9 +1373,15 @@ export class SvgRenderer {
       if (!raw) continue;
       const el = this.geometryOf(raw);
       if (el.type === "connector") {
+        // Merge live waypoint preview (M19) so the highlight and handles stay in sync with
+        // the drag before it's committed to the scene.
+        const previewWp = this.previewWaypoints.get(el.id);
+        const elWithPreview: ConnectorElement = previewWp
+          ? { ...(el as ConnectorElement), waypoints: previewWp }
+          : (el as ConnectorElement);
         const highlight = createSvgElement("polyline");
         setAttrs(highlight, {
-          points: toPointsAttr(connectorPathPoints(scene, el)),
+          points: toPointsAttr(connectorPathPoints(scene, elWithPreview)),
           fill: "none",
           stroke: "#0f62fe",
           "stroke-width": 5,
@@ -1402,6 +1433,115 @@ export class SvgRenderer {
             "data-icad-resize-handle": handle,
           });
           this.overlayLayer.appendChild(marker);
+        }
+      }
+
+      // M19 — Connector editing: waypoint drag handles, midpoint insert handles,
+      // and endpoint retarget handles for a single selected connector.
+      if (raw && raw.type === "connector") {
+        // Merge live waypoint preview so handles track the dragged position.
+        const previewWp = this.previewWaypoints.get(raw.id);
+        const el: ConnectorElement = previewWp
+          ? { ...(raw as ConnectorElement), waypoints: previewWp }
+          : (raw as ConnectorElement);
+        const fullPoints = connectorPathPoints(scene, el);
+        const innerWaypoints = el.waypoints ?? [];
+
+        // Waypoint drag handles (diamonds) — one per existing inner waypoint.
+        innerWaypoints.forEach((wp, index) => {
+          const handle = createSvgElement("rect");
+          setAttrs(handle, {
+            x: wp.x - 5,
+            y: wp.y - 5,
+            width: 10,
+            height: 10,
+            fill: "#ffffff",
+            stroke: "#0f62fe",
+            "stroke-width": 1.5,
+            transform: `rotate(45 ${wp.x} ${wp.y})`,
+            cursor: "move",
+            "pointer-events": "all",
+            "data-icad-waypoint-handle": `${el.id}:${index}`,
+          });
+          this.overlayLayer.appendChild(handle);
+        });
+
+        // Midpoint insert handles (circles with +) — one per segment between existing points,
+        // but only for segments longer than a threshold to avoid clutter on short segments.
+        const INSERT_MIN_LENGTH = 20;
+        for (let i = 0; i < fullPoints.length - 1; i += 1) {
+          const a = fullPoints[i]!;
+          const b = fullPoints[i + 1]!;
+          const segLen = Math.hypot(b.x - a.x, b.y - a.y);
+          if (segLen < INSERT_MIN_LENGTH) continue;
+          const mx = (a.x + b.x) / 2;
+          const my = (a.y + b.y) / 2;
+          // Insert index: the waypoint array index where a new point would be spliced.
+          // fullPoints = [fromEndpoint, ...innerWaypoints, toEndpoint], so segment i between
+          // fullPoints[i] and fullPoints[i+1] maps to inner-waypoint insert position i
+          // (inserting before innerWaypoints[i], i.e. after any existing i-1 waypoint).
+          const insertIndex = i;
+          const circle = createSvgElement("circle");
+          setAttrs(circle, {
+            cx: mx,
+            cy: my,
+            r: 6,
+            fill: "#ffffff",
+            stroke: "#0f62fe",
+            "stroke-width": 1.5,
+            cursor: "crosshair",
+            "pointer-events": "all",
+            "data-icad-waypoint-insert": `${el.id}:${insertIndex}`,
+          });
+          this.overlayLayer.appendChild(circle);
+          // "+" cross-hair inside the circle
+          const hLine = createSvgElement("line");
+          setAttrs(hLine, {
+            x1: mx - 3,
+            y1: my,
+            x2: mx + 3,
+            y2: my,
+            stroke: "#0f62fe",
+            "stroke-width": 1.5,
+            "pointer-events": "none",
+          });
+          this.overlayLayer.appendChild(hLine);
+          const vLine = createSvgElement("line");
+          setAttrs(vLine, {
+            x1: mx,
+            y1: my - 3,
+            x2: mx,
+            y2: my + 3,
+            stroke: "#0f62fe",
+            "stroke-width": 1.5,
+            "pointer-events": "none",
+          });
+          this.overlayLayer.appendChild(vLine);
+        }
+
+        // Endpoint retarget handles (hollow circles on from/to port positions).
+        // Dragging one of these lets the user drop it on a different element port.
+        const fromEl = scene.get(el.from.elementId);
+        const toEl = scene.get(el.to.elementId);
+        for (const [endpoint, portEl, port] of [
+          ["from", fromEl, el.from.port] as const,
+          ["to", toEl, el.to.port] as const,
+        ]) {
+          if (!portEl) continue;
+          const pt = portPoint(portEl, port);
+          const circle = createSvgElement("circle");
+          setAttrs(circle, {
+            cx: pt.x,
+            cy: pt.y,
+            r: 7,
+            fill: "#ffffff",
+            stroke: "#ee5396",
+            "stroke-width": 2,
+            cursor: "crosshair",
+            "pointer-events": "all",
+            "data-icad-endpoint-handle": `${el.id}:${endpoint}`,
+          });
+          this.overlayLayer.appendChild(circle);
         }
       }
     }

@@ -8,11 +8,18 @@ import type { Point } from "../render/port.js";
 import { portPoint } from "../render/port.js";
 import type { Rect } from "../routing/orthogonalRouter.js";
 import { isContainer } from "../scene/types.js";
-import type { ElementId, PortSide, SceneElement } from "../scene/types.js";
+import type {
+  ConnectorElement,
+  ElementId,
+  PortRef,
+  PortSide,
+  SceneElement,
+} from "../scene/types.js";
 import { Emitter } from "../util/emitter.js";
 import { hitTest, hitTestAll, hitTestRect } from "./hitTest.js";
 import { resizeBounds, type ResizeHandle } from "./resize.js";
 import { clampRectToParentInset, snapMove } from "./snapping.js";
+import { pickPorts } from "../routing/pickPorts.js";
 
 export type CanvasMode =
   | { kind: "idle" }
@@ -21,7 +28,9 @@ export type CanvasMode =
   | { kind: "dragging" }
   | { kind: "resizing" }
   | { kind: "marquee" }
-  | { kind: "panning" };
+  | { kind: "panning" }
+  | { kind: "waypoint-drag" }
+  | { kind: "endpoint-drag" };
 
 /** Client-space (zoom-independent) pixels the pointer must move before a mousedown-on-an-element
  * becomes a drag rather than a click. */
@@ -78,6 +87,27 @@ interface PanState {
    * a middle-click pan only ends on its own pointerup, since there's no key to release. */
   via: "space" | "middle";
   moved: boolean;
+}
+
+/** Dragging an existing inner waypoint handle (M19). The waypoint index is 0-based within the
+ * connector's `waypoints` array; a live preview is committed via `setConnectorWaypoints`. */
+interface WaypointDragState {
+  pointerId: number;
+  connectorId: ElementId;
+  /** 0-based index into the connector's inner `waypoints` array. */
+  waypointIndex: number;
+  /** The full waypoints snapshot at drag start — restored on Escape. */
+  originalWaypoints: Array<{ x: number; y: number }>;
+  startScenePoint: Point;
+  currentPoint: Point;
+}
+
+/** Dragging a connector's `from` or `to` endpoint handle to a different port (M19). */
+interface EndpointDragState {
+  pointerId: number;
+  connectorId: ElementId;
+  endpoint: "from" | "to";
+  startScenePoint: Point;
 }
 
 /** Converts a wheel event into a zoom exponent (applied as `2 ** delta`, composable by summing
@@ -200,6 +230,8 @@ export class CanvasController {
   private resizeState: ResizeState | undefined;
   private marqueeState: MarqueeState | undefined;
   private panState: PanState | undefined;
+  private waypointDragState: WaypointDragState | undefined;
+  private endpointDragState: EndpointDragState | undefined;
   /** Tracked across keydown/keyup (M17.1) so a plain left-button drag pans instead of arming a
    * marquee/element-drag while Space is held — cleared on keyup and on window blur so it never
    * gets stuck true if the key-up happens while focus is elsewhere. */
@@ -557,6 +589,16 @@ export class CanvasController {
       return;
     }
 
+    if (this.waypointDragState) {
+      this.updateWaypointDrag(point);
+      return;
+    }
+
+    if (this.endpointDragState) {
+      this.updateEndpointDrag(point);
+      return;
+    }
+
     if (this.draggingPort) {
       const source = this.editor.scene.get(this.draggingPort.elementId);
       if (source)
@@ -645,6 +687,115 @@ export class CanvasController {
       };
       this.capturePointer(event.pointerId);
       this.setMode({ kind: "resizing" });
+      return;
+    }
+
+    // M19 — Waypoint drag handle (data-icad-waypoint-handle="connId:index").
+    const waypointHandleAttr =
+      event.target instanceof Element
+        ? event.target
+            .closest<SVGElement>("[data-icad-waypoint-handle]")
+            ?.getAttribute("data-icad-waypoint-handle")
+        : null;
+    if (waypointHandleAttr && this.mode.kind === "idle") {
+      const point = this.toScenePoint(event.clientX, event.clientY);
+      if (!point) return;
+      const separator = waypointHandleAttr.lastIndexOf(":");
+      const connectorId = waypointHandleAttr.slice(0, separator);
+      const waypointIndex = parseInt(
+        waypointHandleAttr.slice(separator + 1),
+        10,
+      );
+      const el = this.editor.scene.get(connectorId) as
+        ConnectorElement | undefined;
+      if (!el) return;
+      event.preventDefault();
+      this.waypointDragState = {
+        pointerId: event.pointerId,
+        connectorId,
+        waypointIndex,
+        originalWaypoints: [...(el.waypoints ?? [])],
+        startScenePoint: point,
+        currentPoint: point,
+      };
+      this.capturePointer(event.pointerId);
+      this.setMode({ kind: "waypoint-drag" });
+      return;
+    }
+
+    // M19 — Midpoint insert handle (data-icad-waypoint-insert="connId:insertIndex").
+    const waypointInsertAttr =
+      event.target instanceof Element
+        ? event.target
+            .closest<SVGElement>("[data-icad-waypoint-insert]")
+            ?.getAttribute("data-icad-waypoint-insert")
+        : null;
+    if (waypointInsertAttr && this.mode.kind === "idle") {
+      const point = this.toScenePoint(event.clientX, event.clientY);
+      if (!point) return;
+      const separator = waypointInsertAttr.lastIndexOf(":");
+      const connectorId = waypointInsertAttr.slice(0, separator);
+      const insertIndex = parseInt(waypointInsertAttr.slice(separator + 1), 10);
+      const el = this.editor.scene.get(connectorId) as
+        ConnectorElement | undefined;
+      if (!el) return;
+      // Insert the new point at `insertIndex` (between fullPoints[insertIndex] and
+      // fullPoints[insertIndex+1], which means before innerWaypoints[insertIndex]).
+      const current = [...(el.waypoints ?? [])];
+      current.splice(insertIndex, 0, { x: point.x, y: point.y });
+      event.preventDefault();
+      this.waypointDragState = {
+        pointerId: event.pointerId,
+        connectorId,
+        waypointIndex: insertIndex,
+        originalWaypoints: [...(el.waypoints ?? [])],
+        startScenePoint: point,
+        currentPoint: point,
+      };
+      // Immediately write the waypoints so this now has something to drag.
+      this.editor.setConnectorWaypoints(connectorId, current);
+      this.capturePointer(event.pointerId);
+      this.setMode({ kind: "waypoint-drag" });
+      return;
+    }
+
+    // M19 — Endpoint retarget handle (data-icad-endpoint-handle="connId:from|to").
+    const endpointHandleAttr =
+      event.target instanceof Element
+        ? event.target
+            .closest<SVGElement>("[data-icad-endpoint-handle]")
+            ?.getAttribute("data-icad-endpoint-handle")
+        : null;
+    if (endpointHandleAttr && this.mode.kind === "idle") {
+      const point = this.toScenePoint(event.clientX, event.clientY);
+      if (!point) return;
+      const separator = endpointHandleAttr.lastIndexOf(":");
+      const connectorId = endpointHandleAttr.slice(0, separator);
+      const endpoint = endpointHandleAttr.slice(separator + 1) as "from" | "to";
+      event.preventDefault();
+      this.endpointDragState = {
+        pointerId: event.pointerId,
+        connectorId,
+        endpoint,
+        startScenePoint: point,
+      };
+      // Show a draft line from the current endpoint while dragging.
+      const el = this.editor.scene.get(connectorId) as
+        ConnectorElement | undefined;
+      if (el) {
+        const anchorEl = this.editor.scene.get(
+          endpoint === "from" ? el.to.elementId : el.from.elementId,
+        );
+        if (anchorEl) {
+          const anchorPort = endpoint === "from" ? el.to.port : el.from.port;
+          this.editor.setConnectorDraftPoints(
+            portPoint(anchorEl, anchorPort),
+            point,
+          );
+        }
+      }
+      this.capturePointer(event.pointerId);
+      this.setMode({ kind: "endpoint-drag" });
       return;
     }
 
@@ -895,6 +1046,51 @@ export class CanvasController {
     resize.interaction.update(bounds);
   }
 
+  /** Live waypoint drag preview (M19): updates the renderer's preview path (no command
+   * dispatched — a single setConnectorWaypoints command fires on pointerup so there's exactly
+   * one undo entry for the whole drag, matching resize's own one-commit-per-gesture model).
+   * No drag threshold — a handle grab is unambiguous, same reasoning as resize handles. */
+  private updateWaypointDrag(point: Point): void {
+    const wds = this.waypointDragState;
+    if (!wds) return;
+    wds.currentPoint = point;
+    const el = this.editor.scene.get(wds.connectorId) as
+      ConnectorElement | undefined;
+    const baseWaypoints = el?.waypoints ?? wds.originalWaypoints;
+    const updated = [...baseWaypoints];
+    updated[wds.waypointIndex] = { x: point.x, y: point.y };
+    wds.currentPoint = point;
+    this.editor.previewConnectorWaypoints(wds.connectorId, updated);
+  }
+
+  /** Live endpoint retarget draft (M19): updates the draft connector line while the endpoint is
+   * being dragged toward a new target element. */
+  private updateEndpointDrag(point: Point): void {
+    const eds = this.endpointDragState;
+    if (!eds) return;
+    const el = this.editor.scene.get(eds.connectorId) as
+      ConnectorElement | undefined;
+    if (!el) return;
+    // Show a draft line from the fixed endpoint to the current cursor position.
+    const anchorEl = this.editor.scene.get(
+      eds.endpoint === "from" ? el.to.elementId : el.from.elementId,
+    );
+    if (anchorEl) {
+      const anchorPort = eds.endpoint === "from" ? el.to.port : el.from.port;
+      this.editor.setConnectorDraftPoints(
+        portPoint(anchorEl, anchorPort),
+        point,
+      );
+    }
+    // Highlight the element under the pointer as a potential drop target.
+    const hit = hitTest(this.editor.scene, point, { excludeHidden: true });
+    this.editor.setHoveredElement(
+      hit && hit.type !== "connector" && hit.type !== "frame"
+        ? hit.id
+        : undefined,
+    );
+  }
+
   private handlePointerUp = (event: PointerEvent): void => {
     this.releasePointer(event.pointerId);
 
@@ -939,6 +1135,101 @@ export class CanvasController {
       // the trailing click still runs normally and clears/selects as it always did.
       if (moved) this.suppressNextClick = true;
       this.setMode({ kind: "idle" });
+      return;
+    }
+
+    if (this.waypointDragState) {
+      // Clear the renderer-only preview, then commit the final waypoints as one undo step.
+      const { connectorId, waypointIndex, currentPoint } =
+        this.waypointDragState;
+      this.waypointDragState = undefined;
+      this.editor.previewConnectorWaypoints(connectorId, null);
+      this.setMode({ kind: "idle" });
+      // Build the final waypoints from the scene state (which still has the original, since
+      // the preview was renderer-only) plus the final drag position.
+      const el = this.editor.scene.get(connectorId) as
+        ConnectorElement | undefined;
+      if (el?.waypoints) {
+        const final = [...el.waypoints];
+        final[waypointIndex] = { x: currentPoint.x, y: currentPoint.y };
+        this.editor.setConnectorWaypoints(connectorId, final);
+      }
+      this.suppressNextClick = true;
+      return;
+    }
+
+    if (this.endpointDragState) {
+      const { connectorId, endpoint } = this.endpointDragState;
+      this.endpointDragState = undefined;
+      this.editor.clearConnectorDraft();
+      this.setMode({ kind: "idle" });
+      const point = this.toScenePoint(event.clientX, event.clientY);
+      if (point) {
+        // Check if dropped on a port handle.
+        const targetPortAttrOnUp =
+          event.target instanceof Element
+            ? event.target
+                .closest<SVGElement>("[data-icad-port]")
+                ?.getAttribute("data-icad-port")
+            : null;
+        if (targetPortAttrOnUp) {
+          const target = parsePortAttr(targetPortAttrOnUp);
+          const portRef: PortRef = {
+            elementId: target.elementId,
+            port: target.side,
+          };
+          const current = this.editor.scene.get(connectorId) as
+            ConnectorElement | undefined;
+          if (
+            current &&
+            target.elementId !==
+              (endpoint === "from"
+                ? current.from.elementId
+                : current.to.elementId)
+          ) {
+            this.editor.retargetConnector(
+              connectorId,
+              endpoint === "from" ? portRef : undefined,
+              endpoint === "to" ? portRef : undefined,
+            );
+          }
+        } else {
+          // Dropped on an element — auto-pick the nearest port between
+          // the fixed endpoint and the drop target.
+          const hit = hitTest(this.editor.scene, point, {
+            excludeHidden: true,
+          });
+          if (hit && hit.type !== "connector") {
+            const current = this.editor.scene.get(connectorId) as
+              ConnectorElement | undefined;
+            const fixedId =
+              endpoint === "from"
+                ? current?.to.elementId
+                : current?.from.elementId;
+            if (
+              current &&
+              hit.id !==
+                (endpoint === "from"
+                  ? current.from.elementId
+                  : current.to.elementId)
+            ) {
+              const fixed = fixedId
+                ? this.editor.scene.get(fixedId)
+                : undefined;
+              const pickedPort = fixed
+                ? pickPorts(hit, fixed)[endpoint === "from" ? "from" : "to"]
+                : "center";
+              const portRef: PortRef = { elementId: hit.id, port: pickedPort };
+              this.editor.retargetConnector(
+                connectorId,
+                endpoint === "from" ? portRef : undefined,
+                endpoint === "to" ? portRef : undefined,
+              );
+            }
+          }
+        }
+      }
+      this.suppressNextClick = true;
       return;
     }
 
@@ -1074,6 +1365,24 @@ export class CanvasController {
       this.editor.setSnapGuides([]);
       this.editor.setGestureReadout(undefined);
       this.editor.setDropTarget(undefined);
+      this.releasePointer(pointerId);
+      this.setMode({ kind: "idle" });
+      return;
+    }
+    if (this.waypointDragState) {
+      // Preview was renderer-only — clear it without dispatching any command.
+      const { connectorId, pointerId } = this.waypointDragState;
+      this.waypointDragState = undefined;
+      this.editor.previewConnectorWaypoints(connectorId, null);
+      this.releasePointer(pointerId);
+      this.setMode({ kind: "idle" });
+      return;
+    }
+    if (this.endpointDragState) {
+      const { pointerId } = this.endpointDragState;
+      this.endpointDragState = undefined;
+      this.editor.clearConnectorDraft();
+      this.editor.setHoveredElement(undefined);
       this.releasePointer(pointerId);
       this.setMode({ kind: "idle" });
       return;

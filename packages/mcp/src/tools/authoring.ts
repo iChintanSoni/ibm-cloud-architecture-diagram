@@ -628,6 +628,57 @@ export function registerAuthoringTools(
     );
   };
 
+  // ── Connector editing (M19, docs/10-canvas-parity-plan.md) ─────────────────
+  server.registerTool(
+    "connector_retarget",
+    {
+      title: "Retarget a connector endpoint",
+      description:
+        "Changes the from, to, or both endpoints of an existing connector to a different element port. " +
+        "Auto-routing connectors are re-routed immediately; manual connectors keep their waypoints. " +
+        "Provide at least one of `from` or `to`.",
+      inputSchema: {
+        id: z.string().describe("Connector element id"),
+        from: portRefSchema
+          .optional()
+          .describe("New source port; omit to keep the current source"),
+        to: portRefSchema
+          .optional()
+          .describe("New target port; omit to keep the current target"),
+      },
+    },
+    ({ id, from, to }) => {
+      try {
+        if (!from && !to)
+          throw new ToolError(
+            "connector_retarget: at least one of `from` or `to` must be provided.",
+          );
+        editor().retargetConnector(id, from, to);
+        return ok({ id }, `Retargeted connector ${id}.`);
+      } catch (err) {
+        return fail(err);
+      }
+    },
+  );
+
+  server.registerTool(
+    "connector_reset_routing",
+    {
+      title: "Reset a connector to auto-routing",
+      description:
+        "Switches a manually-routed connector back to auto-routing and immediately recomputes its path around obstacles.",
+      inputSchema: { id: z.string().describe("Connector element id") },
+    },
+    ({ id }) => {
+      try {
+        editor().autoRouteConnector(id);
+        return ok({ id }, `Reset routing for connector ${id}.`);
+      } catch (err) {
+        return fail(err);
+      }
+    },
+  );
+
   lockHideTool(
     "element_lock",
     "Lock elements",

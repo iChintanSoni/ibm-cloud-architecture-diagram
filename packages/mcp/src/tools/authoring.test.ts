@@ -638,4 +638,64 @@ describe("authoring tools", () => {
       false,
     );
   });
+
+  it("connector_retarget changes a connector's to-endpoint and connector_reset_routing switches it back to auto", async () => {
+    const a = await client.callTool({
+      name: "element_add_box",
+      arguments: { at: { x: 0, y: 0 }, w: 100, h: 80 },
+    });
+    const b = await client.callTool({
+      name: "element_add_box",
+      arguments: { at: { x: 300, y: 0 }, w: 100, h: 80 },
+    });
+    const c = await client.callTool({
+      name: "element_add_box",
+      arguments: { at: { x: 300, y: 200 }, w: 100, h: 80 },
+    });
+    const aId = (a.structuredContent as { id: string }).id;
+    const bId = (b.structuredContent as { id: string }).id;
+    const cId = (c.structuredContent as { id: string }).id;
+
+    // Connect A→B.
+    const conn = await client.callTool({
+      name: "connect_nearest",
+      arguments: { fromId: aId, toId: bId },
+    });
+    const connId = (conn.structuredContent as { id: string }).id;
+
+    // Retarget to → C.
+    const retargeted = await client.callTool({
+      name: "connector_retarget",
+      arguments: { id: connId, to: { elementId: cId, port: "w" } },
+    });
+    expect(retargeted.isError).toBeUndefined();
+
+    type ConnEl = { id: string; to?: { elementId: string }; routing?: string };
+    const doc = await client.callTool({ name: "doc_get", arguments: {} });
+    const el = (
+      doc.structuredContent as { document: { elements: ConnEl[] } }
+    ).document.elements.find((e) => e.id === connId)!;
+    expect(el.to?.elementId).toBe(cId);
+
+    // Reset routing.
+    const reset = await client.callTool({
+      name: "connector_reset_routing",
+      arguments: { id: connId },
+    });
+    expect(reset.isError).toBeUndefined();
+
+    const docAfter = await client.callTool({ name: "doc_get", arguments: {} });
+    const elAfter = (
+      docAfter.structuredContent as { document: { elements: ConnEl[] } }
+    ).document.elements.find((e) => e.id === connId)!;
+    expect(elAfter.routing ?? "auto").toBe("auto");
+  });
+
+  it("connector_retarget errors when neither from nor to is provided", async () => {
+    const result = await client.callTool({
+      name: "connector_retarget",
+      arguments: { id: "nonexistent" },
+    });
+    expect(result.isError).toBe(true);
+  });
 });

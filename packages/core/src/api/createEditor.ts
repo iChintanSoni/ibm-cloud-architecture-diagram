@@ -17,6 +17,7 @@ import {
   moveElements,
   removeElement,
   reparentElement,
+  retargetConnector,
   setManualWaypoints,
   setZOrder,
   showElements,
@@ -529,9 +530,34 @@ export class Editor {
     this.commands.dispatch(setManualWaypoints(this.scene, id, waypoints));
   }
 
+  /**
+   * Live waypoint drag preview (M19) — updates the renderer's preview path without dispatching
+   * any command. Pass `null` to clear the preview. Call `setConnectorWaypoints` once to commit.
+   */
+  previewConnectorWaypoints(
+    id: ElementId,
+    waypoints: Array<{ x: number; y: number }> | null,
+  ): void {
+    this.renderer.previewConnectorWaypoints(id, waypoints);
+  }
+
   /** Switches a manually-routed connector back to auto-routing. */
   autoRouteConnector(id: ElementId): void {
     this.commands.dispatch(autoRouteConnector(this.scene, id));
+  }
+
+  /**
+   * Changes one or both endpoint targets of a connector (M19 endpoint
+   * retargeting). Provide the new `from` port-ref, the new `to` port-ref, or
+   * both. Auto-routing connectors are re-routed immediately; manual connectors
+   * keep their current waypoints.
+   */
+  retargetConnector(
+    id: ElementId,
+    from: PortRef | undefined,
+    to: PortRef | undefined,
+  ): void {
+    this.commands.dispatch(retargetConnector(this.scene, id, from, to));
   }
 
   /**

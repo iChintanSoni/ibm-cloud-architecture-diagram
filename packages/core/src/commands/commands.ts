@@ -454,6 +454,40 @@ export function autoRouteConnector(scene: Scene, id: ElementId): Command {
 }
 
 /**
+ * Changes one or both endpoints of a connector to new element/port targets
+ * (M19 endpoint retargeting, docs/10-canvas-parity-plan.md). Automatically
+ * re-routes auto-routing connectors after the change; manual connectors keep
+ * their current waypoints (the user will drag them into shape).
+ */
+export function retargetConnector(
+  scene: Scene,
+  id: ElementId,
+  from: ConnectorElement["from"] | undefined,
+  to: ConnectorElement["to"] | undefined,
+): Command {
+  const previous = requireConnector(scene, id);
+  return {
+    label: "retarget connector",
+    do(s) {
+      const current = requireConnector(s, id);
+      const next: ConnectorElement = {
+        ...current,
+        ...(from ? { from } : {}),
+        ...(to ? { to } : {}),
+      };
+      const routed: ConnectorElement =
+        next.routing === "manual"
+          ? next
+          : { ...next, waypoints: routeConnectorInScene(s, next) };
+      s._put(routed, "update");
+    },
+    undo(s) {
+      s._put(previous, "update");
+    },
+  };
+}
+
+/**
  * Sets `locked: true` on the given ids and all their descendants (M18.4,
  * docs/10-canvas-parity-plan.md). Skip-unchanged: any id already locked is
  * silently skipped so a no-op selection doesn't produce a spurious undo entry.

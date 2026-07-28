@@ -887,11 +887,26 @@ same way.
 
 ## M19 — Connector editing
 
-⬜ **Not started.**
+✅ **Done.**
 
-Waypoint drag handles (`setConnectorWaypoints` already exists in core and is simply unexposed),
-endpoint retargeting onto a different element or port, reset-to-auto-routing, and in-place label
-editing on the line.
+- **Waypoint drag handles** — diamond handles on each inner waypoint of a selected connector
+  (`data-icad-waypoint-handle`); drag moves the waypoint with a renderer-only live preview and
+  commits a single `setConnectorWaypoints` undo entry on release. Escape clears the preview with
+  no command dispatched. (`svgRenderer.ts` `renderOverlays`, `CanvasController`
+  `WaypointDragState`, `Editor.previewConnectorWaypoints`).
+- **Midpoint insert handles** — a `+` circle at the centre of each segment long enough to host one
+  (`data-icad-waypoint-insert`); pointerdown inserts the waypoint at that index and transitions
+  directly into the waypoint-drag state.
+- **Endpoint retargeting** — pink endpoint handles on the `from`/`to` port positions
+  (`data-icad-endpoint-handle`); drag-and-drop onto a different element's port (or direct port
+  circle) re-targets the connector endpoint via `Editor.retargetConnector` /
+  `retargetConnector` command; auto-routing connectors re-route immediately, manual ones keep
+  their waypoints.
+- **Reset-to-auto-routing** — "Reset routing" button in the Properties panel connector section,
+  shown only when `routing === "manual"`; calls `editor.autoRouteConnector` via the new
+  `onResetConnectorRouting` prop on `InspectorPanel`.
+- **MCP parity** — `connector_retarget` and `connector_reset_routing` tools in
+  `packages/mcp/src/tools/authoring.ts`.
 
 ## M20 — Full range on demand
 

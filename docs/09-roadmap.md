@@ -945,10 +945,11 @@ MCP; no context-menu entry or keyboard shortcut, same reasoning M18.2 gave for a
 
 #### M19 — Connector editing
 
-⬜ **Not started**
-
-Waypoint drag handles (`setConnectorWaypoints` already exists in core, merely unexposed), endpoint
-retargeting, reset-to-auto-routing, and in-place label editing on the line.
+✅ **Done** — waypoint drag handles (diamond handles on inner waypoints, live renderer preview,
+single undo step on release), midpoint insert handles (+ circle per segment), endpoint retargeting
+(pink endpoint handles drag-and-drop to a new port; auto-routing connectors re-route immediately),
+reset-to-auto-routing ("Reset routing" button in the Properties panel), and MCP parity
+(`connector_retarget`, `connector_reset_routing`).
 
 #### M20 — Full range on demand
 

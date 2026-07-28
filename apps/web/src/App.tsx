@@ -1493,6 +1493,9 @@ export function App() {
             onReparent={(id, parentId) =>
               editorRef.current?.setElementParent(id, parentId)
             }
+            onResetConnectorRouting={(id) =>
+              editorRef.current?.autoRouteConnector(id)
+            }
             onToggleLockElement={(id) => {
               const editor = editorRef.current;
               if (!editor) return;
