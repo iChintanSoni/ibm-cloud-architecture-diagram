@@ -474,6 +474,53 @@ export function registerAuthoringTools(
     (ids) => editor().sendBackward(ids),
   );
 
+  const distributeOutput = { ids: z.array(z.string()), changed: z.boolean() };
+  const distributeTool = (
+    name: string,
+    title: string,
+    description: string,
+    verb: string,
+    apply: (ids: string[]) => boolean,
+  ): void => {
+    server.registerTool(
+      name,
+      {
+        title,
+        description,
+        inputSchema: { ids: z.array(z.string()) },
+        outputSchema: distributeOutput,
+      },
+      ({ ids }) => {
+        try {
+          const changed = apply(ids);
+          return ok(
+            { ids, changed },
+            changed
+              ? `${verb} ${ids.length} element(s).`
+              : `No change — fewer than three distributable elements, or already evenly spaced.`,
+          );
+        } catch (err) {
+          return fail(err);
+        }
+      },
+    );
+  };
+
+  distributeTool(
+    "element_distribute_horizontal",
+    "Distribute elements horizontally",
+    "Spaces selected elements so horizontal gaps between them are equal. Anchors the leftmost and rightmost elements in place; requires at least three distributable (non-connector) elements.",
+    "Distributed horizontally",
+    (ids) => editor().distributeHorizontal(ids),
+  );
+  distributeTool(
+    "element_distribute_vertical",
+    "Distribute elements vertically",
+    "Spaces selected elements so vertical gaps between them are equal. Anchors the topmost and bottommost elements in place; requires at least three distributable (non-connector) elements.",
+    "Distributed vertically",
+    (ids) => editor().distributeVertical(ids),
+  );
+
   const alignOutput = { ids: z.array(z.string()), changed: z.boolean() };
   const alignTool = (
     name: string,

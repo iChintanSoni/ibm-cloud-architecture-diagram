@@ -21,6 +21,7 @@ export {
   autoRouteConnector,
   batch,
   updateConformance,
+  distributeElements,
 } from "./commands/commands.js";
 export { CommandBus } from "./commands/commandBus.js";
 

@@ -231,6 +231,7 @@ export function App() {
     singleSelected !== undefined && isContainer(singleSelected);
   const canChangeZOrder = selectedIds.length > 0;
   const canAlign = selectedIds.length >= 2;
+  const canDistribute = selectedIds.length >= 3;
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -892,6 +893,28 @@ export function App() {
     }
   };
 
+  const handleDistributeHorizontal = () => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    const ids = editor.selection.get();
+    if (editor.distributeHorizontal(ids)) {
+      announce(`Distributed ${ids.length} element(s) horizontally`);
+      const [firstId] = ids;
+      if (firstId) editor.focusElement(firstId);
+    }
+  };
+
+  const handleDistributeVertical = () => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    const ids = editor.selection.get();
+    if (editor.distributeVertical(ids)) {
+      announce(`Distributed ${ids.length} element(s) vertically`);
+      const [firstId] = ids;
+      if (firstId) editor.focusElement(firstId);
+    }
+  };
+
   const commands: CommandItem[] = [
     {
       id: "new",
@@ -1028,6 +1051,20 @@ export function App() {
       category: "Arrange",
       disabled: !canAlign,
       run: handleAlignBottom,
+    },
+    {
+      id: "distribute-horizontal",
+      label: "Distribute horizontal",
+      category: "Arrange",
+      disabled: !canDistribute,
+      run: handleDistributeHorizontal,
+    },
+    {
+      id: "distribute-vertical",
+      label: "Distribute vertical",
+      category: "Arrange",
+      disabled: !canDistribute,
+      run: handleDistributeVertical,
     },
     {
       id: "zoom-in",
@@ -1289,6 +1326,9 @@ export function App() {
           onAlignMiddle={handleAlignMiddle}
           onAlignBottom={handleAlignBottom}
           canAlign={canAlign}
+          onDistributeHorizontal={handleDistributeHorizontal}
+          onDistributeVertical={handleDistributeVertical}
+          canDistribute={canDistribute}
           zoomPercent={zoomPercent}
           onZoomIn={() => editorRef.current?.zoomIn()}
           onZoomOut={() => editorRef.current?.zoomOut()}

@@ -81,6 +81,13 @@ export interface TopBarProps {
    * an already-aligned selection) happens in `Editor.applyAlign`. */
   canAlign: boolean;
 
+  onDistributeHorizontal: () => void;
+  onDistributeVertical: () => void;
+  /** Shared across both distribute actions. Same shallow `>= 3` gate — the real no-op check
+   * (fewer than three distributable elements, or already-even spacing) happens in
+   * `Editor.applyDistribute` (M18.3, docs/10-canvas-parity-plan.md). */
+  canDistribute: boolean;
+
   zoomPercent: number;
   onZoomIn: () => void;
   onZoomOut: () => void;
@@ -155,6 +162,9 @@ export function TopBar({
   onAlignMiddle,
   onAlignBottom,
   canAlign,
+  onDistributeHorizontal,
+  onDistributeVertical,
+  canDistribute,
   zoomPercent,
   onZoomIn,
   onZoomOut,
@@ -227,6 +237,15 @@ export function TopBar({
           </MenuAction>
           <MenuAction onClick={onAlignBottom} disabled={!canAlign}>
             Align bottom
+          </MenuAction>
+          <MenuAction
+            onClick={onDistributeHorizontal}
+            disabled={!canDistribute}
+          >
+            Distribute horizontal
+          </MenuAction>
+          <MenuAction onClick={onDistributeVertical} disabled={!canDistribute}>
+            Distribute vertical
           </MenuAction>
         </HeaderMenu>
         <HeaderMenu menuLinkName="View" aria-label="View">

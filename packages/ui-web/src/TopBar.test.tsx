@@ -41,6 +41,9 @@ function baseProps(overrides: Partial<TopBarProps> = {}): TopBarProps {
     onAlignMiddle: vi.fn(),
     onAlignBottom: vi.fn(),
     canAlign: false,
+    onDistributeHorizontal: vi.fn(),
+    onDistributeVertical: vi.fn(),
+    canDistribute: false,
     zoomPercent: 100,
     onZoomIn: vi.fn(),
     onZoomOut: vi.fn(),
@@ -271,6 +274,53 @@ describe("TopBar", () => {
       ["Align top", onAlignTop],
       ["Align middle", onAlignMiddle],
       ["Align bottom", onAlignBottom],
+    ] as const) {
+      const item = findByText(container, "a", label) as HTMLAnchorElement;
+      expect(item.getAttribute("aria-disabled")).toBeNull();
+      act(() => item.click());
+      expect(handler).toHaveBeenCalled();
+    }
+  });
+
+  it("disables both distribute actions until enabled, then invokes each", () => {
+    const onDistributeHorizontal = vi.fn();
+    const onDistributeVertical = vi.fn();
+    act(() => {
+      root.render(
+        <TopBar
+          {...baseProps({
+            onDistributeHorizontal,
+            onDistributeVertical,
+            canDistribute: false,
+          })}
+        />,
+      );
+    });
+
+    const distributeHItem = findByText(
+      container,
+      "a",
+      "Distribute horizontal",
+    ) as HTMLAnchorElement;
+    expect(distributeHItem.getAttribute("aria-disabled")).toBe("true");
+    act(() => distributeHItem.click());
+    expect(onDistributeHorizontal).not.toHaveBeenCalled();
+
+    act(() => {
+      root.render(
+        <TopBar
+          {...baseProps({
+            onDistributeHorizontal,
+            onDistributeVertical,
+            canDistribute: true,
+          })}
+        />,
+      );
+    });
+
+    for (const [label, handler] of [
+      ["Distribute horizontal", onDistributeHorizontal],
+      ["Distribute vertical", onDistributeVertical],
     ] as const) {
       const item = findByText(container, "a", label) as HTMLAnchorElement;
       expect(item.getAttribute("aria-disabled")).toBeNull();

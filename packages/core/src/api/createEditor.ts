@@ -8,6 +8,7 @@ import { CommandBus } from "../commands/commandBus.js";
 import {
   addElement,
   alignElements,
+  distributeElements,
   autoGrowContainer,
   autoRouteConnector,
   batch,
@@ -76,6 +77,10 @@ import {
   type SiblingReorder,
 } from "../scene/zOrder.js";
 import { computeAlignMoves, type AlignMode } from "../scene/align.js";
+import {
+  computeDistributeMoves,
+  type DistributeMode,
+} from "../scene/distribute.js";
 
 export interface CreateEditorOptions {
   container: HTMLElement;
@@ -1298,6 +1303,31 @@ export class Editor {
   /** Aligns every selected element's bottom edge to the selection's own bottommost edge. */
   alignBottom(ids: ElementId[]): boolean {
     return this.applyAlign(ids, "bottom", "align bottom");
+  }
+
+  private applyDistribute(
+    ids: ElementId[],
+    mode: DistributeMode,
+    label: string,
+  ): boolean {
+    const moves = computeDistributeMoves(this.scene, ids, mode);
+    if (moves.length === 0) return false;
+    this.commands.dispatch(distributeElements(this.scene, moves, label));
+    return true;
+  }
+
+  /** Distributes selected elements so horizontal gaps between them are equal.
+   * Anchors the leftmost and rightmost elements; requires at least three
+   * distributable (non-connector) elements. */
+  distributeHorizontal(ids: ElementId[]): boolean {
+    return this.applyDistribute(ids, "horizontal", "distribute horizontal");
+  }
+
+  /** Distributes selected elements so vertical gaps between them are equal.
+   * Anchors the topmost and bottommost elements; requires at least three
+   * distributable (non-connector) elements. */
+  distributeVertical(ids: ElementId[]): boolean {
+    return this.applyDistribute(ids, "vertical", "distribute vertical");
   }
 
   /**

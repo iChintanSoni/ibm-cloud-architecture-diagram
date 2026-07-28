@@ -1552,6 +1552,218 @@ describe("createEditor", () => {
     });
   });
 
+  describe("distribute (M18.3, docs/10-canvas-parity-plan.md)", () => {
+    it("distributeHorizontal/distributeVertical space elements evenly and undo restores exactly", () => {
+      // Three boxes: a at x 0 w 50, b at x 200 w 50, c at x 300 w 100
+      // Horizontal: anchor a & c; gap = (300-50-50)/2 = 100; b target x = 150 → dx -50
+      const a = editor.addBox({
+        at: { x: 0, y: 0 },
+        w: 50,
+        h: 50,
+        label: "a",
+      });
+      const b = editor.addBox({
+        at: { x: 200, y: 0 },
+        w: 50,
+        h: 50,
+        label: "b",
+      });
+      const c = editor.addBox({
+        at: { x: 300, y: 0 },
+        w: 100,
+        h: 50,
+        label: "c",
+      });
+
+      expect(editor.distributeHorizontal([a, b, c])).toBe(true);
+      expect(editor.scene.get(a)).toMatchObject({ x: 0 }); // anchor unmoved
+      expect(editor.scene.get(c)).toMatchObject({ x: 300 }); // anchor unmoved
+      expect(editor.scene.get(b)).toMatchObject({ x: 150 });
+      editor.commands.undo();
+      expect(editor.scene.get(b)).toMatchObject({ x: 200 });
+
+      // Vertical: same three boxes, stacked along y
+      const d = editor.addBox({
+        at: { x: 0, y: 0 },
+        w: 50,
+        h: 50,
+        label: "d",
+      });
+      const e = editor.addBox({
+        at: { x: 0, y: 200 },
+        w: 50,
+        h: 50,
+        label: "e",
+      });
+      const f = editor.addBox({
+        at: { x: 0, y: 300 },
+        w: 50,
+        h: 100,
+        label: "f",
+      });
+
+      expect(editor.distributeVertical([d, e, f])).toBe(true);
+      expect(editor.scene.get(d)).toMatchObject({ y: 0 });
+      expect(editor.scene.get(f)).toMatchObject({ y: 300 });
+      expect(editor.scene.get(e)).toMatchObject({ y: 150 });
+      editor.commands.undo();
+      expect(editor.scene.get(e)).toMatchObject({ y: 200 });
+    });
+
+    it("moves a container's children along with it (cascade)", () => {
+      const left = editor.addBox({
+        at: { x: 0, y: 0 },
+        w: 50,
+        h: 50,
+        label: "left",
+      });
+      // mid is the interior (redistributed) element, not an anchor, so it actually moves.
+      // Sized 100x100 so the 48x48 icon child sits fully inside it — its bbox (which is what
+      // the anchor/gap math uses) stays equal to mid's own x/w rather than being stretched by
+      // the child.
+      const mid = editor.addBox({
+        at: { x: 200, y: 0 },
+        w: 100,
+        h: 100,
+        label: "mid",
+      });
+      const child = editor.addIcon("test/vpc", {
+        at: { x: 210, y: 10 },
+        parentId: mid,
+      });
+      const right = editor.addBox({
+        at: { x: 600, y: 0 },
+        w: 100,
+        h: 50,
+        label: "right",
+      });
+
+      const childBefore = editor.scene.get(child)!;
+      const leftBefore = editor.scene.get(left)!;
+      const rightBefore = editor.scene.get(right)!;
+
+      // left x 0 hi 50, mid x 200 hi 300, right x 600 hi 700
+      // total space = 600 - 50 = 550; interior = 100 (mid); gap = (550-100)/2 = 225
+      // mid target lo = 50 + 225 = 275; currently at 200 → dx = 75
+      editor.distributeHorizontal([left, mid, right]);
+
+      // left/right are anchors: not moved
+      expect(editor.scene.get(left)!.x).toBe(leftBefore.x);
+      expect(editor.scene.get(right)!.x).toBe(rightBefore.x);
+      const midAfter = editor.scene.get(mid)!;
+      const dx = midAfter.x - 200;
+      expect(dx).not.toBe(0);
+      // child cascades with mid by the same delta
+      expect(editor.scene.get(child)!.x).toBe(childBefore.x + dx);
+      expect(editor.scene.get(child)!.y).toBe(childBefore.y);
+    });
+
+    it("reroutes an attached auto-connector and undo restores its waypoints", () => {
+      // b is positioned so it has a non-trivial route to a: offset on both axes so the
+      // auto-router generates real waypoints, not an empty straight-line path.
+      const a = editor.addBox({
+        at: { x: 0, y: 0 },
+        w: 100,
+        h: 60,
+        label: "A",
+      });
+      const b = editor.addBox({
+        at: { x: 200, y: 200 },
+        w: 100,
+        h: 60,
+        label: "B",
+      });
+      const cc = editor.addBox({
+        at: { x: 500, y: 200 },
+        w: 100,
+        h: 60,
+        label: "C",
+      });
+      const connectorId = editor.connect(
+        { elementId: a, port: "e" },
+        { elementId: b, port: "w" },
+      );
+      const bBefore = editor.scene.get(b)!.x;
+      const wpBefore = (
+        editor.scene.get(connectorId) as {
+          waypoints?: Array<{ x: number; y: number }>;
+        }
+      ).waypoints;
+
+      expect(editor.distributeHorizontal([a, b, cc])).toBe(true);
+      // b should have moved (distribute changed its x)
+      const bAfter = editor.scene.get(b)!.x;
+      expect(bAfter).not.toBe(bBefore);
+      // connector was rerouted after b moved
+      const wpAfter = (
+        editor.scene.get(connectorId) as {
+          waypoints?: Array<{ x: number; y: number }>;
+        }
+      ).waypoints;
+      expect(wpAfter).not.toEqual(wpBefore);
+
+      editor.commands.undo();
+      expect(editor.scene.get(b)).toMatchObject({ x: bBefore });
+      expect(
+        (
+          editor.scene.get(connectorId) as {
+            waypoints?: Array<{ x: number; y: number }>;
+          }
+        ).waypoints,
+      ).toEqual(wpBefore);
+    });
+
+    it("excludes a connector from the distribute set instead of throwing", () => {
+      const a = editor.addBox({
+        at: { x: 0, y: 0 },
+        w: 50,
+        h: 50,
+        label: "a",
+      });
+      const b = editor.addBox({
+        at: { x: 200, y: 0 },
+        w: 50,
+        h: 50,
+        label: "b",
+      });
+      const c = editor.addBox({
+        at: { x: 300, y: 0 },
+        w: 100,
+        h: 50,
+        label: "c",
+      });
+      const conn = editor.connect(
+        { elementId: a, port: "e" },
+        { elementId: b, port: "w" },
+      );
+      // connector is silently excluded; three real elements remain → distributable
+      expect(editor.distributeHorizontal([a, b, c, conn])).toBe(true);
+    });
+
+    it("returns false for fewer than three distributable elements or an already-even selection", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
+      const b = editor.addBox({
+        at: { x: 200, y: 0 },
+        w: 50,
+        h: 50,
+        label: "b",
+      });
+      expect(editor.distributeHorizontal([])).toBe(false);
+      expect(editor.distributeHorizontal([a])).toBe(false);
+      expect(editor.distributeHorizontal([a, b])).toBe(false);
+
+      // Three elements already evenly spaced → no-op → false
+      const c = editor.addBox({
+        at: { x: 100, y: 0 },
+        w: 50,
+        h: 50,
+        label: "c",
+      });
+      // a: 0..50, c: 100..150, b: 200..250 — gaps 50 each → already even
+      expect(editor.distributeHorizontal([a, b, c])).toBe(false);
+    });
+  });
+
   describe("clipboard (M16.5, docs/10-canvas-parity-plan.md)", () => {
     it("copy then paste clones with fresh ids, offset by the paste cascade, and selects the copy", () => {
       const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });

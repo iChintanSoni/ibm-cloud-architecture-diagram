@@ -1,5 +1,6 @@
 import { routeConnectorInScene } from "../routing/routeConnector.js";
 import type { AlignMove } from "../scene/align.js";
+import type { DistributeMove } from "../scene/distribute.js";
 import { autoFitContainer } from "../scene/bounds.js";
 import type { Scene } from "../scene/scene.js";
 import type {
@@ -320,6 +321,51 @@ export function setZOrder(
 export function alignElements(
   scene: Scene,
   moves: AlignMove[],
+  label: string,
+): Command {
+  const deltas = new Map<ElementId, { dx: number; dy: number }>();
+  for (const { id, dx, dy } of moves) {
+    if (!deltas.has(id)) deltas.set(id, { dx, dy });
+    for (const descendant of scene.descendantsOf(id)) {
+      if (!deltas.has(descendant.id)) deltas.set(descendant.id, { dx, dy });
+    }
+  }
+  const allIds = new Set(deltas.keys());
+  const previous = new Map([...allIds].map((id) => [id, scene.get(id)]));
+  const affectedConnectors = attachedAutoConnectors(scene, allIds);
+  return {
+    label,
+    do(s) {
+      for (const [id, { dx, dy }] of deltas) {
+        const el = s.get(id);
+        if (el)
+          s._put(
+            { ...el, x: el.x + dx, y: el.y + dy } as SceneElement,
+            "update",
+          );
+      }
+      rerouteConnectors(s, affectedConnectors);
+    },
+    undo(s) {
+      for (const id of allIds) {
+        const el = previous.get(id);
+        if (el) s._put(el, "update");
+      }
+      for (const connector of affectedConnectors) s._put(connector, "update");
+    },
+  };
+}
+
+/**
+ * Applies every `DistributeMove` (computed by `computeDistributeMoves`,
+ * `scene/distribute.ts`) as one undo step — the same shape as `alignElements`
+ * above. Each redistributed element can move by a *different* delta, so
+ * cascade-to-descendants and shared-descendant dedup are rebuilt per-id, the
+ * same way `alignElements` does rather than using a single-delta `moveElements`.
+ */
+export function distributeElements(
+  scene: Scene,
+  moves: DistributeMove[],
   label: string,
 ): Command {
   const deltas = new Map<ElementId, { dx: number; dy: number }>();

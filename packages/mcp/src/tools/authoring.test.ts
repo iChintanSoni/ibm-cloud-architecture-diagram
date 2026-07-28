@@ -485,4 +485,95 @@ describe("authoring tools", () => {
       false,
     );
   });
+
+  it("distribute tools space elements evenly and report changed:false when already even", async () => {
+    const a = await client.callTool({
+      name: "element_add_box",
+      arguments: { at: { x: 0, y: 0 }, w: 50, h: 50 },
+    });
+    const b = await client.callTool({
+      name: "element_add_box",
+      arguments: { at: { x: 200, y: 0 }, w: 50, h: 50 },
+    });
+    const c = await client.callTool({
+      name: "element_add_box",
+      arguments: { at: { x: 300, y: 0 }, w: 100, h: 50 },
+    });
+    const aId = (a.structuredContent as { id: string }).id;
+    const bId = (b.structuredContent as { id: string }).id;
+    const cId = (c.structuredContent as { id: string }).id;
+
+    const position = async (id: string): Promise<{ x: number; y: number }> => {
+      const doc = await client.callTool({ name: "doc_get", arguments: {} });
+      const element = (
+        doc.structuredContent as {
+          document: { elements: Array<{ id: string; x: number; y: number }> };
+        }
+      ).document.elements.find((el) => el.id === id)!;
+      return { x: element.x, y: element.y };
+    };
+
+    // Horizontal: a x 0..50, b x 200..250, c x 300..400
+    // anchor a & c; gap = (300-50-50)/2 = 100; b target = 150 → dx -50
+    const horizontal = await client.callTool({
+      name: "element_distribute_horizontal",
+      arguments: { ids: [aId, bId, cId] },
+    });
+    expect(horizontal.isError).toBeUndefined();
+    expect((horizontal.structuredContent as { changed: boolean }).changed).toBe(
+      true,
+    );
+    expect((await position(bId)).x).toBe(150);
+    expect((await position(aId)).x).toBe(0); // anchor unmoved
+    expect((await position(cId)).x).toBe(300); // anchor unmoved
+
+    // Already evenly spaced → changed:false
+    const noop = await client.callTool({
+      name: "element_distribute_horizontal",
+      arguments: { ids: [aId, bId, cId] },
+    });
+    expect(noop.isError).toBeUndefined();
+    expect((noop.structuredContent as { changed: boolean }).changed).toBe(
+      false,
+    );
+
+    // Fewer than three elements → changed:false
+    const tooFew = await client.callTool({
+      name: "element_distribute_horizontal",
+      arguments: { ids: [aId, bId] },
+    });
+    expect(tooFew.isError).toBeUndefined();
+    expect((tooFew.structuredContent as { changed: boolean }).changed).toBe(
+      false,
+    );
+
+    // Vertical distribute works the same way
+    const d = await client.callTool({
+      name: "element_add_box",
+      arguments: { at: { x: 0, y: 0 }, w: 50, h: 50 },
+    });
+    const e = await client.callTool({
+      name: "element_add_box",
+      arguments: { at: { x: 0, y: 200 }, w: 50, h: 50 },
+    });
+    const f = await client.callTool({
+      name: "element_add_box",
+      arguments: { at: { x: 0, y: 300 }, w: 50, h: 100 },
+    });
+    const dId = (d.structuredContent as { id: string }).id;
+    const eId = (e.structuredContent as { id: string }).id;
+    const fId = (f.structuredContent as { id: string }).id;
+
+    const vertical = await client.callTool({
+      name: "element_distribute_vertical",
+      arguments: { ids: [dId, eId, fId] },
+    });
+    expect(vertical.isError).toBeUndefined();
+    expect((vertical.structuredContent as { changed: boolean }).changed).toBe(
+      true,
+    );
+    expect((await position(eId)).y).toBe(150);
+    expect((await position(dId)).y).toBe(0);
+    expect((await position(fId)).y).toBe(300);
+  });
 });

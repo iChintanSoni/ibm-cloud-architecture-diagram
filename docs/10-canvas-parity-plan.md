@@ -594,8 +594,8 @@ resize.ts`, alongside `resizeBounds`) clamps each child's _position_ independent
 
 ## M18 — Arrangement
 
-🟡 **In progress** — M18.1 (z-order) and M18.2 (align) done. M18.3 (distribute), M18.4
-(lock/hide), and M18.5 (interactive Layers tab) remain, each its own sub-milestone. The roadmap's
+🟡 **In progress** — M18.1 (z-order), M18.2 (align), and M18.3 (distribute) done. M18.4
+(lock/hide) and M18.5 (interactive Layers tab) remain, each its own sub-milestone. The roadmap's
 stated blocker ("M15's DOM reordering") was already resolved back when M16 landed
 (`SvgRenderer.syncDomOrder()`), so M18 was actually unblocked before work started here.
 
@@ -718,6 +718,44 @@ bbox including its descendants); `createEditor.test.ts` (all six methods with un
 a container's children cascading with it, an attached auto-connector rerouting, connector exclusion,
 and the `< 2`/unknown-id/already-aligned no-ops); `packages/ui-web/src/TopBar.test.tsx` (enable/
 disable + invoke, mirroring the z-order test); an MCP round-trip test across all six tools.
+
+### M18.3 — Distribute
+
+✅ **Done.**
+
+`distributeHorizontal`/`distributeVertical`, each undoable, an Edit-menu entry, a command-palette
+entry, and an MCP tool per action. No context-menu entry and no keyboard shortcut, same reasoning
+M18.2 gave for align (no universal cross-tool convention to bind to).
+
+1. **Gaps are distributed, not centers.** `computeDistributeMoves` (`packages/core/src/scene/
+distribute.ts`) sorts the distributable elements by leading edge along the chosen axis, anchors
+   the two outermost in place, and repositions every element between them so the space between
+   adjacent trailing/leading edges is uniform — "even spacing," not "evenly spaced centers." This
+   is the Figma/Illustrator/PowerPoint convention, and, like M18.2's own reference-frame choice, the
+   only one that doesn't need the UI to expose which elements are the anchors: they're always
+   whichever two sort first and last.
+2. **At least three distributable elements are required.** With two, the two anchor positions are
+   just the two elements themselves and there is no interior element to move; `computeDistributeMoves`
+   returns `[]` below that, the same shape as M18.2's `< 2` alignable no-op one gate lower.
+3. **Connectors are excluded**, same reasoning as M18.2's `computeAlignMoves`: a connector's
+   `x`/`y`/`w`/`h` is a degenerate 0×0 rect, so there's no independent leading/trailing edge to
+   distribute. Dropped from the candidate set before the `>= 3` check, same as align's own drop
+   order.
+4. **Full bbox including descendants**, via the same `boundsOf` a container's own align bbox
+   already uses, so a container's edge for anchoring/spacing purposes accounts for children that
+   extend past its own declared `x`/`y`/`w`/`h`.
+5. **`distributeElements`** (`commands.ts`) is `alignElements`'s command shape verbatim — one
+   whole-operation command, not `batch()` of N `moveElements`, for the identical reason: each
+   redistributed element can move by a _different_ delta. Cascade-to-descendants, shared-descendant
+   dedup, and auto-connector rerouting are all the same code path align already established.
+
+**Tests**: `packages/core/src/scene/distribute.test.ts` (pure `computeDistributeMoves` geometry for
+both axes, unequal-size elements, the already-evenly-spaced no-op, the `< 3` no-op, id dedup/
+unknown-id filtering, connector exclusion, a container's bbox including descendants, and
+input-order independence); `createEditor.test.ts` (both methods with undo-restores-exactly, a
+container's children cascading with it, an attached auto-connector rerouting, connector exclusion,
+and the `< 3`/already-even no-ops); `packages/ui-web/src/TopBar.test.tsx` (enable/disable + invoke,
+mirroring the align test); an MCP round-trip test across both tools.
 
 ## M19 — Connector editing
 

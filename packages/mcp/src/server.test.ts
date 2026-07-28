@@ -32,6 +32,8 @@ describe("createMcpServer", () => {
           "element_bring_forward",
           "element_bring_to_front",
           "element_delete",
+          "element_distribute_horizontal",
+          "element_distribute_vertical",
           "element_move",
           "element_reparent",
           "element_send_backward",

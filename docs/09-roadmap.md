@@ -901,8 +901,8 @@ space-drag/middle-drag panning.
 
 #### M18 — Arrangement
 
-🟡 **In progress** — M18.1 (z-order) and M18.2 (align) landed; distribute, lock/hide, and the
-interactive Layers tab remain as their own sub-milestones. Its stated blocker ("M15's DOM
+🟡 **In progress** — M18.1 (z-order), M18.2 (align), and M18.3 (distribute) landed; lock/hide and
+the interactive Layers tab remain as their own sub-milestones. Its stated blocker ("M15's DOM
 reordering") had already shipped back when M16 landed, so this was actually unblocked before work
 started.
 
@@ -930,6 +930,18 @@ convention. Connectors in the selection are silently excluded (their position is
 from the elements they connect, not independently movable). Reachable from the Edit menu, the
 command palette, and MCP; no context-menu entry or keyboard shortcut, same reasoning M18.1 gave for
 keeping the context menu lean. Full detail: [Canvas parity plan → M18.2](10-canvas-parity-plan.md#m182--align).
+
+##### M18.3 — Distribute
+
+✅ **Done.**
+
+`distributeHorizontal`/`distributeVertical`, each undoable, spacing the selected elements' _gaps_
+(not centers) evenly along the chosen axis: the two outermost elements anchor in place, everything
+between them moves so consecutive gaps match — the Figma/Illustrator/PowerPoint convention.
+Requires at least three distributable (non-connector) elements; connectors in the selection are
+silently excluded, same reasoning as M18.2. Reachable from the Edit menu, the command palette, and
+MCP; no context-menu entry or keyboard shortcut, same reasoning M18.2 gave for align. Full detail:
+[Canvas parity plan → M18.3](10-canvas-parity-plan.md#m183--distribute).
 
 #### M19 — Connector editing
 
