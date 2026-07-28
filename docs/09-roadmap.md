@@ -674,18 +674,16 @@ end-to-end with a defined missing-icon story.
 
 ## v4 — Canvas parity
 
-Make the canvas render what IBM actually specifies, and make it directly manipulable. Full plan,
-audit evidence, and per-defect provenance in
-[Canvas parity plan](10-canvas-parity-plan.md); decisions in
-[D25–D28](00-decision-log.md#canvas--direct-manipulation). This is the largest single body of work
-in the project. M14 (visual conformance — icons, connectors, container tabs) is done; M15–M20
-(direct manipulation) remain and are what a first-time user notices most — today the canvas has no
-drag, no resize, no marquee, and no clipboard.
+✅ **Complete.** All seven milestones (M14–M20) are done. Full plan, audit evidence, and
+per-defect provenance in [Canvas parity plan](10-canvas-parity-plan.md); decisions in
+[D25–D28](00-decision-log.md#canvas--direct-manipulation).
 
-**Sequencing note:** M14 fixed a live correctness defect against
-[D5](00-decision-log.md#d5--crisp--professional-visual-style--locked)/[D17](00-decision-log.md#d17--official--ibm-internal-tool--locked)
-— the shipped icon set was visually wrong — so it was pulled ahead of M12/M13 rather than waiting
-for v3 to close. M15–M20 genuinely depend on v3-era stability and should not be.
+Make the canvas render what IBM actually specifies, and make it directly manipulable. M14
+(visual conformance — icons, connectors, container tabs) was pulled ahead because the shipped icon
+set was visually wrong against
+[D5](00-decision-log.md#d5--crisp--professional-visual-style--locked)/[D17](00-decision-log.md#d17--official--ibm-internal-tool--locked).
+M15–M20 (direct manipulation — drag, resize, marquee, clipboard, alignment, connector editing,
+rotation, and color picker) followed.
 
 #### M14 — IBM visual conformance
 
@@ -953,12 +951,9 @@ reset-to-auto-routing ("Reset routing" button in the Properties panel), and MCP 
 
 #### M20 — Full range on demand
 
-⬜ **Not started**
-
-Last, because rotation is the most invasive change in the plan. Rotation handle with 15°
-Shift-snapping plus rotation-aware hit-testing, handles, ports, and bounds; a color picker beyond
-the 9 IBM pairs; and two new linter rules flagging non-zero rotation and off-palette color as
-off-spec ([D28](00-decision-log.md#d28--constrained-defaults-full-range-on-demand--locked)).
+✅ **Done** — rotation handle with 15° Shift-snapping, rotation-aware hit-testing/handles/ports/bounds,
+IBM palette swatches + free color picker, and two new linter rules (`non-zero-rotation`,
+`off-palette-color`). See [Canvas parity plan → M20](10-canvas-parity-plan.md#m20--full-range-on-demand).
 
 **v4 exit criteria:** a render of an IBM-authored template is visually indistinguishable from IBM's
 own export; an architect builds a nested multi-zone diagram end to end using only the mouse, and

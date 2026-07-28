@@ -3,6 +3,7 @@ import type { Rect } from "../routing/orthogonalRouter.js";
 import { connectorPathPoints } from "../routing/routeConnector.js";
 import type { Scene } from "../scene/scene.js";
 import type { SceneElement } from "../scene/types.js";
+import { rotatedCorners } from "../scene/bounds.js";
 
 export type { Point };
 
@@ -27,7 +28,25 @@ export interface HitTestOptions {
   excludeHidden?: boolean;
 }
 
+/**
+ * Tests whether `point` is inside the element's own bounding box, accounting for rotation
+ * (M20). For unrotated elements this is a plain axis-aligned bbox test; for rotated ones the
+ * point is inverse-rotated about the element's own center before the unrotated bbox is tested —
+ * equivalent to, but cheaper than, a full polygon-contains check.
+ */
 function bboxContains(el: SceneElement, point: Point): boolean {
+  if (el.rotation) {
+    const cx = el.x + el.w / 2;
+    const cy = el.y + el.h / 2;
+    const rad = (-el.rotation * Math.PI) / 180; // inverse rotation
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+    const dx = point.x - cx;
+    const dy = point.y - cy;
+    const lx = cx + dx * cos - dy * sin;
+    const ly = cy + dx * sin + dy * cos;
+    return lx >= el.x && lx <= el.x + el.w && ly >= el.y && ly <= el.y + el.h;
+  }
   return (
     point.x >= el.x &&
     point.x <= el.x + el.w &&
@@ -136,6 +155,10 @@ export function hitTestRect(scene: Scene, rect: Rect): SceneElement[] {
       return (
         points.length > 0 && points.every((point) => pointInRect(point, rect))
       );
+    }
+    // For a rotated element, all four rotated corners must be inside the marquee rect.
+    if (el.rotation) {
+      return rotatedCorners(el).every((corner) => pointInRect(corner, rect));
     }
     return (
       pointInRect({ x: el.x, y: el.y }, rect) &&

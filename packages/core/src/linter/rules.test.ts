@@ -111,10 +111,10 @@ function catalog(): Catalog {
 }
 
 describe("default conformance rules", () => {
-  it("publishes a unique IBM-default metadata entry for all 16 supported rules", () => {
+  it("publishes a unique IBM-default metadata entry for all 18 supported rules", () => {
     const ids = ruleMetadata.map((rule) => rule.id);
-    expect(ids).toHaveLength(16);
-    expect(new Set(ids).size).toBe(16);
+    expect(ids).toHaveLength(18);
+    expect(new Set(ids).size).toBe(18);
     expect(ids).toEqual(
       expect.arrayContaining([
         "container-semantic",
@@ -133,6 +133,8 @@ describe("default conformance rules", () => {
         "connector-annotation-invalid-port",
         "west-east-flow-reversal",
         "icon-geometry",
+        "non-zero-rotation",
+        "off-palette-color",
       ]),
     );
   });

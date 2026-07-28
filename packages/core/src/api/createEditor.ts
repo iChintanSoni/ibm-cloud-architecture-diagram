@@ -21,6 +21,7 @@ import {
   setManualWaypoints,
   setZOrder,
   showElements,
+  rotateElement,
   unlockElements,
   updateConformance,
   updateElement,
@@ -174,6 +175,8 @@ export interface ElementPropertiesPatch {
   locked?: boolean;
   /** Hide or show the element via the Properties panel (M18.4). */
   hidden?: boolean;
+  /** Rotation in degrees 0–359; 0 or absent means no rotation (M20). */
+  rotation?: number;
 }
 
 export class ExportBlockedError extends Error {
@@ -577,7 +580,18 @@ export class Editor {
     if (dx !== 0 || dy !== 0)
       commands.push(moveElements(this.scene, [id], dx, dy));
 
-    const { x: _x, y: _y, ...fieldPatch } = patch;
+    // Rotation is a separate command (normalise + skip-if-equal), not a plain field patch.
+    const { x: _x, y: _y, rotation, ...fieldPatch } = patch;
+    if (
+      rotation !== undefined &&
+      current.type !== "connector" &&
+      current.type !== "frame"
+    ) {
+      const norm = ((rotation % 360) + 360) % 360;
+      const currentNorm = (((current.rotation ?? 0) % 360) + 360) % 360;
+      if (norm !== currentNorm)
+        commands.push(rotateElement(this.scene, id, norm));
+    }
     if (Object.keys(fieldPatch).length > 0) {
       commands.push(
         updateElement(this.scene, id, fieldPatch as Partial<SceneElement>),
@@ -1436,6 +1450,23 @@ export class Editor {
   }
 
   /**
+   * Rotates a single element to `degrees` (0–359, normalised). Connectors and Frames are excluded
+   * — connectors derive their shape entirely from endpoints + routing, and Frame is excluded from
+   * all direct-manipulation operations. Returns `false` if the element doesn't exist, is a
+   * connector or frame, or is already at the target rotation (M20, docs/10-canvas-parity-plan.md).
+   */
+  rotateElement(id: ElementId, degrees: number): boolean {
+    const el = this.scene.get(id);
+    if (!el || el.type === "connector" || el.type === "frame") return false;
+    const normalised = ((degrees % 360) + 360) % 360;
+    const current = el.rotation ?? 0;
+    const currentNorm = ((current % 360) + 360) % 360;
+    if (normalised === currentNorm) return false;
+    this.commands.dispatch(rotateElement(this.scene, id, normalised));
+    return true;
+  }
+
+  /**
    * Connects two elements without requiring exact ports — picks a reasonable
    * port pair from their relative position (`pickPorts`) — for mouse
    * drag-to-connect and keyboard connect mode alike
@@ -1524,6 +1555,16 @@ export class Editor {
   }
 
   /** Shows or hides the background grid (M17.2) — a view preference, not part of the document. */
+  /**
+   * Live rotation preview (M20): re-renders a single element at `degrees` rotation without touching
+   * the scene or command bus. Pass `null` to clear the preview and restore the last-committed
+   * rotation. Uses the same `previewGeometry` map that `previewResize` already uses, extended with
+   * a rotation-only variant via a renderer-level `previewRotation` call.
+   */
+  rotateElementPreview(id: ElementId, degrees: number | null): void {
+    this.renderer.previewRotation(id, degrees);
+  }
+
   setGridVisible(visible: boolean): void {
     this.renderer.setGridVisible(visible);
   }

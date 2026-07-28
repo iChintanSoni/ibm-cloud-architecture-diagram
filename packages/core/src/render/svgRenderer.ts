@@ -398,6 +398,8 @@ export class SvgRenderer {
    * checked by renderOverlays() so the selection outline/handles track the previewed bbox rather
    * than the last-committed one. Empty outside an in-progress resize gesture. */
   private previewGeometry = new Map<string, Rect>();
+  /** Live rotation preview map (M20): maps element id → candidate rotation degrees. */
+  private previewRotationMap = new Map<string, number>();
   /** Live waypoint preview (M19): inner waypoints being dragged, not yet committed to the scene —
    * checked by renderElement/renderOverlays so the connector path and handles update live. Cleared
    * on commit/abort. */
@@ -731,10 +733,63 @@ export class SvgRenderer {
     this.renderOverlays(this.currentScene);
   }
 
-  /** Overrides an element's geometry with its in-progress resize preview, if any (M16.2). */
+  /** Overrides an element's geometry with its in-progress resize preview, if any (M16.2), and
+   * its rotation with any in-progress rotation preview (M20). */
   private geometryOf(el: SceneElement): SceneElement {
-    const preview = this.previewGeometry.get(el.id);
-    return preview ? ({ ...el, ...preview } as SceneElement) : el;
+    const geoPreview = this.previewGeometry.get(el.id);
+    const rotPreview = this.previewRotationMap.get(el.id);
+    if (!geoPreview && rotPreview === undefined) return el;
+    return {
+      ...el,
+      ...(geoPreview ?? {}),
+      ...(rotPreview !== undefined ? { rotation: rotPreview } : {}),
+    } as SceneElement;
+  }
+
+  /**
+   * Live rotation preview (M20, docs/10-canvas-parity-plan.md): re-renders a single element at a
+   * candidate rotation without touching the scene, the command bus, or the linter. Pass `null` to
+   * restore the last-committed rotation. Rotation is stored in `previewGeometry` alongside the
+   * element's existing x/y/w/h so `geometryOf` picks it up for all overlay positioning (selection
+   * outline, resize handles, rotation handle stem).
+   */
+  previewRotation(id: string, degrees: number | null): void {
+    if (!this.currentScene) return;
+    const committed = this.currentScene.get(id);
+    if (
+      !committed ||
+      committed.type === "connector" ||
+      committed.type === "frame"
+    )
+      return;
+    if (degrees !== null) {
+      const existing = this.previewGeometry.get(id) ?? {
+        x: committed.x,
+        y: committed.y,
+        w: committed.w,
+        h: committed.h,
+      };
+      this.previewGeometry.set(id, existing);
+      // Store rotation in a separate preview map so geometryOf can pass it through.
+      this.previewRotationMap.set(id, degrees);
+    } else {
+      this.previewRotationMap.delete(id);
+    }
+    const preview = this.previewRotationMap.get(id);
+    const geoOverride = this.previewGeometry.get(id);
+    const merged = {
+      ...committed,
+      ...(geoOverride ?? {}),
+      ...(preview !== undefined
+        ? { rotation: preview }
+        : { rotation: committed.rotation }),
+    } as typeof committed;
+    if (degrees === null) {
+      this.previewGeometry.delete(id);
+      this.previewRotationMap.delete(id);
+    }
+    this.nodes.set(id, this.renderElement(merged, this.currentScene));
+    this.renderOverlays(this.currentScene);
   }
 
   /**
@@ -849,6 +904,16 @@ export class SvgRenderer {
     // needed beyond the Properties panel toggle and the Layers badge added in M18.5.
     if (el.locked) g.setAttribute("data-icad-locked", "true");
     else g.removeAttribute("data-icad-locked");
+    // Rotation (M20, docs/10-canvas-parity-plan.md): rotate the whole <g> about the element's
+    // own center so every visual part (fill, label, glyph, sidebar tab) turns together.
+    // Connectors and connectors' <g> nodes never carry rotation.
+    if (el.type !== "connector" && el.rotation) {
+      const cx = el.x + el.w / 2;
+      const cy = el.y + el.h / 2;
+      g.setAttribute("transform", `rotate(${el.rotation} ${cx} ${cy})`);
+    } else {
+      g.removeAttribute("transform");
+    }
     g.innerHTML = "";
 
     switch (el.type) {
@@ -1404,6 +1469,15 @@ export class SvgRenderer {
           "stroke-width": 2,
           "stroke-dasharray": "4 2",
         });
+        // Rotate the selection outline in lockstep with the element (M20).
+        if (el.rotation) {
+          const cx = el.x + el.w / 2;
+          const cy = el.y + el.h / 2;
+          outline.setAttribute(
+            "transform",
+            `rotate(${el.rotation} ${cx} ${cy})`,
+          );
+        }
         this.overlayLayer.appendChild(outline);
       }
     }
@@ -1417,6 +1491,17 @@ export class SvgRenderer {
       const raw = scene.get([...this.selectedIds][0]!);
       if (raw && raw.type !== "connector" && raw.type !== "frame") {
         const el = this.geometryOf(raw);
+        // For rotated elements the handles are placed on the rotated corners/mid-edges
+        // (M20): wrap them in a <g> that carries the same rotation transform.
+        const handleGroup = createSvgElement("g");
+        if (el.rotation) {
+          const cx = el.x + el.w / 2;
+          const cy = el.y + el.h / 2;
+          handleGroup.setAttribute(
+            "transform",
+            `rotate(${el.rotation} ${cx} ${cy})`,
+          );
+        }
         for (const handle of RESIZE_HANDLES) {
           const point = resizeHandlePoint(el, handle);
           const marker = createSvgElement("rect");
@@ -1432,8 +1517,52 @@ export class SvgRenderer {
             "pointer-events": "all",
             "data-icad-resize-handle": handle,
           });
-          this.overlayLayer.appendChild(marker);
+          handleGroup.appendChild(marker);
         }
+        this.overlayLayer.appendChild(handleGroup);
+
+        // Rotation handle (M20, docs/10-canvas-parity-plan.md): a circle above the element's
+        // top-center, connected by a short stem. Placed in the same rotated coordinate system
+        // as the resize handles so it always appears "above" the element regardless of its
+        // current rotation. Excluded for Frame (same reasoning as resize handles).
+        const ROTATION_STEM = 24; // px above the top-center in the element's local frame
+        const ROTATION_HANDLE_R = 6;
+        const topCenter = resizeHandlePoint(el, "n");
+        const stemEnd = { x: topCenter.x, y: topCenter.y - ROTATION_STEM };
+        const rotHandleGroup = createSvgElement("g");
+        if (el.rotation) {
+          const cx = el.x + el.w / 2;
+          const cy = el.y + el.h / 2;
+          rotHandleGroup.setAttribute(
+            "transform",
+            `rotate(${el.rotation} ${cx} ${cy})`,
+          );
+        }
+        const stem = createSvgElement("line");
+        setAttrs(stem, {
+          x1: topCenter.x,
+          y1: topCenter.y,
+          x2: stemEnd.x,
+          y2: stemEnd.y,
+          stroke: "#0f62fe",
+          "stroke-width": 1,
+          "pointer-events": "none",
+        });
+        rotHandleGroup.appendChild(stem);
+        const rotHandle = createSvgElement("circle");
+        setAttrs(rotHandle, {
+          cx: stemEnd.x,
+          cy: stemEnd.y,
+          r: ROTATION_HANDLE_R,
+          fill: "#ffffff",
+          stroke: "#0f62fe",
+          "stroke-width": 1.5,
+          cursor: "grab",
+          "pointer-events": "all",
+          "data-icad-rotation-handle": el.id,
+        });
+        rotHandleGroup.appendChild(rotHandle);
+        this.overlayLayer.appendChild(rotHandleGroup);
       }
 
       // M19 — Connector editing: waypoint drag handles, midpoint insert handles,

@@ -656,3 +656,40 @@ export function updateConformance(
     },
   };
 }
+
+/**
+ * Sets `rotation` (degrees, 0–359 normalised) on a single element as one undoable step (M20,
+ * docs/10-canvas-parity-plan.md). Connectors and Frames are excluded — connectors have no visual
+ * body to rotate (their shape is entirely derived from endpoints + routing), and Frame is a
+ * presentation-sectioning background that is intentionally excluded from all direct-manipulation
+ * operations that don't make structural sense for it. Rotation is a field-only change (no geometry
+ * shift, no containment change), so reports `_put` as reason `"update"` and the `renderElements`
+ * fast path handles repaints — the renderer applies `transform="rotate(…)"` to the element's own
+ * `<g>` node in `renderElement`, so a targeted repaint is enough.
+ */
+export function rotateElement(
+  scene: Scene,
+  id: ElementId,
+  degrees: number,
+): Command {
+  const previous = scene.get(id);
+  if (!previous) throw new Error(`Cannot rotate unknown element "${id}"`);
+  const normalised = ((degrees % 360) + 360) % 360;
+  return {
+    label: "rotate element",
+    do(s) {
+      const current = s.get(id);
+      if (!current) return;
+      if (normalised === 0) {
+        const next = { ...current } as SceneElement;
+        delete next.rotation;
+        s._put(next, "update");
+      } else {
+        s._put({ ...current, rotation: normalised } as SceneElement, "update");
+      }
+    },
+    undo(s) {
+      s._put(previous, "update");
+    },
+  };
+}

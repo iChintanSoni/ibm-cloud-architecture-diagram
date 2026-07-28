@@ -1,6 +1,7 @@
 import {
   autoRouteConnector,
   batch,
+  rotateElement,
   updateElement,
 } from "../commands/commands.js";
 import type { Command } from "../commands/types.js";
@@ -519,6 +520,79 @@ export const iconGeometryRule: Rule = (scene): Diagnostic[] => {
   return diagnostics;
 };
 
+/**
+ * Non-zero rotation is off-spec per IBM's architecture diagram kit — IBM's own worked examples
+ * use only horizontal/vertical elements (D28, docs/00-decision-log.md). This rule is advisory:
+ * the linter never blocks rotation, just flags it so diagrams that don't need it stay clean.
+ * Quick-fix resets the element to 0°. Connectors and Frames are excluded — connectors derive
+ * their geometry from routing (no rotation field is ever set on them), and Frame is excluded
+ * from all rotation operations.
+ */
+export const nonZeroRotationRule: Rule = (scene): Diagnostic[] => {
+  const diagnostics: Diagnostic[] = [];
+  for (const el of scene.all()) {
+    if (!el.rotation || el.type === "connector" || el.type === "frame")
+      continue;
+    diagnostics.push(
+      diagnostic(
+        "non-zero-rotation",
+        "warn",
+        "layout",
+        el.id,
+        `"${el.id}" is rotated ${el.rotation}°; IBM diagrams use only horizontal/vertical elements.`,
+        rotateElement(scene, el.id, 0),
+        "Reset to 0°",
+      ),
+    );
+  }
+  return diagnostics;
+};
+
+/**
+ * Colors outside IBM's 9-pair primary/secondary palette are off-spec (D28,
+ * docs/00-decision-log.md). This rule is advisory — the picker exists for deliberate one-offs —
+ * and flags both `style.stroke` and `style.fill` when they don't match any palette entry.
+ * Quick-fix is not offered here (there's no canonical "nearest palette color" function) to avoid
+ * a lossy auto-correction the user didn't ask for.
+ */
+export const offPaletteColorRule: Rule = (scene): Diagnostic[] => {
+  // IBM's 9-pair palette: every valid color is either a primary key or a secondary key.
+  const isInPalette = (c: string): boolean =>
+    c in PRIMARY_TO_SECONDARY_FILL ||
+    c in SECONDARY_TO_PRIMARY_FILL ||
+    colorKey(c) in PRIMARY_TO_SECONDARY_FILL ||
+    colorKey(c) in SECONDARY_TO_PRIMARY_FILL;
+
+  const diagnostics: Diagnostic[] = [];
+  for (const el of scene.all()) {
+    const stroke = el.style?.stroke;
+    const fill = el.style?.fill;
+    if (stroke && !isInPalette(stroke)) {
+      diagnostics.push(
+        diagnostic(
+          "off-palette-color",
+          "warn",
+          "semantics",
+          el.id,
+          `"${el.id}" stroke "${stroke}" is outside IBM's 9-pair color palette.`,
+        ),
+      );
+    }
+    if (fill && !isInPalette(fill)) {
+      diagnostics.push(
+        diagnostic(
+          "off-palette-color",
+          "warn",
+          "semantics",
+          el.id,
+          `"${el.id}" fill "${fill}" is outside IBM's 9-pair color palette.`,
+        ),
+      );
+    }
+  }
+  return diagnostics;
+};
+
 export const ruleMetadata: RuleMetadata[] = [
   {
     id: "container-semantic",
@@ -616,6 +690,18 @@ export const ruleMetadata: RuleMetadata[] = [
     category: "layout",
     defaultSeverity: "warn",
   },
+  {
+    id: "non-zero-rotation",
+    title: "Non-zero rotation",
+    category: "layout",
+    defaultSeverity: "warn",
+  },
+  {
+    id: "off-palette-color",
+    title: "Off-palette color",
+    category: "semantics",
+    defaultSeverity: "warn",
+  },
 ];
 
 export const defaultRules: Rule[] = [
@@ -634,4 +720,6 @@ export const defaultRules: Rule[] = [
   connectorAnnotationRule,
   westEastFlowRule,
   iconGeometryRule,
+  nonZeroRotationRule,
+  offPaletteColorRule,
 ];

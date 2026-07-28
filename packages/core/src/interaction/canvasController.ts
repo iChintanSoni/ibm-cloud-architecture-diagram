@@ -27,6 +27,7 @@ export type CanvasMode =
   | { kind: "placing" }
   | { kind: "dragging" }
   | { kind: "resizing" }
+  | { kind: "rotating" }
   | { kind: "marquee" }
   | { kind: "panning" }
   | { kind: "waypoint-drag" }
@@ -108,6 +109,25 @@ interface EndpointDragState {
   connectorId: ElementId;
   endpoint: "from" | "to";
   startScenePoint: Point;
+}
+
+/**
+ * Rotation gesture state (M20, docs/10-canvas-parity-plan.md). The rotation angle is computed
+ * from the angle of the pointer vector relative to the element's center — the same approach
+ * Figma and Illustrator use, which makes the handle's angular position match what the user drags.
+ * `startAngle` is the initial pointer angle minus the element's current rotation so the element
+ * doesn't jump when the drag starts.
+ */
+interface RotateState {
+  pointerId: number;
+  id: ElementId;
+  /** Element center in scene space — constant for the duration of the gesture. */
+  cx: number;
+  cy: number;
+  /** Angle offset so the element's current rotation is the starting point. */
+  startOffset: number;
+  /** Last committed rotation (for live preview label). */
+  lastDeg: number;
 }
 
 /** Converts a wheel event into a zoom exponent (applied as `2 ** delta`, composable by summing
@@ -228,6 +248,7 @@ export class CanvasController {
   private draggingPort: { elementId: ElementId; side: PortSide } | undefined;
   private dragState: DragState | undefined;
   private resizeState: ResizeState | undefined;
+  private rotateState: RotateState | undefined;
   private marqueeState: MarqueeState | undefined;
   private panState: PanState | undefined;
   private waypointDragState: WaypointDragState | undefined;
@@ -584,6 +605,11 @@ export class CanvasController {
       return;
     }
 
+    if (this.rotateState) {
+      this.updateRotate(event, point);
+      return;
+    }
+
     if (this.marqueeState) {
       this.updateMarquee(event, point);
       return;
@@ -632,6 +658,26 @@ export class CanvasController {
     pan.lastClient = { x: event.clientX, y: event.clientY };
     const { scale } = this.editor.viewport.get();
     this.editor.viewport.panBy(-dxClient / scale, -dyClient / scale);
+  }
+
+  // Rotation gesture (M20, docs/10-canvas-parity-plan.md): compute the pointer's current angle
+  // about the element center, subtract the startOffset to get the candidate rotation, 15° snap on
+  // Shift, live-preview via a renderer repaint, show the HUD readout.
+  private updateRotate(event: PointerEvent, point: Point): void {
+    const s = this.rotateState;
+    if (!s || !point) return;
+    const dx = point.x - s.cx;
+    const dy = point.y - s.cy;
+    const rawAngleDeg = (Math.atan2(dy, dx) * 180) / Math.PI + 90;
+    let deg = (((rawAngleDeg - s.startOffset) % 360) + 360) % 360;
+    if (event.shiftKey) deg = Math.round(deg / 15) * 15;
+    s.lastDeg = deg;
+    // Live preview: re-render just this element at the candidate rotation.
+    this.editor.rotateElementPreview(s.id, deg);
+    this.editor.setGestureReadout({
+      text: `${Math.round(deg)}°`,
+      at: { x: s.cx, y: s.cy },
+    });
   }
 
   // Drag-to-move (M16, docs/10-canvas-parity-plan.md): armed on pointerdown over a selectable
@@ -687,6 +733,48 @@ export class CanvasController {
       };
       this.capturePointer(event.pointerId);
       this.setMode({ kind: "resizing" });
+      return;
+    }
+
+    // M20 — Rotation handle (data-icad-rotation-handle="elementId").
+    const rotationHandleAttr =
+      event.target instanceof Element
+        ? event.target
+            .closest<SVGElement>("[data-icad-rotation-handle]")
+            ?.getAttribute("data-icad-rotation-handle")
+        : null;
+    if (rotationHandleAttr && this.mode.kind === "idle") {
+      const id = rotationHandleAttr;
+      const el = this.editor.scene.get(id);
+      const point = this.toScenePoint(event.clientX, event.clientY);
+      if (
+        !el ||
+        !point ||
+        el.locked ||
+        el.type === "connector" ||
+        el.type === "frame"
+      )
+        return;
+      event.preventDefault();
+      const cx = el.x + el.w / 2;
+      const cy = el.y + el.h / 2;
+      const pointerAngleDeg =
+        (Math.atan2(point.y - cy, point.x - cx) * 180) / Math.PI + 90;
+      const startOffset = pointerAngleDeg - (el.rotation ?? 0);
+      this.rotateState = {
+        pointerId: event.pointerId,
+        id,
+        cx,
+        cy,
+        startOffset,
+        lastDeg: el.rotation ?? 0,
+      };
+      this.capturePointer(event.pointerId);
+      this.setMode({ kind: "rotating" });
+      this.editor.setGestureReadout({
+        text: `${Math.round(el.rotation ?? 0)}°`,
+        at: { x: cx, y: cy },
+      });
       return;
     }
 
@@ -1125,6 +1213,18 @@ export class CanvasController {
       return;
     }
 
+    if (this.rotateState) {
+      const { id, lastDeg } = this.rotateState;
+      this.rotateState = undefined;
+      // Clear live preview before committing so the commit renders the final state.
+      this.editor.rotateElementPreview(id, null);
+      this.editor.rotateElement(id, lastDeg);
+      this.editor.setGestureReadout(undefined);
+      this.suppressNextClick = true;
+      this.setMode({ kind: "idle" });
+      return;
+    }
+
     if (this.marqueeState) {
       const { moved } = this.marqueeState;
       this.marqueeState = undefined;
@@ -1353,6 +1453,15 @@ export class CanvasController {
       const { interaction, pointerId } = this.resizeState;
       this.resizeState = undefined;
       interaction.abort();
+      this.editor.setGestureReadout(undefined);
+      this.releasePointer(pointerId);
+      this.setMode({ kind: "idle" });
+      return;
+    }
+    if (this.rotateState) {
+      const { id, pointerId } = this.rotateState;
+      this.rotateState = undefined;
+      this.editor.rotateElementPreview(id, null);
       this.editor.setGestureReadout(undefined);
       this.releasePointer(pointerId);
       this.setMode({ kind: "idle" });

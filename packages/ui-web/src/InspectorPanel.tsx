@@ -85,6 +85,19 @@ const CONNECTOR_TYPE_LABELS: Record<ConnectorType, string> = {
   extends: "Extends",
 };
 
+/** IBM's 9 primary + 9 secondary palette colors for the IBM-palette swatches (D28, M20). */
+const IBM_PALETTE_PRIMARIES = [
+  "#fa4d56",
+  "#ee5396",
+  "#a56eff",
+  "#0f62fe",
+  "#1192e8",
+  "#009d9a",
+  "#198038",
+  "#878d96",
+  "#8d8d8d",
+] as const;
+
 export interface InspectorPanelProps {
   elements: SceneElement[];
   selectedIds: ElementId[];
@@ -293,6 +306,34 @@ function ElementProperties({
             ))}
           </div>
 
+          {/* Rotation (M20, docs/10-canvas-parity-plan.md): only for non-frame elements.
+              Frames are excluded from all direct-manipulation rotation operations. */}
+          {element.type !== "frame" && (
+            <NumberInput
+              key={`${element.id}:rotation:${element.rotation ?? 0}`}
+              id={`icad-property-rotation-${element.id}`}
+              size="sm"
+              label="Rotation (°)"
+              min={0}
+              max={359}
+              defaultValue={element.rotation ?? 0}
+              onBlur={(event) => {
+                const v = Number(event.target.value);
+                if (Number.isFinite(v))
+                  onUpdate(element.id, {
+                    rotation: ((Math.round(v) % 360) + 360) % 360,
+                  });
+              }}
+              onClick={(_event, state) => {
+                if (state)
+                  onUpdate(element.id, {
+                    rotation:
+                      ((Math.round(Number(state.value)) % 360) + 360) % 360,
+                  });
+              }}
+            />
+          )}
+
           <Select
             id={`icad-property-parent-${element.id}`}
             size="sm"
@@ -470,6 +511,71 @@ function ElementProperties({
             </Button>
           )}
         </>
+      )}
+
+      {/* Color picker (M20, docs/10-canvas-parity-plan.md, D28): IBM 9-pair palette swatches +
+          a free color input for deliberate off-spec one-offs. Shown for all non-connector elements
+          (connectors use flowColor, not style.stroke/fill for their semantic color).
+          The linter's `off-palette-color` rule flags non-palette choices as advisory. */}
+      {element.type !== "connector" && (
+        <div className="icad-color-picker">
+          <div className="icad-color-picker__row">
+            <span className="icad-color-picker__label">Stroke</span>
+            <div className="icad-color-picker__swatches">
+              {IBM_PALETTE_PRIMARIES.map((color) => (
+                <button
+                  key={color}
+                  type="button"
+                  className={`icad-color-swatch${element.style?.stroke === color ? " icad-color-swatch--active" : ""}`}
+                  style={{ background: color }}
+                  aria-label={`Set stroke to ${color}`}
+                  title={color}
+                  onClick={() =>
+                    onUpdate(element.id, { style: { stroke: color } })
+                  }
+                />
+              ))}
+            </div>
+            <input
+              type="color"
+              className="icad-color-picker__free"
+              aria-label="Custom stroke color"
+              title="Custom stroke color"
+              value={element.style?.stroke ?? "#8d8d8d"}
+              onChange={(e) =>
+                onUpdate(element.id, { style: { stroke: e.target.value } })
+              }
+            />
+          </div>
+          <div className="icad-color-picker__row">
+            <span className="icad-color-picker__label">Fill</span>
+            <div className="icad-color-picker__swatches">
+              {IBM_PALETTE_PRIMARIES.map((color) => (
+                <button
+                  key={color}
+                  type="button"
+                  className={`icad-color-swatch${element.style?.fill === color ? " icad-color-swatch--active" : ""}`}
+                  style={{ background: color }}
+                  aria-label={`Set fill to ${color}`}
+                  title={color}
+                  onClick={() =>
+                    onUpdate(element.id, { style: { fill: color } })
+                  }
+                />
+              ))}
+            </div>
+            <input
+              type="color"
+              className="icad-color-picker__free"
+              aria-label="Custom fill color"
+              title="Custom fill color"
+              value={element.style?.fill ?? "#f4f4f4"}
+              onChange={(e) =>
+                onUpdate(element.id, { style: { fill: e.target.value } })
+              }
+            />
+          </div>
+        </div>
       )}
 
       {/* Lock / Hide (M18.4, docs/10-canvas-parity-plan.md) */}

@@ -477,3 +477,61 @@
   white-space: nowrap;
   border: 0;
 }
+
+/* ── Color picker (M20, docs/10-canvas-parity-plan.md) ──────────────────────────── */
+.icad-color-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  border-top: 1px solid var(--cds-border-subtle-01, #e0e0e0);
+}
+
+.icad-color-picker__row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.icad-color-picker__label {
+  width: 2.5rem;
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  color: var(--cds-text-secondary, #525252);
+}
+
+.icad-color-picker__swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  flex: 1;
+}
+
+.icad-color-swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 2px;
+  border: 1.5px solid transparent;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.icad-color-swatch:hover {
+  border-color: var(--cds-focus, #0f62fe);
+}
+
+.icad-color-swatch--active {
+  border-color: var(--cds-focus, #0f62fe);
+  box-shadow: 0 0 0 1.5px var(--cds-focus, #0f62fe);
+}
+
+.icad-color-picker__free {
+  width: 24px;
+  height: 24px;
+  border: 1.5px solid var(--cds-border-strong-01, #8d8d8d);
+  border-radius: 2px;
+  padding: 1px;
+  cursor: pointer;
+  flex-shrink: 0;
+}

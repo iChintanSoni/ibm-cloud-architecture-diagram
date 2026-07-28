@@ -910,12 +910,64 @@ same way.
 
 ## M20 — Full range on demand
 
-⬜ **Not started.** Last, because rotation is the most invasive change in the plan.
+✅ **Done.**
 
-- Rotation handle with 15° Shift-snapping, plus rotation-aware hit-testing (inverse transform),
-  rotated resize handles, rotated port positions, and rotated bounds.
-- Color picker beyond the 9 IBM pairs.
-- New linter rules flagging non-zero rotation and off-palette color as off-spec (D28).
+- **Rotation geometry.** `rotatedCorners()` and `rotatedBounds()` (`packages/core/src/scene/
+bounds.ts`) compute the rotated corners and axis-aligned bounding box for any element.
+  `boundsOfElements` now uses `rotatedBounds` so alignment, distribute, auto-grow, clipboard,
+  and all other geometry operations work correctly with rotated elements.
+
+- **Rotation-aware hit-testing.** `bboxContains` in `hitTest.ts` inverse-rotates the pointer
+  into the element's local frame before the axis-aligned test — cheaper than a polygon test
+  and exact. `hitTestRect` (marquee) checks all four rotated corners, matching the fully-enclosed
+  marquee rule. Both paths are no-ops for the common case of zero rotation.
+
+- **Rotation in rendering.** `portPoint` (`render/port.ts`) rotates each named port about the
+  element's own center so connectors attach to the correct edge after rotation. `renderElement`
+  applies `transform="rotate(deg cx cy)"` to each element's `<g>` node so the fill, label,
+  glyph, and sidebar tab all turn together. The selection outline is rotated in lockstep; resize
+  handles are wrapped in a matching rotated `<g>` so they always appear at the element's actual
+  corners and edges.
+
+- **Rotation handle.** A circle on a 24px stem above the element's top-center edge, rendered in
+  `renderOverlays` in the same rotated `<g>` as resize handles so it always appears "above" the
+  element regardless of its current rotation. Tagged `data-icad-rotation-handle`. Excluded for
+  Frame (same reasoning as resize handles) and connectors.
+
+- **Rotation gesture.** A new `rotating` `CanvasMode` and `RotateState` on `CanvasController`.
+  Pointerdown on the handle computes `startOffset = pointerAngle - currentRotation` so the
+  element doesn't jump; every pointermove recomputes the angle and updates a live renderer
+  preview via `Editor.rotateElementPreview` (a renderer-only re-render, no scene mutation, D26
+  pattern). **Shift snaps to 15° increments.** A HUD readout (`"45°"`) appears at the element
+  center during the gesture. Pointerup commits `Editor.rotateElement()` as one undo step; Escape
+  clears the preview and aborts with no command dispatched.
+
+- **`rotateElement` command + Editor API.** `rotateElement(scene, id, degrees)` (`commands.ts`)
+  normalises 0–359 and deletes the `rotation` field at 0 (so a reset leaves no dead field in the
+  `.icad`). Reports `_put` as `"update"` — a field-only change — so the `renderElements` fast
+  path handles repaints. `Editor.rotateElement(id, degrees)` is the public API (skip-if-equal,
+  returns `boolean`); `rotateElementPreview(id, degrees|null)` is the live-preview bridge; both
+  `rotation` in `ElementPropertiesPatch` and `updateElementProperties` route through the command.
+
+- **Properties panel.** A `Rotation (°)` `NumberInput` (0–359) appears for every non-frame,
+  non-connector element. IBM palette swatches (9 primary colors, `IBM_PALETTE_PRIMARIES`) plus
+  an `<input type="color">` free picker for stroke and fill, shown for all non-connector
+  elements — the linter's `off-palette-color` rule flags non-palette choices as advisory.
+
+- **Two new linter rules** (both `"warn"`, advisory by default per D12):
+  - `nonZeroRotationRule` — flags any non-zero `rotation` field; quick-fix resets to 0° via
+    `rotateElement(scene, id, 0)`.
+  - `offPaletteColorRule` — flags `style.stroke` or `style.fill` outside IBM's 9-pair
+    primary/secondary palette. No quick-fix (no canonical "nearest palette color").
+    Both added to `ruleMetadata` and `defaultRules`; rule count updated to 18.
+
+- **MCP parity.** `element_rotate` tool (`packages/mcp/src/tools/authoring.ts`); `rotation`
+  field added to `elementPropertiesPatchSchema` so `element_update` also handles it.
+
+- **Tests.** `packages/core/src/scene/rotation.test.ts` (16 new tests): `rotatedCorners` at 0°/
+  45°/from-element, `rotatedBounds` at 0°/90°/180°, rotation-aware hit-test hit/miss,
+  `rotateElement` command undo + 360→0 normalisation, and both linter rules. All 521 core tests
+  and 77 ui-web tests pass.
 
 ---
 

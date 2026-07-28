@@ -3,6 +3,56 @@ import type { Scene } from "./scene.js";
 import type { ElementId, SceneElement } from "./types.js";
 
 /**
+ * Returns the four corners of an element's own bounding box, rotated about its own center by
+ * `degrees`. Used to build the axis-aligned bounding box of a rotated element for hit-testing,
+ * auto-grow, alignment, and distribute — all of which work in the canvas's unrotated coordinate
+ * space even when the element itself is displayed rotated (M20, docs/10-canvas-parity-plan.md).
+ */
+export function rotatedCorners(
+  el: { x: number; y: number; w: number; h: number; rotation?: number },
+  degrees = el.rotation ?? 0,
+): Array<{ x: number; y: number }> {
+  const cx = el.x + el.w / 2;
+  const cy = el.y + el.h / 2;
+  const rad = (degrees * Math.PI) / 180;
+  const cos = Math.cos(rad);
+  const sin = Math.sin(rad);
+  const hw = el.w / 2;
+  const hh = el.h / 2;
+  return [
+    { x: cx + -hw * cos - -hh * sin, y: cy + -hw * sin + -hh * cos },
+    { x: cx + hw * cos - -hh * sin, y: cy + hw * sin + -hh * cos },
+    { x: cx + hw * cos - hh * sin, y: cy + hw * sin + hh * cos },
+    { x: cx + -hw * cos - hh * sin, y: cy + -hw * sin + hh * cos },
+  ];
+}
+
+/**
+ * Axis-aligned bounding box for `el` accounting for its `rotation` — equals `{el.x,el.y,el.w,el.h}`
+ * when rotation is zero or absent (the common case; calling code doesn't need to special-case it).
+ */
+export function rotatedBounds(el: {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  rotation?: number;
+}): Rect {
+  if (!el.rotation) return { x: el.x, y: el.y, w: el.w, h: el.h };
+  const corners = rotatedCorners(el);
+  const xs = corners.map((c) => c.x);
+  const ys = corners.map((c) => c.y);
+  const minX = Math.min(...xs);
+  const minY = Math.min(...ys);
+  return {
+    x: minX,
+    y: minY,
+    w: Math.max(...xs) - minX,
+    h: Math.max(...ys) - minY,
+  };
+}
+
+/**
  * Scene-space bounding box of a plain list of elements (e.g. a clipboard snapshot that may no
  * longer match the live scene) — the geometry half of `boundsOf`, factored out so callers with
  * detached elements in hand don't need a `Scene` to query. A connector's declared x/y/w/h is a
@@ -26,7 +76,7 @@ export function boundsOfElements(elements: SceneElement[]): Rect | undefined {
         });
       }
     } else {
-      rects.push({ x: el.x, y: el.y, w: el.w, h: el.h });
+      rects.push(rotatedBounds(el));
     }
   }
 

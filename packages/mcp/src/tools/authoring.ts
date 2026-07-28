@@ -628,6 +628,42 @@ export function registerAuthoringTools(
     );
   };
 
+  // ── Rotation (M20, docs/10-canvas-parity-plan.md) ───────────────────────────
+  server.registerTool(
+    "element_rotate",
+    {
+      title: "Rotate an element",
+      description:
+        "Sets the rotation of a single element in degrees (0–359). " +
+        "Connectors and Frames cannot be rotated. " +
+        "Non-zero rotation is flagged as off-spec by the linter (D28, docs/00-decision-log.md) — " +
+        "use it only when a deliberate off-spec one-off is needed. " +
+        "Returns `changed: false` when the element is already at the target rotation or cannot be rotated.",
+      inputSchema: {
+        id: z.string().describe("Element id to rotate"),
+        degrees: z
+          .number()
+          .min(0)
+          .max(359)
+          .describe("Target rotation in degrees (0 = no rotation)"),
+      },
+      outputSchema: { id: z.string(), changed: z.boolean() },
+    },
+    ({ id, degrees }) => {
+      try {
+        const changed = editor().rotateElement(id, degrees);
+        return ok(
+          { id, changed },
+          changed
+            ? `Rotated element "${id}" to ${degrees}°.`
+            : `No change — element "${id}" is already at ${degrees}° or cannot be rotated.`,
+        );
+      } catch (err) {
+        return fail(err);
+      }
+    },
+  );
+
   // ── Connector editing (M19, docs/10-canvas-parity-plan.md) ─────────────────
   server.registerTool(
     "connector_retarget",

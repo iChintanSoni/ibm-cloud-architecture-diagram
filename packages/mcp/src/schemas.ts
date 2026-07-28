@@ -148,6 +148,14 @@ export const elementPropertiesPatchSchema = z.object({
   annotation: connectorAnnotationSchema.optional(),
   locked: z.boolean().optional().describe("Lock or unlock the element (M18.4)"),
   hidden: z.boolean().optional().describe("Hide or show the element (M18.4)"),
+  rotation: z
+    .number()
+    .min(0)
+    .max(359)
+    .optional()
+    .describe(
+      "Rotation in degrees 0–359. Non-zero rotation is flagged as off-spec by the linter (D28). Connectors and Frames cannot be rotated. (M20)",
+    ),
 });
 
 const severitySchema = z.enum(["error", "warn", "info"]);

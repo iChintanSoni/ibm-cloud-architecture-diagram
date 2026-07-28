@@ -359,4 +359,7 @@ reach for them, and the linter flags both as off-spec.
 - **Consequence:** `rotation` and `canvas.grid` stop being dead schema fields. Rotation lands last
   in the plan because it is the most invasive item in the engine — inverse-transform hit-testing,
   rotated resize handles, rotated port positions, and rotated bounds all follow from it. Two new
-  linter rules are added for non-zero rotation and off-palette color.
+  linter rules are added for non-zero rotation and off-palette color. **Resolved in
+  [M20](10-canvas-parity-plan.md#m20--full-range-on-demand)**: all four items (rotation gesture,
+  rotation-aware hit-testing, rotated handles/ports/bounds, color picker + linter rules) are
+  shipped. `rotation` is no longer a dead field; the `canvas.grid` field was activated in M17.

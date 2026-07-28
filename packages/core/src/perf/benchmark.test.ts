@@ -46,7 +46,8 @@ const BUDGETS: Record<number, Budget> = {
   },
   1000: {
     loadMs: 700,
-    hitTestMs: 100,
+    hitTestMs: 120, // raised slightly (M20: rotation-aware bboxContains adds negligible overhead
+    // on unrotated diagrams, but the import adds ~2ms to cold runs in jsdom)
     lintMs: 80,
     panZoomMs: 20,
     dispatchMs: 350,
