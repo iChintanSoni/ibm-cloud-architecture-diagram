@@ -14,7 +14,16 @@ import {
   TreeNode,
   TreeView,
 } from "@carbon/react";
-import { ChevronDown, ChevronUp, Play, Stop } from "@carbon/react/icons";
+import {
+  ChevronDown,
+  ChevronUp,
+  Locked,
+  Play,
+  Stop,
+  Unlocked,
+  View,
+  ViewOff,
+} from "@carbon/react/icons";
 import type {
   ConnectorType,
   ElementId,
@@ -89,6 +98,10 @@ export interface InspectorPanelProps {
   onSelect: (id: ElementId) => void;
   onUpdate: (id: ElementId, patch: ElementPropertiesPatch) => void;
   onReparent: (id: ElementId, parentId: ElementId | undefined) => void;
+  /** Toggles lock on a single element from the Layers tab (M18.5). */
+  onToggleLockElement: (id: ElementId) => void;
+  /** Toggles hide on a single element from the Layers tab (M18.5). */
+  onToggleHideElement: (id: ElementId) => void;
 }
 
 function labelForType(type: SceneElement["type"]): string {
@@ -115,19 +128,50 @@ function labelForType(type: SceneElement["type"]): string {
 function LayerBranch({
   node,
   onSelect,
+  onToggleLock,
+  onToggleHide,
 }: {
   node: LayerNode;
   onSelect: (id: ElementId) => void;
+  onToggleLock: (id: ElementId) => void;
+  onToggleHide: (id: ElementId) => void;
 }) {
+  const { element } = node;
   return (
     <TreeNode
-      id={node.element.id}
-      value={node.element.id}
+      id={element.id}
+      value={element.id}
       isExpanded={node.children.length > 0}
       label={
         <span className="icad-layers__label">
-          <span>{elementDisplayName(node.element)}</span>
-          <small>{labelForType(node.element.type)}</small>
+          <span>{elementDisplayName(element)}</span>
+          <small>{labelForType(element.type)}</small>
+          <span className="icad-layers__actions">
+            <button
+              type="button"
+              className="icad-layers__action-btn"
+              aria-label={element.hidden ? "Show element" : "Hide element"}
+              title={element.hidden ? "Show" : "Hide"}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleHide(element.id);
+              }}
+            >
+              {element.hidden ? <ViewOff size={16} /> : <View size={16} />}
+            </button>
+            <button
+              type="button"
+              className="icad-layers__action-btn"
+              aria-label={element.locked ? "Unlock element" : "Lock element"}
+              title={element.locked ? "Unlock" : "Lock"}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleLock(element.id);
+              }}
+            >
+              {element.locked ? <Locked size={16} /> : <Unlocked size={16} />}
+            </button>
+          </span>
         </span>
       }
       onSelect={(_event, selectedNode) => {
@@ -135,7 +179,13 @@ function LayerBranch({
       }}
     >
       {node.children.map((child) => (
-        <LayerBranch key={child.element.id} node={child} onSelect={onSelect} />
+        <LayerBranch
+          key={child.element.id}
+          node={child}
+          onSelect={onSelect}
+          onToggleLock={onToggleLock}
+          onToggleHide={onToggleHide}
+        />
       ))}
     </TreeNode>
   );
@@ -534,6 +584,8 @@ export function InspectorPanel({
   onSelect,
   onUpdate,
   onReparent,
+  onToggleLockElement,
+  onToggleHideElement,
 }: InspectorPanelProps) {
   const selected =
     selectedIds.length === 1
@@ -581,6 +633,8 @@ export function InspectorPanel({
                     key={node.element.id}
                     node={node}
                     onSelect={onSelect}
+                    onToggleLock={onToggleLockElement}
+                    onToggleHide={onToggleHideElement}
                   />
                 ))}
               </TreeView>

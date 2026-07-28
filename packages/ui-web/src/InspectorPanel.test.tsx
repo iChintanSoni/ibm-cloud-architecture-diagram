@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 
-import type { SceneElement } from "@icad/core";
+import type { IconNodeElement, SceneElement } from "@icad/core";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { InspectorPanel } from "./InspectorPanel.js";
+import { InspectorPanel, type InspectorPanelProps } from "./InspectorPanel.js";
+import { buildLayerTree } from "./inspectorModel.js";
 
 const elements: SceneElement[] = [
   {
@@ -91,6 +92,8 @@ describe("InspectorPanel", () => {
           onSelect={vi.fn()}
           onUpdate={onUpdate}
           onReparent={vi.fn()}
+          onToggleLockElement={vi.fn()}
+          onToggleHideElement={vi.fn()}
         />,
       );
     });
@@ -137,6 +140,8 @@ describe("InspectorPanel", () => {
           onSelect={vi.fn()}
           onUpdate={onUpdate}
           onReparent={vi.fn()}
+          onToggleLockElement={vi.fn()}
+          onToggleHideElement={vi.fn()}
         />,
       );
     });
@@ -167,6 +172,8 @@ describe("InspectorPanel", () => {
           onSelect={vi.fn()}
           onUpdate={vi.fn()}
           onReparent={vi.fn()}
+          onToggleLockElement={vi.fn()}
+          onToggleHideElement={vi.fn()}
         />,
       );
     });
@@ -197,6 +204,8 @@ describe("InspectorPanel", () => {
           onSelect={vi.fn()}
           onUpdate={onUpdate}
           onReparent={vi.fn()}
+          onToggleLockElement={vi.fn()}
+          onToggleHideElement={vi.fn()}
         />,
       );
     });
@@ -228,6 +237,8 @@ describe("InspectorPanel", () => {
           onSelect={vi.fn()}
           onUpdate={onUpdate}
           onReparent={vi.fn()}
+          onToggleLockElement={vi.fn()}
+          onToggleHideElement={vi.fn()}
         />,
       );
     });
@@ -272,6 +283,8 @@ describe("InspectorPanel", () => {
           onSelect={onSelect}
           onUpdate={vi.fn()}
           onReparent={vi.fn()}
+          onToggleLockElement={vi.fn()}
+          onToggleHideElement={vi.fn()}
         />,
       );
     });
@@ -332,6 +345,8 @@ describe("InspectorPanel", () => {
           onSelect={vi.fn()}
           onUpdate={vi.fn()}
           onReparent={vi.fn()}
+          onToggleLockElement={vi.fn()}
+          onToggleHideElement={vi.fn()}
         />,
       );
     });
@@ -383,6 +398,8 @@ describe("InspectorPanel", () => {
           onSelect={vi.fn()}
           onUpdate={vi.fn()}
           onReparent={vi.fn()}
+          onToggleLockElement={vi.fn()}
+          onToggleHideElement={vi.fn()}
         />,
       );
     });
@@ -397,5 +414,227 @@ describe("InspectorPanel", () => {
         '[role="tabpanel"]:not([hidden]) .icad-inspector__empty h2',
       )?.textContent,
     ).toBe("No frames yet");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// buildLayerTree — row order (M18.5)
+// ---------------------------------------------------------------------------
+
+describe("buildLayerTree — descending z-order (M18.5)", () => {
+  function icon(id: string, z = 0): IconNodeElement {
+    return {
+      id,
+      type: "iconNode",
+      semantic: "node",
+      catalogRef: "test/vpc",
+      x: 0,
+      y: 0,
+      w: 48,
+      h: 48,
+      z,
+    };
+  }
+
+  it("returns roots in descending z-order (frontmost first)", () => {
+    const els = [icon("a", 0), icon("b", 1), icon("c", 2)];
+    const tree = buildLayerTree(els);
+    expect(tree.map((n) => n.element.id)).toEqual(["c", "b", "a"]);
+  });
+
+  it("returns children in descending z-order (frontmost child first)", () => {
+    const parent = {
+      ...icon("parent", 0),
+      type: "box" as const,
+      semantic: "deployedOn" as const,
+    };
+    const childA = { ...icon("child-a", 0), parentId: "parent" };
+    const childB = { ...icon("child-b", 1), parentId: "parent" };
+    const els = [parent, childA, childB];
+    const tree = buildLayerTree(els);
+    const parentNode = tree.find((n) => n.element.id === "parent");
+    expect(parentNode).toBeDefined();
+    expect(parentNode!.children.map((c) => c.element.id)).toEqual([
+      "child-b",
+      "child-a",
+    ]);
+  });
+
+  it("a single root element returns a list of length 1", () => {
+    const tree = buildLayerTree([icon("only")]);
+    expect(tree).toHaveLength(1);
+    expect(tree[0]!.element.id).toBe("only");
+  });
+
+  it("empty input returns empty array", () => {
+    expect(buildLayerTree([])).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// InspectorPanel — lock/hide toggle buttons in Layers tab (M18.5)
+// ---------------------------------------------------------------------------
+
+function baseInspectorProps(
+  overrides: Partial<InspectorPanelProps> = {},
+): InspectorPanelProps {
+  return {
+    elements: [],
+    selectedIds: [],
+    validationCount: 0,
+    validationContent: <></>,
+    frames: [],
+    onJumpToFrame: vi.fn(),
+    onTogglePresent: vi.fn(),
+    onPresentStep: vi.fn(),
+    onSelect: vi.fn(),
+    onUpdate: vi.fn(),
+    onReparent: vi.fn(),
+    onToggleLockElement: vi.fn(),
+    onToggleHideElement: vi.fn(),
+    ...overrides,
+  };
+}
+
+function iconEl(
+  id: string,
+  opts: { locked?: boolean; hidden?: boolean; z?: number } = {},
+): IconNodeElement {
+  return {
+    id,
+    type: "iconNode",
+    semantic: "node",
+    catalogRef: "test/vpc",
+    x: 0,
+    y: 0,
+    w: 48,
+    h: 48,
+    ...opts,
+  };
+}
+
+describe("InspectorPanel Layers tab — lock/hide buttons (M18.5)", () => {
+  let container: HTMLDivElement;
+  let root: Root;
+
+  beforeEach(() => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      },
+    );
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+  });
+
+  afterEach(() => {
+    act(() => root.unmount());
+    container.remove();
+    vi.unstubAllGlobals();
+  });
+
+  /** Switch to the Layers tab by clicking the tab button. */
+  function clickLayersTab() {
+    const tabs = container.querySelectorAll<HTMLElement>("button[role='tab']");
+    const layersTab = [...tabs].find((t) => t.textContent?.trim() === "Layers");
+    if (!layersTab) throw new Error("Layers tab button not found");
+    act(() => layersTab.click());
+  }
+
+  it("renders a hide-toggle button for each element in the Layers tab", () => {
+    const el = iconEl("a");
+    act(() =>
+      root.render(
+        <InspectorPanel {...baseInspectorProps({ elements: [el] })} />,
+      ),
+    );
+    clickLayersTab();
+    const hideBtn = container.querySelector(
+      "button[aria-label='Hide element']",
+    );
+    expect(hideBtn).toBeTruthy();
+  });
+
+  it("renders a lock-toggle button for each element in the Layers tab", () => {
+    const el = iconEl("a");
+    act(() =>
+      root.render(
+        <InspectorPanel {...baseInspectorProps({ elements: [el] })} />,
+      ),
+    );
+    clickLayersTab();
+    const lockBtn = container.querySelector(
+      "button[aria-label='Lock element']",
+    );
+    expect(lockBtn).toBeTruthy();
+  });
+
+  it("calls onToggleHideElement with the element id when the hide button is clicked", () => {
+    const onToggleHideElement = vi.fn();
+    const el = iconEl("a");
+    act(() =>
+      root.render(
+        <InspectorPanel
+          {...baseInspectorProps({ elements: [el], onToggleHideElement })}
+        />,
+      ),
+    );
+    clickLayersTab();
+    const hideBtn = container.querySelector<HTMLElement>(
+      "button[aria-label='Hide element']",
+    );
+    act(() => hideBtn?.click());
+    expect(onToggleHideElement).toHaveBeenCalledWith("a");
+  });
+
+  it("calls onToggleLockElement with the element id when the lock button is clicked", () => {
+    const onToggleLockElement = vi.fn();
+    const el = iconEl("a");
+    act(() =>
+      root.render(
+        <InspectorPanel
+          {...baseInspectorProps({ elements: [el], onToggleLockElement })}
+        />,
+      ),
+    );
+    clickLayersTab();
+    const lockBtn = container.querySelector<HTMLElement>(
+      "button[aria-label='Lock element']",
+    );
+    act(() => lockBtn?.click());
+    expect(onToggleLockElement).toHaveBeenCalledWith("a");
+  });
+
+  it("shows 'Show element' aria-label for a hidden element", () => {
+    const el = iconEl("a", { hidden: true });
+    act(() =>
+      root.render(
+        <InspectorPanel {...baseInspectorProps({ elements: [el] })} />,
+      ),
+    );
+    clickLayersTab();
+    const showBtn = container.querySelector(
+      "button[aria-label='Show element']",
+    );
+    expect(showBtn).toBeTruthy();
+  });
+
+  it("shows 'Unlock element' aria-label for a locked element", () => {
+    const el = iconEl("a", { locked: true });
+    act(() =>
+      root.render(
+        <InspectorPanel {...baseInspectorProps({ elements: [el] })} />,
+      ),
+    );
+    clickLayersTab();
+    const unlockBtn = container.querySelector(
+      "button[aria-label='Unlock element']",
+    );
+    expect(unlockBtn).toBeTruthy();
   });
 });

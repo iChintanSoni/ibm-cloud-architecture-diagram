@@ -21,7 +21,9 @@ function box(id: string, parentId?: string, label?: string): BoxElement {
 }
 
 describe("inspector model", () => {
-  it("builds a hierarchy from parentId while preserving scene order", () => {
+  it("builds a hierarchy from parentId with frontmost roots at the top (M18.5)", () => {
+    // All elements have z=0 (undefined), so equal-z siblings reverse input order —
+    // the last-inserted element is frontmost and appears first in the Layers panel.
     const elements: SceneElement[] = [
       box("vpc", undefined, "VPC"),
       box("subnet", "vpc", "Subnet"),
@@ -41,19 +43,22 @@ describe("inspector model", () => {
 
     const tree = buildLayerTree(elements);
 
-    expect(tree.map((node) => node.element.id)).toEqual(["vpc", "external"]);
-    expect(tree[0]?.children[0]?.element.id).toBe("subnet");
-    expect(tree[0]?.children[0]?.children[0]?.element.id).toBe("app");
+    // "external" (last in the input at z=0) is frontmost → first row in the panel.
+    expect(tree.map((node) => node.element.id)).toEqual(["external", "vpc"]);
+    // Children are similarly reversed: only one child, no observable change.
+    expect(tree[1]?.children[0]?.element.id).toBe("subnet");
+    expect(tree[1]?.children[0]?.children[0]?.element.id).toBe("app");
   });
 
-  it("keeps orphaned and cyclic elements reachable at the root", () => {
+  it("keeps orphaned and cyclic elements reachable at the root (frontmost first)", () => {
+    // All at z=0 → reversed from input order.
     const orphan = box("orphan", "missing");
     const a = box("a", "b");
     const b = box("b", "a");
 
     expect(
       buildLayerTree([orphan, a, b]).map((node) => node.element.id),
-    ).toEqual(["orphan", "a", "b"]);
+    ).toEqual(["b", "a", "orphan"]);
   });
 
   it("excludes self and descendants from parent choices", () => {

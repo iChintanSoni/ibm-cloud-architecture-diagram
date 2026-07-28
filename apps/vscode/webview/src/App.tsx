@@ -1214,6 +1214,22 @@ export function App() {
             onReparent={(id, parentId) =>
               editorRef.current?.setElementParent(id, parentId)
             }
+            onToggleLockElement={(id) => {
+              const editor = editorRef.current;
+              if (!editor) return;
+              const el = editor.scene.get(id);
+              if (!el) return;
+              if (el.locked) editor.unlockElements([id]);
+              else editor.lockElements([id]);
+            }}
+            onToggleHideElement={(id) => {
+              const editor = editorRef.current;
+              if (!editor) return;
+              const el = editor.scene.get(id);
+              if (!el) return;
+              if (el.hidden) editor.showElements([id]);
+              else editor.hideElements([id]);
+            }}
             validationContent={
               <>
                 <div className="icad-validation-heading">

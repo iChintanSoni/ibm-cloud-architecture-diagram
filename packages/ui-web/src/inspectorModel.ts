@@ -19,7 +19,16 @@ function hasCyclicParent(
   return false;
 }
 
-/** Projects flat scene membership into the hierarchy shown by the Layers tab. */
+/**
+ * Projects flat scene membership into the hierarchy shown by the Layers tab.
+ *
+ * Children are stored in **descending** z-order (highest z first) so the
+ * topmost row in the panel is the frontmost element — matching Figma,
+ * Illustrator, and PowerPoint's own layer panel conventions (M18.5,
+ * docs/10-canvas-parity-plan.md).  The input `elements` array from
+ * `Scene.all()` is already ascending-z sorted, so we simply reverse each
+ * sibling list after building the tree.
+ */
 export function buildLayerTree(elements: SceneElement[]): LayerNode[] {
   const byId = new Map(elements.map((element) => [element.id, element]));
   const nodes = new Map<string, LayerNode>(
@@ -39,6 +48,12 @@ export function buildLayerTree(elements: SceneElement[]): LayerNode[] {
     } else {
       parent.children.push(node);
     }
+  }
+
+  // Reverse each sibling list so frontmost (highest z) is at the top.
+  roots.reverse();
+  for (const node of nodes.values()) {
+    node.children.reverse();
   }
 
   return roots;

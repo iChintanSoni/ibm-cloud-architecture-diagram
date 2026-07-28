@@ -594,10 +594,10 @@ resize.ts`, alongside `resizeBounds`) clamps each child's _position_ independent
 
 ## M18 — Arrangement
 
-🟡 **In progress** — M18.1 (z-order), M18.2 (align), and M18.3 (distribute) done. M18.4
-(lock/hide) and M18.5 (interactive Layers tab) remain, each its own sub-milestone. The roadmap's
-stated blocker ("M15's DOM reordering") was already resolved back when M16 landed
-(`SvgRenderer.syncDomOrder()`), so M18 was actually unblocked before work started here.
+✅ **Done** — M18.1 (z-order), M18.2 (align), M18.3 (distribute), M18.4 (lock/hide), and M18.5
+(interactive Layers tab) all complete. The roadmap's stated blocker ("M15's DOM reordering") was
+already resolved back when M16 landed (`SvgRenderer.syncDomOrder()`), so M18 was actually
+unblocked before work started here.
 
 Z-order (to front / to back / step), 6-way align, distribute, lock and hide, and turning the
 read-only Layers tab into an interactive one.
@@ -614,7 +614,7 @@ context menu from growing past what's needed), and an MCP tool per action.
 
 1. **`z` already existed** (`BaseElement.z?: number`, defaulting to `0`) but nothing ever let a
    user or agent change it — only `templates.ts` hand-assigned it, purely to keep containers
-   behind their own content. `locked`/`hidden` genuinely don't exist yet (M18.4).
+   behind their own content. `locked`/`hidden` were added in M18.4.
 2. **Z-order operations are scoped to siblings** (elements sharing a `parentId`, including
    top-level), never global. `SvgRenderer` paints `Scene.all()` — a single flat, non-nested
    list — into one `<g>` layer; a _global_ "bring to front" on a container would push its z above
@@ -756,6 +756,134 @@ input-order independence); `createEditor.test.ts` (both methods with undo-restor
 container's children cascading with it, an attached auto-connector rerouting, connector exclusion,
 and the `< 3`/already-even no-ops); `packages/ui-web/src/TopBar.test.tsx` (enable/disable + invoke,
 mirroring the align test); an MCP round-trip test across both tools.
+
+### M18.4 — Lock / Hide
+
+✅ **Done.**
+
+`lockElements`/`unlockElements` and `hideElements`/`showElements`, each undoable, each cascading to
+all descendants. Two `Checkbox` controls in the Properties panel, "Toggle lock" and "Toggle hide"
+in the Edit menu and right-click context menu, keyboard shortcuts (Ctrl/Cmd+L and Ctrl/Cmd+Shift+H),
+command-palette entries in the "Arrange" category, and four MCP tools (`element_lock`,
+`element_unlock`, `element_hide`, `element_show`).
+
+1. **Schema.** `BaseElement` gains `locked?: boolean` and `hidden?: boolean`
+   ([`types.ts`](../packages/core/src/scene/types.ts)) — purely additive optional fields, so no
+   `.icad` version bump or migration is needed; older documents load without them.
+
+2. **Commands.** Four commands in `commands.ts`, all sharing the same structure: expand the given
+   ids to include every descendant (move-with's own `descendantsOf` expansion — locking a container
+   also locks its contents), capture a `previous` snapshot for undo, then in `do()` iterate and
+   skip already-in-target-state elements (so calling `lockElements` on a fully-locked selection
+   dispatches no `_put`s, the same skip-unchanged pattern `setZOrder` uses). Report reason
+   `"update"` — a field-only change with no geometry or containment shift — so the `renderElements`
+   fast path handles repaints rather than forcing a full `render()`.
+
+3. **Editor API.** Each public method (`Editor.lockElements` etc.) re-checks all descendant ids and
+   returns `false` without dispatching when every element is already in the target state, mirroring
+   `applyZOrder`'s own "already at front → no-op → `false`" convention so callers can skip a
+   live-region announcement. `ElementPropertiesPatch` gains `locked?` and `hidden?` so the
+   Properties panel's existing `updateElementProperties` path handles checkbox changes without a
+   separate code path.
+
+4. **Rendering.** Hidden elements render at `opacity="0.3"` on their `<g>` — visually
+   de-emphasised but still present in the SVG for export. Locked elements gain
+   `data-icad-locked="true"` (foundation for M18.5's Layers panel badge — the visual lock
+   indicator lives there, not duplicated per-element on the canvas). Accessible names gain a
+   `, locked` / `, hidden` / `, locked, hidden` suffix (`accessibleName.ts`) so AT announces the
+   state without the user having to inspect the Properties panel.
+
+5. **Hit-testing.** `HitTestOptions` gains `excludeHidden?: boolean`; `hitTestAll` filters hidden
+   elements when the flag is set. Both `handlePointerDown` and `handleClick` in `CanvasController`
+   pass `{ excludeHidden: true }` — hidden elements are invisible to the pointer but remain
+   reachable by Tab/keyboard, the same posture M16.3's marquee already took for Frames.
+
+6. **Interaction guards.** `CanvasController` enforces three rules for locked elements, all with
+   the same "filter, don't throw" approach: the resize-handle arm bails out if the selected element
+   is locked; the drag arm filters locked ids from the dragged set (if nothing unlocked remains,
+   nothing is armed — the trailing click still selects normally); Delete/Backspace filters locked
+   ids before calling `deleteElements`. In all three cases the guard is a single `?.locked` check
+   at the point the gesture would otherwise start, not a new mode or a parallel code path.
+   Keyboard nudge (`nudgeElements`) is left intentionally ungated — nudging via the Properties
+   panel typed fields or arrow keys is considered a deliberate override, matching Figma's own
+   "locked elements can still be nudged by keyboard" behaviour.
+
+7. **Toggle semantics.** The Edit menu and keyboard shortcuts use toggle handlers rather than
+   explicit lock/unlock: "if every selected element is already locked, unlock all; otherwise lock
+   all" — matching Figma's own toggle behaviour and avoiding the need for separate Lock/Unlock menu
+   items. The Properties panel checkboxes are the direct set/clear path.
+
+8. **No context-menu `danger` styling, no keyboard shortcut conflict.** Ctrl/Cmd+L was unbound
+   before this milestone. Ctrl/Cmd+Shift+H is unbound on both macOS and Windows (Ctrl+H is
+   browser find-and-replace, but Shift deflects it; on macOS Cmd+Shift+H is not a system binding
+   in typical browser use). The context menu grows by two items, kept at the bottom to not displace
+   the clipboard/z-order cluster users already have muscle memory for.
+
+9. **Footnote from M18.1's item 1**, now resolved: M18.1 noted "`locked`/`hidden` genuinely don't
+   exist yet (M18.4)." Both fields are now live. The `z` note there has been updated accordingly.
+
+**Tests**: `createEditor.test.ts` (8 new tests: lock/unlock undo-exact, hide/show undo-exact,
+cascade to all descendants confirmed, all-already-in-state no-op returns `false`, `opacity`
+attribute on hidden element, `data-icad-locked` attribute on locked element, aria-label suffix for
+both states); `packages/ui-web/src/TopBar.test.tsx` (enable/disable + invoke for both toggle
+actions, mirroring M18.3's own test); an MCP round-trip test covering all four tools and the
+no-op `changed:false` path for each.
+
+### M18.5 — Interactive Layers tab
+
+✅ **Done.**
+
+The Layers tab now shows lock/hide toggle buttons per row and renders rows in **descending** z-order
+so the frontmost element appears at the top — matching Figma, Illustrator, and PowerPoint's own
+layer panel conventions.
+
+1. **Row order fixed.** `buildLayerTree` (`inspectorModel.ts`) now reverses each sibling list
+   after building the hierarchy from `parentId`. The input from `Scene.all()` is ascending-z
+   sorted; a single `.reverse()` per sibling list produces descending order without any re-sort.
+   This directly resolves the forward-reference note from M18.1 item 8: "bring to front moves a
+   row to the **bottom** … the inverse of Figma/Illustrator/PowerPoint's top-row-is-frontmost
+   convention."
+
+2. **Per-row lock/hide toggle buttons.** `LayerBranch` renders two icon-buttons inline with
+   each row label: a `View`/`ViewOff` button (Carbon icons) for hide/show and a
+   `Locked`/`Unlocked` button for lock/unlock. Each button:
+   - Carries an `aria-label` that describes the _action_ (`"Hide element"` / `"Show element"`,
+     `"Lock element"` / `"Unlock element"`) so screen readers announce the current state without
+     reading icon SVG paths.
+   - Uses `e.stopPropagation()` so clicking a badge doesn't also fire the row's `onSelect` —
+     matching how Figma's own Layers panel separates badge-click from row-click.
+   - Is a plain `<button type="button">`, not a Carbon `Button`, to avoid nested interactive
+     elements inside `TreeNode`'s own `<li>` anchor structure that would break the tree's
+     ARIA role chain.
+
+3. **New `InspectorPanelProps` callbacks.** `onToggleLockElement(id)` and
+   `onToggleHideElement(id)` route single-element toggle actions from the Layers panel without
+   going through the multi-id selection-level handlers that `onToggleLock`/`onToggleHide` in the
+   `TopBar` use. Both shells (`apps/web/src/App.tsx` and `apps/vscode/webview/src/App.tsx`) wire
+   them with inline handlers that read `editor.scene.get(id)?.locked` / `.hidden` and call the
+   appropriate `editor.lockElements`/`editor.unlockElements`/`editor.hideElements`/
+   `editor.showElements` directly — the same approach the Properties panel's own checkboxes use,
+   and consistent with how lock/hide actions at the selection level already work.
+
+4. **No MCP change.** The per-row button is a UI convenience that calls the same four MCP-exposed
+   commands (`element_lock`, `element_unlock`, `element_hide`, `element_show`) that M18.4 already
+   added — no new command or tool surface needed.
+
+5. **No new keyboard shortcut.** The row buttons are reachable by Tab within the Layers tab (they
+   are standard focusable `<button>` elements). The existing `Ctrl/Cmd+L` and `Ctrl/Cmd+Shift+H`
+   shortcuts from M18.4 already cover lock/hide at the selection level. Adding per-element
+   shortcuts for Layers rows would require focus tracking between the panel and the canvas that
+   would duplicate CanvasController's own state; the Tab path satisfies D19's keyboard-equivalent
+   requirement at lower complexity.
+
+**Tests**: `packages/ui-web/src/inspectorModel.test.ts` (two existing order tests updated to
+expect descending order, plus the new `buildLayerTree — descending z-order` suite in
+`InspectorPanel.test.tsx` covering: roots descending, children descending, single-element, empty);
+`InspectorPanel.test.tsx` (6 new tests in "Layers tab — lock/hide buttons": hide/lock button
+renders, click calls the right callback with the right id, `hidden:true` shows `"Show element"`,
+`locked:true` shows `"Unlock element"`); all pre-existing `InspectorPanel` tests updated to pass
+the new required `onToggleLockElement`/`onToggleHideElement` props; `a11y.test.tsx` updated the
+same way.
 
 ## M19 — Connector editing
 

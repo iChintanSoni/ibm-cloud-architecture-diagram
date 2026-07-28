@@ -170,6 +170,8 @@ describe("accessibility smoke test (axe-core)", () => {
           onSelect={vi.fn()}
           onUpdate={vi.fn()}
           onReparent={vi.fn()}
+          onToggleLockElement={vi.fn()}
+          onToggleHideElement={vi.fn()}
         />,
       ),
     );
