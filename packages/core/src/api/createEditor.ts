@@ -12,11 +12,15 @@ import {
   autoGrowContainer,
   autoRouteConnector,
   batch,
+  hideElements,
+  lockElements,
   moveElements,
   removeElement,
   reparentElement,
   setManualWaypoints,
   setZOrder,
+  showElements,
+  unlockElements,
   updateConformance,
   updateElement,
 } from "../commands/commands.js";
@@ -165,6 +169,10 @@ export interface ElementPropertiesPatch {
   flowColor?: FlowColor;
   sequence?: string;
   annotation?: ConnectorAnnotation;
+  /** Lock or unlock the element via the Properties panel (M18.4). */
+  locked?: boolean;
+  /** Hide or show the element via the Properties panel (M18.4). */
+  hidden?: boolean;
 }
 
 export class ExportBlockedError extends Error {
@@ -1328,6 +1336,77 @@ export class Editor {
    * distributable (non-connector) elements. */
   distributeVertical(ids: ElementId[]): boolean {
     return this.applyDistribute(ids, "vertical", "distribute vertical");
+  }
+
+  // ── Lock / Hide (M18.4, docs/10-canvas-parity-plan.md) ─────────────────────
+
+  /**
+   * Locks the given elements (and all their descendants) — prevents drag, resize,
+   * reparent, and delete via the UI. Returns `true` when at least one element was
+   * actually changed (some weren't already locked). Skips already-locked ids.
+   */
+  lockElements(ids: ElementId[]): boolean {
+    const existing = ids.filter((id) => this.scene.has(id));
+    if (existing.length === 0) return false;
+    const allIds = new Set(existing);
+    for (const id of existing) {
+      for (const d of this.scene.descendantsOf(id)) allIds.add(d.id);
+    }
+    const anyChange = [...allIds].some((id) => !this.scene.get(id)?.locked);
+    if (!anyChange) return false;
+    this.commands.dispatch(lockElements(this.scene, existing));
+    return true;
+  }
+
+  /**
+   * Unlocks the given elements (and all their descendants). Returns `true` when
+   * at least one element was actually changed.
+   */
+  unlockElements(ids: ElementId[]): boolean {
+    const existing = ids.filter((id) => this.scene.has(id));
+    if (existing.length === 0) return false;
+    const allIds = new Set(existing);
+    for (const id of existing) {
+      for (const d of this.scene.descendantsOf(id)) allIds.add(d.id);
+    }
+    const anyChange = [...allIds].some((id) => this.scene.get(id)?.locked);
+    if (!anyChange) return false;
+    this.commands.dispatch(unlockElements(this.scene, existing));
+    return true;
+  }
+
+  /**
+   * Hides the given elements (and all their descendants). Returns `true` when at
+   * least one element was actually changed.
+   */
+  hideElements(ids: ElementId[]): boolean {
+    const existing = ids.filter((id) => this.scene.has(id));
+    if (existing.length === 0) return false;
+    const allIds = new Set(existing);
+    for (const id of existing) {
+      for (const d of this.scene.descendantsOf(id)) allIds.add(d.id);
+    }
+    const anyChange = [...allIds].some((id) => !this.scene.get(id)?.hidden);
+    if (!anyChange) return false;
+    this.commands.dispatch(hideElements(this.scene, existing));
+    return true;
+  }
+
+  /**
+   * Shows the given elements (and all their descendants). Returns `true` when at
+   * least one element was actually changed.
+   */
+  showElements(ids: ElementId[]): boolean {
+    const existing = ids.filter((id) => this.scene.has(id));
+    if (existing.length === 0) return false;
+    const allIds = new Set(existing);
+    for (const id of existing) {
+      for (const d of this.scene.descendantsOf(id)) allIds.add(d.id);
+    }
+    const anyChange = [...allIds].some((id) => this.scene.get(id)?.hidden);
+    if (!anyChange) return false;
+    this.commands.dispatch(showElements(this.scene, existing));
+    return true;
   }
 
   /**

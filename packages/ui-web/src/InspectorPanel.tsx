@@ -1,5 +1,6 @@
 import {
   Button,
+  Checkbox,
   NumberInput,
   Select,
   SelectItem,
@@ -405,6 +406,26 @@ function ElementProperties({
           />
         </>
       )}
+
+      {/* Lock / Hide (M18.4, docs/10-canvas-parity-plan.md) */}
+      <div className="icad-properties__lock-hide">
+        <Checkbox
+          id={`icad-property-locked-${element.id}`}
+          labelText="Locked"
+          checked={element.locked ?? false}
+          onChange={(_event, { checked }) =>
+            onUpdate(element.id, { locked: checked })
+          }
+        />
+        <Checkbox
+          id={`icad-property-hidden-${element.id}`}
+          labelText="Hidden"
+          checked={element.hidden ?? false}
+          onChange={(_event, { checked }) =>
+            onUpdate(element.id, { hidden: checked })
+          }
+        />
+      </div>
 
       <dl className="icad-properties__metadata">
         <div>

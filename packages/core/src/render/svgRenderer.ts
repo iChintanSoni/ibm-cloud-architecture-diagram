@@ -816,6 +816,14 @@ export class SvgRenderer {
     const childIds = scene.childrenOf(el.id).map((child) => child.id);
     if (childIds.length > 0) g.setAttribute("aria-owns", childIds.join(" "));
     else g.removeAttribute("aria-owns");
+    // Hidden (M18.4): render at reduced opacity so the element is visible but de-emphasised;
+    // pointer-events are left intact — hit-testing exclusion is handled in canvasController.ts.
+    if (el.hidden) g.setAttribute("opacity", "0.3");
+    else g.removeAttribute("opacity");
+    // Locked (M18.4): aria-label already communicates state; no additional visual treatment is
+    // needed beyond the Properties panel toggle and the Layers badge added in M18.5.
+    if (el.locked) g.setAttribute("data-icad-locked", "true");
+    else g.removeAttribute("data-icad-locked");
     g.innerHTML = "";
 
     switch (el.type) {

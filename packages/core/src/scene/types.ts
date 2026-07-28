@@ -93,6 +93,20 @@ interface BaseElement {
   label?: Label;
   style?: Style;
   z?: number;
+  /**
+   * When true, the element cannot be dragged, resized, reparented, or deleted via the UI.
+   * Still selectable (via Tab/keyboard) and editable through the Properties panel.
+   * Cascades to all descendants when set via `lockElements`/`unlockElements`.
+   * (M18.4, docs/10-canvas-parity-plan.md)
+   */
+  locked?: boolean;
+  /**
+   * When true, the element renders at reduced opacity and is excluded from pointer hit-testing
+   * (click/marquee). Still reachable via Tab/keyboard for Properties editing. Cascades to all
+   * descendants when set via `hideElements`/`showElements`.
+   * (M18.4, docs/10-canvas-parity-plan.md)
+   */
+  hidden?: boolean;
 }
 
 export interface IconNodeElement extends BaseElement {

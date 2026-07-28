@@ -576,4 +576,66 @@ describe("authoring tools", () => {
     expect((await position(dId)).y).toBe(0);
     expect((await position(fId)).y).toBe(300);
   });
+
+  it("element_lock / element_unlock / element_hide / element_show round-trip (M18.4)", async () => {
+    const box = await client.callTool({
+      name: "element_add_box",
+      arguments: { at: { x: 0, y: 0 } },
+    });
+    const boxId = (box.structuredContent as { id: string }).id;
+
+    const locked = await client.callTool({
+      name: "element_lock",
+      arguments: { ids: [boxId] },
+    });
+    expect(locked.isError).toBeUndefined();
+    expect((locked.structuredContent as { changed: boolean }).changed).toBe(
+      true,
+    );
+
+    // Already locked → changed:false
+    const noop = await client.callTool({
+      name: "element_lock",
+      arguments: { ids: [boxId] },
+    });
+    expect((noop.structuredContent as { changed: boolean }).changed).toBe(
+      false,
+    );
+
+    const unlocked = await client.callTool({
+      name: "element_unlock",
+      arguments: { ids: [boxId] },
+    });
+    expect(unlocked.isError).toBeUndefined();
+    expect((unlocked.structuredContent as { changed: boolean }).changed).toBe(
+      true,
+    );
+
+    const hidden = await client.callTool({
+      name: "element_hide",
+      arguments: { ids: [boxId] },
+    });
+    expect(hidden.isError).toBeUndefined();
+    expect((hidden.structuredContent as { changed: boolean }).changed).toBe(
+      true,
+    );
+
+    const shown = await client.callTool({
+      name: "element_show",
+      arguments: { ids: [boxId] },
+    });
+    expect(shown.isError).toBeUndefined();
+    expect((shown.structuredContent as { changed: boolean }).changed).toBe(
+      true,
+    );
+
+    // Already visible → changed:false
+    const noopShow = await client.callTool({
+      name: "element_show",
+      arguments: { ids: [boxId] },
+    });
+    expect((noopShow.structuredContent as { changed: boolean }).changed).toBe(
+      false,
+    );
+  });
 });

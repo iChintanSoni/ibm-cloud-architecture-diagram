@@ -19,6 +19,12 @@ const DEFAULT_TOLERANCE = 6;
 
 export interface HitTestOptions {
   tolerance?: number;
+  /**
+   * When true, elements with `hidden: true` are excluded from the result set —
+   * used by pointer-driven paths (click, pointerdown) in `CanvasController` so hidden elements
+   * are invisible to the mouse but still reachable by keyboard (M18.4).
+   */
+  excludeHidden?: boolean;
 }
 
 function bboxContains(el: SceneElement, point: Point): boolean {
@@ -96,7 +102,11 @@ export function hitTestAll(
   const elements = scene.all(); // z-order, bottom to top
   const zRank = new Map(elements.map((el, index) => [el.id, index]));
   return elements
-    .filter((el) => matches(scene, el, point, tolerance))
+    .filter(
+      (el) =>
+        !(options.excludeHidden && el.hidden) &&
+        matches(scene, el, point, tolerance),
+    )
     .sort((a, b) => {
       const depthDiff = containmentDepth(scene, b) - containmentDepth(scene, a);
       return depthDiff !== 0 ? depthDiff : zRank.get(b.id)! - zRank.get(a.id)!;

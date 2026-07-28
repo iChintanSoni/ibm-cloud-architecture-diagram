@@ -2062,4 +2062,117 @@ describe("createEditor", () => {
       ).toBeNull();
     });
   });
+
+  describe("lock / hide (M18.4, docs/10-canvas-parity-plan.md)", () => {
+    it("lockElements sets locked:true, prevents a second lock from pushing an undo entry, and undo restores exactly", () => {
+      const id = editor.addBox({ at: { x: 0, y: 0 }, label: "box" });
+      expect(editor.scene.get(id)?.locked).toBeUndefined();
+
+      expect(editor.lockElements([id])).toBe(true);
+      expect(editor.scene.get(id)?.locked).toBe(true);
+
+      // Already locked → no-op, returns false, no undo entry pushed.
+      expect(editor.lockElements([id])).toBe(false);
+
+      editor.commands.undo();
+      expect(editor.scene.get(id)?.locked).toBeUndefined();
+    });
+
+    it("unlockElements removes locked field and undo restores it", () => {
+      const id = editor.addBox({ at: { x: 0, y: 0 }, label: "box" });
+      editor.lockElements([id]);
+      expect(editor.scene.get(id)?.locked).toBe(true);
+
+      expect(editor.unlockElements([id])).toBe(true);
+      expect(editor.scene.get(id)?.locked).toBeUndefined();
+
+      editor.commands.undo();
+      expect(editor.scene.get(id)?.locked).toBe(true);
+    });
+
+    it("hideElements / showElements toggle hidden with undo", () => {
+      const id = editor.addBox({ at: { x: 0, y: 0 }, label: "box" });
+      expect(editor.scene.get(id)?.hidden).toBeUndefined();
+
+      expect(editor.hideElements([id])).toBe(true);
+      expect(editor.scene.get(id)?.hidden).toBe(true);
+
+      // Already hidden → no-op.
+      expect(editor.hideElements([id])).toBe(false);
+
+      expect(editor.showElements([id])).toBe(true);
+      expect(editor.scene.get(id)?.hidden).toBeUndefined();
+
+      editor.commands.undo(); // undo showElements
+      expect(editor.scene.get(id)?.hidden).toBe(true);
+
+      editor.commands.undo(); // undo hideElements
+      expect(editor.scene.get(id)?.hidden).toBeUndefined();
+    });
+
+    it("cascades lock/hide to all descendants", () => {
+      const parent = editor.addBox({
+        at: { x: 0, y: 0 },
+        w: 200,
+        h: 200,
+        label: "parent",
+      });
+      const child = editor.addIcon("test/vpc", {
+        at: { x: 20, y: 20 },
+        parentId: parent,
+      });
+
+      editor.lockElements([parent]);
+      expect(editor.scene.get(parent)?.locked).toBe(true);
+      expect(editor.scene.get(child)?.locked).toBe(true);
+
+      editor.hideElements([parent]);
+      expect(editor.scene.get(parent)?.hidden).toBe(true);
+      expect(editor.scene.get(child)?.hidden).toBe(true);
+
+      editor.commands.undo(); // undo hide — child hidden goes away too
+      expect(editor.scene.get(child)?.hidden).toBeUndefined();
+
+      editor.commands.undo(); // undo lock — child locked goes away too
+      expect(editor.scene.get(child)?.locked).toBeUndefined();
+    });
+
+    it("returns false for an empty or unknown selection", () => {
+      expect(editor.lockElements([])).toBe(false);
+      expect(editor.lockElements(["missing"])).toBe(false);
+      expect(editor.unlockElements([])).toBe(false);
+      expect(editor.hideElements([])).toBe(false);
+      expect(editor.showElements(["missing"])).toBe(false);
+    });
+
+    it("renders a hidden element at reduced opacity", () => {
+      const id = editor.addBox({ at: { x: 0, y: 0 }, label: "box" });
+      editor.hideElements([id]);
+      const node = container.querySelector(`[data-icad-id="${id}"]`);
+      expect(node?.getAttribute("opacity")).toBe("0.3");
+
+      editor.showElements([id]);
+      expect(node?.getAttribute("opacity")).toBeNull();
+    });
+
+    it("sets data-icad-locked attribute on a locked element", () => {
+      const id = editor.addBox({ at: { x: 0, y: 0 }, label: "box" });
+      editor.lockElements([id]);
+      const node = container.querySelector(`[data-icad-id="${id}"]`);
+      expect(node?.getAttribute("data-icad-locked")).toBe("true");
+
+      editor.unlockElements([id]);
+      expect(node?.getAttribute("data-icad-locked")).toBeNull();
+    });
+
+    it("locked+hidden state suffix appears in accessible name", () => {
+      const id = editor.addBox({ at: { x: 0, y: 0 }, label: "MyBox" });
+      editor.lockElements([id]);
+      const node = container.querySelector(`[data-icad-id="${id}"]`);
+      expect(node?.getAttribute("aria-label")).toContain("locked");
+
+      editor.hideElements([id]);
+      expect(node?.getAttribute("aria-label")).toContain("locked, hidden");
+    });
+  });
 });

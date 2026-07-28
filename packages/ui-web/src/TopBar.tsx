@@ -88,6 +88,12 @@ export interface TopBarProps {
    * `Editor.applyDistribute` (M18.3, docs/10-canvas-parity-plan.md). */
   canDistribute: boolean;
 
+  onToggleLock: () => void;
+  onToggleHide: () => void;
+  /** Shared shallow gate for both lock and hide — any selection means the action is available
+   * (M18.4, docs/10-canvas-parity-plan.md). */
+  canToggleLockHide: boolean;
+
   zoomPercent: number;
   onZoomIn: () => void;
   onZoomOut: () => void;
@@ -165,6 +171,9 @@ export function TopBar({
   onDistributeHorizontal,
   onDistributeVertical,
   canDistribute,
+  onToggleLock,
+  onToggleHide,
+  canToggleLockHide,
   zoomPercent,
   onZoomIn,
   onZoomOut,
@@ -246,6 +255,12 @@ export function TopBar({
           </MenuAction>
           <MenuAction onClick={onDistributeVertical} disabled={!canDistribute}>
             Distribute vertical
+          </MenuAction>
+          <MenuAction onClick={onToggleLock} disabled={!canToggleLockHide}>
+            Toggle lock
+          </MenuAction>
+          <MenuAction onClick={onToggleHide} disabled={!canToggleLockHide}>
+            Toggle hide
           </MenuAction>
         </HeaderMenu>
         <HeaderMenu menuLinkName="View" aria-label="View">

@@ -632,7 +632,8 @@ export class CanvasController {
       const id = this.editor.selection.get()[0];
       const el = id ? this.editor.scene.get(id) : undefined;
       const point = this.toScenePoint(event.clientX, event.clientY);
-      if (!id || !el || !point) return;
+      // Locked elements cannot be resized (M18.4).
+      if (!id || !el || !point || el.locked) return;
       event.preventDefault();
       this.resizeState = {
         pointerId: event.pointerId,
@@ -669,7 +670,8 @@ export class CanvasController {
     if (this.mode.kind !== "idle") return;
     const point = this.toScenePoint(event.clientX, event.clientY);
     if (!point) return;
-    const hit = hitTest(this.editor.scene, point);
+    // Hidden elements are excluded from pointer hit-testing (M18.4) — still reachable via keyboard.
+    const hit = hitTest(this.editor.scene, point, { excludeHidden: true });
     // A connector has no drag semantics and no drag-arm-able background either — leave it to the
     // trailing click, same as before marquee existed.
     if (hit && hit.type === "connector") return;
@@ -708,7 +710,12 @@ export class CanvasController {
     // behavior over a label.
     event.preventDefault();
 
-    const ids = this.editor.selection.get();
+    // Locked elements cannot be dragged — if every selected element is locked, fall through
+    // to a marquee instead. If only some are locked, the unlocked subset can still move (M18.4).
+    const ids = this.editor.selection
+      .get()
+      .filter((id) => !this.editor.scene.get(id)?.locked);
+    if (ids.length === 0) return; // all locked: arm nothing (allow trailing click to still select)
     this.dragState = {
       pointerId: event.pointerId,
       ids,
@@ -986,7 +993,10 @@ export class CanvasController {
       return;
 
     const point = this.toScenePoint(event.clientX, event.clientY);
-    const hit = point ? hitTest(this.editor.scene, point) : undefined;
+    // Hidden elements are excluded from pointer hit-testing (M18.4) — consistent with pointerdown.
+    const hit = point
+      ? hitTest(this.editor.scene, point, { excludeHidden: true })
+      : undefined;
 
     if (this.mode.kind === "connecting") {
       const fromId = this.mode.fromId;
@@ -1307,11 +1317,16 @@ export class CanvasController {
       event.preventDefault();
       this.editor.nudgeElements(selected, nudge, 0);
     } else if (event.key === "Delete" || event.key === "Backspace") {
+      // Locked elements cannot be deleted via keyboard (M18.4) — same gate as drag.
+      const deletable = selected.filter(
+        (id) => !this.editor.scene.get(id)?.locked,
+      );
+      if (deletable.length === 0) return;
       event.preventDefault();
-      const deleted = selected
+      const deleted = deletable
         .map((id) => this.editor.scene.get(id))
         .filter((el): el is SceneElement => el !== undefined);
-      this.editor.deleteElements(selected);
+      this.editor.deleteElements(deletable);
       this.options.onDeleted?.(deleted);
     }
   };

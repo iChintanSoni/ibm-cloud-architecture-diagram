@@ -232,6 +232,7 @@ export function App() {
   const canChangeZOrder = selectedIds.length > 0;
   const canAlign = selectedIds.length >= 2;
   const canDistribute = selectedIds.length >= 3;
+  const canToggleLockHide = selectedIds.length > 0;
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -433,6 +434,14 @@ export function App() {
         event.preventDefault();
         if (event.shiftKey) handleSendToBack();
         else handleSendBackward();
+      } else if (meta && event.key.toLowerCase() === "l" && !event.shiftKey) {
+        // Ctrl/Cmd+L: toggle lock on selection (M18.4)
+        event.preventDefault();
+        handleToggleLock();
+      } else if (meta && event.key.toLowerCase() === "h" && event.shiftKey) {
+        // Ctrl/Cmd+Shift+H: toggle hide on selection (M18.4)
+        event.preventDefault();
+        handleToggleHide();
       }
     };
     window.addEventListener("keydown", onKeyDown);
@@ -915,6 +924,35 @@ export function App() {
     }
   };
 
+  // Lock / Hide (M18.4): toggle is the primary UX surface — if any in the selection are
+  // unlocked, lock all; if all are already locked, unlock all.
+  const handleToggleLock = () => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    const ids = editor.selection.get();
+    if (ids.length === 0) return;
+    const allLocked = ids.every((id) => editor.scene.get(id)?.locked);
+    const changed = allLocked
+      ? editor.unlockElements(ids)
+      : editor.lockElements(ids);
+    if (changed)
+      announce(`${ids.length} element(s) ${allLocked ? "unlocked" : "locked"}`);
+  };
+
+  // Toggle hide — if any are visible, hide all; if all are hidden, show all.
+  const handleToggleHide = () => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    const ids = editor.selection.get();
+    if (ids.length === 0) return;
+    const allHidden = ids.every((id) => editor.scene.get(id)?.hidden);
+    const changed = allHidden
+      ? editor.showElements(ids)
+      : editor.hideElements(ids);
+    if (changed)
+      announce(`${ids.length} element(s) ${allHidden ? "shown" : "hidden"}`);
+  };
+
   const commands: CommandItem[] = [
     {
       id: "new",
@@ -1065,6 +1103,22 @@ export function App() {
       category: "Arrange",
       disabled: !canDistribute,
       run: handleDistributeVertical,
+    },
+    {
+      id: "toggle-lock",
+      label: "Toggle lock",
+      category: "Arrange",
+      shortcut: "Ctrl+L",
+      disabled: !canToggleLockHide,
+      run: handleToggleLock,
+    },
+    {
+      id: "toggle-hide",
+      label: "Toggle hide",
+      category: "Arrange",
+      shortcut: "Ctrl+Shift+H",
+      disabled: !canToggleLockHide,
+      run: handleToggleHide,
     },
     {
       id: "zoom-in",
@@ -1285,6 +1339,20 @@ export function App() {
         editor?.selection.set(editor.scene.all().map((el) => el.id));
       },
     },
+    {
+      id: "ctx-toggle-lock",
+      label: "Toggle lock",
+      shortcut: "Ctrl+L",
+      disabled: !canToggleLockHide,
+      run: handleToggleLock,
+    },
+    {
+      id: "ctx-toggle-hide",
+      label: "Toggle hide",
+      shortcut: "Ctrl+Shift+H",
+      disabled: !canToggleLockHide,
+      run: handleToggleHide,
+    },
   ];
 
   const {
@@ -1329,6 +1397,9 @@ export function App() {
           onDistributeHorizontal={handleDistributeHorizontal}
           onDistributeVertical={handleDistributeVertical}
           canDistribute={canDistribute}
+          onToggleLock={handleToggleLock}
+          onToggleHide={handleToggleHide}
+          canToggleLockHide={canToggleLockHide}
           zoomPercent={zoomPercent}
           onZoomIn={() => editorRef.current?.zoomIn()}
           onZoomOut={() => editorRef.current?.zoomOut()}

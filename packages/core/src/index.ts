@@ -22,6 +22,10 @@ export {
   batch,
   updateConformance,
   distributeElements,
+  lockElements,
+  unlockElements,
+  hideElements,
+  showElements,
 } from "./commands/commands.js";
 export { CommandBus } from "./commands/commandBus.js";
 

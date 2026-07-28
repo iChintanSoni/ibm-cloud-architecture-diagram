@@ -595,4 +595,61 @@ export function registerAuthoringTools(
     "Aligned bottom",
     (ids) => editor().alignBottom(ids),
   );
+
+  // ── Lock / Hide (M18.4, docs/10-canvas-parity-plan.md) ──────────────────────
+  const lockHideOutput = { ids: z.array(z.string()), changed: z.boolean() };
+  const lockHideTool = (
+    name: string,
+    title: string,
+    description: string,
+    apply: (ids: string[]) => boolean,
+  ): void => {
+    server.registerTool(
+      name,
+      {
+        title,
+        description,
+        inputSchema: { ids: z.array(z.string()) },
+        outputSchema: lockHideOutput,
+      },
+      ({ ids }) => {
+        try {
+          const changed = apply(ids);
+          return ok(
+            { ids, changed },
+            changed
+              ? `${title}: ${ids.length} element(s) changed.`
+              : `No change — all elements already in the target state.`,
+          );
+        } catch (err) {
+          return fail(err);
+        }
+      },
+    );
+  };
+
+  lockHideTool(
+    "element_lock",
+    "Lock elements",
+    "Prevents the given elements (and all their descendants) from being dragged, resized, reparented, or deleted via the UI. Returns changed=false when all are already locked.",
+    (ids) => editor().lockElements(ids),
+  );
+  lockHideTool(
+    "element_unlock",
+    "Unlock elements",
+    "Allows the given elements (and all their descendants) to be dragged, resized, reparented, and deleted again. Returns changed=false when all are already unlocked.",
+    (ids) => editor().unlockElements(ids),
+  );
+  lockHideTool(
+    "element_hide",
+    "Hide elements",
+    "Renders the given elements (and all their descendants) at reduced opacity and excludes them from pointer hit-testing. Returns changed=false when all are already hidden.",
+    (ids) => editor().hideElements(ids),
+  );
+  lockHideTool(
+    "element_show",
+    "Show elements",
+    "Restores the given elements (and all their descendants) to full opacity and pointer-event visibility. Returns changed=false when all are already visible.",
+    (ids) => editor().showElements(ids),
+  );
 }

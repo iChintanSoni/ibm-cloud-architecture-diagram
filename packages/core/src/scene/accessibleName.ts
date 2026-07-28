@@ -40,19 +40,29 @@ function elementName(element: SceneElement, catalog: Catalog): string {
  * Screen-reader accessible name for a scene element
  * (docs/07-accessibility.md#canvas-the-hard-20). Containers mention their
  * child count; connectors describe both endpoints and the connection/
- * relationship type instead of just geometry.
+ * relationship type instead of just geometry. Locked/hidden state is appended
+ * so assistive technology can announce it (M18.4).
  */
 export function accessibleName(
   element: SceneElement,
   scene: Scene,
   catalog: Catalog,
 ): string {
+  const stateSuffix =
+    element.locked && element.hidden
+      ? ", locked, hidden"
+      : element.locked
+        ? ", locked"
+        : element.hidden
+          ? ", hidden"
+          : "";
+
   if (element.type === "connector") {
     const from = scene.get(element.from.elementId);
     const to = scene.get(element.to.elementId);
     const fromName = from ? elementName(from, catalog) : "unknown element";
     const toName = to ? elementName(to, catalog) : "unknown element";
-    return `Connector: ${fromName} to ${toName} (${element.connectorType})`;
+    return `Connector: ${fromName} to ${toName} (${element.connectorType})${stateSuffix}`;
   }
 
   const name = elementName(element, catalog);
@@ -61,8 +71,8 @@ export function accessibleName(
     const childCount = scene.childrenOf(element.id).length;
     const countLabel =
       childCount === 1 ? "1 element" : `${childCount} elements`;
-    return `${containerLabel}: ${name}, contains ${countLabel}`;
+    return `${containerLabel}: ${name}, contains ${countLabel}${stateSuffix}`;
   }
 
-  return name;
+  return `${name}${stateSuffix}`;
 }

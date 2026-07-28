@@ -453,6 +453,128 @@ export function autoRouteConnector(scene: Scene, id: ElementId): Command {
   };
 }
 
+/**
+ * Sets `locked: true` on the given ids and all their descendants (M18.4,
+ * docs/10-canvas-parity-plan.md). Skip-unchanged: any id already locked is
+ * silently skipped so a no-op selection doesn't produce a spurious undo entry.
+ * Reports `_put`s as reason `"update"` — a field-only change (no geometry, no
+ * containment), so the `renderElements` fast path handles it.
+ */
+export function lockElements(scene: Scene, ids: ElementId[]): Command {
+  const allIds = new Set(ids);
+  for (const id of ids) {
+    for (const descendant of scene.descendantsOf(id)) allIds.add(descendant.id);
+  }
+  const previous = new Map([...allIds].map((id) => [id, scene.get(id)]));
+  return {
+    label: "lock elements",
+    do(s) {
+      for (const id of allIds) {
+        const el = s.get(id);
+        if (el && !el.locked)
+          s._put({ ...el, locked: true } as SceneElement, "update");
+      }
+    },
+    undo(s) {
+      for (const id of allIds) {
+        const el = previous.get(id);
+        if (el) s._put(el, "update");
+      }
+    },
+  };
+}
+
+/**
+ * Sets `locked: false` (removes the field) on the given ids and all their
+ * descendants, mirroring `lockElements` (M18.4).
+ */
+export function unlockElements(scene: Scene, ids: ElementId[]): Command {
+  const allIds = new Set(ids);
+  for (const id of ids) {
+    for (const descendant of scene.descendantsOf(id)) allIds.add(descendant.id);
+  }
+  const previous = new Map([...allIds].map((id) => [id, scene.get(id)]));
+  return {
+    label: "unlock elements",
+    do(s) {
+      for (const id of allIds) {
+        const el = s.get(id);
+        if (el && el.locked) {
+          const next = { ...el } as SceneElement;
+          delete next.locked;
+          s._put(next, "update");
+        }
+      }
+    },
+    undo(s) {
+      for (const id of allIds) {
+        const el = previous.get(id);
+        if (el) s._put(el, "update");
+      }
+    },
+  };
+}
+
+/**
+ * Sets `hidden: true` on the given ids and all their descendants (M18.4,
+ * docs/10-canvas-parity-plan.md). Reports `_put`s as reason `"update"` — same
+ * rationale as `lockElements`.
+ */
+export function hideElements(scene: Scene, ids: ElementId[]): Command {
+  const allIds = new Set(ids);
+  for (const id of ids) {
+    for (const descendant of scene.descendantsOf(id)) allIds.add(descendant.id);
+  }
+  const previous = new Map([...allIds].map((id) => [id, scene.get(id)]));
+  return {
+    label: "hide elements",
+    do(s) {
+      for (const id of allIds) {
+        const el = s.get(id);
+        if (el && !el.hidden)
+          s._put({ ...el, hidden: true } as SceneElement, "update");
+      }
+    },
+    undo(s) {
+      for (const id of allIds) {
+        const el = previous.get(id);
+        if (el) s._put(el, "update");
+      }
+    },
+  };
+}
+
+/**
+ * Sets `hidden: false` (removes the field) on the given ids and all their
+ * descendants, mirroring `hideElements` (M18.4).
+ */
+export function showElements(scene: Scene, ids: ElementId[]): Command {
+  const allIds = new Set(ids);
+  for (const id of ids) {
+    for (const descendant of scene.descendantsOf(id)) allIds.add(descendant.id);
+  }
+  const previous = new Map([...allIds].map((id) => [id, scene.get(id)]));
+  return {
+    label: "show elements",
+    do(s) {
+      for (const id of allIds) {
+        const el = s.get(id);
+        if (el && el.hidden) {
+          const next = { ...el } as SceneElement;
+          delete next.hidden;
+          s._put(next, "update");
+        }
+      }
+    },
+    undo(s) {
+      for (const id of allIds) {
+        const el = previous.get(id);
+        if (el) s._put(el, "update");
+      }
+    },
+  };
+}
+
 /** Composes multiple commands into one undo/redo step (e.g. quick-fixes). */
 export function batch(label: string, commands: Command[]): Command {
   return {

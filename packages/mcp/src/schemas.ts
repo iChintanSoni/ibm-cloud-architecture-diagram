@@ -146,6 +146,8 @@ export const elementPropertiesPatchSchema = z.object({
   flowColor: flowColorSchema.optional(),
   sequence: z.string().optional(),
   annotation: connectorAnnotationSchema.optional(),
+  locked: z.boolean().optional().describe("Lock or unlock the element (M18.4)"),
+  hidden: z.boolean().optional().describe("Hide or show the element (M18.4)"),
 });
 
 const severitySchema = z.enum(["error", "warn", "info"]);

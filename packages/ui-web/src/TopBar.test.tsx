@@ -44,6 +44,9 @@ function baseProps(overrides: Partial<TopBarProps> = {}): TopBarProps {
     onDistributeHorizontal: vi.fn(),
     onDistributeVertical: vi.fn(),
     canDistribute: false,
+    onToggleLock: vi.fn(),
+    onToggleHide: vi.fn(),
+    canToggleLockHide: false,
     zoomPercent: 100,
     onZoomIn: vi.fn(),
     onZoomOut: vi.fn(),
@@ -327,6 +330,61 @@ describe("TopBar", () => {
       act(() => item.click());
       expect(handler).toHaveBeenCalled();
     }
+  });
+
+  it("disables Toggle lock/hide until enabled, then invokes both (M18.4)", () => {
+    const onToggleLock = vi.fn();
+    const onToggleHide = vi.fn();
+    act(() => {
+      root.render(
+        <TopBar
+          {...baseProps({
+            onToggleLock,
+            onToggleHide,
+            canToggleLockHide: false,
+          })}
+        />,
+      );
+    });
+
+    const lockItem = findByText(
+      container,
+      "a",
+      "Toggle lock",
+    ) as HTMLAnchorElement;
+    expect(lockItem.getAttribute("aria-disabled")).toBe("true");
+    act(() => lockItem.click());
+    expect(onToggleLock).not.toHaveBeenCalled();
+
+    act(() => {
+      root.render(
+        <TopBar
+          {...baseProps({
+            onToggleLock,
+            onToggleHide,
+            canToggleLockHide: true,
+          })}
+        />,
+      );
+    });
+
+    const lockItemEnabled = findByText(
+      container,
+      "a",
+      "Toggle lock",
+    ) as HTMLAnchorElement;
+    expect(lockItemEnabled.getAttribute("aria-disabled")).toBeNull();
+    act(() => lockItemEnabled.click());
+    expect(onToggleLock).toHaveBeenCalled();
+
+    const hideItemEnabled = findByText(
+      container,
+      "a",
+      "Toggle hide",
+    ) as HTMLAnchorElement;
+    expect(hideItemEnabled.getAttribute("aria-disabled")).toBeNull();
+    act(() => hideItemEnabled.click());
+    expect(onToggleHide).toHaveBeenCalled();
   });
 
   it("inserts a frame via the Insert menu", () => {
