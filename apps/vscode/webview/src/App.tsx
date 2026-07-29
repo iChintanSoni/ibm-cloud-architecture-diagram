@@ -396,11 +396,10 @@ export function App() {
   const handleExportSvg = () => {
     const editor = editorRef.current;
     if (!editor) return;
-    const svg = editor.export({ format: "svg" });
-    if (typeof svg === "string") {
+    editor.export({ format: "svg" }).then((svg) => {
       postToHost({ type: "exportSvg", content: svg });
       setExportOpen(false);
-    }
+    });
   };
 
   const handleCreateDiagram = (templateId: DiagramTemplateId) => {

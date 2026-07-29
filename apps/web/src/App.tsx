@@ -520,14 +520,13 @@ export function App() {
   const handleExportSvg = () => {
     const editor = editorRef.current;
     if (!editor) return;
-    const svg = editor.export({ format: "svg" });
-    if (typeof svg === "string") {
+    editor.export({ format: "svg" }).then((svg) => {
       void saveExport(
         "diagram.svg",
         new Blob([svg], { type: "image/svg+xml" }),
         [{ name: "SVG image", extensions: ["svg"] }],
       ).then(() => setExportOpen(false));
-    }
+    });
   };
 
   const handleExportPng = () => {

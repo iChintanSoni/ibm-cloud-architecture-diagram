@@ -679,7 +679,9 @@ export class Editor {
     );
   }
 
-  export(opts: ExportOptions): string | Promise<Blob> {
+  export(opts: ExportOptions & { format: "svg" }): Promise<string>;
+  export(opts: ExportOptions & { format: "png" }): Promise<Blob>;
+  export(opts: ExportOptions): Promise<string> | Promise<Blob> {
     const summary = this.complianceSummary();
     if (summary.blocked) throw new ExportBlockedError(summary.diagnostics);
     if (opts.format === "svg") {

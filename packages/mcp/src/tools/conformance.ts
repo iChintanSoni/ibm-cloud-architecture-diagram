@@ -129,10 +129,10 @@ export function registerConformanceTools(
     async ({ embedSource, path: outPath }) => {
       try {
         requireOpenDocument(state);
-        const svg = state.editor.export({
+        const svg = await state.editor.export({
           format: "svg",
           ...(embedSource !== undefined ? { embedSource } : {}),
-        }) as string;
+        });
         if (outPath) {
           const resolved = resolvePath(outPath);
           await writeFile(resolved, svg, "utf-8");

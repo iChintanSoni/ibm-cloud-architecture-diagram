@@ -567,7 +567,7 @@ describe("createEditor", () => {
     expect(editor.scene.get(b)?.label).toBeUndefined();
   });
 
-  it("selects validation targets and renders editor-only validation badges", () => {
+  it("selects validation targets and renders editor-only validation badges", async () => {
     const id = editor.addBox({ at: { x: 0, y: 0 } });
     editor.lint();
     expect(
@@ -579,7 +579,7 @@ describe("createEditor", () => {
       container.querySelector('[data-icad-layer="overlays"] rect'),
     ).not.toBeNull();
 
-    const svg = editor.export({ format: "svg" }) as string;
+    const svg = await editor.export({ format: "svg" });
     expect(svg).not.toContain('data-icad-layer="overlays"');
   });
 
@@ -650,16 +650,27 @@ describe("createEditor", () => {
     expect(other.toIcad().elements).toEqual(doc.elements);
   });
 
-  it("exports SVG with an embedded, reopenable .icad source by default", () => {
+  it("exports SVG with an embedded, reopenable .icad source by default", async () => {
     editor.addBox({ at: { x: 0, y: 0 }, label: "VPC" });
-    const svg = editor.export({ format: "svg" }) as string;
+    const svg = await editor.export({ format: "svg" });
     expect(svg).toContain('id="icad:source"');
   });
 
-  it("omits the embedded source when embedSource is false", () => {
+  it("omits the embedded source when embedSource is false", async () => {
     editor.addBox({ at: { x: 0, y: 0 }, label: "VPC" });
-    const svg = editor.export({ format: "svg", embedSource: false }) as string;
+    const svg = await editor.export({ format: "svg", embedSource: false });
     expect(svg).not.toContain('id="icad:source"');
+  });
+
+  it("pins the host page's font stack onto the exported SVG root", async () => {
+    document.body.appendChild(container);
+    container.style.fontFamily = '"IBM Plex Sans", system-ui, sans-serif';
+    editor.addBox({ at: { x: 0, y: 0 }, label: "VPC" });
+    const svg = await editor.export({ format: "svg" });
+    expect(svg).toContain(
+      'font-family="&quot;IBM Plex Sans&quot;, system-ui, sans-serif"',
+    );
+    document.body.removeChild(container);
   });
 
   describe("viewport", () => {

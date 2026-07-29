@@ -58,12 +58,23 @@ function exportBounds(scene: Scene): Rect {
 function cloneForExport(
   scene: Scene,
   renderer: SvgRenderer,
-): { svg: SVGSVGElement; bounds: Rect } {
+): { svg: SVGSVGElement; bounds: Rect; fontFamily: string } {
   renderer.render(scene);
   const clone = renderer.svg.cloneNode(true) as SVGSVGElement;
   clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
   clone.querySelector('[data-icad-layer="overlays"]')?.remove();
   clone.querySelector("[data-icad-grid]")?.remove();
+
+  // Pin the font stack the live SVG currently inherits from the host page's CSS (Carbon's `body`
+  // reset, e.g. "IBM Plex Sans, system-ui, ...") as an explicit attribute: once this clone is
+  // detached and serialized to a standalone file, there's no host stylesheet left to cascade it
+  // in, so without this every exported <text> silently fell back to the viewer's own default font
+  // instead of what was on screen.
+  const fontFamily =
+    typeof getComputedStyle === "function"
+      ? getComputedStyle(renderer.svg).fontFamily
+      : "";
+  if (fontFamily) clone.setAttribute("font-family", fontFamily);
 
   const bounds = exportBounds(scene);
   setAttrs(clone, {
@@ -72,7 +83,7 @@ function cloneForExport(
     height: bounds.h,
   });
 
-  return { svg: clone, bounds };
+  return { svg: clone, bounds, fontFamily };
 }
 
 function setAttrs(el: SVGSVGElement, attrs: Record<string, string | number>) {
@@ -80,13 +91,113 @@ function setAttrs(el: SVGSVGElement, attrs: Record<string, string | number>) {
     el.setAttribute(key, String(value));
 }
 
+const CSS_URL_RE = /url\((['"]?)([^'")]+)\1\)/g;
+
+/** Base64-encodes arbitrary binary data (font bytes) — unlike base64Encode() above, which is only
+ * for UTF-8 text, so raw bytes go through String.fromCharCode directly rather than TextEncoder. */
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = "";
+  const CHUNK = 0x8000; // avoids a call-stack overflow from spreading a whole font file at once.
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(binary);
+}
+
+/** Fetches every url(...) referenced in an @font-face `src` value and inlines it as a base64
+ * data: URI, so the exported file is self-contained (docs/03-file-format.md#svg-canonical's
+ * "embedded fonts") and renders identically on a machine that doesn't have IBM Plex Sans installed
+ * as a system font. Returns undefined if any referenced file can't be fetched (e.g. blocked by a
+ * host CSP), so the caller skips that @font-face rule rather than emit one with a broken src. */
+async function inlineFontUrls(src: string): Promise<string | undefined> {
+  const matches = [...src.matchAll(CSS_URL_RE)];
+  if (matches.length === 0) return undefined;
+  const dataUrls = await Promise.all(
+    matches.map(async (match) => {
+      try {
+        const rawUrl = match[2];
+        if (!rawUrl) return undefined;
+        const resolved = new URL(rawUrl, document.baseURI).toString();
+        const response = await fetch(resolved);
+        if (!response.ok) return undefined;
+        const bytes = new Uint8Array(await response.arrayBuffer());
+        const mime = response.headers.get("content-type") ?? "font/woff2";
+        return `data:${mime};base64,${bytesToBase64(bytes)}`;
+      } catch {
+        return undefined;
+      }
+    }),
+  );
+  if (dataUrls.some((url) => url === undefined)) return undefined;
+  let i = 0;
+  return src.replace(CSS_URL_RE, () => `url(${dataUrls[i++]})`);
+}
+
+/** Collects every @font-face rule (from the host page's own stylesheets — e.g. Carbon's compiled
+ * @ibm/plex CSS) whose font-family matches the live SVG's primary font, with its font file(s)
+ * inlined as data: URIs. Cross-origin stylesheets throw on `.cssRules` access and are skipped —
+ * none of this app's own CSS is cross-origin, so that only ever excludes stylesheets we don't care
+ * about anyway. */
+async function embeddedFontFaceCss(primaryFamily: string): Promise<string> {
+  if (!primaryFamily || typeof document === "undefined") return "";
+  const rules: CSSFontFaceRule[] = [];
+  for (const sheet of Array.from(document.styleSheets)) {
+    let cssRules: CSSRuleList;
+    try {
+      cssRules = sheet.cssRules;
+    } catch {
+      continue;
+    }
+    for (const rule of Array.from(cssRules)) {
+      if (
+        typeof CSSFontFaceRule !== "undefined" &&
+        rule instanceof CSSFontFaceRule &&
+        rule.style
+          .getPropertyValue("font-family")
+          .replace(/^["']|["']$/g, "") === primaryFamily
+      ) {
+        rules.push(rule);
+      }
+    }
+  }
+
+  const embedded = await Promise.all(
+    rules.map(async (rule) => {
+      const src = rule.style.getPropertyValue("src");
+      const inlined = await inlineFontUrls(src);
+      return inlined ? rule.cssText.replace(src, inlined) : undefined;
+    }),
+  );
+  return embedded.filter((css): css is string => Boolean(css)).join("\n");
+}
+
+/** Inserts a <style> with embedded @font-face rules into the clone's <defs>, so the exported file
+ * renders in IBM Plex Sans even on a machine that doesn't have it installed system-wide. A no-op
+ * (leaving only the font-family attribute from cloneForExport) if the font can't be embedded. */
+async function embedFonts(
+  clone: SVGSVGElement,
+  fontFamily: string,
+): Promise<void> {
+  const primary = fontFamily
+    .split(",")[0]
+    ?.trim()
+    .replace(/^["']|["']$/g, "");
+  if (!primary) return;
+  const css = await embeddedFontFaceCss(primary);
+  if (!css) return;
+  const style = document.createElementNS("http://www.w3.org/2000/svg", "style");
+  style.textContent = css;
+  (clone.querySelector("defs") ?? clone).prepend(style);
+}
+
 /** Exports the current scene as an SVG string, matching IBM's canonical export guidance. */
-export function exportSvg(
+export async function exportSvg(
   scene: Scene,
   renderer: SvgRenderer,
   opts: SvgExportOptions = {},
-): string {
-  const { svg: clone } = cloneForExport(scene, renderer);
+): Promise<string> {
+  const { svg: clone, fontFamily } = cloneForExport(scene, renderer);
+  await embedFonts(clone, fontFamily);
 
   if (opts.embedSource ?? true) {
     const metadata = document.createElementNS(
@@ -109,7 +220,8 @@ export async function exportPng(
   opts: PngExportOptions = {},
 ): Promise<Blob> {
   const scale = opts.scale ?? 1;
-  const { svg: clone, bounds } = cloneForExport(scene, renderer);
+  const { svg: clone, bounds, fontFamily } = cloneForExport(scene, renderer);
+  await embedFonts(clone, fontFamily);
   // Bake `scale` into the SVG's own pixel dimensions (the viewBox stays in scene units) *before*
   // it's rasterized, so the browser decodes the image at full target resolution directly from the
   // vector source. Leaving width/height at 1x and instead stretching a bigger canvas via
