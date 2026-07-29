@@ -2,7 +2,7 @@
   "name": "@icad/mcp",
   "version": "0.0.0",
   "description": "MCP server exposing ICAD's core/api authoring toolset to agents (docs/08-agent-integration.md).",
-  "license": "UNLICENSED",
+  "license": "Apache-2.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

@@ -2,7 +2,7 @@
   "name": "@icad/ui-web",
   "version": "0.0.0",
   "description": "Reusable Carbon web UI for the ICAD editor.",
-  "license": "UNLICENSED",
+  "license": "Apache-2.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

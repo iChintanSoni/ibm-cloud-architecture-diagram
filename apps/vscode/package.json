@@ -5,7 +5,7 @@
   "description": "Edit .icad IBM Cloud architecture diagrams next to your code.",
   "private": true,
   "version": "0.0.0",
-  "license": "UNLICENSED",
+  "license": "Apache-2.0",
   "type": "module",
   "engines": {
     "vscode": "^1.90.0"
@@ -38,9 +38,9 @@
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p webview/tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@carbon/react": "^1.112.0",
     "@icad/core": "workspace:*",
     "@icad/ui-web": "workspace:*",
-    "@carbon/react": "^1.112.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },

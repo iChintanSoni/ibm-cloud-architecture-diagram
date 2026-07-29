@@ -2,7 +2,7 @@
   "name": "@icad/core",
   "version": "0.0.0",
   "description": "Framework-agnostic IBM Cloud Architecture Diagram engine: scene model, commands, SVG renderer, linter, io, catalog.",
-  "license": "UNLICENSED",
+  "license": "Apache-2.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
