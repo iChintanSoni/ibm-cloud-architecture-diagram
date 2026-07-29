@@ -7,8 +7,12 @@ panels, same keyboard model.
 
 ## Running it today
 
-There's no Marketplace listing and no `.vsix` package yet — this is a source build you run
-yourself, from inside a clone of this repo:
+There's no Marketplace listing yet, but a preview `.vsix` is published to the [GitHub Releases
+page](https://github.com/iChintanSoni/ibm-cloud-architecture-diagram/releases) on tagged pushes
+(unsigned, see the root README's positioning note) — download it and, in VS Code, use the
+Extensions view's `...` menu → **Install from VSIX...**.
+
+To build from source instead:
 
 ```bash
 pnpm install
@@ -42,10 +46,11 @@ behaves the same as the [web editor](02-web-editor.md).
 
 ## Limitations
 
-- **Dev-only.** No Marketplace listing, no `.vsix` build step in this repo yet — running it means
-  building from source and launching the Extension Development Host.
+- **No Marketplace listing** — install via the downloadable `.vsix` (unsigned preview build) or
+  build from source.
 - **No PNG export** in this shell (SVG only).
 - **No manual theme toggle** — it always follows VS Code's theme.
-- Not yet verified in a real interactive VS Code session end-to-end (open-by-double-click,
-  edit, undo, save, simulated-crash recovery) — what's here is confirmed by build/unit tests, not
-  a hands-on pass.
+- Verified in a real interactive VS Code session that installing the packaged `.vsix` and opening
+  a `.icad` file loads the custom diagram editor correctly. The rest of the end-to-end flow
+  (edit, undo, save, simulated-crash recovery) is still only confirmed by build/unit tests, not a
+  hands-on pass.

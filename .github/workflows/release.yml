@@ -1,0 +1,135 @@
+name: Release
+
+# Preview/unsigned artifact pipeline (M21, docs/09-roadmap.md) — not the IBM-Design-sign-off-gated
+# release D17 describes (docs/00-decision-log.md#d17). Push a `vX.Y.Z` tag to build all four
+# downloadable artifacts and attach them to a draft GitHub Release for manual review + publish.
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+env:
+  GH_TOKEN: ${{ github.token }}
+
+defaults:
+  run:
+    # Applies even on windows-latest (Git for Windows ships bash on GH-hosted runners) so every
+    # job can use the same `${VERSION#v}`-style parameter expansion consistently.
+    shell: bash
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create draft release
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            --draft \
+            --title "ICAD ${{ github.ref_name }} (preview build)" \
+            --generate-notes \
+            --notes "> **Preview build.** Unsigned, community-packaged artifacts — not yet gated by IBM Design sign-off ([D17](https://github.com/${{ github.repository }}/blob/main/docs/00-decision-log.md#d17--official--ibm-internal-tool--locked)). Expect Gatekeeper (macOS) / SmartScreen (Windows) warnings on the desktop installers."
+
+  build-web:
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @icad/core build
+      - run: pnpm --filter @icad/ui-web build
+      - run: pnpm --filter @icad/web build
+      - name: Zip and upload
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          OUT="icad-web-v${VERSION}.zip"
+          (cd apps/web/dist && zip -qr "../../../$OUT" .)
+          gh release upload "${{ github.ref_name }}" "$OUT"
+
+  build-mcp:
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @icad/core build
+      - run: pnpm --filter @icad/mcp build
+      - name: Package and upload
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          OUT="$(node packages/mcp/scripts/package-release.mjs "$VERSION" .)"
+          gh release upload "${{ github.ref_name }}" "$OUT"
+
+  build-vscode:
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @icad/core build
+      - run: pnpm --filter @icad/ui-web build
+      - run: pnpm --filter icad-vscode build
+      - name: Package and upload
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          npm pkg set version="$VERSION" --prefix apps/vscode
+          pnpm --filter icad-vscode run package
+          OUT="icad-vscode-v${VERSION}.vsix"
+          mv "apps/vscode/icad-vscode-${VERSION}.vsix" "$OUT"
+          gh release upload "${{ github.ref_name }}" "$OUT"
+
+  build-desktop:
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            bundles: dmg
+          - os: windows-latest
+            bundles: msi
+          - os: ubuntu-latest
+            bundles: appimage
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+      # Tauri v2's documented Linux build prerequisites (https://tauri.app/start/prerequisites/).
+      - if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev \
+            patchelf build-essential libssl-dev
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @icad/core build
+      - run: pnpm --filter @icad/ui-web build
+      - name: Build, package, and upload
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          node apps/desktop/scripts/apply-version.mjs "$VERSION"
+          pnpm --filter @icad/desktop build -- --bundles ${{ matrix.bundles }}
+          node apps/desktop/scripts/collect-bundle.mjs "$VERSION" dist-release
+          gh release upload "${{ github.ref_name }}" dist-release/*

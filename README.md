@@ -6,18 +6,28 @@ natively (`deployedOn` / `deployedTo`, nodes, actors, zones), saves to a first-c
 file, and can be driven by AI agents through an MCP server and Agent Skills.
 
 > **Positioning:** official IBM-internal tool. Uses the sanctioned
-> [IBM Cloud architecture icons](https://github.com/IBM-Cloud/architecture-icons); releases are
-> gated by IBM Design sign-off.
+> [IBM Cloud architecture icons](https://github.com/IBM-Cloud/architecture-icons); the _official_
+> release is gated by IBM Design sign-off ([D17](docs/00-decision-log.md#d17--official--ibm-internal-tool--locked)).
+> The [Releases page](../../releases) below is a separate, unsigned **preview** channel, not that
+> sanctioned release.
 
 ![The web editor showing a populated diagram: a Customer actor connected through an API Gateway to an Application inside an Application tier group, inside a VPC box, inside an IBM Cloud boundary, flowing to Object storage](docs/guide/images/hero-canvas-overview.png)
+
+## Download
+
+Preview builds — unsigned, not yet IBM-Design-sign-off-gated (see the positioning note above) —
+are published to the [GitHub Releases page](../../releases) on tagged pushes: desktop installers
+(macOS/Windows/Linux), a VS Code `.vsix`, a standalone MCP server tarball, and a web app static
+build. Expect Gatekeeper (macOS) / SmartScreen (Windows) warnings on the desktop installers, since
+they're unsigned.
 
 ## Maturity
 
 The core engine, IBM icon catalog, linter, templates, file format, and MCP agent toolset are all
 built and in daily-use shape in the web app. The VS Code extension and desktop app are functional
-— same engine, same UI — but not yet packaged for distribution: VS Code runs from source via the
-Extension Development Host (no Marketplace listing yet), and desktop builds are self-signed, local
-builds (no installer yet). See each surface's guide for exactly what's there today and what isn't:
+— same engine, same UI — and now packaged as downloadable preview builds (above), though still
+short of a Marketplace listing or a signed/notarized installer. See each surface's guide for
+exactly what's there today and what isn't:
 [web editor](docs/guide/02-web-editor.md#limitations),
 [VS Code](docs/guide/03-vscode-extension.md#limitations),
 [desktop](docs/guide/04-desktop-app.md#limitations),
@@ -63,10 +73,9 @@ ICAD fixes all four. See [Vision & Scope](docs/01-vision-and-scope.md).
   [desktop app](docs/guide/04-desktop-app.md), and an [MCP server + Agent Skills](docs/guide/05-ai-agents-mcp.md)
   for AI-agent authoring.
 
-**Known limitations today:** no drag-to-move/resize/rotate on the canvas (typed Properties fields
-instead), no marquee selection or align/distribute/z-order, no clipboard copy, no manual connector
-waypoint editing. VS Code and desktop are dev/source builds, not packaged installers. MCP export is
-SVG-only. Full detail in each guide doc's own Limitations section, linked above.
+**Known limitations today:** VS Code and desktop are unsigned preview builds, not yet on the VS
+Code Marketplace or signed/notarized. MCP export is SVG-only. Full detail in each guide doc's own
+Limitations section, linked above.
 
 ## Documentation
 
@@ -99,8 +108,8 @@ packages/catalog-build  build-time IBM stencil → catalog converter
 packages/ui-web      Carbon + IBM Plex app chrome (React)
 packages/mcp         MCP server + Agent Skills wrapping core/api
 apps/web             web shell (Vite)
-apps/vscode          VS Code custom editor for .icad (source build; no Marketplace listing yet)
-apps/desktop         Tauri desktop shell (source build; no signed installer yet)
+apps/vscode          VS Code custom editor for .icad (unsigned preview .vsix; no Marketplace listing yet)
+apps/desktop         Tauri desktop shell (unsigned preview installers; no signed/notarized build yet)
 ```
 
 The core has **no UI-framework dependency**; every mutation is a **command** (so undo, autosave,

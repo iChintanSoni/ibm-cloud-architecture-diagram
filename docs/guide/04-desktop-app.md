@@ -7,7 +7,12 @@ associations on top.
 
 ## Running it today
 
-There's no signed, downloadable installer yet — build it from source:
+Unsigned preview installers (macOS `.dmg`, Windows `.msi`, Linux `.AppImage`) are published to the
+[GitHub Releases page](https://github.com/iChintanSoni/ibm-cloud-architecture-diagram/releases) on
+tagged pushes — see the root README's positioning note. Expect a Gatekeeper/SmartScreen warning on
+first launch, since they're unsigned.
+
+To build from source instead:
 
 ```bash
 pnpm install

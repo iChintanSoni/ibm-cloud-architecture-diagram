@@ -27,14 +27,18 @@ implemented — no HTTP/SSE). Point your MCP client at it directly with Node:
 }
 ```
 
-Two things worth knowing before you wire this up:
+Building from source this way must run from inside a full clone of this repo — the server loads
+the bundled icon catalog from `packages/catalog` relative to its own build output, so it isn't a
+standalone package you can point at an arbitrary directory. If you don't want a full clone, a
+standalone preview tarball (unsigned, see the root README's positioning note) is published to the
+[GitHub Releases page](https://github.com/iChintanSoni/ibm-cloud-architecture-diagram/releases)
+on tagged pushes — extract it and point your client at `mcp/dist/index.js` inside it (keep the
+extracted `mcp/` and `catalog/` directories together; see the tarball's own `mcp/README.md`).
 
-- **It must run from inside a full clone of this repo.** The server loads the bundled icon
-  catalog from `packages/catalog` relative to its own build output — it isn't a standalone
-  package you can point at an arbitrary directory.
-- **Relative `path` arguments** (to `doc_open` / `doc_save` / `export_diagram`) resolve against
-  the _server process's_ working directory, not your MCP client's. If your client config sets a
-  different `cwd`, prefer absolute paths.
+One more thing worth knowing before you wire this up: **relative `path` arguments** (to
+`doc_open` / `doc_save` / `export_diagram`) resolve against the _server process's_ working
+directory, not your MCP client's. If your client config sets a different `cwd`, prefer absolute
+paths.
 
 No environment variables, API keys, or network access are required — it's fully local and
 offline, reading and writing `.icad` files on disk.
@@ -113,5 +117,5 @@ human-built diagrams are the same file format, edited through the same engine.
 - **No handoff to a running human editor.** There's no tool to open a diagram in an already-running
   web/VS Code/desktop instance yet.
 - **stdio only** — no HTTP/SSE transport.
-- **Monorepo-coupled** — must run from inside a clone of this repo, not as a standalone installed
-  package.
+- **Not published to npm.** The from-source build is monorepo-coupled; the standalone preview
+  tarball (above) is the only way to run it without a full clone.
