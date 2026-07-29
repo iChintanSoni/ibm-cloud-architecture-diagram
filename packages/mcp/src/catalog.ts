@@ -10,10 +10,15 @@ import { Catalog, type CatalogManifest } from "@icad/core";
  * that directory has no `package.json` of its own, so this only works from inside a full clone of
  * this monorepo. That's an accepted constraint for now (matches D4's local-first, single-user
  * scope), not a silent assumption.
+ *
+ * The version isn't hardcoded — `packages/catalog/current.json` is the single source of truth a
+ * catalog re-pin flips (docs/04-icon-catalog.md "Versioning strategy", roadmap M13).
  */
-const CATALOG_DIR = fileURLToPath(
-  new URL("../../catalog/2.0.0", import.meta.url),
-);
+const CATALOG_ROOT = fileURLToPath(new URL("../../catalog", import.meta.url));
+const { version: CURRENT_VERSION } = JSON.parse(
+  readFileSync(path.join(CATALOG_ROOT, "current.json"), "utf-8"),
+) as { version: string };
+const CATALOG_DIR = path.join(CATALOG_ROOT, CURRENT_VERSION);
 
 // Catalog assets on disk are full, standalone SVGs (viewBox 0 0 24 24); `Catalog` expects inner
 // fragments (see packages/core/src/catalog/catalog.ts), so strip the outer <svg> tag at load time.

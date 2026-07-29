@@ -643,28 +643,44 @@ un-started), with a11y/keyboard coverage re-verified against the virtualized DOM
 
 #### M13 — Catalog refresh cadence + migration tooling
 
-⬜ **Not started**
+✅ **Done**
 
-1. Define the refresh trigger: how `packages/catalog-build` re-pins a newer
-   `IBM-Cloud/architecture-icons` commit — an IBM Design-signaled manual re-pin
-   ([D17](00-decision-log.md#d17--official--ibm-internal-tool--locked)) rather than an unattended
-   scheduled job, consistent with this being an IBM-gated tool.
-2. Build a diff tool comparing the generated catalog directory across versions (e.g.
-   `packages/catalog/2.0.0` vs. a new `3.0.0`) — added / renamed / removed icons — to catch
-   `catalogRef` breakage before it reaches a shipped `.icad`.
-3. Decide and implement the resolution story for a `.icad` document whose `catalogRef` no longer
-   exists in the currently bundled catalog version: today [File Format](03-file-format.md#versioning--migration)'s
-   repair pass only handles structural issues (dangling `parentId`, degenerate geometry, …), not a
-   missing catalog reference. Likely a placeholder/greyed icon plus a dedicated linter diagnostic
-   rather than a hard load error, tracked against a bundled-catalog-version field alongside the
-   `.icad` schema version already recorded.
-4. Decide whether catalog-ref migrations belong in the same (currently empty) migration registry
-   `core/io` already has for `.icad` schema bumps ([M5](#m5--icad-io--export)), or a separate
-   registry — don't conflate the two without deciding explicitly.
+1. ✅ **Refresh trigger.** Stays a deliberate, IBM Design-signaled manual re-pin
+   ([D17](00-decision-log.md#d17--official--ibm-internal-tool--locked)), not a scheduled job — but
+   the process is now concrete and documented end to end
+   ([Icon Catalog → Re-pin process](04-icon-catalog.md#re-pin-process-roadmap-m13)):
+   `packages/catalog/current.json` (`{ "version": "…" }`) became the single canonical pointer every
+   runtime loader reads (`apps/web/src/catalog.ts`, `packages/mcp/src/catalog.ts`,
+   `packages/core`'s golden-fixture test all switched from a hardcoded `"2.0.0"` path literal to a
+   wildcard glob/dynamic path + this one file), so a re-pin's only cross-file step is flipping its
+   one field, not editing three.
+2. ✅ **Diff tool.** `packages/catalog-build/src/diff.ts` (pure, unit-tested) +
+   `diffCatalog.ts` (CLI: `pnpm --filter @icad/catalog-build diff <oldDir> <newDir>
+[--apply-aliases]`) compares two on-disk catalog directories' manifests and reports
+   added/removed/renamed icons — renames detected by an exact glyph-content hash match (with
+   per-icon id-namespacing normalized away) scoped to the same category, deliberately conservative
+   over fuzzy name-matching. `--apply-aliases` writes matched renames into the new manifest's
+   `aliases` automatically.
+3. ✅ **Missing-`catalogRef` resolution story**, confirmed rather than newly built: the renderer's
+   gray/black placeholder-tile fallback (`svgRenderer.ts`, already shipped as part of M14) and the
+   `non-catalog-icon` lint rule (`packages/core/src/linter/rules.ts`) already handle a broken
+   reference correctly. What M13 adds is the piece that was actually missing — tooling to populate
+   `aliases` so a rename resolves _invisibly_ instead of ever going missing — plus a new
+   informational, document-level `catalog-version-mismatch` lint rule that explains _why_ an old
+   file might show placeholder icons (its pinned `catalog.version` differs from the one currently
+   bundled).
+4. ✅ **Migration-registry question, decided explicitly**:
+   [D29](00-decision-log.md#d29--catalog-ref-compatibility-uses-catalog-aliases-not-the-icad-schema-migration-registry--locked-v3) —
+   catalog-ref compatibility lives entirely in the catalog manifest's own `aliases` mechanism, not
+   the `.icad` schema `MIGRATIONS` registry (`packages/core/src/io/icad.ts`); the two are
+   independent version axes and re-pinning the catalog never forces a schema bump.
 
 **Done when:** a documented, exercised process re-pins the catalog to a new IBM stencil release
 end-to-end, with a defined (not silent) outcome for any `.icad` file left referencing a
-now-missing icon.
+now-missing icon. ✅ The process and tooling are documented and exercised (diff tool run against
+the real 242-icon catalog, unit-tested rename/alias detection against synthetic fixtures); an
+actual re-pin to a _new_ upstream IBM stencil release remains a separate, future IBM
+Design-signaled event, not something to trigger speculatively from this milestone.
 
 **v3 exit criteria:** `apps/desktop` ships with native `.icad` file associations on macOS, Windows,
 and Linux, and opens a document identically to web and VS Code; a documented performance benchmark

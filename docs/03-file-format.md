@@ -86,8 +86,15 @@ labels) applies to relationship-type connectors. See
 
 `catalogRef` is a stable ID resolved against the bundled [Icon Catalog](04-icon-catalog.md) pinned
 by `catalog.version`. Benefits: tiny files, clean diffs, and icons that update in lockstep when we
-bump the catalog. If a referenced ID is missing after a catalog change, the migration layer maps it
-via the catalog's `aliases` and, failing that, renders a labeled placeholder with a lint warning.
+bump the catalog. If a referenced ID is missing after a catalog change, `Catalog.resolve()` falls
+back to the catalog manifest's own `aliases` array at every lookup site (render, lint, MCP
+authoring) — not a `.icad` schema migration step; catalog-ref compatibility and the `.icad` schema
+`version` are deliberately independent axes
+([D29](00-decision-log.md#d29--catalog-ref-compatibility-uses-catalog-aliases-not-the-icad-schema-migration-registry--locked-v3)).
+Failing that, the icon renders as a neutral gray/black placeholder tile with a
+`non-catalog-icon` lint diagnostic, and an informational `catalog-version-mismatch` diagnostic
+explains that the file's pinned catalog version differs from the one currently bundled
+([Icon Catalog → Versioning strategy](04-icon-catalog.md#versioning-strategy)).
 
 ## Versioning & migration
 

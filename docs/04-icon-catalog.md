@@ -223,7 +223,34 @@ sign-off applies to how icons/colors are rendered.
 
 ## Versioning strategy
 
-- Catalog versions are semver, independent of app version.
-- `.icad` files pin a catalog version; the app bundles the current + a compatibility shim of
-  `aliases` so older files resolve.
+- Catalog versions are semver, independent of app version ([D29](00-decision-log.md#d29--catalog-ref-compatibility-uses-catalog-aliases-not-the-icad-schema-migration-registry--locked-v3):
+  catalog-ref compatibility never touches the `.icad` schema `MIGRATIONS` registry).
+- `.icad` files pin a catalog version (`catalog: { id, version }`); the app bundles the current +
+  a compatibility shim of `aliases` so older files resolve.
 - Bumping the catalog is a deliberate, reviewed change (IBM Design sign-off), not automatic.
+
+### Re-pin process (Roadmap [M13](09-roadmap.md#m13--catalog-refresh-cadence--migration-tooling))
+
+`packages/catalog/current.json` (`{ "version": "2.0.0" }`) is the single source of truth every
+runtime loader reads (`apps/web/src/catalog.ts`, `packages/mcp/src/catalog.ts`,
+`packages/core`'s golden-fixture test) — a re-pin's only cross-file step is flipping its one field.
+
+1. Bump `UPSTREAM_REF` and `CATALOG_VERSION` in `packages/catalog-build/src/build.ts` (deliberately,
+   with IBM Design sign-off). Run `pnpm --filter @icad/catalog-build generate` — this writes a new,
+   independent `packages/catalog/<newVersion>/` directory; the old one is untouched, so both exist
+   side by side.
+2. Run `pnpm --filter @icad/catalog-build diff <oldVersionDir> <newVersionDir> --apply-aliases`
+   (`packages/catalog-build/src/diff.ts`/`diffCatalog.ts`). It reports added / removed / renamed
+   icons — renames are detected by exact glyph-content match (id-namespacing normalized away,
+   scoped to the same category), and `--apply-aliases` writes matched old ids into the new
+   manifest's `aliases` so existing `.icad` files keep resolving via `Catalog.resolve()`'s existing
+   fallback. Ambiguous matches (more than one same-category candidate) are left alone rather than
+   guessed at.
+3. Hand-review the remaining `removed` list: anything not caught by the exact-match heuristic (e.g.
+   a rename paired with a real visual tweak) gets a manual `aliases` entry if appropriate, or is
+   accepted as a genuine removal — any `.icad` still referencing it falls back to a gray-tile icon
+   plus the `non-catalog-icon` lint diagnostic (unchanged by this process, [D29](00-decision-log.md#d29--catalog-ref-compatibility-uses-catalog-aliases-not-the-icad-schema-migration-registry--locked-v3)).
+4. Flip `packages/catalog/current.json`'s `"version"` to the new value.
+5. Run `pnpm -r typecheck && pnpm -r lint && pnpm -r test` across the workspace.
+6. Once confident, delete the old `packages/catalog/<oldVersion>/` directory (optional, manual —
+   nothing depends on it once `current.json` moves past it).

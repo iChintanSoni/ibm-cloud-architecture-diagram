@@ -363,3 +363,34 @@ reach for them, and the linter flags both as off-spec.
   [M20](10-canvas-parity-plan.md#m20--full-range-on-demand)**: all four items (rotation gesture,
   rotation-aware hit-testing, rotated handles/ports/bounds, color picker + linter rules) are
   shipped. `rotation` is no longer a dead field; the `canvas.grid` field was activated in M17.
+
+## Catalog & Migrations
+
+### D29 — Catalog-ref compatibility uses catalog `aliases`, not the `.icad` schema migration registry · Locked (v3)
+
+A `.icad` file pins `catalog: { id, version }` ([File Format](03-file-format.md#top-level-shape)),
+separate from the document's own integer `version` (the schema field `io/migrations`' `MIGRATIONS`
+registry is keyed by, [File Format → Versioning](03-file-format.md#versioning--migration)). When a
+catalog re-pin renames or drops an icon, resolution stays entirely inside the bundled catalog
+manifest's own `aliases: string[]` field (`IconMeta.aliases`,
+[Icon Catalog](04-icon-catalog.md#catalog-manifest-schema)) — already consulted by
+`Catalog.resolve()`'s fallback at every lookup site (rendering, linting, MCP authoring) — rather
+than a step in the `.icad` schema `MIGRATIONS` registry.
+
+- **Why:** [Icon Catalog → Versioning strategy](04-icon-catalog.md#versioning-strategy) already
+  states "catalog versions are semver, independent of app version" — the `.icad` schema version
+  tracks the _document shape_ (elements, containment, connector fields), while the catalog version
+  tracks a wholly separate concern (which stencil set a `catalogRef` resolves against). Routing
+  catalog-ref compatibility through the schema `MIGRATIONS` registry would force every catalog
+  re-pin to also bump the document schema version, even when nothing about the document's own
+  shape changed — a false coupling between two independently-versioned things. The roadmap
+  ([M13](09-roadmap.md#m13--catalog-refresh-cadence--migration-tooling)) called this out explicitly
+  as a decision to make, not leave implicit.
+- **Consequence:** A re-pin's compatibility story lives entirely in `packages/catalog-build`'s new
+  diff/rename-detection tooling writing `aliases` into the newly generated manifest — never in
+  `packages/core/src/io/icad.ts`. An old `.icad` file whose `catalogRef` was renamed resolves
+  silently via `aliases`; one that was genuinely removed keeps falling back to the pre-existing
+  gray-tile render (`svgRenderer.ts`) and `non-catalog-icon` lint diagnostic
+  (`packages/core/src/linter/rules.ts`) — both already correct, neither changed by this decision.
+  A new informational `catalog-version-mismatch` lint rule surfaces _why_ (the file's pinned
+  version differs from the running app's), without treating it as an error.

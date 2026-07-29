@@ -23,7 +23,14 @@ import { SvgRenderer } from "./svgRenderer.js";
 // process.cwd()-relative rather than import.meta.url-relative: under this package's jsdom test
 // environment, import.meta.url does not reliably resolve to a real file:// URL, but vitest always
 // runs with this package's root (packages/core) as its working directory.
-const CATALOG_DIR = path.resolve(process.cwd(), "../catalog/2.0.0");
+//
+// Version isn't hardcoded — packages/catalog/current.json is the single source of truth a
+// catalog re-pin flips (docs/04-icon-catalog.md "Versioning strategy", roadmap M13).
+const CATALOG_ROOT = path.resolve(process.cwd(), "../catalog");
+const { version: CURRENT_CATALOG_VERSION } = JSON.parse(
+  readFileSync(path.join(CATALOG_ROOT, "current.json"), "utf-8"),
+) as { version: string };
+const CATALOG_DIR = path.join(CATALOG_ROOT, CURRENT_CATALOG_VERSION);
 
 function loadRealCatalog(): Catalog {
   const manifest = JSON.parse(

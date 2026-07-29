@@ -141,6 +141,40 @@ export const catalogIconRule: Rule = (scene, context): Diagnostic[] => {
 };
 
 /**
+ * Document-level, not per-element (Roadmap M13): flags when this file's pinned
+ * `scene.catalog` ({ id, version }, docs/03-file-format.md) doesn't match the currently
+ * bundled catalog. Informational only — `catalogIconRule` already flags any actually-broken
+ * `catalogRef`, and `Catalog.resolve()`'s `aliases` fallback (packages/core/src/catalog/catalog.ts)
+ * already resolves most renames invisibly — this just explains *why* a file might be showing
+ * gray-tile fallback icons (svgRenderer.ts) even when nothing is technically broken.
+ */
+export const catalogVersionMismatchRule: Rule = (
+  scene,
+  context,
+): Diagnostic[] => {
+  if (!context?.catalog) return [];
+  if (
+    scene.catalog.id === context.catalog.id &&
+    scene.catalog.version === context.catalog.version
+  ) {
+    return [];
+  }
+  return [
+    {
+      id: "catalog-version-mismatch",
+      ruleId: "catalog-version-mismatch",
+      severity: "info",
+      category: "semantics",
+      message:
+        `This file was authored against catalog ${scene.catalog.id}@${scene.catalog.version}, ` +
+        `but the running app is on ${context.catalog.id}@${context.catalog.version}. ` +
+        `Icons that were renamed since then still resolve via the catalog's aliases; a ` +
+        `gray-tile icon means its reference no longer exists in either version.`,
+    },
+  ];
+};
+
+/**
  * Raw/hand-edited files can disagree about container shape and IBM semantic.
  * Normalize the concrete type to the declared deployedOn/deployedTo meaning
  * where that intent is recoverable.
@@ -613,6 +647,12 @@ export const ruleMetadata: RuleMetadata[] = [
     defaultSeverity: "error",
   },
   {
+    id: "catalog-version-mismatch",
+    title: "Catalog version",
+    category: "semantics",
+    defaultSeverity: "info",
+  },
+  {
     id: "primary-color-fill",
     title: "Primary color fill",
     category: "semantics",
@@ -708,6 +748,7 @@ export const defaultRules: Rule[] = [
   containerSemanticRule,
   containerBorderRule,
   catalogIconRule,
+  catalogVersionMismatchRule,
   primaryFillRule,
   secondaryStrokeRule,
   nodeWithoutLocationRule,

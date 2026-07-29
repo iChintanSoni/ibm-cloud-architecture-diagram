@@ -11,6 +11,7 @@ import type {
 } from "../scene/types.js";
 import {
   catalogIconRule,
+  catalogVersionMismatchRule,
   connectorAnnotationRule,
   connectorCrossesObstacleRule,
   connectorPortRule,
@@ -111,15 +112,16 @@ function catalog(): Catalog {
 }
 
 describe("default conformance rules", () => {
-  it("publishes a unique IBM-default metadata entry for all 18 supported rules", () => {
+  it("publishes a unique IBM-default metadata entry for all 19 supported rules", () => {
     const ids = ruleMetadata.map((rule) => rule.id);
-    expect(ids).toHaveLength(18);
-    expect(new Set(ids).size).toBe(18);
+    expect(ids).toHaveLength(19);
+    expect(new Set(ids).size).toBe(19);
     expect(ids).toEqual(
       expect.arrayContaining([
         "container-semantic",
         "container-border",
         "non-catalog-icon",
+        "catalog-version-mismatch",
         "primary-color-fill",
         "secondary-color-stroke",
         "node-without-location",
@@ -244,6 +246,29 @@ describe("default conformance rules", () => {
       elementId: "unknown",
       severity: "error",
     });
+  });
+
+  it("flags a document pinned to a different catalog than the one running, as an info-level, document-level diagnostic", () => {
+    const scene = new Scene({ catalog: { id: "test", version: "0" } });
+
+    const diagnostics = catalogVersionMismatchRule(scene, {
+      catalog: catalog(),
+    });
+    expect(diagnostics).toHaveLength(1);
+    expect(diagnostics[0]?.elementId).toBeUndefined();
+    expect(diagnostics[0]).toMatchObject({
+      ruleId: "catalog-version-mismatch",
+      severity: "info",
+    });
+  });
+
+  it("does not flag a document already pinned to the running catalog, or when no catalog is running", () => {
+    const scene = new Scene({ catalog: { id: "test", version: "1" } });
+
+    expect(catalogVersionMismatchRule(scene, { catalog: catalog() })).toEqual(
+      [],
+    );
+    expect(catalogVersionMismatchRule(scene)).toEqual([]);
   });
 
   it("does not flag secondary fills or primary strokes in their valid roles", () => {
