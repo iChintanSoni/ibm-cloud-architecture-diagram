@@ -40,6 +40,7 @@ describe("createMcpServer", () => {
           "element_lock",
           "element_move",
           "element_reparent",
+          "element_rotate",
           "element_send_backward",
           "element_send_to_back",
           "element_show",
