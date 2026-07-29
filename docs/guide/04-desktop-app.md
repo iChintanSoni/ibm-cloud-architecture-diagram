@@ -16,9 +16,11 @@ pnpm --filter @icad/desktop dev     # development, with hot reload
 pnpm --filter @icad/desktop build   # produces a local, unsigned bundle
 ```
 
-`build` runs `tauri build`, which on macOS produces a `.app` bundle (DMG packaging is not yet
-confirmed working in every environment — see [Limitations](#limitations)); on other platforms it
-produces the platform-appropriate bundle formats Tauri supports.
+`build` runs `tauri build`, which on macOS produces both a `.app` bundle and a `.dmg` installer
+(confirmed working end to end 2026-07-29: built, mounted, and its `.app` launched from the mounted
+volume); on other platforms it produces the platform-appropriate bundle formats Tauri supports —
+those aren't yet confirmed the same way, since that needs a real Windows/Linux machine (or CI, see
+[Limitations](#limitations)).
 
 ## What's native
 
@@ -41,12 +43,10 @@ Everything else — element types, connectors, templates, the linter, file forma
 
 This shell is functional but not yet a shippable product:
 
-- **No signed or notarized build.** Every build today is self-built and unsigned; there's no
-  distributable installer.
-- **`.dmg` packaging is unconfirmed** — only the raw `.app` bundle (`--bundles app`) has been
-  verified to build successfully; full DMG packaging needs a real interactive session to test.
+- **No signed or notarized build.** Every build today is self-built and unsigned; the GitHub
+  Releases preview builds (M21) ship the same way — expect Gatekeeper/SmartScreen warnings.
 - **App identifier and icon are placeholders**, pending a real IBM-issued identifier and IBM
-  Design sign-off before any real distribution.
+  Design sign-off before any real (non-preview) distribution.
 - **File-system permissions are intentionally broad** (`fs:allow-read-text-file` /
   `allow-write-text-file` grant access to any path, since a file-associated editor needs to open
   files anywhere) — flagged as needing a dedicated security review before real distribution.
