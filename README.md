@@ -11,7 +11,7 @@ file, and can be driven by AI agents through an MCP server and Agent Skills.
 > The [Releases page](../../releases) below is a separate, unsigned **preview** channel, not that
 > sanctioned release.
 
-![The web editor showing a populated diagram: a Customer actor connected through an API Gateway to an Application inside an Application tier group, inside a VPC box, inside an IBM Cloud boundary, flowing to Object storage](docs/guide/images/hero-canvas-overview.png)
+![The web editor showing a populated diagram: a Customer actor connected through an API Gateway to an Application inside an Application tier group, inside a VPC box, inside an IBM Cloud box, flowing to Object storage](docs/guide/images/hero-canvas-overview.png)
 
 ## Download
 
@@ -60,6 +60,9 @@ ICAD fixes all four. See [Vision & Scope](docs/01-vision-and-scope.md).
 
 - **Semantic elements & containers** — Box (`deployedOn`), Group (`deployedTo`), Zone/Boundary,
   Actor, Icon, Text, Frame, with move-with/cascade-delete containment and 11 IBM connector types.
+- **Direct manipulation on the real canvas** — drag-to-move, 8-handle resize, rotate with 15°
+  snapping, marquee select, align/distribute, z-order, lock/hide, and a full clipboard, plus
+  manual connector-waypoint editing — every gesture is undoable and reaches the MCP surface too.
 - **242 bundled IBM icons** across 11 categories — searchable, offline, no network dependency.
 - **Advisory linter** — 16 rules, one-click quick-fixes, a configurable export gate.
 - **Four starting templates** — Blank, System context, High-level, Detailed — all pre-built and
@@ -76,6 +79,26 @@ ICAD fixes all four. See [Vision & Scope](docs/01-vision-and-scope.md).
 **Known limitations today:** VS Code and desktop are unsigned preview builds, not yet on the VS
 Code Marketplace or signed/notarized. MCP export is SVG-only. Full detail in each guide doc's own
 Limitations section, linked above.
+
+## A closer look
+
+<table>
+<tr>
+<td width="33%"><a href="docs/guide/02-web-editor.md#placing-icons"><img src="docs/guide/images/library-panel-search.png" width="100%"></a><br><sub><b>Library panel</b> — searchable, offline IBM icon catalog</sub></td>
+<td width="33%"><a href="docs/guide/02-web-editor.md#properties-layers-frames-validation"><img src="docs/guide/images/properties-tab.png" width="100%"></a><br><sub><b>Properties</b> — rotation, IBM palette + custom color picker, lock/hide</sub></td>
+<td width="33%"><a href="docs/guide/02-web-editor.md#connectors"><img src="docs/guide/images/connector-editing.png" width="100%"></a><br><sub><b>Connector editing</b> — drag waypoints, retarget endpoints, reset routing</sub></td>
+</tr>
+<tr>
+<td><a href="docs/guide/02-web-editor.md#properties-layers-frames-validation"><img src="docs/guide/images/layers-tab.png" width="100%"></a><br><sub><b>Layers</b> — full containment tree, per-row lock/hide</sub></td>
+<td><a href="docs/guide/02-web-editor.md#the-linter"><img src="docs/guide/images/validation-tab.png" width="100%"></a><br><sub><b>Linter</b> — advisory diagnostics with one-click quick-fixes</sub></td>
+<td><a href="docs/guide/02-web-editor.md#find-on-canvas"><img src="docs/guide/images/find-bar-match.png" width="100%"></a><br><sub><b>Find on canvas</b> — jumps the viewport to each match</sub></td>
+</tr>
+<tr>
+<td><a href="docs/guide/02-web-editor.md#command-palette"><img src="docs/guide/images/command-palette.png" width="100%"></a><br><sub><b>Command palette</b> — every action, one search box</sub></td>
+<td><a href="docs/guide/01-getting-started.md#your-first-diagram"><img src="docs/guide/images/new-diagram-dialog.png" width="100%"></a><br><sub><b>Templates</b> — four pre-built, spec-conformant starting points</sub></td>
+<td><a href="docs/guide/02-web-editor.md#export"><img src="docs/guide/images/export-modal.png" width="100%"></a><br><sub><b>Export</b> — SVG (re-editable) or PNG, with a conformance summary</sub></td>
+</tr>
+</table>
 
 ## Documentation
 

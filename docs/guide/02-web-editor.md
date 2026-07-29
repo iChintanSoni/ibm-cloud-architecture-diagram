@@ -4,12 +4,12 @@ The full reference for `apps/web` — every element type, interaction, panel, an
 actually behave today. Screenshots below are the built-in **High-level / logical** template
 (light theme) at 100% zoom.
 
-![Populated canvas: Customer actor → API Gateway → Application (inside Application tier group, inside VPC box, inside IBM Cloud boundary) → Object storage](images/hero-canvas-overview.png)
+![Populated canvas: Customer actor → API Gateway → Application (inside Application tier group, inside VPC box, inside IBM Cloud box) → Object storage](images/hero-canvas-overview.png)
 
 ## Layout
 
 - **Top bar** — File / Edit / View / Insert / Help menus, a live zoom readout, Find, Command
-  palette, theme buttons (Auto/Light/Dark), and Export.
+  palette, a Theme menu (Auto/Light/Dark), and Export.
 - **Left — Library panel** — searchable IBM icon catalog, plus container primitives and confirmed
   presets.
 - **Center — Canvas** — the SVG diagram surface.
@@ -20,16 +20,16 @@ Library panel, and there's no ruler along the canvas edges.
 
 ## Elements and their IBM semantics
 
-| Element               | Border         | IBM semantic            | Meaning                                                                                                               |
-| --------------------- | -------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| **Box**               | solid          | `deployedOn`            | A location something runs on (a VPC, a server, a cluster).                                                            |
-| **Group**             | dashed         | `deployedTo`            | A grouping of services/apps that share a deployment target.                                                           |
-| **Zone** ("Boundary") | dashed         | `boundary`              | A region, availability zone, VPC, subnet, or on-prem boundary. Set the kind in Properties.                            |
-| **Actor**             | rounded        | `actor`                 | A person or external role.                                                                                            |
-| **Icon** (`iconNode`) | —              | `node`                  | A single IBM Cloud service/component from the catalog.                                                                |
-| **Text**              | —              | —                       | A free-floating label.                                                                                                |
-| **Frame**             | dashed, titled | —                       | A named section used for Find, navigation, and presentation mode — not a diagram element with IBM meaning of its own. |
-| **Connector**         | —              | connection/relationship | See [Connectors](#connectors) below.                                                                                  |
+| Element               | Border         | IBM semantic            | Meaning                                                                                                                                                                                                                                                          |
+| --------------------- | -------------- | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Box**               | solid          | `deployedOn`            | A location something runs on (a VPC, a server, a cluster).                                                                                                                                                                                                       |
+| **Group**             | dashed         | `deployedTo`            | A grouping of services/apps that share a deployment target.                                                                                                                                                                                                      |
+| **Zone** ("Boundary") | dashed         | `boundary`              | An availability zone or on-premises boundary — the only two `ZoneKind`s; region/VPC/subnet render as **Box** instead ([D24](../00-decision-log.md#d24--regionvpcsubnet-are-box-only-availability-zoneon-prem-are-boundary--locked)). Set the kind in Properties. |
+| **Actor**             | rounded        | `actor`                 | A person or external role.                                                                                                                                                                                                                                       |
+| **Icon** (`iconNode`) | —              | `node`                  | A single IBM Cloud service/component from the catalog.                                                                                                                                                                                                           |
+| **Text**              | —              | —                       | A free-floating label.                                                                                                                                                                                                                                           |
+| **Frame**             | dashed, titled | —                       | A named section used for Find, navigation, and presentation mode — not a diagram element with IBM meaning of its own.                                                                                                                                            |
+| **Connector**         | —              | connection/relationship | See [Connectors](#connectors) below.                                                                                                                                                                                                                             |
 
 Boxes, Groups, Zones, and Frames are all **containers**: dropping or reparenting an element into
 one sets `parentId`, and moving or deleting the container cascades to everything inside it.
@@ -52,16 +52,40 @@ OpenShift, Availability zone).
 
 ## Canvas interactions
 
-- **Pan** — scroll wheel. **Zoom** — Ctrl/Cmd+scroll, or the Zoom in/out/Reset/Fit-to-content
-  commands in the View menu or command palette.
-- **Select** — click; Shift-click to add to selection; keyboard Enter/Shift+Enter on a focused
-  element.
-- **Move** — arrow keys nudge the selection by 1px (8px with Shift). There's no click-and-drag
-  repositioning; to set an exact position, type X/Y in the Properties tab.
+- **Pan** — scroll wheel, Space+drag, or middle-mouse-drag. **Zoom** — Ctrl/Cmd+scroll, or the Zoom
+  in/out/Reset/Fit-to-content commands in the View menu or command palette. A live grid and
+  alignment guides render while dragging, with a gesture readout (position/size/angle) near the
+  cursor.
+- **Select** — click (always resolves to the deepest element under the cursor); Alt+click to
+  select through to an occluded element underneath; Shift-click to add to selection; a
+  marquee-drag over empty canvas selects every fully-enclosed element; Ctrl/Cmd+A selects all;
+  keyboard Enter/Shift+Enter on a focused element. Right-click opens a context menu scoped to
+  whatever's under the cursor.
+- **Move** — drag with the mouse (Shift axis-locks to horizontal/vertical, Escape aborts and snaps
+  back, Alt-drag clones instead of moving), or arrow keys to nudge the selection by 1px (8px with
+  Shift). Dragging snaps live to the grid, sibling edges/centers, and a 16px container inset. To
+  set an exact position, type X/Y in the Properties tab instead.
+- **Resize** — drag any of 8 handles on a selected element (Shift locks aspect ratio, Alt resizes
+  from center); a container resize reflows its children and the 16px inset is enforced live.
+  Dragging an element onto/out of a container highlights it as a drop target and reparents on
+  release; a container also auto-grows to keep a dragged child inside it.
+- **Rotate** — drag the rotation handle above a selected element; Shift snaps to 15° increments.
+  Hit-testing, handles, ports, and bounds are all rotation-aware.
+- **Double-click** a container to drill into it (both the outer and inner bounding boxes stay
+  visible); Escape steps back out.
+- **Arrange** — Bring to front/forward, Send backward/to back (Ctrl/Cmd+]/[, Shift for
+  front/back), 6-way align (left/center/right/top/middle/bottom) and horizontal/vertical
+  distribute, and per-element Lock/Hide — all in the Edit menu, command palette, or (for
+  align/distribute) a toolbar that appears with a 2+ element selection.
+- **Clipboard** — Ctrl/Cmd+C/X/V copy, cut, and paste; Ctrl/Cmd+D duplicates; paste lands at the
+  cursor position. This is an in-app clipboard for diagram elements, not a copy-to-clipboard for
+  rendered PNG/SVG images (see [Export](#export)).
 - **Group / ungroup** — select 2+ elements and press Ctrl/Cmd+G (or use the Edit menu / command
   palette). This creates a new dashed Group sized to fit the selection plus a 16px pad, and
   reparents the selected elements into it. Ctrl/Cmd+Shift+G ungroups.
-- **Undo / redo** — Ctrl/Cmd+Z / Ctrl/Cmd+Shift+Z (or Ctrl/Cmd+Y), unlimited within a session.
+- **Undo / redo** — Ctrl/Cmd+Z / Ctrl/Cmd+Shift+Z (or Ctrl/Cmd+Y), unlimited within a session. Only
+  committed edits are undoable — in-flight drag/resize/rotate gestures aren't part of the undo
+  stack until released.
 - **Delete** — Delete/Backspace removes the selection and cascades to descendants and any
   connectors left dangling.
 
@@ -79,7 +103,13 @@ private) and **relationships** (dependency, aggregation, composition, implementa
 inheritance). A connection also takes a structured protocol annotation (Name, Encryption/Security,
 Port — rendered as `HTTPS TLS1.3:443`; a tunnel type reads "Encapsulation name" instead), and any
 connector can carry a short sequencing badge (e.g. "1", "2a") shown at its midpoint. Routing is
-orthogonal and automatic; there's no gesture for manually editing a connector's waypoints today.
+orthogonal and automatic by default, but a selected connector exposes diamond drag handles on every
+waypoint, a `+` handle at each segment's midpoint to insert a new one, and pink endpoint handles to
+retarget either end to a different port — auto-routing connectors re-route immediately around the
+edited path. A "Reset routing" button in the Properties tab drops any manual edits and returns to
+automatic routing.
+
+![Connector selected, showing waypoint drag handles, a midpoint insert handle, and an endpoint retarget handle on canvas alongside the connector's type/direction/protocol properties](images/connector-editing.png)
 
 ## Templates
 
@@ -93,16 +123,18 @@ starts clean.
 The right-hand Inspector has four tabs.
 
 **Properties** — edit the selection. Every element has a Label field; non-connector elements also
-get typed X/Y/W/H fields and a Parent container selector; Zones get a boundary-kind selector;
-Frames get a presentation-order field; Connectors get type/direction/flow-color selectors. Fill,
-stroke, and rotation aren't editable here — style comes from presets and linter quick-fixes, and
-rotation isn't implemented in the UI.
+get typed X/Y/W/H and Rotation (0–359°) fields and a Parent container selector; Zones get a
+boundary-kind selector; Frames get a presentation-order field; Connectors get
+type/direction/flow-color selectors. Stroke and fill are set from the nine IBM palette swatches or
+a free-form custom color picker; a Locked/Hidden pair of checkboxes mirrors the same toggles in
+Layers.
 
-![Properties tab showing the selected "Application" icon: label, X/Y/W/H, parent container, and read-only IBM catalog reference](images/properties-tab.png)
+![Properties tab showing the selected "Application" icon: label, X/Y/W/H, a rotation field, parent container, IBM catalog reference, IBM palette stroke/fill swatches with a custom color picker, and Locked/Hidden checkboxes](images/properties-tab.png)
 
-**Layers** — the full containment tree, click any node to select it on canvas.
+**Layers** — the full containment tree in descending z-order, click any node to select it on
+canvas; each row also has its own Lock and Hide toggle.
 
-![Layers tab showing the nested tree: Frame → Boundary → Box → Group → Icons, plus the Actor and three Connectors](images/layers-tab.png)
+![Layers tab showing the nested tree in descending z-order — Frame → Box → Box → Group → Icons, plus the Actor and three Connectors — with per-row lock/hide toggle buttons](images/layers-tab.png)
 
 **Frames** — lists frames in presentation order; a **Present** button steps through them
 (PageUp/PageDown or arrow keys, Escape to exit) — useful for reviews.
@@ -129,11 +161,11 @@ is allowed to block export.
 (`i / N`); Next/Previous step through them and the viewport jumps to each one, including jumping
 straight to a section frame.
 
-![Find bar with "app" typed in, showing 1 of 3 matches and the viewport zoomed to the matching "Application tier" group](images/find-bar-match.png)
+![Find bar with "gateway" typed in, showing 1 of 1 match and the viewport zoomed to the matching "API Gateway" icon](images/find-bar-match.png)
 
 ## Themes
 
-Auto / Light / Dark, set from the top bar, the View menu, or the command palette:
+Auto / Light / Dark, set from the Theme menu in the top bar, the View menu, or the command palette:
 
 ![Command palette open, listing File/View/Insert commands including the three theme options](images/command-palette.png)
 
@@ -168,14 +200,18 @@ details.
 
 ## Limitations
 
-The editor is click-and-type first, not a full drag/direct-manipulation canvas yet:
+Direct manipulation (drag-to-move/resize/rotate, marquee select, align/distribute/z-order, grid
+and alignment-guide snapping, connector-waypoint editing, clipboard copy/paste/duplicate) is fully
+built — see [Canvas interactions](#canvas-interactions) and [Connectors](#connectors) above. What's
+still missing:
 
-- **No drag-to-move, resize, or rotate.** Position and size are set via typed Properties fields;
-  the schema has a `rotation` field but nothing renders or exposes it.
-- **No marquee/rubber-band selection and no Ctrl/Cmd+select-all.** Multi-select is Shift-click
-  only.
-- **No align, distribute, or z-order commands.**
-- **No grid or alignment-guide snapping.** Only connector ports snap.
-- **No manual connector-waypoint editing** — routing is fully automatic.
-- **No clipboard copy** (no copy-to-clipboard for PNG/SVG).
-- **No native drag-and-drop icon placement** — click-to-arm-then-click, or keyboard placement.
+- **No native drag-and-drop icon placement from the Library panel** — click an icon to arm it,
+  then click the canvas (or press Enter/Space to place at the viewport center); dragging an icon
+  straight from the panel onto the canvas isn't supported.
+- **No copy-to-clipboard for a rendered PNG/SVG image.** Export always goes to Save/Save-As (or a
+  browser download); there's no button that puts the exported image bytes on the OS clipboard. (The
+  in-app element clipboard — Ctrl/Cmd+C/X/V/D for diagram elements — is a separate, already-built
+  feature; see [Canvas interactions](#canvas-interactions).)
+- **No viewport virtualization.** Every element stays in the live DOM regardless of diagram size;
+  a benchmark found no real rendering/hit-test/lint problem up to 2,000 elements and connectors, so
+  this hasn't been built, but a genuinely huge diagram beyond that size is untested.

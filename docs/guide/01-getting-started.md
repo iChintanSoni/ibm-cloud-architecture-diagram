@@ -1,8 +1,9 @@
 # Getting started
 
 This walks through installing ICAD from source and creating your first diagram in the web
-editor. There's no hosted instance yet — every surface (web, VS Code, desktop, the MCP agent
-server) runs from a local clone of this repository.
+editor. There's no hosted instance yet, so the web app itself always runs from a local clone (or
+its static-build zip); VS Code, desktop, and the MCP server can instead use a downloadable preview
+build — see [Other ways to run ICAD](#other-ways-to-run-icad) below.
 
 ## Prerequisites
 
@@ -42,7 +43,7 @@ Templates aren't blank scaffolding — they're pre-built, spec-conformant diagra
 containment, correct connector types, zero linter warnings) that you edit into your own diagram
 rather than build up from nothing. Here's the High-level template right after creation:
 
-![Populated canvas showing a Customer actor connected through an API Gateway, an Application box inside an Application tier group, inside a VPC box, inside an IBM Cloud boundary, to Object storage](images/hero-canvas-overview.png)
+![Populated canvas showing a Customer actor connected through an API Gateway, an Application box inside an Application tier group, inside a VPC box, inside an IBM Cloud box, to Object storage](images/hero-canvas-overview.png)
 
 From here:
 
@@ -58,15 +59,22 @@ see **[The web editor](02-web-editor.md)**.
 
 ## Other ways to run ICAD
 
-- **VS Code extension** — edit `.icad` files inside VS Code. Currently a dev-only build (no
-  Marketplace listing yet). See [The VS Code extension](03-vscode-extension.md).
-- **Desktop app** — a native Tauri shell with real file associations and OS dialogs. Currently
-  build-from-source only (no signed installer yet). See [The desktop app](04-desktop-app.md).
+Preview builds of every surface — unsigned, not yet gated by IBM Design sign-off — are published
+to the [GitHub Releases page](https://github.com/iChintanSoni/ibm-cloud-architecture-diagram/releases)
+on tagged pushes, as an alternative to building from source:
+
+- **VS Code extension** — edit `.icad` files inside VS Code. Install the `.vsix` from Releases (no
+  Marketplace listing yet), or build from source. See [The VS Code extension](03-vscode-extension.md).
+- **Desktop app** — a native Tauri shell with real file associations and OS dialogs. Download the
+  macOS/Windows/Linux installer from Releases (unsigned — expect a Gatekeeper/SmartScreen warning),
+  or build from source. See [The desktop app](04-desktop-app.md).
 - **AI agents / MCP** — point an MCP-capable agent at `packages/mcp` to author diagrams
-  programmatically. See [AI agents & MCP](05-ai-agents-mcp.md).
+  programmatically, or download the standalone server tarball from Releases. See
+  [AI agents & MCP](05-ai-agents-mcp.md).
 
 ## Limitations
 
-- No hosted/deployed instance — every surface runs from a local clone today.
+- No hosted/deployed web instance — the web app itself still runs from a local clone or its own
+  static-build zip (also on Releases), not a URL you can just visit.
 - First launch (with no autosaved draft) always opens the New Diagram dialog; there's no way to
   land directly on a blank canvas without it.

@@ -596,11 +596,26 @@ Same "core runs in the webview, the host handles file I/O" split as
    — a known limitation of headless macOS (unrelated to anything in this change; unconfirmed
    whether it reproduces on a real CI runner or a human's own machine, both of which typically have
    one).
+10. **Two real defects found by actually using the shipped `v0.1.0` desktop build**, neither caught
+    by `tauri.test.ts`'s mocked `writeFile`/`writeTextFile` calls because both are Tauri IPC
+    permission/CSP checks that only apply at runtime, below what a JS-level mock exercises:
+    (a) `capabilities/default.json` granted `fs:allow-write-text-file` (for `.icad` save) but never
+    `fs:allow-write-file` — the binary-write permission `saveExportNative()` actually calls — so
+    every native export, SVG included, silently failed the IPC call; (b) `app.security.csp`'s
+    `img-src` allowed `'self' data:` but not `blob:`, and `exportPng()`
+    ([`packages/core/src/io/export.ts`](../packages/core/src/io/export.ts)) rasterizes by loading
+    the intermediate SVG into an `<img>` from a `URL.createObjectURL()` blob: URL — blocked by the
+    webview's CSP before PNG export ever reached the (now-fixed) permission gap. Neither failure
+    threw anywhere `handleExportSvg`/`handleExportPng` in `apps/web/src/App.tsx` could catch it, so
+    both looked identical from the UI: the Export dialog just sat there. Fixed by adding a
+    `fs:allow-write-file` grant (same `"path": "**"` scope as the existing text-write permission)
+    and `blob:` to `img-src`. `.dmg` packaging (previously blocked in this sandbox, see above) later
+    completed successfully via a real macOS CI runner as part of the
+    [M21](#m21--licensing--release-packaging) release workflow —
+    `icad-desktop-v0.1.0-macos-arm64.dmg` shipped in the `v0.1.0` GitHub Release.
 
 **Not yet done:**
 
-- `.dmg` packaging — confirmed hanging in this specific sandbox (see above), not yet retried
-  anywhere with a real WindowServer session.
 - Code signing/notarization (an IBM org/certificate dependency, not a code task — same posture as
   [D17](00-decision-log.md#d17--official--ibm-internal-tool--locked)'s sign-off gate) and the actual
   interactive pass: open by double-click, Open/Save/Save-As, native file association end to end,
@@ -975,6 +990,80 @@ IBM palette swatches + free color picker, and two new linter rules (`non-zero-ro
 own export; an architect builds a nested multi-zone diagram end to end using only the mouse, and
 again using only the keyboard, with drag, resize, marquee, clipboard, alignment, and connector
 editing throughout; every new capability is reachable from the MCP surface; AA re-verified.
+
+## v5 — Release channel
+
+Get a downloadable build of the engine into people's hands — a preview channel, distinct from the
+[D17](00-decision-log.md#d17--official--ibm-internal-tool--locked)-gated official IBM release.
+
+#### M21 — Licensing + release packaging
+
+✅ **Done** — all five sub-milestones landed, including a real end-to-end run (a `v0.1.0` tag
+actually pushed and the workflow actually watched) that found and fixed three genuine CI-only
+bugs no local testing or `actionlint` could have caught.
+
+1. ✅ **M21.1 — Licensing + VS Code packaging readiness.** Apache-2.0 `LICENSE`, set on every
+   distributed package (core, ui-web, mcp, web, vscode, desktop) — `catalog-build` and the private
+   root stay `UNLICENSED` since neither ships. A `NOTICE` carves the bundled IBM icon SVGs out of
+   that license, since upstream IBM-Cloud/architecture-icons has no detected license of its own.
+   `apps/vscode/README.md` added, required by `vsce` for M21.3's packaging step.
+2. ✅ **M21.2 — Standalone MCP server release tarball.** `packages/mcp/scripts/package-release.mjs`
+   assembles `icad-mcp-vX.Y.Z.tar.gz` via `pnpm deploy --prod --legacy` — a real, self-contained
+   `node_modules` rather than a bundled single file (an esbuild bundle was tried first and abandoned:
+   jsdom isn't meant to be bundled, and hit three separate failures in a row) — plus a sibling copy
+   of `packages/catalog` replicating the relative-path layout `catalog.ts`'s lookup already expects.
+   Verified by extracting the tarball outside the repo and round-tripping a real MCP `initialize`
+   request against the deployed server.
+3. ✅ **M21.3 — VS Code `.vsix` packaging.** `@vscode/vsce` + a `package` script
+   (`vsce package --no-dependencies`, since the host bundle already inlines everything via esbuild),
+   an icon rasterized from the desktop app icon, a repo-root `LICENSE` copy (`vsce` looks locally,
+   not up the tree), and a `.vscodeignore` trimming the `.vsix` to just `dist/` + metadata. Verified
+   end to end: installed the packaged `.vsix` into a real VS Code via
+   `code --install-extension`, opened a generated sample `.icad` file, and confirmed the custom
+   diagram editor rendered it (not raw JSON).
+4. ✅ **M21.4 — Desktop release packaging scripts.** `apps/desktop/scripts/apply-version.mjs` stamps
+   the release version into `tauri.conf.json` right before `tauri build` (ephemeral, never
+   committed); `collect-bundle.mjs` locates whatever `tauri build` just produced (Tauri's own output
+   filename varies by OS) and copies it to a stable `icad-desktop-vX.Y.Z-<platform-arch>.<ext>` name.
+   The macOS/`.dmg` path was verified directly — a real `tauri build`, the resulting `.dmg` mounted,
+   the `.app` launched from it — closing out M11's previously-deferred "DMG packaging, needs a real
+   machine" tail.
+5. ✅ **M21.5 — Unified release workflow.** `.github/workflows/release.yml` ties M21.1–M21.4
+   together: pushing a `vX.Y.Z` tag creates a draft GitHub Release (with a preview-build disclaimer
+   prepended to the auto-generated notes), then four parallel jobs build and upload web (zip), mcp
+   (tarball), vscode (vsix), and desktop (macOS/Windows/Linux matrix) artifacts to it. Nothing
+   auto-publishes — the draft is left for manual review. Also landed the README "Download" section
+   and the doc updates deferred from M21.1–M21.4.
+
+**Found and fixed by the real end-to-end run** (pushing an actual `v0.1.0` tag, not just local
+testing/`actionlint`) — the first draft was deleted (`gh release delete --cleanup-tag`) once these
+were confirmed the only failures:
+
+- `build-desktop` passed `--bundles dmg` after a bare `--` in `tauri build -- --bundles dmg`, which
+  Tauri only treats as a `cargo build` passthrough, not its own flag — cargo rejected it outright.
+  Fixed by dropping the `--`.
+- `build-mcp`'s `package-release.mjs` ran `pnpm deploy` with `stdio: "inherit"`, so its own
+  `[WARN]`-prefixed progress output leaked into the workflow's `OUT="$(node ...)"` capture; bash read
+  the stray `[WARN]` text as a glob bracket expression and aborted with "no matches found". Fixed by
+  redirecting the child's stdout to the parent's stderr and having the workflow compute the
+  (deterministic) output filename directly instead of capturing it.
+- A second real-CI run then surfaced a genuine cross-platform bug plain local development could
+  never catch (this app had only ever been built on macOS until this run): `tauri::RunEvent::Opened`
+  is only defined in the tauri crate's macOS build of `RunEvent` — referencing it unconditionally in
+  `apps/desktop/src-tauri/src/lib.rs` is a hard compile error on Windows/Linux. Fixed by moving the
+  `if let` into a `match` with a `#[cfg(target_os = "macos")]`-gated arm and a `_ => {}` catch-all.
+- Separately (an M20 gap `ci.yml` caught on the same push, not an M21 regression): the MCP server's
+  `server.test.ts` had a hardcoded tool-name list that was never updated when `element_rotate`
+  shipped as a real tool — fixed by adding it to the expected list.
+- Later, actually using the shipped `v0.1.0` desktop build surfaced a fourth real defect (native
+  export silently doing nothing) — see [M11 item 10](#m11--appsdesktop-tauri-shell).
+
+`v0.1.0` is live: [GitHub Releases](https://github.com/iChintanSoni/ibm-cloud-architecture-diagram/releases/tag/v0.1.0),
+with web/mcp/vscode/desktop (macOS/Windows/Linux) artifacts attached.
+
+**Done when:** a tagged push produces a draft GitHub Release carrying working web, MCP, VS Code, and
+desktop artifacts for all three desktop platforms, unattended (✅ — confirmed via a real tag push,
+not just workflow linting).
 
 ## Explicitly deferred / revisit later
 
