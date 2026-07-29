@@ -38,7 +38,13 @@ const deployDir = path.join(staging, "mcp");
 execFileSync(
   "pnpm",
   ["--filter", "@icad/mcp", "deploy", "--prod", "--legacy", deployDir],
-  { cwd: repoRoot, stdio: "inherit" },
+  // stdout redirected to the parent's stderr (fd 2), not inherited as-is: callers that capture
+  // this script's own stdout via `$(...)` (release.yml does, for the final printed outFile path)
+  // would otherwise get pnpm's own progress/warning noise mixed into that capture — confirmed by
+  // hitting exactly that in CI: pnpm's "[WARN] Shared workspace lockfile..." line ended up as
+  // part of $OUT, and its stray `[WARN]` looked like a glob bracket expression to bash, which
+  // aborted the whole step with "no matches found".
+  { cwd: repoRoot, stdio: ["ignore", 2, 2] },
 );
 
 const pkgJsonPath = path.join(deployDir, "package.json");

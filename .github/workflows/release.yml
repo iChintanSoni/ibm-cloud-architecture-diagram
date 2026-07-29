@@ -70,8 +70,8 @@ jobs:
       - name: Package and upload
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          OUT="$(node packages/mcp/scripts/package-release.mjs "$VERSION" .)"
-          gh release upload "${{ github.ref_name }}" "$OUT"
+          node packages/mcp/scripts/package-release.mjs "$VERSION" .
+          gh release upload "${{ github.ref_name }}" "icad-mcp-v${VERSION}.tar.gz"
 
   build-vscode:
     needs: prepare
@@ -130,6 +130,6 @@ jobs:
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           node apps/desktop/scripts/apply-version.mjs "$VERSION"
-          pnpm --filter @icad/desktop build -- --bundles ${{ matrix.bundles }}
+          pnpm --filter @icad/desktop build --bundles ${{ matrix.bundles }}
           node apps/desktop/scripts/collect-bundle.mjs "$VERSION" dist-release
           gh release upload "${{ github.ref_name }}" dist-release/*
