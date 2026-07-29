@@ -64,17 +64,25 @@ pub fn run() {
             // (including for the very first cold launch) rather than argv —
             // Windows/Linux route the same case through process argv, which
             // `single_instance`/the initial `StartupFile` state already cover.
-            if let tauri::RunEvent::Opened { urls } = event {
-                for url in urls {
-                    if let Ok(path) = url.to_file_path() {
-                        let is_icad = path
-                            .extension()
-                            .is_some_and(|ext| ext.eq_ignore_ascii_case("icad"));
-                        if is_icad {
-                            let _ = app_handle.emit(OPEN_FILE_EVENT, path.to_string_lossy());
+            // `RunEvent::Opened` only exists in tauri's macOS/iOS build of `RunEvent` at all
+            // (confirmed by a real cross-platform CI run: referencing it unconditionally fails
+            // to compile on Windows/Linux with "no variant named `Opened`"), so the match arm
+            // itself must be cfg-gated, not just documented as macOS-only.
+            match event {
+                #[cfg(target_os = "macos")]
+                tauri::RunEvent::Opened { urls } => {
+                    for url in urls {
+                        if let Ok(path) = url.to_file_path() {
+                            let is_icad = path
+                                .extension()
+                                .is_some_and(|ext| ext.eq_ignore_ascii_case("icad"));
+                            if is_icad {
+                                let _ = app_handle.emit(OPEN_FILE_EVENT, path.to_string_lossy());
+                            }
                         }
                     }
                 }
+                _ => {}
             }
         });
 }
