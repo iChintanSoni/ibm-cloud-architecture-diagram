@@ -23,7 +23,12 @@ const EMPTY_EXPORT_SIZE = { w: 400, h: 300 };
 function base64Encode(input: string): string {
   if (typeof Buffer !== "undefined")
     return Buffer.from(input, "utf-8").toString("base64");
-  return btoa(unescape(encodeURIComponent(input)));
+  // btoa() only accepts Latin1 text, so UTF-8 bytes have to be remapped to it one at a time —
+  // the modern replacement for the deprecated escape/unescape(encodeURIComponent()) hack.
+  let binary = "";
+  for (const byte of new TextEncoder().encode(input))
+    binary += String.fromCharCode(byte);
+  return btoa(binary);
 }
 
 /**
