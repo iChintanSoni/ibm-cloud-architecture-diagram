@@ -24,6 +24,10 @@ allowBuilds:
   "@ibm/plex-sans-thai-looped": false
   "@ibm/plex-serif": false
   "@parcel/watcher": true
+  # Both only needed for `vsce publish` (Marketplace auth + package signing), not local
+  # `vsce package` — declined, same reasoning as the Carbon/Plex entries above.
+  "@vscode/vsce-sign": false
   esbuild: true
+  keytar: false
 minimumReleaseAgeExclude:
   - sass@1.101.6

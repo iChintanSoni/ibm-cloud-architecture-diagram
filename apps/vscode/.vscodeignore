@@ -1,0 +1,16 @@
+# Excludes source/config from the packaged .vsix, leaving only dist/ + package.json + readme +
+# icon + LICENSE. Patterns are unanchored (no leading `/`) on purpose: a leading-slash version
+# (`/webview/**`, `/src/**`, ...) silently matched nothing at all — confirmed via `vsce package`'s
+# own file listing, which still showed every excluded path present, unchanged. The unanchored
+# form below correctly matches only the top-level `webview/` source dir, not the nested
+# `dist/webview/` build output — verified the same way.
+src/**
+webview/index.html
+webview/tsconfig.json
+webview/vite.config.ts
+webview/src/**
+shared/**
+tsconfig.json
+vitest.config.ts
+esbuild.mjs
+**/*.test.ts

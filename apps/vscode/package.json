@@ -7,6 +7,12 @@
   "version": "0.0.0",
   "license": "Apache-2.0",
   "type": "module",
+  "icon": "icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/iChintanSoni/ibm-cloud-architecture-diagram.git",
+    "directory": "apps/vscode"
+  },
   "engines": {
     "vscode": "^1.90.0"
   },
@@ -32,6 +38,7 @@
     "build:host": "node esbuild.mjs",
     "build:webview": "vite build --config webview/vite.config.ts",
     "build": "pnpm run build:host && pnpm run build:webview",
+    "package": "vsce package --no-dependencies",
     "lint": "eslint src webview/src shared",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -49,6 +56,7 @@
     "@types/react-dom": "^19.2.3",
     "@types/vscode": "^1.90.0",
     "@vitejs/plugin-react": "^6.0.4",
+    "@vscode/vsce": "^3.9.2",
     "esbuild": "^0.24.0",
     "sass": "^1.101.6",
     "typescript": "^5.9.3",
