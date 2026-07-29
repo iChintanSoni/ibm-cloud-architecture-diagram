@@ -487,6 +487,9 @@ export class SvgRenderer {
     });
     this.gridRect.setAttribute("aria-hidden", "true");
     this.gridRect.setAttribute("pointer-events", "none");
+    // Chrome, not diagram content (see GRID_PATTERN_ID above) — exportSvg/exportPng strip it by
+    // this marker, the same way they strip the "overlays" layer.
+    this.gridRect.setAttribute("data-icad-grid", "true");
     this.svg.appendChild(this.gridRect);
 
     this.layer = createSvgElement("g");
