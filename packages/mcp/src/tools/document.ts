@@ -30,17 +30,36 @@ export function registerDocumentTools(
       title: "Start a new diagram",
       description:
         "Replace the current document with a fresh IBM-level starter template (docs/09-roadmap.md#m73--ibm-level-templates-and-frame-authoring). " +
-        "Errors if the current document has unsaved changes — pass force: true to discard them.",
-      inputSchema: { level: diagramTemplateIdSchema, force: forceSchema },
+        "For any level but blank, this seeds a full worked example (frame, boxes, icons, connectors) by default — " +
+        "pass seedExampleContent: false for an empty canvas that still carries the level's diagramLevel meta, so " +
+        "it still runs that level's full linter rule set (e.g. the containment check for high-level/detailed). " +
+        "Recommended when building a diagram from a requirement, since the seeded example would otherwise sit " +
+        "in the same space as whatever gets built next. Errors if the current document has unsaved changes " +
+        "— pass force: true to discard them.",
+      inputSchema: {
+        level: diagramTemplateIdSchema,
+        force: forceSchema,
+        seedExampleContent: z
+          .boolean()
+          .optional()
+          .describe(
+            "Seed the level's worked example content (default true). Pass false for an empty canvas that still runs the level's full linter rule set.",
+          ),
+      },
     },
-    ({ level, force }) => {
+    ({ level, force, seedExampleContent }) => {
       try {
         guardReplace(state, force);
-        state.editor.newDocument(level);
+        state.editor.newDocument(
+          level,
+          seedExampleContent !== undefined ? { seedExampleContent } : undefined,
+        );
         state.hasExplicitDocument = true;
         state.dirty = false;
         state.lastPath = undefined;
-        return okText(`Created a new "${level}" diagram.`);
+        return okText(
+          `Created a new "${level}" diagram${seedExampleContent === false ? " (empty canvas)" : ""}.`,
+        );
       } catch (err) {
         return fail(err);
       }

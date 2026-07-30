@@ -32,7 +32,8 @@ a VPC" means: Zone (`vpc`) → Box or Group for the app tier → icons for gatew
 
 ### 2. Pick a diagram level and create the document
 
-Call `doc_create({ level })` first — every authoring tool errors until a document is open.
+Call `doc_create({ level, seedExampleContent: false })` first — every authoring tool errors until a
+document is open.
 
 | `level`          | Use when the requirement is about...                                               |
 | ---------------- | ---------------------------------------------------------------------------------- |
@@ -40,6 +41,14 @@ Call `doc_create({ level })` first — every authoring tool errors until a docum
 | `high-level`     | Zones/boxes/groups, key services, and their main flows. Most requests land here.   |
 | `detailed`       | Concrete deployment: region → VPC → subnet → security group → instances.           |
 | `blank`          | Freeform, doesn't fit the above, or the user explicitly asked for an empty canvas. |
+
+**Always pass `seedExampleContent: false`** for any level but `blank`, unless the user explicitly
+asked to start from IBM's worked example and modify it. Without it, `doc_create` seeds a full
+example diagram (frame, boxes, icons, connectors) at fixed coordinates — whatever gets built next
+lands in the same space and collides with it (duplicate labels, overlapping shapes). Don't reach
+for `level: "blank"` as the workaround instead: it's exempt from an entire category of linter
+rules that only run for `high-level`/`detailed` (e.g. the containment check that flags an icon
+with no Box/Boundary ancestor), so it trades one problem for a quieter one.
 
 If replacing a document that has unsaved changes, `doc_create` errors unless you pass
 `force: true` — don't pass it reflexively; only when you've confirmed discarding is intended.
@@ -86,7 +95,7 @@ Requirement: _"Customers hit a public API gateway, which routes to an applicatio
 private VPC subnet; the app talks to an object storage bucket."_
 
 ```
-doc_create({ level: "high-level" })
+doc_create({ level: "high-level", seedExampleContent: false })
 catalog_search({ query: "vpc" })                 → ibm-cloud/vpc
 catalog_search({ query: "api gateway" })          → ibm-cloud/gateway-api
 catalog_search({ query: "object storage" })       → ibm-cloud/object-storage-application

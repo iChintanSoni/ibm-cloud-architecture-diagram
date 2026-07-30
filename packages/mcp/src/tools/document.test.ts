@@ -77,6 +77,27 @@ describe("document tools", () => {
     }
   });
 
+  it("doc_create({ level, seedExampleContent: false }) gives an empty canvas that keeps the level's diagramLevel meta", async () => {
+    const { client, close } = await createTestClient();
+    try {
+      await client.callTool({
+        name: "doc_create",
+        arguments: { level: "high-level", seedExampleContent: false },
+      });
+
+      const get = await client.callTool({ name: "doc_get", arguments: {} });
+      const document = (
+        get.structuredContent as {
+          document: { elements: unknown[]; meta: { diagramLevel: string } };
+        }
+      ).document;
+      expect(document.elements).toHaveLength(0);
+      expect(document.meta.diagramLevel).toBe("high-level");
+    } finally {
+      await close();
+    }
+  });
+
   it("doc_create refuses to replace a dirty document without force", async () => {
     const { client, close } = await createTestClient();
     try {

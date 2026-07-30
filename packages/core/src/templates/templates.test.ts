@@ -109,4 +109,21 @@ describe("diagram templates", () => {
       }).elements,
     ).toEqual([]);
   });
+
+  it.each([
+    "system-context",
+    "high-level",
+    "detailed",
+  ] satisfies DiagramTemplateId[])(
+    "seedExampleContent: false keeps %s's diagramLevel meta but skips the worked example",
+    (templateId) => {
+      const doc = createTemplateDocument(templateId, {
+        catalog: catalogPin,
+        now: "2026-07-23T00:00:00.000Z",
+        seedExampleContent: false,
+      });
+      expect(doc.meta.diagramLevel).toBe(templateId);
+      expect(doc.elements).toEqual([]);
+    },
+  );
 });

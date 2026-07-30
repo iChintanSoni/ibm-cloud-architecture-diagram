@@ -48,6 +48,16 @@ export interface CreateTemplateDocumentOptions {
   theme?: CanvasSettings["theme"];
   /** Injectable for deterministic tests and non-browser authoring surfaces. */
   now?: string;
+  /**
+   * Seed the document with the level's worked example content (frame, boxes, icons, connectors).
+   * Default true, matching the human editor's "New Diagram" dialog, where example content is the
+   * point. Pass false for an empty canvas that still carries the level's `diagramLevel` meta — and
+   * so still runs that level's full linter rule set (e.g. `nodeWithoutLocationRule`, which only
+   * applies to high-level/detailed) — instead of `"blank"`'s empty canvas, which is exempt from
+   * those rules entirely. Intended for agent-driven authoring (packages/mcp's `doc_create`), where
+   * the seed content would otherwise just collide with whatever gets built next.
+   */
+  seedExampleContent?: boolean;
 }
 
 const TEMPLATE_TITLES: Record<DiagramTemplateId, string> = {
@@ -469,6 +479,9 @@ export function createTemplateDocument(
       exportGate: "warn",
       ruleSeverities: {},
     },
-    elements: routeTemplateConnectors(elementsFor(templateId)),
+    elements:
+      options.seedExampleContent === false
+        ? []
+        : routeTemplateConnectors(elementsFor(templateId)),
   };
 }

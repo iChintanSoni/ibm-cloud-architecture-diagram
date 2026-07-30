@@ -308,12 +308,23 @@ export class Editor {
     this.setTheme(this.scene.canvas.theme);
   }
 
-  /** Replaces the current document with a reusable IBM-level starter template. */
-  newDocument(templateId: DiagramTemplateId): void {
+  /**
+   * Replaces the current document with a reusable IBM-level starter template. Pass
+   * `{ seedExampleContent: false }` for an empty canvas that still carries the level's
+   * `diagramLevel` meta (and so still runs that level's full linter rule set) — see
+   * `CreateTemplateDocumentOptions`.
+   */
+  newDocument(
+    templateId: DiagramTemplateId,
+    options?: { seedExampleContent?: boolean },
+  ): void {
     this.loadIcad(
       createTemplateDocument(templateId, {
         catalog: { id: this.catalog.id, version: this.catalog.version },
         theme: this.scene.canvas.theme,
+        ...(options?.seedExampleContent !== undefined
+          ? { seedExampleContent: options.seedExampleContent }
+          : {}),
       }),
     );
   }
