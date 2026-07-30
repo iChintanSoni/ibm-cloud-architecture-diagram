@@ -763,6 +763,54 @@ describe("IBM published visual golden fixtures", () => {
     expect(texts).toEqual(["calls", "2a"]);
   });
 
+  it("sets a small explicit font-size on a connector's text label, clear of the line itself", () => {
+    scene._put({
+      id: "lbl-from",
+      type: "box",
+      semantic: "deployedOn",
+      x: 0,
+      y: 0,
+      w: 48,
+      h: 48,
+    });
+    scene._put({
+      id: "lbl-to",
+      type: "box",
+      semantic: "deployedOn",
+      x: 240,
+      y: 0,
+      w: 48,
+      h: 48,
+    });
+    scene._put({
+      id: "lbl",
+      type: "connector",
+      semantic: "node",
+      x: 0,
+      y: 0,
+      w: 0,
+      h: 0,
+      from: { elementId: "lbl-from", port: "e" },
+      to: { elementId: "lbl-to", port: "w" },
+      connectorType: "association",
+      label: { text: "HTTPS TLS1.3:443" },
+      routing: "manual",
+      waypoints: [
+        { x: 48, y: 24 },
+        { x: 240, y: 24 },
+      ],
+    });
+    renderer.render(scene);
+
+    const label = renderer.nodeFor("lbl")?.querySelector("text");
+    expect(attributes(label)).toMatchObject({
+      "font-size": "11",
+    });
+    // The line itself sits at y=24 (both waypoints share that y) — without real clearance from
+    // it, the label visibly overlapped the line rather than sitting cleanly above it.
+    expect(Number(label?.getAttribute("y"))).toBeLessThan(24 - 8);
+  });
+
   it("omits the sequence badge entirely when unset", () => {
     scene._put({
       id: "noseq-from",

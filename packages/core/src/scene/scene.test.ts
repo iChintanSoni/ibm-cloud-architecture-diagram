@@ -204,4 +204,36 @@ describe("Scene", () => {
       expect(listener).toHaveBeenCalledTimes(2);
     });
   });
+
+  describe("mutationCount", () => {
+    it("increments on _put, _remove, and _replaceAll", () => {
+      const scene = new Scene();
+      expect(scene.mutationCount).toBe(0);
+
+      scene._put(box("a"));
+      expect(scene.mutationCount).toBe(1);
+
+      scene._remove("a");
+      expect(scene.mutationCount).toBe(2);
+
+      scene._replaceAll([box("b")]);
+      expect(scene.mutationCount).toBe(3);
+    });
+
+    it("does not increment when _remove is a no-op (unknown id)", () => {
+      const scene = new Scene();
+      scene._remove("does-not-exist");
+      expect(scene.mutationCount).toBe(0);
+    });
+
+    it("still increments once per _put/_remove inside a batched transaction, not once for the whole batch", () => {
+      const scene = new Scene();
+      scene._transaction(() => {
+        scene._put(box("a"));
+        scene._put(box("b"));
+        scene._remove("a");
+      });
+      expect(scene.mutationCount).toBe(3);
+    });
+  });
 });

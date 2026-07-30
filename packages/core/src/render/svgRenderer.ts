@@ -17,7 +17,10 @@ import type {
   SceneElement,
 } from "../scene/types.js";
 import type { Rect } from "../routing/orthogonalRouter.js";
-import { connectorPathPoints } from "../routing/routeConnector.js";
+import {
+  connectorAnchorPoint,
+  connectorPathPoints,
+} from "../routing/routeConnector.js";
 import { PRIMARY_TO_SECONDARY_FILL } from "../theme/colorPalette.js";
 import { createSvgElement, setAttrs } from "./dom.js";
 import { portPoint, type Point } from "./port.js";
@@ -1299,9 +1302,15 @@ export class SvgRenderer {
       const text = createSvgElement("text");
       setAttrs(text, {
         x: mid.x,
-        y: mid.y - 4,
+        // -4 with no explicit font-size (inheriting the root SVG's, ~16-18px) left only a few
+        // px of clearance for a glyph roughly 3-4x that tall — the line visibly cut through the
+        // bottom of the text. -10 with the same 11px font every sibling label on a connector
+        // (cardinalityLabel, sequenceBadge, annotationLabel) already uses clears it, and clears
+        // the sequence badge below (a 9px-radius circle straddling the line, mid.y-9..mid.y+9).
+        y: mid.y - 10,
         fill: this.palette.stroke,
         "text-anchor": "middle",
+        "font-size": 11,
       });
       text.textContent = el.label.text;
       g.appendChild(text);
@@ -1660,7 +1669,10 @@ export class SvgRenderer {
           ["to", toEl, el.to.port] as const,
         ]) {
           if (!portEl) continue;
-          const pt = portPoint(portEl, port);
+          // Matches connectorPathPoints's own anchor (fanned out if this port is shared with
+          // other connectors) rather than the raw port center, so the handle sits exactly where
+          // the connector's line actually starts/ends instead of visibly detached from it.
+          const pt = connectorAnchorPoint(scene, portEl.id, port, el.id);
           const circle = createSvgElement("circle");
           setAttrs(circle, {
             cx: pt.x,

@@ -28,6 +28,16 @@ export class Scene {
   private batchedIds = new Set<ElementId>();
   private batchedReasons = new Set<SceneChangeEvent["reason"]>();
   private batchedDirty = false;
+  private _mutationCount = 0;
+
+  /** Increments on every `_put`/`_remove`/`_replaceAll`, even inside a batched transaction —
+   * a cheap, always-correct (unlike `meta.updatedAt`, which shares millisecond resolution across
+   * an entire fast batch) cache-invalidation key for anything that wants to memoize a derived
+   * view of the scene across calls instead of recomputing it from `all()` every time (e.g.
+   * `routeConnector.ts`'s per-port sibling-connector grouping). */
+  get mutationCount(): number {
+    return this._mutationCount;
+  }
 
   meta: DocumentMeta;
   canvas: CanvasSettings;
@@ -165,6 +175,7 @@ export class Scene {
   /** Internal write used by commands. Not exported outside the package. */
   _put(el: SceneElement, reason: SceneChangeEvent["reason"] = "add"): void {
     this.elements.set(el.id, el);
+    this._mutationCount++;
     this.meta.updatedAt = new Date().toISOString();
     if (this.batching) {
       this.batchedIds.add(el.id);
@@ -177,6 +188,7 @@ export class Scene {
 
   _remove(id: ElementId): void {
     if (!this.elements.delete(id)) return;
+    this._mutationCount++;
     this.meta.updatedAt = new Date().toISOString();
     if (this.batching) {
       this.batchedIds.add(id);
@@ -190,6 +202,7 @@ export class Scene {
   _replaceAll(elements: SceneElement[]): void {
     this.elements.clear();
     for (const el of elements) this.elements.set(el.id, el);
+    this._mutationCount++;
     this.meta.updatedAt = new Date().toISOString();
     if (this.batching) {
       for (const el of elements) this.batchedIds.add(el.id);
