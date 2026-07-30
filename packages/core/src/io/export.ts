@@ -61,7 +61,12 @@ function cloneForExport(
 ): { svg: SVGSVGElement; bounds: Rect; fontFamily: string } {
   renderer.render(scene);
   const clone = renderer.svg.cloneNode(true) as SVGSVGElement;
-  clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+  // No explicit xmlns setAttribute here: `renderer.svg` is already created via
+  // createElementNS(SVG_NS, "svg") (render/dom.ts), so the namespace is already implicit on the
+  // clone. A real browser's XMLSerializer dedupes an explicit "xmlns" attribute of the same value
+  // against that implicit one, but jsdom's (used by packages/mcp's headless export) does not —
+  // it was emitting the attribute twice, producing invalid XML that a strict parser (e.g. a
+  // browser opening the exported .svg file directly) refuses to parse at all.
   clone.querySelector('[data-icad-layer="overlays"]')?.remove();
   clone.querySelector("[data-icad-grid]")?.remove();
 
