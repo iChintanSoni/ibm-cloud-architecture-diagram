@@ -328,11 +328,29 @@ export function registerAuthoringTools(
     },
     ({ fromId, toId, ...opts }) => {
       try {
-        const id = editor().connectNearest(fromId, toId, omitUndefined(opts));
-        if (!id)
-          throw new ToolError(
-            `Cannot connect "${fromId}" to "${toId}" (same id, or one is a connector).`,
-          );
+        const scoped = editor();
+        const id = scoped.connectNearest(fromId, toId, omitUndefined(opts));
+        if (!id) {
+          // connectNearest itself just returns undefined for any of several distinct causes —
+          // diagnose which one actually applies here instead of guessing in the message.
+          const from = scoped.scene.get(fromId);
+          const to = scoped.scene.get(toId);
+          if (!from)
+            throw new ToolError(
+              `Unknown element "${fromId}" — no such id in the current document.`,
+            );
+          if (!to)
+            throw new ToolError(
+              `Unknown element "${toId}" — no such id in the current document.`,
+            );
+          if (fromId === toId)
+            throw new ToolError(`Cannot connect "${fromId}" to itself.`);
+          if (from.type === "connector" || to.type === "connector")
+            throw new ToolError(
+              `Cannot connect "${fromId}" to "${toId}" — a connector can't be an endpoint of another connector.`,
+            );
+          throw new ToolError(`Cannot connect "${fromId}" to "${toId}".`);
+        }
         return ok({ id }, `Connected ${fromId} to ${toId} as ${id}.`);
       } catch (err) {
         return fail(err);

@@ -177,6 +177,35 @@ describe("authoring tools", () => {
       arguments: { fromId: boxId, toId: boxId },
     });
     expect(result.isError).toBe(true);
+    expect(result.content?.[0]).toMatchObject({
+      text: expect.stringContaining("itself"),
+    });
+  });
+
+  it("connect_nearest names the actual unknown id, not an unrelated guess, when one or both don't exist", async () => {
+    const box = await client.callTool({
+      name: "element_add_box",
+      arguments: { at: { x: 0, y: 0 } },
+    });
+    const boxId = (box.structuredContent as { id: string }).id;
+
+    const bothUnknown = await client.callTool({
+      name: "connect_nearest",
+      arguments: { fromId: "does-not-exist", toId: "also-missing" },
+    });
+    expect(bothUnknown.isError).toBe(true);
+    expect(bothUnknown.content?.[0]).toMatchObject({
+      text: expect.stringContaining('"does-not-exist"'),
+    });
+
+    const toUnknown = await client.callTool({
+      name: "connect_nearest",
+      arguments: { fromId: boxId, toId: "also-missing" },
+    });
+    expect(toUnknown.isError).toBe(true);
+    expect(toUnknown.content?.[0]).toMatchObject({
+      text: expect.stringContaining('"also-missing"'),
+    });
   });
 
   it("group_elements errors clearly for fewer than two known ids", async () => {

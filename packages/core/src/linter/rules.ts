@@ -1,6 +1,7 @@
 import {
   autoRouteConnector,
   batch,
+  moveElements,
   rotateElement,
   updateElement,
 } from "../commands/commands.js";
@@ -327,6 +328,61 @@ export const nodeWithoutLocationRule: Rule = (scene): Diagnostic[] => {
         "containment",
         el.id,
         `"${el.id}" has no Box or Boundary ancestor in a ${scene.meta.diagramLevel} diagram.`,
+      ),
+    );
+  }
+  return diagnostics;
+};
+
+/** Container types whose bounds a child is expected to actually sit inside — mirrors the visual
+ * nesting convention (solid/dashed/dotted box drawn around its contents), independent of
+ * `nodeWithoutLocationRule`'s narrower "counts as a deployedOn location" definition (which
+ * excludes Group on purpose). Frame is excluded: it's a presentation/sectioning primitive, always
+ * top-level, not a visual nesting container children are drawn inside. */
+const BOUNDS_ENFORCING_CONTAINERS = new Set(["box", "group", "zone"]);
+
+/** Placed a repositioned child this far inside its container's own edges — matches the 16px
+ * inset convention the authoring skill already tells agents to place new children within. */
+const CONTAINER_INSET = 16;
+
+/**
+ * A child with a real containing Box/Group/Zone whose geometry doesn't overlap that container's
+ * bounds at all — an easy coordinate-math mistake, and one nothing else catches: containment here
+ * is a logical `parentId` plus manually-consistent absolute coordinates (not an automatic layout),
+ * rendering doesn't clip or warn on it, and `nodeWithoutLocationRule` only checks whether *some*
+ * ancestor box/zone exists, never whether the geometry actually agrees with it. Deliberately only
+ * flags complete disjunction, not a child that merely overhangs an edge — plenty of real diagrams
+ * intentionally let a child sit flush against, or slightly past, its container's border.
+ */
+export const childOutsideParentBoundsRule: Rule = (scene): Diagnostic[] => {
+  const diagnostics: Diagnostic[] = [];
+  for (const el of scene.all()) {
+    if (!el.parentId || el.type === "connector" || el.type === "frame")
+      continue;
+    const parent = scene.get(el.parentId);
+    if (!parent || !BOUNDS_ENFORCING_CONTAINERS.has(parent.type)) continue;
+
+    const disjoint =
+      el.x + el.w <= parent.x ||
+      el.x >= parent.x + parent.w ||
+      el.y + el.h <= parent.y ||
+      el.y >= parent.y + parent.h;
+    if (!disjoint) continue;
+
+    diagnostics.push(
+      diagnostic(
+        "child-outside-parent-bounds",
+        "warn",
+        "containment",
+        el.id,
+        `"${el.id}" is positioned entirely outside its container "${parent.id}"'s bounds.`,
+        moveElements(
+          scene,
+          [el.id],
+          parent.x + CONTAINER_INSET - el.x,
+          parent.y + CONTAINER_INSET - el.y,
+        ),
+        "Move inside container",
       ),
     );
   }
@@ -671,6 +727,12 @@ export const ruleMetadata: RuleMetadata[] = [
     defaultSeverity: "warn",
   },
   {
+    id: "child-outside-parent-bounds",
+    title: "Child inside container",
+    category: "containment",
+    defaultSeverity: "warn",
+  },
+  {
     id: "missing-label",
     title: "Required labels",
     category: "labels",
@@ -752,6 +814,7 @@ export const defaultRules: Rule[] = [
   primaryFillRule,
   secondaryStrokeRule,
   nodeWithoutLocationRule,
+  childOutsideParentBoundsRule,
   missingLabelRule,
   duplicateLabelRule,
   danglingConnectorRule,

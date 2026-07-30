@@ -12,6 +12,7 @@ import type {
 import {
   catalogIconRule,
   catalogVersionMismatchRule,
+  childOutsideParentBoundsRule,
   connectorAnnotationRule,
   connectorCrossesObstacleRule,
   connectorPortRule,
@@ -112,10 +113,10 @@ function catalog(): Catalog {
 }
 
 describe("default conformance rules", () => {
-  it("publishes a unique IBM-default metadata entry for all 19 supported rules", () => {
+  it("publishes a unique IBM-default metadata entry for all 20 supported rules", () => {
     const ids = ruleMetadata.map((rule) => rule.id);
-    expect(ids).toHaveLength(19);
-    expect(new Set(ids).size).toBe(19);
+    expect(ids).toHaveLength(20);
+    expect(new Set(ids).size).toBe(20);
     expect(ids).toEqual(
       expect.arrayContaining([
         "container-semantic",
@@ -125,6 +126,7 @@ describe("default conformance rules", () => {
         "primary-color-fill",
         "secondary-color-stroke",
         "node-without-location",
+        "child-outside-parent-bounds",
         "missing-label",
         "duplicate-label",
         "dangling-connector",
@@ -305,6 +307,55 @@ describe("default conformance rules", () => {
     expect(
       nodeWithoutLocationRule(scene).map((item) => item.elementId),
     ).toEqual(["floating"]);
+  });
+
+  it("flags a child whose geometry doesn't overlap its container's bounds at all", () => {
+    const scene = new Scene();
+    scene._put(box("container")); // (0, 0, 100, 100)
+    scene._put({ ...icon("stray", "container"), x: 500, y: 500 });
+
+    const diagnostics = childOutsideParentBoundsRule(scene);
+    expect(diagnostics).toHaveLength(1);
+    expect(diagnostics[0]).toMatchObject({
+      ruleId: "child-outside-parent-bounds",
+      severity: "warn",
+      category: "containment",
+      elementId: "stray",
+    });
+
+    diagnostics[0]!.quickFix!.do(scene);
+    const fixed = scene.get("stray")!;
+    expect(fixed.x).toBeGreaterThanOrEqual(0);
+    expect(fixed.x).toBeLessThan(100);
+    expect(fixed.y).toBeGreaterThanOrEqual(0);
+    expect(fixed.y).toBeLessThan(100);
+  });
+
+  it("does not flag a child that merely overhangs its container's edge, only complete disjunction", () => {
+    const scene = new Scene();
+    scene._put(box("container")); // (0, 0, 100, 100)
+    // Mostly outside, but its left edge still overlaps the container by a few px.
+    scene._put({ ...icon("overhanging", "container"), x: 90, y: 20 });
+    expect(childOutsideParentBoundsRule(scene)).toHaveLength(0);
+  });
+
+  it("ignores elements with no parentId, and containers that don't enforce bounds (Frame)", () => {
+    const scene = new Scene();
+    scene._put(icon("top-level")); // no parentId at all
+    scene._put({
+      id: "frame",
+      type: "frame",
+      semantic: "boundary",
+      name: "Section",
+      order: 1,
+      x: 0,
+      y: 0,
+      w: 100,
+      h: 100,
+    });
+    scene._put({ ...icon("far-from-frame", "frame"), x: 999, y: 999 });
+
+    expect(childOutsideParentBoundsRule(scene)).toHaveLength(0);
   });
 
   it("detects duplicate labels case-insensitively and ignores connector labels", () => {
