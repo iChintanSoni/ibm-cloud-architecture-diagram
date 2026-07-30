@@ -655,7 +655,7 @@
       "asset": "icons/groups/data-center.svg",
       "tier": "ibm-cloud",
       "color": "#878D96",
-      "keywords": ["data", "center"]
+      "keywords": ["data", "center", "on-prem", "on-premises", "on premises"]
     },
     {
       "id": "ibm-cloud/data-diode",
@@ -787,7 +787,7 @@
       "asset": "icons/data/database-redis.svg",
       "tier": "ibm-cloud",
       "color": "#0F62FE",
-      "keywords": ["database", "redis"]
+      "keywords": ["database", "redis", "cache"]
     },
     {
       "id": "ibm-cloud/datastore",
@@ -1634,7 +1634,7 @@
       "asset": "icons/actors/location.svg",
       "tier": "ibm-cloud",
       "color": "#000000",
-      "keywords": ["location"]
+      "keywords": ["location", "region"]
     },
     {
       "id": "ibm-cloud/logging",

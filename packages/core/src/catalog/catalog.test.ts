@@ -4,7 +4,7 @@ import { Catalog } from "./catalog.js";
 
 function manifest(): CatalogManifest {
   return {
-    id: "test-catalog",
+    id: "ibm-cloud",
     version: "1.0.0",
     categories: [{ id: "network", name: "Network" }],
     icons: [
@@ -44,6 +44,53 @@ describe("Catalog", () => {
     expect(catalog.search("VIRTUAL private")).toHaveLength(1);
     expect(catalog.search("vpc")).toHaveLength(1);
     expect(catalog.search("nope")).toHaveLength(0);
+  });
+
+  it("does not match the catalog's own namespace prefix as a search hit", () => {
+    // Every icon's id starts with "ibm-cloud/" (the catalog id) — searching for that word alone
+    // shouldn't match every icon in the catalog by pure id substring.
+    expect(catalog.search("ibm-cloud")).toHaveLength(0);
+  });
+
+  it("ranks exact/prefix name matches above buried substring matches", () => {
+    const manifestTwoIcons: CatalogManifest = {
+      id: "ibm-cloud",
+      version: "1.0.0",
+      categories: [{ id: "network", name: "Network" }],
+      icons: [
+        {
+          id: "ibm-cloud/some-other-gateway-service",
+          name: "Some Other Gateway Service",
+          category: "network",
+          semantic: "node",
+          container: "square",
+          asset: "other",
+          keywords: ["some", "other", "gateway", "service"],
+          tier: "ibm-cloud",
+        },
+        {
+          id: "ibm-cloud/gateway",
+          name: "Gateway",
+          category: "network",
+          semantic: "node",
+          container: "square",
+          asset: "gateway",
+          keywords: ["gateway"],
+          tier: "ibm-cloud",
+        },
+      ],
+    };
+    const ranked = new Catalog(
+      manifestTwoIcons,
+      new Map([
+        ["other", "<rect />"],
+        ["gateway", "<rect />"],
+      ]),
+    ).search("gateway");
+    expect(ranked.map((icon) => icon.id)).toEqual([
+      "ibm-cloud/gateway",
+      "ibm-cloud/some-other-gateway-service",
+    ]);
   });
 
   it("filters by category", () => {

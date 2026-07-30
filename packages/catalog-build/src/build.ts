@@ -18,6 +18,7 @@ import {
 } from "./categories.js";
 import { extractDrawioLibraryIcons } from "./extractDrawioLibrary.js";
 import { normalizeIcon } from "./extract.js";
+import { withKeywordOverrides } from "./keywordOverrides.js";
 import { slugify } from "./slug.js";
 
 const UPSTREAM_REPO = "https://github.com/IBM-Cloud/architecture-icons.git";
@@ -197,14 +198,13 @@ function main() {
       mkdirSync(path.dirname(outPath), { recursive: true });
       writeFileSync(outPath, `${SVG_OPEN_TAG}${optimized}</svg>\n`);
 
-      const keywords = [
-        ...new Set(
-          baseName
-            .toLowerCase()
-            .split(/[^a-z0-9]+/)
-            .filter((w) => w.length > 1),
-        ),
-      ];
+      const keywords = withKeywordOverrides(
+        slug,
+        baseName
+          .toLowerCase()
+          .split(/[^a-z0-9]+/)
+          .filter((w) => w.length > 1),
+      );
 
       icons.push({
         id: `ibm-cloud/${slug}`,
@@ -253,14 +253,13 @@ function main() {
       mkdirSync(path.dirname(outPath), { recursive: true });
       writeFileSync(outPath, `${SVG_OPEN_TAG}${optimized}</svg>\n`);
 
-      const keywords = [
-        ...new Set(
-          title
-            .toLowerCase()
-            .split(/[^a-z0-9]+/)
-            .filter((w) => w.length > 1),
-        ),
-      ];
+      const keywords = withKeywordOverrides(
+        slug,
+        title
+          .toLowerCase()
+          .split(/[^a-z0-9]+/)
+          .filter((w) => w.length > 1),
+      );
 
       icons.push({
         id: `ibm-cloud/${slug}`,
