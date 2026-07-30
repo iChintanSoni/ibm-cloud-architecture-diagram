@@ -1967,17 +1967,6 @@
       "keywords": ["preprod", "service"]
     },
     {
-      "id": "ibm-cloud/process",
-      "name": "Process",
-      "category": "compute",
-      "semantic": "node",
-      "container": "square",
-      "asset": "icons/compute/process.svg",
-      "tier": "ibm-cloud",
-      "color": "#198038",
-      "keywords": ["process"]
-    },
-    {
       "id": "ibm-cloud/process-gray",
       "name": "Process Gray",
       "category": "compute",

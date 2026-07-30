@@ -4,7 +4,7 @@ The catalog is the bundled, offline, versioned set of IBM icons the editor draws
 **generated at build time** from IBM's published stencils ([D11](00-decision-log.md#d11--build-time-icon-conversion-bundled-offline-catalog--locked)).
 
 > **Status:** implemented ([Roadmap M2](09-roadmap.md#m2--icon-catalog-pipeline)).
-> `packages/catalog-build` has generated `packages/catalog/2.0.0` — 242 icons across 11 categories
+> `packages/catalog-build` has generated `packages/catalog/2.0.0` — 241 icons across 11 categories
 > (`ai`, `actors`, `applications`, `compute`, `data`, `devops`, `network`, `observability`,
 > `security`, `storage`, `groups`), pinned at upstream commit `32d9c311b`. A few details below
 > differ from the original design once real icon data was in hand — noted inline.

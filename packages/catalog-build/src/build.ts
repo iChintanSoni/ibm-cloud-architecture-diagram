@@ -143,7 +143,7 @@ function main() {
   );
   const icons: IconMeta[] = [];
   const seenSlugs = new Map<string, string>();
-  let skippedNoBg = 0;
+  let skippedNoContent = 0;
   let skippedDuped = 0;
 
   for (const folder of topFolders) {
@@ -187,7 +187,7 @@ function main() {
       const xml = readFileSync(file.abs, "utf8");
       const normalized = normalizeIcon(xml);
       if (!normalized) {
-        skippedNoBg++;
+        skippedNoContent++;
         continue;
       }
       seenSlugs.set(slug, file.abs);
@@ -316,7 +316,7 @@ function main() {
     `Wrote ${manifest.icons.length} icons across ${categories.length} categories to ${CATALOG_ROOT}`,
   );
   console.log(
-    `Skipped: ${skippedNoBg} without a detectable background tile, ${skippedDuped} duplicate slugs, ` +
+    `Skipped: ${skippedNoContent} with no detectable background tile or no glyph drawn on it, ${skippedDuped} duplicate slugs, ` +
       `${skippedGroupsDuped} Groups-category duplicate slugs.`,
   );
 }

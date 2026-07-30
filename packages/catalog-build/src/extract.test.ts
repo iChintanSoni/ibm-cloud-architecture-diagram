@@ -83,6 +83,19 @@ const NO_BACKGROUND_ARTIFACT = `<?xml version="1.0" encoding="UTF-8"?>
   </g>
 </svg>`;
 
+// Mirrors the real, currently-shipped Compute/Process.svg: unlike its "Process Green"/
+// "Process Gray" siblings, this upstream file has only the colored background tile and no glyph
+// drawn on top of it at all — a background is detected, but nothing is left once it's removed.
+const BACKGROUND_WITH_NO_GLYPH = `<?xml version="1.0" encoding="UTF-8"?>
+<svg width="48px" height="49px" viewBox="0 0 48 49" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <title>Process</title>
+  <g id="V2-Icons" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+    <g id="Process" transform="translate(0.0042, 0.3421)" fill="#198038">
+      <polygon points="0 48 48 48 48 0 0 0"></polygon>
+    </g>
+  </g>
+</svg>`;
+
 describe("normalizeIcon", () => {
   it("extracts the tile color as metadata but leaves the glyph white (D25 — the renderer paints the tile, not the glyph)", () => {
     const result = normalizeIcon(COLORED_SQUARE_TILE);
@@ -133,5 +146,9 @@ describe("normalizeIcon", () => {
 
   it("returns undefined when no canvas-covering background shape is found", () => {
     expect(normalizeIcon(NO_BACKGROUND_ARTIFACT)).toBeUndefined();
+  });
+
+  it("returns undefined when a background tile is found but no glyph is drawn on top of it", () => {
+    expect(normalizeIcon(BACKGROUND_WITH_NO_GLYPH)).toBeUndefined();
   });
 });

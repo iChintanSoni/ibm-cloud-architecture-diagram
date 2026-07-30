@@ -153,7 +153,7 @@ Source: _IBM_IT Architecture diagrams kit_ v1.1, "Connectors" slide, cross-check
 
 The catalog schema is designed for IBM's tiers — IBM (Core), IBM Cloud, IBM Domains/Industries,
 3rd Party — as well as functional category (compute, network, storage, security, data, devops, ai,
-actors, applications, groups). Today's generated catalog tags all 242 icons under a single tier
+actors, applications, groups). Today's generated catalog tags all 241 icons under a single tier
 (`ibm-cloud`); the tier taxonomy isn't populated yet, so the Library panel currently groups by
 category only. See [Icon Catalog](04-icon-catalog.md).
 

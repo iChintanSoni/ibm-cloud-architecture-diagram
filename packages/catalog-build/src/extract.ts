@@ -119,9 +119,12 @@ function clearAncestorTransforms(from: Element, root: Element): void {
 
 /**
  * Re-frames the glyph so it fills the 0..24 viewBox (GLYPH_VIEWBOX) core's renderer expects,
- * replacing whatever transform positioned it inside the original 48x48 canvas.
+ * replacing whatever transform positioned it inside the original 48x48 canvas. Returns false if
+ * no glyph content was found at all (a background-only tile with nothing drawn on top of it) —
+ * a genuine upstream artifact, not a valid icon (see e.g. Compute/Process.svg, which — unlike its
+ * "Process Green"/"Process Gray" siblings — is just the colored tile with no glyph behind it).
  */
-function reframeGlyph(svg: Element): void {
+function reframeGlyph(svg: Element): boolean {
   const hitbox = collectInOrder(svg, new Set(["rect"])).find(
     isTransparentHitbox,
   );
@@ -154,7 +157,7 @@ function reframeGlyph(svg: Element): void {
     }
   }
 
-  if (!frame) return; // no glyph content left (e.g. a flat color tile with no artwork)
+  if (!frame) return false; // no glyph content left (e.g. a flat color tile with no artwork)
 
   clearAncestorTransforms(frame, svg);
   const scale = GLYPH_VIEWBOX / localSize;
@@ -164,6 +167,7 @@ function reframeGlyph(svg: Element): void {
       ? `scale(${scale}) translate(${-offset.x}, ${-offset.y})`
       : `scale(${scale})`,
   );
+  return true;
 }
 
 /**
@@ -174,7 +178,8 @@ function reframeGlyph(svg: Element): void {
  * actor tile, a solid circle) behind the glyph itself, matching how IBM's own icon is
  * constructed, rather than inlining a colored glyph onto a white host container.
  *
- * Returns undefined for files with no detectable background tile (non-icon artifacts).
+ * Returns undefined for files with no detectable background tile, or a background tile with no
+ * glyph drawn on top of it at all — both are non-icon artifacts, not valid icons.
  */
 export function normalizeIcon(xml: string): NormalizedIcon | undefined {
   const dom = new JSDOM();
@@ -201,7 +206,7 @@ export function normalizeIcon(xml: string): NormalizedIcon | undefined {
     bgWrapper.remove();
   }
 
-  reframeGlyph(svg);
+  if (!reframeGlyph(svg)) return undefined;
 
   const color =
     rawColor && !isWhite(rawColor) ? rawColor.toUpperCase() : undefined;

@@ -45,7 +45,7 @@ viewport. There's no drag-and-drop from the Library onto the canvas today.
 ![Library panel filtered to a "database" search, showing category-grouped results](images/library-panel-search.png)
 
 Search filters by id, name, keyword, and alias. Results are grouped by category (Compute, Network,
-Storage, Security, Data, DevOps, AI, Observability, Applications, Actors, Groups — 242 icons
+Storage, Security, Data, DevOps, AI, Observability, Applications, Actors, Groups — 241 icons
 total). The **Containers & frames** section places Box/Group/Boundary/Frame primitives; **Confirmed presets**
 places four curated, IBM-approved container/color combinations (IBM Cloud, Public Network,
 OpenShift, Availability zone).
