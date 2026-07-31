@@ -1,13 +1,25 @@
 import { describe, expect, it } from "vitest";
 import { Scene } from "../scene/scene.js";
 import type {
+  BoxElement,
   ConnectorElement,
   IconNodeElement,
   SceneElement,
 } from "../scene/types.js";
-import { connectorAnchorPoint, connectorPathPoints } from "./routeConnector.js";
+import {
+  connectorAnchorPoint,
+  connectorPathPoints,
+  containerAvoidanceRectsFor,
+  routeConnectorInScene,
+} from "./routeConnector.js";
+import { pathCrossesObstacles } from "./orthogonalRouter.js";
 
-function icon(id: string, x: number, y: number): IconNodeElement {
+function icon(
+  id: string,
+  x: number,
+  y: number,
+  parentId?: string,
+): IconNodeElement {
   return {
     id,
     type: "iconNode",
@@ -17,7 +29,19 @@ function icon(id: string, x: number, y: number): IconNodeElement {
     y,
     w: 48,
     h: 48,
+    parentId,
   };
+}
+
+function box(
+  id: string,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  parentId?: string,
+): BoxElement {
+  return { id, type: "box", semantic: "deployedOn", x, y, w, h, parentId };
 }
 
 function connector(
@@ -140,5 +164,102 @@ describe("connectorPathPoints", () => {
     expect(points[points.length - 1]).toEqual(
       connectorAnchorPoint(scene, "top", "w", "to-top"),
     );
+  });
+});
+
+describe("containerAvoidanceRectsFor", () => {
+  it("excludes a container that's an ancestor of either endpoint", () => {
+    const scene = sceneOf([
+      box("subnet", 0, 0, 200, 200),
+      icon("a", 20, 20, "subnet"),
+      icon("b", 400, 20),
+    ]);
+    expect(containerAvoidanceRectsFor(scene, "a", "b")).toEqual([]);
+  });
+
+  it("excludes a container the connector attaches to directly (endpoint is itself a container)", () => {
+    const scene = sceneOf([box("subnet", 0, 0, 200, 200), icon("b", 400, 20)]);
+    expect(containerAvoidanceRectsFor(scene, "subnet", "b")).toEqual([]);
+  });
+
+  it("excludes a container that's a descendant of an endpoint (endpoint is itself a container)", () => {
+    const scene = sceneOf([
+      box("subnet", 0, 0, 200, 200),
+      box("inner", 20, 20, 100, 100, "subnet"),
+      icon("b", 400, 20),
+    ]);
+    expect(containerAvoidanceRectsFor(scene, "subnet", "b")).toEqual([]);
+  });
+
+  it("includes an unrelated sibling container as a soft obstacle", () => {
+    const scene = sceneOf([
+      box("subnet-a", 0, 0, 200, 200),
+      box("subnet-b", 400, 0, 200, 200),
+      icon("a", 20, 20, "subnet-a"),
+      icon("b", 420, 20, "subnet-b"),
+      box("unrelated", 800, 0, 100, 100),
+    ]);
+    expect(containerAvoidanceRectsFor(scene, "a", "b")).toEqual([
+      { x: 800, y: 0, w: 100, h: 100 },
+    ]);
+  });
+
+  it("excludes a container shared by both endpoints' ancestor chains, but still includes an unrelated sibling nested at the same depth under it", () => {
+    const scene = sceneOf([
+      box("vpc", 0, 0, 1000, 500),
+      box("subnet-a", 0, 0, 200, 200, "vpc"),
+      box("subnet-b", 400, 0, 200, 200, "vpc"),
+      icon("a", 20, 20, "subnet-a"),
+      icon("b", 420, 20, "subnet-b"),
+    ]);
+    // vpc is a shared ancestor (exempt); subnet-a and subnet-b are each an ancestor of one
+    // endpoint (exempt for that connector) -- nothing unrelated remains.
+    expect(containerAvoidanceRectsFor(scene, "a", "b")).toEqual([]);
+
+    const withSibling = sceneOf([
+      box("vpc", 0, 0, 1000, 500),
+      box("subnet-a", 0, 0, 200, 200, "vpc"),
+      box("subnet-b", 400, 0, 200, 200, "vpc"),
+      box("subnet-c", 700, 0, 200, 200, "vpc"),
+      icon("a", 20, 20, "subnet-a"),
+      icon("b", 420, 20, "subnet-b"),
+    ]);
+    expect(containerAvoidanceRectsFor(withSibling, "a", "b")).toEqual([
+      { x: 700, y: 0, w: 200, h: 200 },
+    ]);
+  });
+
+  it("never includes a Frame element regardless of relation", () => {
+    const scene = sceneOf([
+      {
+        id: "frame",
+        type: "frame",
+        semantic: "boundary",
+        x: 0,
+        y: 0,
+        w: 1000,
+        h: 1000,
+      } as SceneElement,
+      icon("a", 20, 20),
+      icon("b", 500, 20),
+    ]);
+    expect(containerAvoidanceRectsFor(scene, "a", "b")).toEqual([]);
+  });
+
+  it("keeps routeConnectorInScene's waypoints clear of an unrelated box's rect", () => {
+    const scene = sceneOf([
+      box("subnet-a", 0, 0, 100, 100),
+      box("subnet-c", 250, 0, 100, 40),
+      box("subnet-b", 0, 300, 100, 100),
+      icon("source", 20, 20, "subnet-a"),
+      icon("target", 20, 320, "subnet-b"),
+      connector("c1", "source", "e", "target", "e"),
+    ]);
+    const conn = scene.get("c1") as ConnectorElement;
+    const waypoints = routeConnectorInScene(scene, conn);
+    const fullPath = connectorPathPoints(scene, { ...conn, waypoints });
+    expect(
+      pathCrossesObstacles(fullPath, [{ x: 250, y: 0, w: 100, h: 40 }]),
+    ).toBe(false);
   });
 });

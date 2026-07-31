@@ -62,6 +62,78 @@ function portGroupsFor(scene: Scene): Map<string, PortSibling[]> {
   return groups;
 }
 
+interface ContainerRect {
+  id: string;
+  rect: Rect;
+}
+
+interface ContainerRectsCacheEntry {
+  mutationCount: number;
+  rects: ContainerRect[];
+}
+
+/** One entry per Scene, invalidated by Scene.mutationCount, mirrors portGroupsCache above. */
+const containerRectsCache = new WeakMap<Scene, ContainerRectsCacheEntry>();
+
+/**
+ * Every Box/Group/Zone in the scene, as a flat cached list, the candidate pool
+ * containerAvoidanceRectsFor filters per connector. Frame is excluded: it's a presentation/
+ * sectioning primitive (D25) that typically spans most of the canvas, so treating it as even a
+ * soft obstacle would penalize nearly every connector for no benefit.
+ */
+function containerRectsFor(scene: Scene): ContainerRect[] {
+  const cached = containerRectsCache.get(scene);
+  if (cached && cached.mutationCount === scene.mutationCount)
+    return cached.rects;
+
+  const rects: ContainerRect[] = [];
+  for (const el of scene.all()) {
+    if (el.type === "box" || el.type === "group" || el.type === "zone") {
+      rects.push({ id: el.id, rect: { x: el.x, y: el.y, w: el.w, h: el.h } });
+    }
+  }
+  containerRectsCache.set(scene, { mutationCount: scene.mutationCount, rects });
+  return rects;
+}
+
+/**
+ * Containers a connector should prefer to route around, but may still cross if that's genuinely
+ * the only reasonable option, distinct from obstaclesFor's hard, never-crossable leaf obstacles.
+ * A container is exempt (never a soft obstacle) for a given connector if it's related to either
+ * endpoint: the endpoint itself, an ancestor of the endpoint (the connector's own containing
+ * box/zone, legitimately crossed per the M4 "connectors routinely cross a box/zone boundary"
+ * decision), or a descendant of the endpoint (the endpoint is itself a container, and this
+ * candidate lives inside it). Everything else is a soft obstacle: an unrelated sibling container
+ * that neither endpoint has anything to do with, which is what actually produced the ugly
+ * cross-diagram routes this was built to fix.
+ *
+ * The descendant case is deliberately checked as ancestorsOf(candidate).includes(endpoint)
+ * rather than descendantsOf(endpoint).includes(candidate): Scene.descendantsOf calls scene.all()
+ * (a full sort) on every BFS step, while Scene.ancestorsOf is a cheap O(depth) walk with no
+ * scene.all() calls at all. Same order-of-magnitude cost class as the O(n^2) bug M22.5 introduced
+ * and fixed in this same file, worth avoiding here from the start.
+ */
+export function containerAvoidanceRectsFor(
+  scene: Scene,
+  fromId: string,
+  toId: string,
+): Rect[] {
+  const fromAncestors = new Set(scene.ancestorsOf(fromId).map((el) => el.id));
+  const toAncestors = new Set(scene.ancestorsOf(toId).map((el) => el.id));
+
+  const isRelated = (containerId: string): boolean => {
+    if (containerId === fromId || containerId === toId) return true;
+    if (fromAncestors.has(containerId) || toAncestors.has(containerId))
+      return true;
+    const candidateAncestors = scene.ancestorsOf(containerId);
+    return candidateAncestors.some((a) => a.id === fromId || a.id === toId);
+  };
+
+  return containerRectsFor(scene)
+    .filter((c) => !isRelated(c.id))
+    .map((c) => c.rect);
+}
+
 /**
  * The point a connector's line actually draws from/to at one of its two ends — `portPoint`'s
  * exact port center, unless 2+ connectors in the scene share that same (element, side), in which
@@ -147,6 +219,7 @@ export function routeConnectorInScene(
   if (!fromEl || !toEl) return connector.waypoints ?? [];
 
   const obstacles = obstaclesFor(scene, new Set([fromEl.id, toEl.id]));
+  const softObstacles = containerAvoidanceRectsFor(scene, fromEl.id, toEl.id);
   const path = routeOrthogonal(
     {
       point: connectorAnchorPoint(
@@ -167,6 +240,7 @@ export function routeConnectorInScene(
       side: connector.to.port,
     },
     obstacles,
+    softObstacles,
   );
   return path.slice(1, -1);
 }

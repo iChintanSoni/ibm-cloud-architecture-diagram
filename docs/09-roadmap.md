@@ -47,7 +47,11 @@ Ship a usable, on-spec human editor in the browser.
   orthogonal (Manhattan) router: obstacle-free where possible, fewest bends, mild west→east bias
   per [Layout convention](05-ibm-spec-conformance.md#layout-convention). Obstacles are leaf shapes
   (icon/actor/text) only — containers are never treated as obstacles, since IBM deployment
-  diagrams routinely cross a box/zone boundary.
+  diagrams routinely cross a box/zone boundary. (M23.1, 2026-07-31) Containers unrelated to
+  either endpoint (not an ancestor/descendant of, or equal to, the endpoint) add a soft routing
+  cost instead — never a hard block, so an unrelated sibling container is avoided when a cheap
+  detour exists but can still be crossed if that's genuinely the only option
+  (`containerAvoidanceRectsFor` in `routeConnector.ts`).
 - Moving or resizing a connected element re-routes its attached `"auto"` connectors as part of the
   same undoable command; `editor.setConnectorWaypoints()` overrides a route manually (switches it
   to `"manual"`, exempt from auto re-routing) and `editor.autoRouteConnector()` reverts it.

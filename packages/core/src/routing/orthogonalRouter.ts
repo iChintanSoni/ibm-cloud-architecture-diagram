@@ -24,6 +24,21 @@ const BACKTRACK_PENALTY = 1.25;
 /** Safety valve: above this many grid nodes, skip obstacle avoidance and return a direct route. */
 const MAX_GRID_NODES = 4000;
 const EPSILON = 0.01;
+/**
+ * Cost added (not blocked) for a segment crossing a soft obstacle's padded interior. 10x
+ * BEND_PENALTY: enough to make the router prefer a 1-3 bend detour around an unrelated container
+ * when one is available nearby, without being so large it distorts routing far from the obstacle.
+ * Tunable; refine by visual inspection of a real multi-container diagram, not by re-deriving this
+ * number analytically.
+ */
+const SOFT_OBSTACLE_PENALTY = 80;
+/**
+ * Soft obstacles farther than this from the route's own start/end stubs are dropped before
+ * building the grid, so a diagram with many containers scattered elsewhere on the canvas can't
+ * blow MAX_GRID_NODES and silently fall back to the crude direct route for connectors that don't
+ * need soft-obstacle avoidance at all.
+ */
+const SOFT_OBSTACLE_RELEVANCE_MARGIN = 150;
 
 function sideDelta(side: PortSide): Point {
   switch (side) {
@@ -209,24 +224,50 @@ function directRoute(from: RoutePort, to: RoutePort): Point[] {
  * Obstacles are expected to be leaf shapes (icons/actors/text) only —
  * containers (box/group/zone/frame) are deliberately not routed around,
  * since IBM deployment diagrams routinely cross a box or zone boundary.
+ *
+ * softObstacles (default none) is a separate, additive channel: rects that add
+ * SOFT_OBSTACLE_PENALTY cost to a crossing segment instead of hard-blocking it, so the router
+ * prefers a detour when one is cheap but still produces a route if crossing is the only option.
+ * Used for containers unrelated to either endpoint (see containerAvoidanceRectsFor in
+ * routeConnector.ts) - unlike the hard obstacles above, crossing one of these is never forbidden,
+ * only discouraged.
  */
 export function routeOrthogonal(
   from: RoutePort,
   to: RoutePort,
   obstacles: Rect[],
+  softObstacles: Rect[] = [],
 ): Point[] {
   const startStub = stubPoint(from, to.point);
   const endStub = stubPoint(to, from.point);
+
+  const relevanceLeft =
+    Math.min(startStub.x, endStub.x) - SOFT_OBSTACLE_RELEVANCE_MARGIN;
+  const relevanceRight =
+    Math.max(startStub.x, endStub.x) + SOFT_OBSTACLE_RELEVANCE_MARGIN;
+  const relevanceTop =
+    Math.min(startStub.y, endStub.y) - SOFT_OBSTACLE_RELEVANCE_MARGIN;
+  const relevanceBottom =
+    Math.max(startStub.y, endStub.y) + SOFT_OBSTACLE_RELEVANCE_MARGIN;
+  const relevantSoft = softObstacles.filter(
+    (r) =>
+      r.x + r.w >= relevanceLeft &&
+      r.x <= relevanceRight &&
+      r.y + r.h >= relevanceTop &&
+      r.y <= relevanceBottom,
+  );
 
   const xs = dedupeSorted([
     startStub.x,
     endStub.x,
     ...obstacles.flatMap((r) => [r.x - PADDING, r.x + r.w + PADDING]),
+    ...relevantSoft.flatMap((r) => [r.x - PADDING, r.x + r.w + PADDING]),
   ]);
   const ys = dedupeSorted([
     startStub.y,
     endStub.y,
     ...obstacles.flatMap((r) => [r.y - PADDING, r.y + r.h + PADDING]),
+    ...relevantSoft.flatMap((r) => [r.y - PADDING, r.y + r.h + PADDING]),
   ]);
 
   if (xs.length * ys.length > MAX_GRID_NODES) {
@@ -283,6 +324,8 @@ export function routeOrthogonal(
       if (n.dir === "H" && bx < ax) cost *= BACKTRACK_PENALTY;
       if (current.dir !== "start" && current.dir !== n.dir)
         cost += BEND_PENALTY;
+      if (relevantSoft.some((r) => segmentCrossesRect(ax, ay, bx, by, r)))
+        cost += SOFT_OBSTACLE_PENALTY;
 
       const nextCost = current.cost + cost;
       const nextKey = stateKey(n.i, n.j, n.dir);
