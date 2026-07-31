@@ -69,6 +69,7 @@ export {
   pathCrossesObstacles,
   type Rect,
   type RoutePort,
+  type SoftObstacle,
 } from "./routing/orthogonalRouter.js";
 export {
   routeConnectorInScene,

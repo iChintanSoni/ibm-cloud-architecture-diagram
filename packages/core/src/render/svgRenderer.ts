@@ -22,6 +22,11 @@ import {
   connectorPathPoints,
 } from "../routing/routeConnector.js";
 import { PRIMARY_TO_SECONDARY_FILL } from "../theme/colorPalette.js";
+import {
+  CONTAINER_GLYPH_INSET,
+  CONTAINER_GLYPH_SIZE,
+  CONTAINER_LABEL_GAP,
+} from "./containerLabel.js";
 import { createSvgElement, setAttrs } from "./dom.js";
 import { portPoint, type Point } from "./port.js";
 import type { ViewportState } from "./viewport.js";
@@ -43,24 +48,6 @@ const GLYPH_VIEWBOX_SIZE = 24;
 /** IBM's own icon glyph renders at 24x24, inset 12px within the 48x48 tile — 1:1 with GLYPH_VIEWBOX_SIZE. */
 const NODE_GLYPH_SIZE = 24;
 const NODE_GLYPH_INSET = (ICON_CONTAINER - NODE_GLYPH_SIZE) / 2;
-
-/**
- * Inset and on-screen size of a container's (box/group/zone) corner glyph from its own top-left
- * corner — an ICAD affordance for confirmed presets (packages/ui-web/src/presets.ts), not a
- * full-tile IBM node icon: IBM's own worked examples render container tabs with no corner icon at
- * all, so this display size isn't itself IBM-specified and is kept at its pre-existing 20x20
- * (scaled down from the shared GLYPH_VIEWBOX_SIZE coordinate space) rather than matched to
- * NODE_GLYPH_SIZE.
- */
-const CONTAINER_GLYPH_INSET = 12;
-const CONTAINER_GLYPH_SIZE = 20;
-/**
- * Horizontal gap between a Group's corner icon and its own label, rendered beside it —
- * confirmed by IBM's own worked examples (IKS_SR_MZ_Classic.svg: Region/Zone/Kubernetes
- * boundary labels sit to the right of their corner glyph, baseline-aligned, not below the
- * boundary), consistent with D24's Box/Boundary corner-glyph convention.
- */
-const CONTAINER_LABEL_GAP = 8;
 
 /**
  * Every container (Box/Group/Zone) carries a short colored accent bar flush on the left edge,

@@ -1,7 +1,28 @@
 import type { Scene } from "../scene/scene.js";
 import type { ConnectorElement, PortSide } from "../scene/types.js";
+import { containerLabelRect } from "../render/containerLabel.js";
 import { portPoint, type Point } from "../render/port.js";
-import { routeOrthogonal, type Rect } from "./orthogonalRouter.js";
+import {
+  routeOrthogonal,
+  type Rect,
+  type SoftObstacle,
+} from "./orthogonalRouter.js";
+
+/**
+ * Cost added (not blocked) for a segment crossing an unrelated container's padded interior. 10x
+ * the router's own BEND_PENALTY: enough to make the router prefer a 1-3 bend detour around an
+ * unrelated container when one is available nearby, without being so large it distorts routing
+ * far from the obstacle. Tunable; refine by visual inspection of a real multi-container diagram,
+ * not by re-deriving this number analytically.
+ */
+const CONTAINER_SOFT_OBSTACLE_PENALTY = 80;
+/**
+ * Cost added for a segment crossing a container's own label footprint (see
+ * containerLabelRectsFor below) — roughly 2.5x CONTAINER_SOFT_OBSTACLE_PENALTY, reflecting that
+ * cutting through literal text is a stronger visual defect than crossing a plain unrelated
+ * container's empty interior, so it's worth a larger detour to avoid. Tunable, same as above.
+ */
+const LABEL_SOFT_OBSTACLE_PENALTY = 200;
 
 /**
  * Fraction of an element's own side length available for spreading multiple connectors that
@@ -134,6 +155,43 @@ export function containerAvoidanceRectsFor(
     .map((c) => c.rect);
 }
 
+interface LabelRectsCacheEntry {
+  mutationCount: number;
+  rects: Rect[];
+}
+
+/** One entry per Scene, invalidated by Scene.mutationCount, mirrors containerRectsCache above. */
+const labelRectsCache = new WeakMap<Scene, LabelRectsCacheEntry>();
+
+/**
+ * Every Box/Group/Zone's own label footprint (containerLabelRect), as a soft obstacle every
+ * connector should prefer to avoid — unlike containerAvoidanceRectsFor, applied with no
+ * relatedness exemption at all: even a connector's own legitimately-entered ancestor container's
+ * label is worth avoiding, since crossing literal text is a visual defect regardless of whether
+ * the crossing itself is otherwise legitimate per M4. That also means this list doesn't depend on
+ * which connector is asking, so (unlike containerAvoidanceRectsFor) it's the same for every
+ * connector in the scene and cacheable without a per-connector key.
+ *
+ * Frame is excluded by construction (filtered out before containerLabelRect is ever called, same
+ * as containerRectsFor above) - it titles itself via a separate `name` field through its own
+ * render path, never `.label`, so it has no label footprint to protect even if a `.label` were
+ * hand-set on one via raw .icad JSON.
+ */
+export function containerLabelRectsFor(scene: Scene): Rect[] {
+  const cached = labelRectsCache.get(scene);
+  if (cached && cached.mutationCount === scene.mutationCount)
+    return cached.rects;
+
+  const rects = containerRectsFor(scene)
+    .map((c) => scene.get(c.id))
+    .filter((el): el is NonNullable<typeof el> => el !== undefined)
+    .map((el) => containerLabelRect(el))
+    .filter((r): r is Rect => r !== undefined);
+
+  labelRectsCache.set(scene, { mutationCount: scene.mutationCount, rects });
+  return rects;
+}
+
 /**
  * The point a connector's line actually draws from/to at one of its two ends — `portPoint`'s
  * exact port center, unless 2+ connectors in the scene share that same (element, side), in which
@@ -219,7 +277,16 @@ export function routeConnectorInScene(
   if (!fromEl || !toEl) return connector.waypoints ?? [];
 
   const obstacles = obstaclesFor(scene, new Set([fromEl.id, toEl.id]));
-  const softObstacles = containerAvoidanceRectsFor(scene, fromEl.id, toEl.id);
+  const softObstacles: SoftObstacle[] = [
+    ...containerAvoidanceRectsFor(scene, fromEl.id, toEl.id).map((rect) => ({
+      rect,
+      penalty: CONTAINER_SOFT_OBSTACLE_PENALTY,
+    })),
+    ...containerLabelRectsFor(scene).map((rect) => ({
+      rect,
+      penalty: LABEL_SOFT_OBSTACLE_PENALTY,
+    })),
+  ];
   const path = routeOrthogonal(
     {
       point: connectorAnchorPoint(

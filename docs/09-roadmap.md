@@ -51,7 +51,14 @@ Ship a usable, on-spec human editor in the browser.
   either endpoint (not an ancestor/descendant of, or equal to, the endpoint) add a soft routing
   cost instead — never a hard block, so an unrelated sibling container is avoided when a cheap
   detour exists but can still be crossed if that's genuinely the only option
-  (`containerAvoidanceRectsFor` in `routeConnector.ts`).
+  (`containerAvoidanceRectsFor` in `routeConnector.ts`). (M23.2, 2026-07-31) The soft-obstacle
+  channel is now generic (`SoftObstacle { rect, penalty }`, `orthogonalRouter.ts`) rather than
+  container-specific, so a second, independent producer can share the same mechanism: every
+  container's own label footprint (`containerLabelRect`, `render/containerLabel.ts` — a heuristic
+  estimate, since no real text measurement exists anywhere in this headless-capable core) is a
+  soft obstacle for every connector with no relatedness exemption, unlike the unrelated-container
+  case above — even a connector's own legitimately-entered ancestor container's label is worth
+  avoiding.
 - Moving or resizing a connected element re-routes its attached `"auto"` connectors as part of the
   same undoable command; `editor.setConnectorWaypoints()` overrides a route manually (switches it
   to `"manual"`, exempt from auto re-routing) and `editor.autoRouteConnector()` reverts it.

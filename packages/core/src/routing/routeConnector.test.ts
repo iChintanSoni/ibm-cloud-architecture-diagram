@@ -6,10 +6,12 @@ import type {
   IconNodeElement,
   SceneElement,
 } from "../scene/types.js";
+import { containerLabelRect } from "../render/containerLabel.js";
 import {
   connectorAnchorPoint,
   connectorPathPoints,
   containerAvoidanceRectsFor,
+  containerLabelRectsFor,
   routeConnectorInScene,
 } from "./routeConnector.js";
 import { pathCrossesObstacles } from "./orthogonalRouter.js";
@@ -40,8 +42,19 @@ function box(
   w: number,
   h: number,
   parentId?: string,
+  label?: string,
 ): BoxElement {
-  return { id, type: "box", semantic: "deployedOn", x, y, w, h, parentId };
+  return {
+    id,
+    type: "box",
+    semantic: "deployedOn",
+    x,
+    y,
+    w,
+    h,
+    parentId,
+    label: label !== undefined ? { text: label } : undefined,
+  };
 }
 
 function connector(
@@ -261,5 +274,76 @@ describe("containerAvoidanceRectsFor", () => {
     expect(
       pathCrossesObstacles(fullPath, [{ x: 250, y: 0, w: 100, h: 40 }]),
     ).toBe(false);
+  });
+});
+
+describe("containerLabelRectsFor", () => {
+  it("is empty for an unlabeled box", () => {
+    const scene = sceneOf([box("b1", 0, 0, 200, 100)]);
+    expect(containerLabelRectsFor(scene)).toEqual([]);
+  });
+
+  it("includes a labeled box's own label rect even though it's an ancestor of a connector's endpoint", () => {
+    // Contrast with containerAvoidanceRectsFor: that function exempts a box that's an ancestor of
+    // one of the connector's endpoints (legitimately crossed per M4). Label avoidance has no such
+    // exemption - it applies to every labeled container regardless of relatedness.
+    const scene = sceneOf([
+      box("subnet", 0, 0, 200, 200, undefined, "Auto Scale Group"),
+      icon("a", 20, 20, "subnet"),
+      icon("b", 400, 20),
+    ]);
+    const subnet = scene.get("subnet")!;
+    expect(containerAvoidanceRectsFor(scene, "a", "b")).toEqual([]);
+    expect(containerLabelRectsFor(scene)).toEqual([containerLabelRect(subnet)]);
+  });
+
+  it("is empty for a Frame with a label hand-set on it", () => {
+    const scene = sceneOf([
+      {
+        id: "frame",
+        type: "frame",
+        semantic: "boundary",
+        name: "My Frame",
+        order: 0,
+        x: 0,
+        y: 0,
+        w: 1000,
+        h: 1000,
+        label: { text: "stray label" },
+      } as SceneElement,
+    ]);
+    expect(containerLabelRectsFor(scene)).toEqual([]);
+  });
+
+  it("updates once the scene changes (cache invalidates on mutation)", () => {
+    const scene = sceneOf([box("b1", 0, 0, 200, 100, undefined, "Subnet")]);
+    expect(containerLabelRectsFor(scene)).toHaveLength(1);
+
+    scene._put(box("b2", 300, 0, 200, 100, undefined, "Another Subnet"));
+    expect(containerLabelRectsFor(scene)).toHaveLength(2);
+  });
+
+  it("keeps a connector legitimately entering its own target's ancestor from crossing that ancestor's label", () => {
+    // Reconstruction of the actual dogfooding bug: a Load-Balancer-like source outside an
+    // "Auto Scale Group" box connects to a target inside it. The connector must legitimately
+    // enter the box (M4), but shouldn't cross the box's own label doing so.
+    const scene = sceneOf([
+      box("group", 300, 0, 400, 200, undefined, "Auto Scale Group"),
+      icon("source", 0, 20),
+      icon("target", 340, 40, "group"),
+      connector("c1", "source", "e", "target", "w"),
+    ]);
+    const conn = scene.get("c1") as ConnectorElement;
+    const waypoints = routeConnectorInScene(scene, conn);
+    const fullPath = connectorPathPoints(scene, { ...conn, waypoints });
+    const labelRect = containerLabelRect(scene.get("group")!)!;
+
+    expect(pathCrossesObstacles(fullPath, [labelRect])).toBe(false);
+    // Proves the fix stayed scoped to the label strip, not a regression into hard-avoiding the
+    // whole container (which would violate M4) - some point of the path still falls inside the
+    // group's general bounds, since the connector legitimately terminates there.
+    expect(
+      fullPath.some((p) => p.x >= 300 && p.x <= 700 && p.y >= 0 && p.y <= 200),
+    ).toBe(true);
   });
 });
