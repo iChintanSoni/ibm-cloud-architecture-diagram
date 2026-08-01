@@ -31,6 +31,16 @@ const LABEL_SOFT_OBSTACLE_PENALTY = 200;
  * side, not to a corner.
  */
 const PORT_FAN_SPAN_RATIO = 0.6;
+/**
+ * Minimum pixel gap enforced between adjacent connectors fanned along the same (element, side) —
+ * PORT_FAN_SPAN_RATIO alone divides a fixed span more finely as sibling count grows, so it gets
+ * *tighter* with more connectors sharing a side, backwards from what's needed. Arrowhead markers
+ * render at 7x7px (svgRenderer.ts's marker defs); 16px clears a marker's own width plus a real
+ * gap, so two arrowheads read as distinct rather than merging into what looks like one thick or
+ * doubled line. Tunable; refine by visual inspection of a real fan-out/fan-in diagram, not by
+ * re-deriving this number analytically.
+ */
+const MIN_PORT_SEPARATION_PX = 16;
 
 interface PortSibling {
   connectorId: string;
@@ -239,7 +249,9 @@ export function connectorAnchorPoint(
   if (index === -1) return base;
 
   const fraction = (index + 1) / (ordered.length + 1);
-  const span = (spreadOnY ? el.h : el.w) * PORT_FAN_SPAN_RATIO;
+  const ratioSpan = (spreadOnY ? el.h : el.w) * PORT_FAN_SPAN_RATIO;
+  const minSpan = MIN_PORT_SEPARATION_PX * (ordered.length + 1);
+  const span = Math.max(ratioSpan, minSpan);
   const delta = (fraction - 0.5) * span;
   return spreadOnY
     ? { x: base.x, y: base.y + delta }

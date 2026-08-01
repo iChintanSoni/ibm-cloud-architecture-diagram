@@ -122,6 +122,56 @@ describe("connectorAnchorPoint", () => {
     expect(toTop.y + toBottom.y).toBeCloseTo(248, 5);
   });
 
+  it("guarantees a minimum separation on a typical 48px icon (M23.3 - the ratio alone gives ~9.6px here)", () => {
+    const scene = sceneOf([
+      icon("source", 0, 100),
+      icon("top", 300, 0),
+      icon("bottom", 300, 300),
+      connector("to-top", "source", "e", "top", "w"),
+      connector("to-bottom", "source", "e", "bottom", "w"),
+    ]);
+    const toTop = connectorAnchorPoint(scene, "source", "e", "to-top");
+    const toBottom = connectorAnchorPoint(scene, "source", "e", "to-bottom");
+
+    expect(toBottom.y - toTop.y).toBeGreaterThanOrEqual(16);
+  });
+
+  it("holds the minimum separation pairwise for 3 siblings, not just for 2", () => {
+    const scene = sceneOf([
+      icon("source", 0, 100),
+      icon("a", 300, 0),
+      icon("b", 300, 150),
+      icon("c", 300, 300),
+      connector("to-a", "source", "e", "a", "w"),
+      connector("to-b", "source", "e", "b", "w"),
+      connector("to-c", "source", "e", "c", "w"),
+    ]);
+    const ys = [
+      connectorAnchorPoint(scene, "source", "e", "to-a").y,
+      connectorAnchorPoint(scene, "source", "e", "to-b").y,
+      connectorAnchorPoint(scene, "source", "e", "to-c").y,
+    ].sort((a, b) => a - b);
+
+    expect(ys[1]! - ys[0]!).toBeGreaterThanOrEqual(16);
+    expect(ys[2]! - ys[1]!).toBeGreaterThanOrEqual(16);
+  });
+
+  it("doesn't shrink an already-generous ratio-based spread on a large element", () => {
+    const scene = sceneOf([
+      { ...icon("source", 0, 0), w: 48, h: 500 },
+      icon("top", 300, 0),
+      icon("bottom", 300, 400),
+      connector("to-top", "source", "e", "top", "w"),
+      connector("to-bottom", "source", "e", "bottom", "w"),
+    ]);
+    const toTop = connectorAnchorPoint(scene, "source", "e", "to-top");
+    const toBottom = connectorAnchorPoint(scene, "source", "e", "to-bottom");
+
+    // Ratio-based: span = 500*0.6 = 300, gap = 300/3 = 100 - well above the 16px floor, so the
+    // floor must not kick in and shrink this back down.
+    expect(toBottom.y - toTop.y).toBeCloseTo(100, 0);
+  });
+
   it("leaves a non-directional (center) port untouched even when shared", () => {
     const scene = sceneOf([
       icon("source", 0, 100),

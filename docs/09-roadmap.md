@@ -58,7 +58,12 @@ Ship a usable, on-spec human editor in the browser.
   estimate, since no real text measurement exists anywhere in this headless-capable core) is a
   soft obstacle for every connector with no relatedness exemption, unlike the unrelated-container
   case above — even a connector's own legitimately-entered ancestor container's label is worth
-  avoiding.
+  avoiding. (M23.3, 2026-08-01) The `PORT_FAN_SPAN_RATIO` spread that keeps multiple connectors
+  sharing one (element, side) from stacking on the same point now has a `MIN_PORT_SEPARATION_PX =
+16` floor as well — the ratio alone divides a fixed span more finely as sibling count grows, so
+  it got _tighter_ with more connectors on a side, and on a typical 48px icon with 2 siblings
+  worked out to under 10px, barely clearing a single 7x7px arrowhead marker's own width before the
+  next one started.
 - Moving or resizing a connected element re-routes its attached `"auto"` connectors as part of the
   same undoable command; `editor.setConnectorWaypoints()` overrides a route manually (switches it
   to `"manual"`, exempt from auto re-routing) and `editor.autoRouteConnector()` reverts it.
