@@ -1,4 +1,4 @@
-import { isContainer, type SceneElement } from "@icad/core";
+import { isContainer, type ElementId, type SceneElement } from "@icad/core";
 
 export interface LayerNode {
   element: SceneElement;
@@ -59,10 +59,30 @@ export function buildLayerTree(elements: SceneElement[]): LayerNode[] {
   return roots;
 }
 
-export function elementDisplayName(element: SceneElement): string {
+/**
+ * `elementsById`, when given, lets an unlabeled connector fall back through `annotation.name` and
+ * then `"{from} → {to}"` instead of a generic "Untitled connector" — a connector with neither field
+ * set (common for one drawn by hand rather than via `connect()`'s `label`/`annotation` options)
+ * otherwise renders identically to every other unlabeled connector (F3, docs/09-roadmap.md M18).
+ * A connector's own `.label.text` (e.g. "HTTPS") still takes priority, same as any other element
+ * type, unchanged from before. Omitting `elementsById` preserves the old behavior exactly for
+ * callers with no convenient full-scene lookup on hand.
+ */
+export function elementDisplayName(
+  element: SceneElement,
+  elementsById?: Map<ElementId, SceneElement>,
+): string {
   if (element.type === "text") return element.text.trim() || "Untitled text";
   if (element.type === "frame") return element.name.trim() || "Untitled frame";
   if (element.label?.text.trim()) return element.label.text.trim();
+  if (element.type === "connector") {
+    if (element.annotation?.name.trim()) return element.annotation.name.trim();
+    const from = elementsById?.get(element.from.elementId);
+    const to = elementsById?.get(element.to.elementId);
+    if (from && to)
+      return `${elementDisplayName(from, elementsById)} → ${elementDisplayName(to, elementsById)}`;
+    return "Untitled connector";
+  }
   if ("catalogRef" in element && element.catalogRef)
     return element.catalogRef.split("/").at(-1) ?? element.catalogRef;
   return `Untitled ${element.type}`;

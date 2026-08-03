@@ -1,4 +1,4 @@
-import type { BoxElement, SceneElement } from "@icad/core";
+import type { BoxElement, ConnectorElement, SceneElement } from "@icad/core";
 import { describe, expect, it } from "vitest";
 import {
   buildLayerTree,
@@ -17,6 +17,27 @@ function box(id: string, parentId?: string, label?: string): BoxElement {
     h: 60,
     ...(parentId ? { parentId } : {}),
     ...(label ? { label: { text: label } } : {}),
+  };
+}
+
+function connector(
+  id: string,
+  from: string,
+  to: string,
+  opts: Partial<ConnectorElement> = {},
+): ConnectorElement {
+  return {
+    id,
+    type: "connector",
+    semantic: "node",
+    x: 0,
+    y: 0,
+    w: 0,
+    h: 0,
+    from: { elementId: from, port: "e" },
+    to: { elementId: to, port: "w" },
+    connectorType: "association",
+    ...opts,
   };
 }
 
@@ -88,5 +109,49 @@ describe("inspector model", () => {
         h: 20,
       }),
     ).toBe("Notes");
+  });
+
+  describe("connector display names (F3, M24.3)", () => {
+    it("prefers the connector's own label over annotation.name or from/to", () => {
+      const a = box("a");
+      const b = box("b");
+      const conn = connector("conn", "a", "b", {
+        label: { text: "HTTPS" },
+        annotation: { name: "Some Protocol" },
+      });
+      const byId = new Map([a, b, conn].map((el) => [el.id, el]));
+
+      expect(elementDisplayName(conn, byId)).toBe("HTTPS");
+    });
+
+    it("falls back to annotation.name when there's no label", () => {
+      const conn = connector("conn", "a", "b", {
+        annotation: { name: "HTTPS/443" },
+      });
+
+      expect(elementDisplayName(conn)).toBe("HTTPS/443");
+    });
+
+    it("falls back to '{from} → {to}' when elementsById is given and neither label nor annotation.name is set", () => {
+      const a = box("a", undefined, "Load Balancer");
+      const b = box("b", undefined, "VSI 1");
+      const conn = connector("conn", "a", "b");
+      const byId = new Map([a, b, conn].map((el) => [el.id, el]));
+
+      expect(elementDisplayName(conn, byId)).toBe("Load Balancer → VSI 1");
+    });
+
+    it("falls back to 'Untitled connector' when elementsById is omitted (backward compatible)", () => {
+      const conn = connector("conn", "a", "b");
+
+      expect(elementDisplayName(conn)).toBe("Untitled connector");
+    });
+
+    it("falls back to 'Untitled connector' when elementsById doesn't resolve the endpoints", () => {
+      const conn = connector("conn", "a", "b");
+      const byId = new Map<string, SceneElement>([[conn.id, conn]]);
+
+      expect(elementDisplayName(conn, byId)).toBe("Untitled connector");
+    });
   });
 });

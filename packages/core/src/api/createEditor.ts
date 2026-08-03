@@ -976,7 +976,7 @@ export class Editor {
   }
 
   /** Pans/zooms only if `id` isn't already fully inside the current viewport, to avoid jarring re-centering. */
-  private ensureVisible(id: ElementId): void {
+  ensureVisible(id: ElementId): void {
     const bbox = this.boundsOf([id]);
     if (!bbox) return;
     const { x, y, scale } = this.viewport.get();

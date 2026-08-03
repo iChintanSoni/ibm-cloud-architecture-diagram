@@ -966,7 +966,17 @@ space-drag/middle-drag panning.
 🟡 **In progress** — M18.1 (z-order), M18.2 (align), and M18.3 (distribute) landed; lock/hide and
 the interactive Layers tab remain as their own sub-milestones. Its stated blocker ("M15's DOM
 reordering") had already shipped back when M16 landed, so this was actually unblocked before work
-started.
+started. (M24.3, 2026-08-04) The Layers tab itself (lock/hide toggles, hierarchy, selection) was
+already built and working by the time of `apps/web` dogfooding, ahead of this section being updated
+— found two real bugs in it there: `elementDisplayName` (`packages/ui-web/src/inspectorModel.ts`)
+had no connector-specific case, so nearly every connector showed as generic "Untitled connector"
+(connectors carry their descriptive text in `annotation.name`, rarely set, not the generic `.label`
+most other element types use — though `.label` still wins first when a connector does have one, e.g.
+a "HTTPS" caption, unchanged from before); fixed with an `elementsById`-driven fallback to
+`"{from} → {to}"`. Separately, selecting a connector via the Layers tab never panned the canvas —
+`Editor.ensureVisible` (pan/zoom-to-fit only if not already in view) already existed and was already
+paired with `focusElement` by keyboard Tab-navigation, just never exposed/called from this surface;
+made it public and wired it into the Layers-panel select handler in `apps/web/App.tsx`.
 
 Z-order, 6-way align, distribute, lock/hide, and an interactive Layers tab.
 

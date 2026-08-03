@@ -142,11 +142,13 @@ function labelForType(type: SceneElement["type"]): string {
 
 function LayerBranch({
   node,
+  elementsById,
   onSelect,
   onToggleLock,
   onToggleHide,
 }: {
   node: LayerNode;
+  elementsById: Map<ElementId, SceneElement>;
   onSelect: (id: ElementId) => void;
   onToggleLock: (id: ElementId) => void;
   onToggleHide: (id: ElementId) => void;
@@ -159,7 +161,7 @@ function LayerBranch({
       isExpanded={node.children.length > 0}
       label={
         <span className="icad-layers__label">
-          <span>{elementDisplayName(element)}</span>
+          <span>{elementDisplayName(element, elementsById)}</span>
           <small>{labelForType(element.type)}</small>
           <span className="icad-layers__actions">
             <button
@@ -197,6 +199,7 @@ function LayerBranch({
         <LayerBranch
           key={child.element.id}
           node={child}
+          elementsById={elementsById}
           onSelect={onSelect}
           onToggleLock={onToggleLock}
           onToggleHide={onToggleHide}
@@ -221,12 +224,14 @@ function commitNumber(
 function ElementProperties({
   element,
   elements,
+  elementsById,
   onUpdate,
   onReparent,
   onResetConnectorRouting,
 }: {
   element: SceneElement;
   elements: SceneElement[];
+  elementsById: Map<ElementId, SceneElement>;
   onUpdate: InspectorPanelProps["onUpdate"];
   onReparent: InspectorPanelProps["onReparent"];
   onResetConnectorRouting?: InspectorPanelProps["onResetConnectorRouting"];
@@ -259,7 +264,7 @@ function ElementProperties({
       <div className="icad-properties__identity">
         <div>
           <span className="icad-eyebrow">Selected element</span>
-          <h2>{elementDisplayName(element)}</h2>
+          <h2>{elementDisplayName(element, elementsById)}</h2>
         </div>
         <Tag type="blue">{labelForType(element.type)}</Tag>
       </div>
@@ -714,6 +719,9 @@ export function InspectorPanel({
       ? elements.find((element) => element.id === selectedIds[0])
       : undefined;
   const layers = buildLayerTree(elements);
+  const elementsById = new Map(
+    elements.map((element) => [element.id, element]),
+  );
 
   return (
     <aside className="icad-inspector" aria-label="Diagram inspector">
@@ -730,6 +738,7 @@ export function InspectorPanel({
               <ElementProperties
                 element={selected}
                 elements={elements}
+                elementsById={elementsById}
                 onUpdate={onUpdate}
                 onReparent={onReparent}
                 onResetConnectorRouting={onResetConnectorRouting}
@@ -755,6 +764,7 @@ export function InspectorPanel({
                   <LayerBranch
                     key={node.element.id}
                     node={node}
+                    elementsById={elementsById}
                     onSelect={onSelect}
                     onToggleLock={onToggleLockElement}
                     onToggleHide={onToggleHideElement}

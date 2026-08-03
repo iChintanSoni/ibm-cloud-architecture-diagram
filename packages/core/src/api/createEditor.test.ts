@@ -780,6 +780,24 @@ describe("createEditor", () => {
       expect(state.x).toBeGreaterThan(0);
     });
 
+    it("ensureVisible pans the viewport for an off-screen element (Layers-panel selection, M24.3)", () => {
+      const before = editor.viewport.get();
+      const id = editor.addBox({ at: { x: 5000, y: 5000 }, label: "far away" });
+
+      editor.ensureVisible(id);
+
+      expect(editor.viewport.get()).not.toEqual(before);
+    });
+
+    it("ensureVisible is a no-op for an element already fully in view", () => {
+      const id = editor.addBox({ at: { x: 0, y: 0 }, label: "box" });
+      const before = editor.viewport.get();
+
+      editor.ensureVisible(id);
+
+      expect(editor.viewport.get()).toEqual(before);
+    });
+
     it("nudges every given element by the same delta, undoably", () => {
       const id = editor.addBox({ at: { x: 10, y: 10 }, label: "box" });
       editor.nudgeElements([id], 5, -5);

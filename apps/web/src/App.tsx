@@ -89,7 +89,7 @@ function formatClipboardAnnouncement(
   action: "copy" | "cut" | "paste" | "duplicate",
   elements: SceneElement[],
 ): string {
-  const names = elements.map(elementDisplayName);
+  const names = elements.map((element) => elementDisplayName(element));
   const verb = CLIPBOARD_VERBS[action];
   return names.length === 1
     ? `${names[0]} ${verb}`
@@ -99,7 +99,7 @@ function formatClipboardAnnouncement(
 /** Shared with the context menu's own Delete item (M16.6), which calls Editor.deleteElements
  * directly rather than through CanvasController's own keyboard path. */
 function formatDeletedAnnouncement(elements: SceneElement[]): string {
-  const names = elements.map(elementDisplayName);
+  const names = elements.map((element) => elementDisplayName(element));
   return names.length === 1
     ? `${names[0]} deleted`
     : `${names.length} elements deleted`;
@@ -1500,7 +1500,13 @@ export function App() {
             onJumpToFrame={onJumpToFrame}
             onTogglePresent={onTogglePresent}
             onPresentStep={stepPresentation}
-            onSelect={(id) => editorRef.current?.selection.set([id])}
+            onSelect={(id) => {
+              const editor = editorRef.current;
+              if (!editor) return;
+              editor.selection.set([id]);
+              editor.focusElement(id);
+              editor.ensureVisible(id);
+            }}
             onUpdate={(id: ElementId, patch: ElementPropertiesPatch) =>
               editorRef.current?.updateElementProperties(id, patch)
             }
