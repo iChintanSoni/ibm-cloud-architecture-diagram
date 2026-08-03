@@ -388,6 +388,15 @@ over stdio, so "agents and humans drive one engine" per D2/D15
    `connect_nearest` → `lint` → `quickfix_apply_all` → `export_diagram` → `doc_save`, then reopened
    in a _second_, independent subprocess via `doc_open` to confirm the round-trip is real, not just
    in-memory.
+7. `scene_apply` (M23.4, 2026-08-03): a batch tool accepting an array of add/connect operations,
+   applied as one call and one undo step — a dogfooding session found building one realistic
+   diagram needed 26 separate `element_add_*`/`connect*` round-trips, since call count scaled
+   linearly with diagram size. `Editor.applyBatch` (`core/api/createEditor.ts`) validates every op
+   against a disposable scratch `Scene` (seeded from the real one) before touching the real scene or
+   dispatching anything — all-or-nothing, with every failing op reported, not just the first — so a
+   connect op can reference an element added earlier in the same batch (needs an explicit id to be
+   referenced that way) without risking a partially-applied, un-undoable batch if a later op turns
+   out invalid.
 
 **Deferred, explicitly** (not silently dropped):
 

@@ -94,7 +94,7 @@ export interface CreateEditorOptions {
   theme?: CanvasSettings["theme"];
 }
 
-interface PlacementOptions {
+export interface PlacementOptions {
   id?: ElementId;
   at: { x: number; y: number };
   w?: number;
@@ -103,18 +103,64 @@ interface PlacementOptions {
   label?: string;
 }
 
-interface ContainerPlacementOptions extends PlacementOptions {
+export interface ContainerPlacementOptions extends PlacementOptions {
   catalogRef?: string;
   style?: Style;
 }
 
-interface FramePlacementOptions extends Omit<
+export interface FramePlacementOptions extends Omit<
   PlacementOptions,
   "label" | "parentId"
 > {
   name: string;
   order?: number;
 }
+
+/** Editor.connect's options shape, extracted so it's shareable with connectNearest and applyBatch. */
+export interface ConnectOptions {
+  connectorType?: ConnectorType;
+  direction?: ConnectorDirection;
+  flowColor?: FlowColor;
+  cardinality?: EndpointLabels;
+  sequence?: string;
+  annotation?: ConnectorAnnotation;
+  label?: string;
+  id?: ElementId;
+}
+
+/** One operation in an Editor.applyBatch() call — see that method's doc comment. */
+export type BatchOperation =
+  | ({ kind: "add_box" } & ContainerPlacementOptions)
+  | ({ kind: "add_group" } & ContainerPlacementOptions)
+  | ({ kind: "add_zone" } & ContainerPlacementOptions & { zoneKind?: ZoneKind })
+  | ({ kind: "add_actor" } & PlacementOptions & { catalogRef?: string })
+  | ({ kind: "add_icon"; catalogRef: string } & PlacementOptions)
+  | ({ kind: "add_text" } & Omit<PlacementOptions, "label"> & { text: string })
+  | ({ kind: "add_frame" } & FramePlacementOptions)
+  | ({ kind: "connect"; from: PortRef; to: PortRef } & ConnectOptions)
+  | ({
+      kind: "connect_nearest";
+      fromId: ElementId;
+      toId: ElementId;
+    } & ConnectOptions);
+
+export interface BatchOpResult {
+  index: number;
+  kind: BatchOperation["kind"];
+  id: ElementId;
+}
+
+export interface BatchOpError {
+  index: number;
+  kind: BatchOperation["kind"];
+  /** Present only if the op declared an explicit id. */
+  id?: ElementId;
+  message: string;
+}
+
+export type BatchResult =
+  | { applied: true; results: BatchOpResult[] }
+  | { applied: false; errors: BatchOpError[] };
 
 export interface ExportOptions {
   format: "svg" | "png";
@@ -189,6 +235,245 @@ export class ExportBlockedError extends Error {
 }
 
 const DEFAULT_CONTAINER_SIZE = { w: 240, h: 160 };
+
+/**
+ * Pure element builders, one per addX()/connect() method below — each extracted so the same
+ * construction logic can be shared with Editor.applyBatch (which needs to build elements without
+ * dispatching them individually, see applyBatch's own doc comment) without duplicating it. Every
+ * addX()/connect() method itself becomes "build, then dispatch(addElement(...))" — behavior is
+ * unchanged, this is purely a lift of the existing object-literal construction into a named
+ * function. buildFrameElement is the one exception that takes a Scene explicitly (order's default
+ * reads existing frame orders) rather than defaulting from `this.scene` implicitly, so it gives
+ * correct distinct orders when called against a batch's scratch scene too.
+ */
+function buildIconElement(
+  catalog: Catalog,
+  catalogRef: string,
+  opts: PlacementOptions,
+): IconNodeElement {
+  const meta = catalog.resolve(catalogRef);
+  if (!meta) throw new Error(`Unknown catalog icon: "${catalogRef}"`);
+  const id = opts.id ?? generateId("icon");
+  return {
+    id,
+    type: "iconNode",
+    semantic: "node",
+    catalogRef,
+    x: opts.at.x,
+    y: opts.at.y,
+    w: 48,
+    h: 48,
+    ...(opts.parentId ? { parentId: opts.parentId } : {}),
+    ...(opts.label ? { label: { text: opts.label } } : {}),
+  };
+}
+
+function buildBoxElement(opts: ContainerPlacementOptions): BoxElement {
+  const id = opts.id ?? generateId("box");
+  return {
+    id,
+    type: "box",
+    semantic: "deployedOn",
+    x: opts.at.x,
+    y: opts.at.y,
+    w: opts.w ?? DEFAULT_CONTAINER_SIZE.w,
+    h: opts.h ?? DEFAULT_CONTAINER_SIZE.h,
+    ...(opts.catalogRef ? { catalogRef: opts.catalogRef } : {}),
+    ...(opts.style ? { style: opts.style } : {}),
+    ...(opts.parentId ? { parentId: opts.parentId } : {}),
+    ...(opts.label ? { label: { text: opts.label } } : {}),
+  };
+}
+
+function buildGroupElement(opts: ContainerPlacementOptions): GroupElement {
+  const id = opts.id ?? generateId("group");
+  return {
+    id,
+    type: "group",
+    semantic: "deployedTo",
+    x: opts.at.x,
+    y: opts.at.y,
+    w: opts.w ?? DEFAULT_CONTAINER_SIZE.w,
+    h: opts.h ?? DEFAULT_CONTAINER_SIZE.h,
+    ...(opts.catalogRef ? { catalogRef: opts.catalogRef } : {}),
+    ...(opts.style ? { style: opts.style } : {}),
+    ...(opts.parentId ? { parentId: opts.parentId } : {}),
+    ...(opts.label ? { label: { text: opts.label } } : {}),
+  };
+}
+
+function buildZoneElement(
+  opts: ContainerPlacementOptions & { zoneKind?: ZoneKind },
+): ZoneElement {
+  const id = opts.id ?? generateId("zone");
+  return {
+    id,
+    type: "zone",
+    semantic: "boundary",
+    zoneKind: opts.zoneKind ?? "az",
+    x: opts.at.x,
+    y: opts.at.y,
+    w: opts.w ?? DEFAULT_CONTAINER_SIZE.w,
+    h: opts.h ?? DEFAULT_CONTAINER_SIZE.h,
+    ...(opts.catalogRef ? { catalogRef: opts.catalogRef } : {}),
+    ...(opts.style ? { style: opts.style } : {}),
+    ...(opts.parentId ? { parentId: opts.parentId } : {}),
+    ...(opts.label ? { label: { text: opts.label } } : {}),
+  };
+}
+
+function buildActorElement(
+  opts: PlacementOptions & { catalogRef?: string },
+): ActorElement {
+  const id = opts.id ?? generateId("actor");
+  return {
+    id,
+    type: "actor",
+    semantic: "actor",
+    x: opts.at.x,
+    y: opts.at.y,
+    w: opts.w ?? 48,
+    h: opts.h ?? 48,
+    ...(opts.catalogRef ? { catalogRef: opts.catalogRef } : {}),
+    ...(opts.parentId ? { parentId: opts.parentId } : {}),
+    ...(opts.label ? { label: { text: opts.label } } : {}),
+  };
+}
+
+function buildTextElement(
+  opts: Omit<PlacementOptions, "label"> & { text: string },
+): TextElement {
+  const id = opts.id ?? generateId("text");
+  return {
+    id,
+    type: "text",
+    semantic: "node",
+    text: opts.text,
+    x: opts.at.x,
+    y: opts.at.y,
+    w: opts.w ?? 120,
+    h: opts.h ?? 20,
+    ...(opts.parentId ? { parentId: opts.parentId } : {}),
+  };
+}
+
+function buildFrameElement(
+  scene: Scene,
+  opts: FramePlacementOptions,
+): FrameElement {
+  const id = opts.id ?? generateId("frame");
+  const currentOrders = scene
+    .all()
+    .filter((element): element is FrameElement => element.type === "frame")
+    .map((element) => element.order);
+  return {
+    id,
+    type: "frame",
+    semantic: "boundary",
+    name: opts.name,
+    order: opts.order ?? Math.max(0, ...currentOrders) + 1,
+    x: opts.at.x,
+    y: opts.at.y,
+    w: opts.w ?? 800,
+    h: opts.h ?? 500,
+  };
+}
+
+function buildConnectorBase(
+  from: PortRef,
+  to: PortRef,
+  opts: ConnectOptions,
+): ConnectorElement {
+  const id = opts.id ?? generateId("conn");
+  return {
+    id,
+    type: "connector",
+    semantic: "node",
+    x: 0,
+    y: 0,
+    w: 0,
+    h: 0,
+    from,
+    to,
+    connectorType: opts.connectorType ?? "association",
+    routing: "auto",
+    ...(opts.direction ? { direction: opts.direction } : {}),
+    ...(opts.flowColor ? { flowColor: opts.flowColor } : {}),
+    ...(opts.cardinality ? { cardinality: opts.cardinality } : {}),
+    ...(opts.sequence ? { sequence: opts.sequence } : {}),
+    ...(opts.annotation ? { annotation: opts.annotation } : {}),
+    ...(opts.label ? { label: { text: opts.label } } : {}),
+  };
+}
+
+/**
+ * Builds one BatchOperation into a real SceneElement, reading `scratch` (Editor.applyBatch's
+ * shadow scene) for anything that needs to resolve another element — connector routing/port-
+ * picking, and add_frame's scene-derived `order` default. Throws with a message identifying the
+ * problem (unknown element id, unknown catalogRef, self-connect, connector-as-endpoint) rather
+ * than returning a fallback, so applyBatch's per-op error collection has something concrete to
+ * report; routeConnectorInScene itself stays silent (empty waypoints) on an unresolvable endpoint,
+ * so the existence checks below happen before calling it, not after.
+ */
+function buildBatchElement(
+  catalog: Catalog,
+  scratch: Scene,
+  op: BatchOperation,
+): SceneElement {
+  switch (op.kind) {
+    case "add_box":
+      return buildBoxElement(op);
+    case "add_group":
+      return buildGroupElement(op);
+    case "add_zone":
+      return buildZoneElement(op);
+    case "add_actor":
+      return buildActorElement(op);
+    case "add_icon":
+      return buildIconElement(catalog, op.catalogRef, op);
+    case "add_text":
+      return buildTextElement(op);
+    case "add_frame":
+      return buildFrameElement(scratch, op);
+    case "connect": {
+      if (!scratch.has(op.from.elementId))
+        throw new Error(
+          `Unknown element "${op.from.elementId}" — no such id in the current document or earlier in this batch.`,
+        );
+      if (!scratch.has(op.to.elementId))
+        throw new Error(
+          `Unknown element "${op.to.elementId}" — no such id in the current document or earlier in this batch.`,
+        );
+      const base = buildConnectorBase(op.from, op.to, op);
+      return { ...base, waypoints: routeConnectorInScene(scratch, base) };
+    }
+    case "connect_nearest": {
+      const from = scratch.get(op.fromId);
+      const to = scratch.get(op.toId);
+      if (!from)
+        throw new Error(
+          `Unknown element "${op.fromId}" — no such id in the current document or earlier in this batch.`,
+        );
+      if (!to)
+        throw new Error(
+          `Unknown element "${op.toId}" — no such id in the current document or earlier in this batch.`,
+        );
+      if (op.fromId === op.toId)
+        throw new Error(`Cannot connect "${op.fromId}" to itself.`);
+      if (from.type === "connector" || to.type === "connector")
+        throw new Error(
+          `Cannot connect "${op.fromId}" to "${op.toId}" — a connector can't be an endpoint of another connector.`,
+        );
+      const ports = pickPorts(from, to);
+      const base = buildConnectorBase(
+        { elementId: op.fromId, port: ports.from },
+        { elementId: op.toId, port: ports.to },
+        op,
+      );
+      return { ...base, waypoints: routeConnectorInScene(scratch, base) };
+    }
+  }
+}
 
 /** Scene-space offset each successive Ctrl/Cmd+V (with no explicit paste point) or duplicate
  * cascades by — matching the existing 16px buffer convention (`groupElements`'s own default pad),
@@ -334,139 +619,47 @@ export class Editor {
   }
 
   addIcon(catalogRef: string, opts: PlacementOptions): ElementId {
-    const meta = this.catalog.resolve(catalogRef);
-    if (!meta) throw new Error(`Unknown catalog icon: "${catalogRef}"`);
-    const id = opts.id ?? generateId("icon");
-    const element: IconNodeElement = {
-      id,
-      type: "iconNode",
-      semantic: "node",
-      catalogRef,
-      x: opts.at.x,
-      y: opts.at.y,
-      w: 48,
-      h: 48,
-      ...(opts.parentId ? { parentId: opts.parentId } : {}),
-      ...(opts.label ? { label: { text: opts.label } } : {}),
-    };
+    const element = buildIconElement(this.catalog, catalogRef, opts);
     this.commands.dispatch(addElement(element));
-    return id;
+    return element.id;
   }
 
   addBox(opts: ContainerPlacementOptions): ElementId {
-    const id = opts.id ?? generateId("box");
-    const element: BoxElement = {
-      id,
-      type: "box",
-      semantic: "deployedOn",
-      x: opts.at.x,
-      y: opts.at.y,
-      w: opts.w ?? DEFAULT_CONTAINER_SIZE.w,
-      h: opts.h ?? DEFAULT_CONTAINER_SIZE.h,
-      ...(opts.catalogRef ? { catalogRef: opts.catalogRef } : {}),
-      ...(opts.style ? { style: opts.style } : {}),
-      ...(opts.parentId ? { parentId: opts.parentId } : {}),
-      ...(opts.label ? { label: { text: opts.label } } : {}),
-    };
+    const element = buildBoxElement(opts);
     this.commands.dispatch(addElement(element));
-    return id;
+    return element.id;
   }
 
   addGroup(opts: ContainerPlacementOptions): ElementId {
-    const id = opts.id ?? generateId("group");
-    const element: GroupElement = {
-      id,
-      type: "group",
-      semantic: "deployedTo",
-      x: opts.at.x,
-      y: opts.at.y,
-      w: opts.w ?? DEFAULT_CONTAINER_SIZE.w,
-      h: opts.h ?? DEFAULT_CONTAINER_SIZE.h,
-      ...(opts.catalogRef ? { catalogRef: opts.catalogRef } : {}),
-      ...(opts.style ? { style: opts.style } : {}),
-      ...(opts.parentId ? { parentId: opts.parentId } : {}),
-      ...(opts.label ? { label: { text: opts.label } } : {}),
-    };
+    const element = buildGroupElement(opts);
     this.commands.dispatch(addElement(element));
-    return id;
+    return element.id;
   }
 
   addZone(
     opts: ContainerPlacementOptions & { zoneKind?: ZoneKind },
   ): ElementId {
-    const id = opts.id ?? generateId("zone");
-    const element: ZoneElement = {
-      id,
-      type: "zone",
-      semantic: "boundary",
-      zoneKind: opts.zoneKind ?? "az",
-      x: opts.at.x,
-      y: opts.at.y,
-      w: opts.w ?? DEFAULT_CONTAINER_SIZE.w,
-      h: opts.h ?? DEFAULT_CONTAINER_SIZE.h,
-      ...(opts.catalogRef ? { catalogRef: opts.catalogRef } : {}),
-      ...(opts.style ? { style: opts.style } : {}),
-      ...(opts.parentId ? { parentId: opts.parentId } : {}),
-      ...(opts.label ? { label: { text: opts.label } } : {}),
-    };
+    const element = buildZoneElement(opts);
     this.commands.dispatch(addElement(element));
-    return id;
+    return element.id;
   }
 
   addActor(opts: PlacementOptions & { catalogRef?: string }): ElementId {
-    const id = opts.id ?? generateId("actor");
-    const element: ActorElement = {
-      id,
-      type: "actor",
-      semantic: "actor",
-      x: opts.at.x,
-      y: opts.at.y,
-      w: opts.w ?? 48,
-      h: opts.h ?? 48,
-      ...(opts.catalogRef ? { catalogRef: opts.catalogRef } : {}),
-      ...(opts.parentId ? { parentId: opts.parentId } : {}),
-      ...(opts.label ? { label: { text: opts.label } } : {}),
-    };
+    const element = buildActorElement(opts);
     this.commands.dispatch(addElement(element));
-    return id;
+    return element.id;
   }
 
   addText(opts: Omit<PlacementOptions, "label"> & { text: string }): ElementId {
-    const id = opts.id ?? generateId("text");
-    const element: TextElement = {
-      id,
-      type: "text",
-      semantic: "node",
-      text: opts.text,
-      x: opts.at.x,
-      y: opts.at.y,
-      w: opts.w ?? 120,
-      h: opts.h ?? 20,
-      ...(opts.parentId ? { parentId: opts.parentId } : {}),
-    };
+    const element = buildTextElement(opts);
     this.commands.dispatch(addElement(element));
-    return id;
+    return element.id;
   }
 
   addFrame(opts: FramePlacementOptions): ElementId {
-    const id = opts.id ?? generateId("frame");
-    const currentOrders = this.scene
-      .all()
-      .filter((element): element is FrameElement => element.type === "frame")
-      .map((element) => element.order);
-    const element: FrameElement = {
-      id,
-      type: "frame",
-      semantic: "boundary",
-      name: opts.name,
-      order: opts.order ?? Math.max(0, ...currentOrders) + 1,
-      x: opts.at.x,
-      y: opts.at.y,
-      w: opts.w ?? 800,
-      h: opts.h ?? 500,
-    };
+    const element = buildFrameElement(this.scene, opts);
     this.commands.dispatch(addElement(element));
-    return id;
+    return element.id;
   }
 
   /** Applies an exact presentation order to every frame as one undoable command. */
@@ -494,46 +687,14 @@ export class Editor {
       this.commands.dispatch(batch("reorder frames", commands));
   }
 
-  connect(
-    from: PortRef,
-    to: PortRef,
-    opts: {
-      connectorType?: ConnectorType;
-      direction?: ConnectorDirection;
-      flowColor?: FlowColor;
-      cardinality?: EndpointLabels;
-      sequence?: string;
-      annotation?: ConnectorAnnotation;
-      label?: string;
-      id?: ElementId;
-    } = {},
-  ): ElementId {
-    const id = opts.id ?? generateId("conn");
-    const base: ConnectorElement = {
-      id,
-      type: "connector",
-      semantic: "node",
-      x: 0,
-      y: 0,
-      w: 0,
-      h: 0,
-      from,
-      to,
-      connectorType: opts.connectorType ?? "association",
-      routing: "auto",
-      ...(opts.direction ? { direction: opts.direction } : {}),
-      ...(opts.flowColor ? { flowColor: opts.flowColor } : {}),
-      ...(opts.cardinality ? { cardinality: opts.cardinality } : {}),
-      ...(opts.sequence ? { sequence: opts.sequence } : {}),
-      ...(opts.annotation ? { annotation: opts.annotation } : {}),
-      ...(opts.label ? { label: { text: opts.label } } : {}),
-    };
+  connect(from: PortRef, to: PortRef, opts: ConnectOptions = {}): ElementId {
+    const base = buildConnectorBase(from, to, opts);
     const element: ConnectorElement = {
       ...base,
       waypoints: routeConnectorInScene(this.scene, base),
     };
     this.commands.dispatch(addElement(element));
-    return id;
+    return element.id;
   }
 
   /** Overrides a connector's route with explicit waypoints (D13's manual escape hatch). */
@@ -1516,6 +1677,64 @@ export class Editor {
     );
     this.selection.set([id]);
     return id;
+  }
+
+  /**
+   * Adds several elements and/or connectors as one call and one undo step — for building a whole
+   * diagram section at once instead of one addX()/connect() call per element (docs/09-roadmap.md
+   * M23.4). All-or-nothing: every op is validated against a disposable scratch Scene (seeded with
+   * a copy of the real one) before anything touches the real scene or dispatches anything, so a
+   * connect op can reference an element added earlier in the same batch (the scratch scene sees it
+   * by the time later ops are validated) while still giving a hard atomicity guarantee — if any op
+   * is invalid, nothing is applied and every failing op is reported, not just the first.
+   *
+   * Deliberately not "dispatch each command via CommandBus.dispatch as constructed, coalesce into
+   * one undo entry after the fact": CommandBus only pushes an undo entry once a dispatch completes
+   * without throwing, so a command whose own scene-reading logic (routing, port-picking) is
+   * deferred to do()-time against the *real* scene would, if it threw partway through a batch,
+   * leave the real scene silently and partially mutated with no undo entry to revert it. Building
+   * against a scratch scene first avoids that failure mode entirely — nothing real is touched
+   * until every op has already proven it will succeed.
+   *
+   * An op that needs to be referenced by a later op in the same batch (a connect endpoint, or a
+   * child's parentId) must be given an explicit id — there's no "local index" placeholder
+   * resolution.
+   */
+  applyBatch(ops: BatchOperation[]): BatchResult {
+    if (ops.length === 0) return { applied: true, results: [] };
+
+    const scratch = new Scene();
+    scratch._replaceAll(this.scene.all());
+
+    const commands: Command[] = [];
+    const results: BatchOpResult[] = [];
+    const errors: BatchOpError[] = [];
+
+    ops.forEach((op, index) => {
+      try {
+        const element = buildBatchElement(this.catalog, scratch, op);
+        if (scratch.has(element.id)) {
+          throw new Error(
+            `Duplicate id "${element.id}" — already used by a pre-existing element or an earlier operation in this batch.`,
+          );
+        }
+        scratch._put(element, "add");
+        commands.push(addElement(element));
+        results.push({ index, kind: op.kind, id: element.id });
+      } catch (err) {
+        errors.push({
+          index,
+          kind: op.kind,
+          ...("id" in op && op.id ? { id: op.id } : {}),
+          message: err instanceof Error ? err.message : String(err),
+        });
+      }
+    });
+
+    if (errors.length > 0) return { applied: false, errors };
+
+    this.commands.dispatch(batch("scene_apply", commands));
+    return { applied: true, results };
   }
 
   /** Reveals (or hides, when omitted) port markers on an element — hover for mouse, or the source while keyboard-connecting. */

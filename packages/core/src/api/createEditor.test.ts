@@ -2254,4 +2254,207 @@ describe("createEditor", () => {
       expect(node?.getAttribute("aria-label")).toContain("locked, hidden");
     });
   });
+
+  describe("applyBatch", () => {
+    it("applies a mixed add+connect batch as one undo step", () => {
+      expect(editor.commands.canUndo()).toBe(false);
+      const before = editor.scene.all().length;
+
+      const result = editor.applyBatch([
+        { kind: "add_box", id: "box-a", at: { x: 0, y: 0 } },
+        {
+          kind: "add_icon",
+          id: "icon-a",
+          catalogRef: "test/vpc",
+          at: { x: 20, y: 20 },
+          parentId: "box-a",
+        },
+        { kind: "add_box", id: "box-b", at: { x: 300, y: 0 } },
+        {
+          kind: "add_icon",
+          id: "icon-b",
+          catalogRef: "test/vpc",
+          at: { x: 320, y: 20 },
+          parentId: "box-b",
+        },
+        { kind: "connect_nearest", fromId: "icon-a", toId: "icon-b" },
+      ]);
+
+      expect(result.applied).toBe(true);
+      if (!result.applied) throw new Error("unreachable");
+      expect(result.results).toHaveLength(5);
+      expect(editor.scene.all().length).toBe(before + 5);
+      expect(editor.commands.canUndo()).toBe(true);
+
+      editor.commands.undo();
+      expect(editor.scene.all().length).toBe(before);
+    });
+
+    it("connect_nearest resolves ids created earlier in the same batch and routes around an obstacle also from this batch", () => {
+      const result = editor.applyBatch([
+        { kind: "add_box", id: "obstacle", at: { x: 140, y: 0 }, w: 40, h: 60 },
+        {
+          kind: "add_icon",
+          id: "source",
+          catalogRef: "test/vpc",
+          at: { x: 0, y: 0 },
+        },
+        {
+          kind: "add_icon",
+          id: "target",
+          catalogRef: "test/vpc",
+          at: { x: 300, y: 0 },
+        },
+        { kind: "connect_nearest", fromId: "source", toId: "target" },
+      ]);
+      expect(result.applied).toBe(true);
+      const connector = editor.scene
+        .all()
+        .find((el) => el.type === "connector");
+      expect(connector).toBeDefined();
+      expect((connector as { waypoints?: unknown[] }).waypoints).toBeDefined();
+    });
+
+    it("resolves a connect op referencing an element that existed before the batch", () => {
+      const preExisting = editor.addBox({ at: { x: 0, y: 0 } });
+      const result = editor.applyBatch([
+        { kind: "add_box", id: "new-box", at: { x: 300, y: 0 } },
+        {
+          kind: "connect",
+          from: { elementId: preExisting, port: "e" },
+          to: { elementId: "new-box", port: "w" },
+        },
+      ]);
+      expect(result.applied).toBe(true);
+    });
+
+    it("rejects an explicit id colliding with a pre-existing element, leaving it untouched", () => {
+      const existingId = editor.addBox({
+        at: { x: 0, y: 0 },
+        label: "original",
+      });
+      const result = editor.applyBatch([
+        {
+          kind: "add_box",
+          id: existingId,
+          at: { x: 300, y: 0 },
+          label: "collides",
+        },
+      ]);
+      expect(result.applied).toBe(false);
+      expect(editor.scene.get(existingId)).toMatchObject({
+        label: { text: "original" },
+      });
+    });
+
+    it("rejects an explicit id reused twice within the same batch", () => {
+      const result = editor.applyBatch([
+        { kind: "add_box", id: "dup", at: { x: 0, y: 0 } },
+        { kind: "add_box", id: "dup", at: { x: 300, y: 0 } },
+      ]);
+      expect(result.applied).toBe(false);
+    });
+
+    it("rejects a connect op referencing an unknown id", () => {
+      const result = editor.applyBatch([
+        {
+          kind: "connect",
+          from: { elementId: "nope", port: "e" },
+          to: { elementId: "also-nope", port: "w" },
+        },
+      ]);
+      expect(result.applied).toBe(false);
+      if (result.applied) throw new Error("unreachable");
+      expect(result.errors[0]?.message).toMatch(/Unknown element/);
+    });
+
+    it("rejects connect_nearest self-connect and connector-as-endpoint", () => {
+      const a = editor.addBox({ at: { x: 0, y: 0 } });
+      const selfConnect = editor.applyBatch([
+        { kind: "connect_nearest", fromId: a, toId: a },
+      ]);
+      expect(selfConnect.applied).toBe(false);
+
+      const b = editor.addBox({ at: { x: 300, y: 0 } });
+      const connId = editor.connectNearest(a, b)!;
+      const c = editor.addBox({ at: { x: 0, y: 300 } });
+      const connectorEndpoint = editor.applyBatch([
+        { kind: "connect_nearest", fromId: connId, toId: c },
+      ]);
+      expect(connectorEndpoint.applied).toBe(false);
+    });
+
+    it("rejects an unknown catalogRef on an add_icon op", () => {
+      const result = editor.applyBatch([
+        {
+          kind: "add_icon",
+          catalogRef: "does/not-exist",
+          at: { x: 0, y: 0 },
+        },
+      ]);
+      expect(result.applied).toBe(false);
+      if (result.applied) throw new Error("unreachable");
+      expect(result.errors[0]?.message).toMatch(/Unknown catalog icon/);
+    });
+
+    it("is all-or-nothing: one bad op invalidates the whole batch, nothing leaked", () => {
+      const before = editor.scene.all().length;
+      const canUndoBefore = editor.commands.canUndo();
+
+      const result = editor.applyBatch([
+        { kind: "add_box", id: "ok-1", at: { x: 0, y: 0 } },
+        { kind: "add_box", id: "ok-2", at: { x: 100, y: 0 } },
+        { kind: "add_box", id: "ok-3", at: { x: 200, y: 0 } },
+        {
+          kind: "connect",
+          from: { elementId: "unknown-from", port: "e" },
+          to: { elementId: "ok-1", port: "w" },
+        },
+        { kind: "add_box", id: "ok-4", at: { x: 300, y: 0 } },
+        { kind: "add_box", id: "ok-5", at: { x: 400, y: 0 } },
+      ]);
+
+      expect(result.applied).toBe(false);
+      expect(editor.scene.all().length).toBe(before);
+      expect(editor.commands.canUndo()).toBe(canUndoBefore);
+    });
+
+    it("collects every failing op, not just the first", () => {
+      const result = editor.applyBatch([
+        {
+          kind: "add_icon",
+          catalogRef: "does/not-exist-1",
+          at: { x: 0, y: 0 },
+        },
+        { kind: "add_box", id: "ok", at: { x: 0, y: 0 } },
+        {
+          kind: "add_icon",
+          catalogRef: "does/not-exist-2",
+          at: { x: 100, y: 0 },
+        },
+      ]);
+      expect(result.applied).toBe(false);
+      if (result.applied) throw new Error("unreachable");
+      expect(result.errors).toHaveLength(2);
+      expect(result.errors.map((e) => e.index)).toEqual([0, 2]);
+    });
+
+    it("gives two add_frame ops with no explicit order distinct sequential orders", () => {
+      const result = editor.applyBatch([
+        { kind: "add_frame", id: "frame-a", at: { x: 0, y: 0 }, name: "A" },
+        { kind: "add_frame", id: "frame-b", at: { x: 0, y: 0 }, name: "B" },
+      ]);
+      expect(result.applied).toBe(true);
+      const a = editor.scene.get("frame-a") as { order: number };
+      const b = editor.scene.get("frame-b") as { order: number };
+      expect(a.order).not.toBe(b.order);
+    });
+
+    it("is a no-op success for an empty batch, with no new undo entry", () => {
+      const canUndoBefore = editor.commands.canUndo();
+      const result = editor.applyBatch([]);
+      expect(result).toEqual({ applied: true, results: [] });
+      expect(editor.commands.canUndo()).toBe(canUndoBefore);
+    });
+  });
 });

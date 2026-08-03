@@ -52,6 +52,7 @@ describe("createMcpServer", () => {
           "lint",
           "quickfix_apply",
           "quickfix_apply_all",
+          "scene_apply",
           "ungroup_element",
         ].sort(),
       );

@@ -37,6 +37,76 @@ const connectOptsSchema = {
   label: z.string().optional(),
 };
 
+/** One operation in a scene_apply call — a discriminated union mirroring the individual
+ * element_add_ / connect / connect_nearest tools' own input shapes, reusing the same shared
+ * fragments so the two surfaces can never drift apart. */
+const sceneApplyOpSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("add_box"), ...containerPlacementSchema }),
+  z.object({ kind: z.literal("add_group"), ...containerPlacementSchema }),
+  z.object({
+    kind: z.literal("add_zone"),
+    ...containerPlacementSchema,
+    zoneKind: zoneKindSchema.optional(),
+  }),
+  z.object({
+    kind: z.literal("add_actor"),
+    ...placementSchema,
+    catalogRef: z.string().optional(),
+  }),
+  z.object({
+    kind: z.literal("add_icon"),
+    catalogRef: z
+      .string()
+      .describe("Icon id from catalog_search, e.g. ibm-cloud/vpc"),
+    ...placementSchema,
+  }),
+  z.object({
+    kind: z.literal("add_text"),
+    id: placementSchema.id,
+    at: placementSchema.at,
+    w: placementSchema.w,
+    h: placementSchema.h,
+    parentId: placementSchema.parentId,
+    text: z.string(),
+  }),
+  z.object({
+    kind: z.literal("add_frame"),
+    id: placementSchema.id,
+    at: placementSchema.at,
+    w: placementSchema.w,
+    h: placementSchema.h,
+    name: z.string(),
+    order: z.number().optional(),
+  }),
+  z.object({
+    kind: z.literal("connect"),
+    from: portRefSchema,
+    to: portRefSchema,
+    ...connectOptsSchema,
+  }),
+  z.object({
+    kind: z.literal("connect_nearest"),
+    fromId: z.string(),
+    toId: z.string(),
+    ...connectOptsSchema,
+  }),
+]);
+
+const sceneApplyOutput = {
+  applied: z.boolean(),
+  results: z.array(
+    z.object({ index: z.number(), kind: z.string(), id: z.string() }),
+  ),
+  errors: z.array(
+    z.object({
+      index: z.number(),
+      kind: z.string(),
+      id: z.string().optional(),
+      message: z.string(),
+    }),
+  ),
+};
+
 export function registerAuthoringTools(
   server: McpServer,
   state: ServerState,
@@ -352,6 +422,38 @@ export function registerAuthoringTools(
           throw new ToolError(`Cannot connect "${fromId}" to "${toId}".`);
         }
         return ok({ id }, `Connected ${fromId} to ${toId} as ${id}.`);
+      } catch (err) {
+        return fail(err);
+      }
+    },
+  );
+
+  server.registerTool(
+    "scene_apply",
+    {
+      title: "Apply a batch of add/connect operations as one undo step",
+      description:
+        "Adds several elements and/or connectors in one call, as a single undo step — for " +
+        "building a whole diagram section at once instead of one element_add_*/connect*/" +
+        "connect_nearest call per element. All-or-nothing: every op is validated before anything " +
+        "is applied; if any op is invalid, nothing is applied and every failing op is reported in " +
+        "errors[] (not just the first). An op referenced by a later op in the same array (as a " +
+        "connect endpoint or parentId) must be given an explicit id.",
+      inputSchema: { ops: z.array(sceneApplyOpSchema).min(1) },
+      outputSchema: sceneApplyOutput,
+    },
+    ({ ops }) => {
+      try {
+        const result = editor().applyBatch(ops.map((op) => omitUndefined(op)));
+        return result.applied
+          ? ok(
+              { applied: true, results: result.results, errors: [] },
+              `Applied ${result.results.length} operation(s) as one undo step.`,
+            )
+          : ok(
+              { applied: false, results: [], errors: result.errors },
+              `Validation failed — ${result.errors.length} of ${ops.length} operation(s) invalid; nothing was applied. See errors[].`,
+            );
       } catch (err) {
         return fail(err);
       }

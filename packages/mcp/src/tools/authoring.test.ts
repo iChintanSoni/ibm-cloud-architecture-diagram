@@ -727,4 +727,86 @@ describe("authoring tools", () => {
     });
     expect(result.isError).toBe(true);
   });
+
+  it("scene_apply applies a mixed batch and every id resolves in doc_get", async () => {
+    const search = await client.callTool({
+      name: "catalog_search",
+      arguments: { query: "vpc" },
+    });
+    const catalogRef = (
+      search.structuredContent as { icons: Array<{ id: string }> }
+    ).icons[0]!.id;
+
+    const applied = await client.callTool({
+      name: "scene_apply",
+      arguments: {
+        ops: [
+          { kind: "add_box", id: "box-a", at: { x: 0, y: 0 } },
+          {
+            kind: "add_icon",
+            id: "icon-a",
+            catalogRef,
+            at: { x: 20, y: 20 },
+            parentId: "box-a",
+          },
+          { kind: "add_box", id: "box-b", at: { x: 300, y: 0 } },
+          {
+            kind: "add_icon",
+            id: "icon-b",
+            catalogRef,
+            at: { x: 320, y: 20 },
+            parentId: "box-b",
+          },
+          { kind: "connect_nearest", fromId: "icon-a", toId: "icon-b" },
+        ],
+      },
+    });
+    expect(applied.isError).toBeUndefined();
+    const result = applied.structuredContent as {
+      applied: boolean;
+      results: Array<{ index: number; kind: string; id: string }>;
+    };
+    expect(result.applied).toBe(true);
+    expect(result.results).toHaveLength(5);
+
+    const doc = await client.callTool({ name: "doc_get", arguments: {} });
+    const ids = (
+      doc.structuredContent as { document: { elements: Array<{ id: string }> } }
+    ).document.elements.map((el) => el.id);
+    for (const r of result.results) expect(ids).toContain(r.id);
+  });
+
+  it("scene_apply reports a validation failure without applying anything", async () => {
+    const before = await client.callTool({ name: "doc_get", arguments: {} });
+    const countBefore = (
+      before.structuredContent as { document: { elements: unknown[] } }
+    ).document.elements.length;
+
+    const applied = await client.callTool({
+      name: "scene_apply",
+      arguments: {
+        ops: [
+          { kind: "add_box", id: "ok-box", at: { x: 0, y: 0 } },
+          {
+            kind: "connect",
+            from: { elementId: "unknown-from", port: "e" },
+            to: { elementId: "ok-box", port: "w" },
+          },
+        ],
+      },
+    });
+    expect(applied.isError).toBeUndefined();
+    const result = applied.structuredContent as {
+      applied: boolean;
+      errors: Array<{ index: number; message: string }>;
+    };
+    expect(result.applied).toBe(false);
+    expect(result.errors.length).toBeGreaterThan(0);
+
+    const after = await client.callTool({ name: "doc_get", arguments: {} });
+    const countAfter = (
+      after.structuredContent as { document: { elements: unknown[] } }
+    ).document.elements.length;
+    expect(countAfter).toBe(countBefore);
+  });
 });
