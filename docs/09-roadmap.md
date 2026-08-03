@@ -1011,7 +1011,13 @@ MCP; no context-menu entry or keyboard shortcut, same reasoning M18.2 gave for a
 single undo step on release), midpoint insert handles (+ circle per segment), endpoint retargeting
 (pink endpoint handles drag-and-drop to a new port; auto-routing connectors re-route immediately),
 reset-to-auto-routing ("Reset routing" button in the Properties panel), and MCP parity
-(`connector_retarget`, `connector_reset_routing`).
+(`connector_retarget`, `connector_reset_routing`). (M24.2, 2026-08-03) The Properties-panel button
+was "Reset routing"'s only entry point — found via `apps/web` dogfooding to be effectively buried,
+especially once F1's [M24.1](#m16--the-core-loop) fix made selecting a manually-rerouted connector
+reliable enough to actually reach it. Added the same `editor.autoRouteConnector(id)` call as a
+`"Reset routing"` entry to both of `App.tsx`'s existing command surfaces — the Command Palette's
+`commands` array and the right-click `contextMenuItems` array — gated identically to the Properties
+button (`element.type === "connector" && element.routing === "manual"`, single selection only).
 
 #### M20 — Full range on demand
 

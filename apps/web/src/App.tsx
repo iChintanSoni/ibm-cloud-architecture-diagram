@@ -233,6 +233,8 @@ export function App() {
   const canAlign = selectedIds.length >= 2;
   const canDistribute = selectedIds.length >= 3;
   const canToggleLockHide = selectedIds.length > 0;
+  const canResetRouting =
+    singleSelected?.type === "connector" && singleSelected.routing === "manual";
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -1016,6 +1018,13 @@ export function App() {
       run: handleUngroup,
     },
     {
+      id: "reset-routing",
+      label: "Reset routing",
+      category: "Edit",
+      disabled: !canResetRouting,
+      run: () => editorRef.current?.autoRouteConnector(singleSelected!.id),
+    },
+    {
       id: "bring-to-front",
       label: "Bring to front",
       category: "Arrange",
@@ -1314,6 +1323,12 @@ export function App() {
       shortcut: "Ctrl+Shift+G",
       disabled: !canUngroup,
       run: handleUngroup,
+    },
+    {
+      id: "ctx-reset-routing",
+      label: "Reset routing",
+      disabled: !canResetRouting,
+      run: () => editorRef.current?.autoRouteConnector(singleSelected!.id),
     },
     {
       id: "ctx-bring-to-front",
