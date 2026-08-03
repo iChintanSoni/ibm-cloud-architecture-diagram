@@ -650,6 +650,43 @@ describe("CanvasController", () => {
       expect(editor.scene.get(icon)?.parentId).toBeUndefined();
       expect(editor.scene.get(icon)).toMatchObject({ x: 0, y: 0 });
     });
+
+    it("resolves an unrelated overlap by z-order, not raw containment depth (F1)", () => {
+      // A zone nested inside a region (deeper by raw ancestor count) fully overlaps a top-level
+      // box that has no relationship to either — added last, so it's on top. hitTestAll's fix
+      // (packages/core/src/interaction/hitTest.ts) must resolve this by z-order, not by whichever
+      // candidate happens to have a larger raw depth number.
+      const region = editor.addBox({
+        at: { x: 0, y: 0 },
+        w: 300,
+        h: 300,
+        label: "region",
+      });
+      editor.addBox({
+        at: { x: 0, y: 0 },
+        w: 300,
+        h: 300,
+        parentId: region,
+        label: "zone",
+      });
+      const topLevel = editor.addBox({
+        at: { x: 0, y: 0 },
+        w: 300,
+        h: 300,
+        label: "topLevel",
+      });
+      const icon = editor.addIcon("test/vpc", { at: { x: 500, y: 500 } });
+
+      pointerEvent("pointerdown", container, 524, 524);
+      pointerEvent("pointermove", container, 100, 100);
+
+      expect(
+        container.querySelector(`[data-icad-drop-target="${topLevel}"]`),
+      ).not.toBeNull();
+
+      pointerEvent("pointerup", container, 100, 100);
+      expect(editor.scene.get(icon)?.parentId).toBe(topLevel);
+    });
   });
 
   describe("8-handle resize (M16.2, docs/10-canvas-parity-plan.md)", () => {

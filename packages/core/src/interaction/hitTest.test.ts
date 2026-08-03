@@ -143,6 +143,89 @@ describe("hitTest", () => {
     ]);
   });
 
+  it("prefers a connector over an unrelated container it happens to overlap, when the connector is on top (F1)", () => {
+    // Reproduces the original bug: a Zone nested inside a Region (an unrelated container to the
+    // connector) used to always win on raw depth alone, even when the connector was added later
+    // (and thus painted on top). The zone is added first (lower z); the connector, whose
+    // endpoints are two unrelated boxes, is added after and its polyline crosses the zone's fill.
+    const scene = new Scene();
+    scene._put(box("region", 0, 0, 300, 300));
+    scene._put(box("zone", 20, 20, 200, 200, "region"));
+    scene._put(box("extA", 0, 0, 10, 10));
+    scene._put(box("extB", 290, 290, 10, 10));
+    scene._put(
+      connector("conn", "extA", "extB", [
+        { x: 0, y: 100 },
+        { x: 300, y: 100 },
+      ]),
+    );
+
+    expect(hitTest(scene, { x: 100, y: 100 })?.id).toBe("conn");
+  });
+
+  it("still prefers a container over a connector it happens to overlap, when the container is on top (F1)", () => {
+    // The flip side: the fix is a genuine z-order fallback, not a blanket connector bias. Here
+    // the connector is added first (lower z) and the unrelated zone is added after, covering it.
+    const scene = new Scene();
+    scene._put(box("region", 0, 0, 300, 300));
+    scene._put(box("extA", 0, 0, 10, 10));
+    scene._put(box("extB", 290, 290, 10, 10));
+    scene._put(
+      connector("conn", "extA", "extB", [
+        { x: 0, y: 100 },
+        { x: 300, y: 100 },
+      ]),
+    );
+    scene._put(box("zone", 20, 20, 200, 200, "region"));
+
+    expect(hitTest(scene, { x: 100, y: 100 })?.id).toBe("zone");
+  });
+
+  it("falls back to z-order (topmost) for unrelated overlapping containers at different depths", () => {
+    // Extends the same-depth case above: a top-level box and a zone nested inside a region, with
+    // no ancestor relationship to each other, resolve by z-order alone, not by raw depth.
+    const scene = new Scene();
+    scene._put(box("region", 0, 0, 300, 300));
+    scene._put(box("zone", 0, 0, 300, 300, "region"));
+    scene._put(box("topLevel", 0, 0, 300, 300));
+
+    expect(hitTest(scene, { x: 50, y: 50 })?.id).toBe("topLevel");
+  });
+
+  it("still prefers a deeply nested icon over an unrelated connector overlapping the same point (F1 regression guard)", () => {
+    const scene = new Scene();
+    scene._put(box("region", 0, 0, 300, 300));
+    scene._put(box("group", 20, 20, 200, 200, "region"));
+    scene._put(box("extA", 0, 0, 10, 10));
+    scene._put(box("extB", 290, 290, 10, 10));
+    scene._put(
+      connector("conn", "extA", "extB", [
+        { x: 0, y: 50 },
+        { x: 300, y: 50 },
+      ]),
+    );
+    scene._put(icon("inner", 40, 40, "group"));
+
+    expect(hitTest(scene, { x: 50, y: 50 })?.id).toBe("inner");
+  });
+
+  it("resolves to a connector crossing its own endpoints' shared container, with no special-casing by parentId (F1)", () => {
+    // Confirms the fix works purely because connectors never carry a parentId (so they're always
+    // "unrelated" to any container in the ancestor check) — not via any explicit endpoint lookup.
+    const scene = new Scene();
+    scene._put(box("zone", 0, 0, 200, 200));
+    scene._put(icon("a", 10, 10, "zone"));
+    scene._put(icon("b", 130, 130, "zone"));
+    scene._put(
+      connector("conn", "a", "b", [
+        { x: 0, y: 100 },
+        { x: 200, y: 100 },
+      ]),
+    );
+
+    expect(hitTest(scene, { x: 100, y: 100 })?.id).toBe("conn");
+  });
+
   it("hitTestRect matches only elements fully enclosed by the rect, not merely overlapping (fully-enclosed marquee semantics)", () => {
     const scene = new Scene();
     scene._put(box("enclosed", 10, 10, 50, 50));

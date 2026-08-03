@@ -98,19 +98,20 @@ function matches(
   return bboxContains(el, point);
 }
 
-/** Containment depth (ancestor count) — used to prefer a nested child over the container it sits inside. */
-function containmentDepth(scene: Scene, el: SceneElement): number {
-  return scene.ancestorsOf(el.id).length;
-}
-
 /**
  * Every element whose geometry contains (or, for a connector, is within tolerance of) `point`,
- * ordered for both a single `hitTest()` pick and alt-click "click through" cycling: deepest
- * containment first — a nested icon before the box it sits inside, before that box's own
- * boundary — then z-order (topmost wins among same-depth or unrelated overlaps). This replaces
- * the previous z-order-only heuristic, which only happened to prefer children in the common case
- * because the editor's own placement/grouping flow tends to add a child after its container
- * (C9, docs/10-canvas-parity-plan.md) — not a rule the engine actually enforced.
+ * ordered for both a single `hitTest()` pick and alt-click "click through" cycling: a genuine
+ * ancestor/descendant pair always resolves toward the descendant (a nested icon before the box it
+ * sits inside, before that box's own boundary) — then z-order (topmost wins) for every other
+ * overlap, including same-depth siblings and elements with no containment relationship at all
+ * (e.g. a connector, which never has a `parentId`, overlapping an unrelated container). This
+ * replaces the previous z-order-only heuristic, which only happened to prefer children in the
+ * common case because the editor's own placement/grouping flow tends to add a child after its
+ * container (C9, docs/10-canvas-parity-plan.md) — not a rule the engine actually enforced. An
+ * earlier version of this tie-break compared raw ancestor-*count* depth instead of an actual
+ * ancestor relationship, which meant any unrelated container nested a level or more deep always
+ * beat a connector (always depth 0) regardless of z-order or of whether the two were related at
+ * all — the fix here is the relationship check, not just the depth number.
  */
 export function hitTestAll(
   scene: Scene,
@@ -120,16 +121,22 @@ export function hitTestAll(
   const tolerance = options.tolerance ?? DEFAULT_TOLERANCE;
   const elements = scene.all(); // z-order, bottom to top
   const zRank = new Map(elements.map((el, index) => [el.id, index]));
-  return elements
-    .filter(
-      (el) =>
-        !(options.excludeHidden && el.hidden) &&
-        matches(scene, el, point, tolerance),
-    )
-    .sort((a, b) => {
-      const depthDiff = containmentDepth(scene, b) - containmentDepth(scene, a);
-      return depthDiff !== 0 ? depthDiff : zRank.get(b.id)! - zRank.get(a.id)!;
-    });
+  const candidates = elements.filter(
+    (el) =>
+      !(options.excludeHidden && el.hidden) &&
+      matches(scene, el, point, tolerance),
+  );
+  const ancestorIds = new Map(
+    candidates.map((el) => [
+      el.id,
+      new Set(scene.ancestorsOf(el.id).map((a) => a.id)),
+    ]),
+  );
+  return candidates.sort((a, b) => {
+    if (ancestorIds.get(b.id)!.has(a.id)) return 1; // a is an ancestor of b -> b (descendant) wins
+    if (ancestorIds.get(a.id)!.has(b.id)) return -1; // b is an ancestor of a -> a wins
+    return zRank.get(b.id)! - zRank.get(a.id)!; // unrelated -> topmost wins
+  });
 }
 
 /** The single best (deepest, then topmost) element at `point`, or undefined. */

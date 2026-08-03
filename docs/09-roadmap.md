@@ -813,7 +813,15 @@ No user-visible features; everything after this depends on it. Full detail in
 3. ✅ Unified hit-testing: `hitTest`/`hitTestAll`/`hitTestRect`, connectors hit via real polyline
    distance instead of their degenerate bbox, containment-aware instead of an incidental z-order
    heuristic. Both `apps/web` and `apps/vscode`'s divergent DOM-based click-selection path are
-   replaced with it.
+   replaced with it. (M24.1, 2026-08-03) `hitTestAll`'s containment-aware tie-break originally
+   compared raw ancestor-_count_ depth, not an actual ancestor relationship — so any container
+   nested a level or more deep always outranked a connector (whose `parentId` is never set)
+   wherever their geometries overlapped, regardless of z-order or whether the two were related at
+   all. Found via `apps/web` dogfooding: connectors routinely overlap container fill after
+   [M23.1](#m4--smart-connectors)'s soft-obstacle detours, and clicking them silently selected the
+   container underneath instead. Fixed by tie-breaking on a genuine ancestor/descendant check
+   (`hitTest.ts`), falling back to z-order — the previous topmost-wins default — for every other
+   overlap, including unrelated containers at different depths.
 4. ✅ The `CanvasController` interaction state machine moved into core
    ([D27](00-decision-log.md#d27--the-interaction-state-machine-lives-in-core-not-the-shells--locked)):
    click/shift-click select, keyboard nav/nudge/delete, and mouse + keyboard connect flows, wired
