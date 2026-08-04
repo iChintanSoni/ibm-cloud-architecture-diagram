@@ -20,6 +20,24 @@ export const KEYWORD_OVERRIDES: Record<string, string[]> = {
   location: ["region"],
   "database-redis": ["cache"],
   "data-center": ["on-prem", "on-premises", "on premises"],
+  // "lb" is generic shorthand for the whole load-balancer family, not one specific icon.
+  "global-load-balancer": ["lb"],
+  "load-balancer-application": ["lb"],
+  "load-balancer-classic": ["lb"],
+  "load-balancer-listener": ["lb"],
+  "load-balancer-listner": ["lb"], // sic — real upstream slug typo, not ours to fix here
+  "load-balancer-pool": ["lb"],
+  "load-balancer-vpc": ["lb"],
+  "local-load-balancer": ["lb"],
+  "network-load-balancer": ["lb"],
+  // "k8s" means Kubernetes specifically, not OpenShift — a different, if related, product.
+  kubernetes: ["k8s"],
+  "kubernetes-cluster": ["k8s"],
+  // "VM"/"VSI" (Virtual Server Instance, IBM's own term — used as this project's own reference
+  // diagram's connector label) both mean this icon specifically, not the instance-bx/cx/mx/group
+  // family, which represents a more specific compute-profile or grouping concept.
+  "virtual-server": ["vm", "vsi"],
+  "virtual-server-classic": ["vm", "vsi"],
 };
 
 /** Merges an icon's auto-derived (tokenized-from-name) keywords with any manual overrides for its

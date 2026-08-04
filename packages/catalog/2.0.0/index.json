@@ -1117,7 +1117,7 @@
       "asset": "icons/network/global-load-balancer.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": ["global", "load", "balancer"]
+      "keywords": ["global", "load", "balancer", "lb"]
     },
     {
       "id": "ibm-cloud/group",
@@ -1502,7 +1502,7 @@
       "asset": "icons/compute/kubernetes.svg",
       "tier": "ibm-cloud",
       "color": "#198038",
-      "keywords": ["kubernetes"]
+      "keywords": ["kubernetes", "k8s"]
     },
     {
       "id": "ibm-cloud/kubernetes-cluster",
@@ -1513,7 +1513,7 @@
       "asset": "icons/compute/kubernetes-cluster.svg",
       "tier": "ibm-cloud",
       "color": "#198038",
-      "keywords": ["kubernetes", "cluster"]
+      "keywords": ["kubernetes", "cluster", "k8s"]
     },
     {
       "id": "ibm-cloud/l2-switch",
@@ -1557,7 +1557,7 @@
       "asset": "icons/network/load-balancer-application.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": ["load", "balancer", "application"]
+      "keywords": ["load", "balancer", "application", "lb"]
     },
     {
       "id": "ibm-cloud/load-balancer-classic",
@@ -1568,7 +1568,7 @@
       "asset": "icons/network/load-balancer-classic.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": ["load", "balancer", "classic"]
+      "keywords": ["load", "balancer", "classic", "lb"]
     },
     {
       "id": "ibm-cloud/load-balancer-listener",
@@ -1579,7 +1579,7 @@
       "asset": "icons/groups/load-balancer-listener.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": ["load", "balancer", "listener"]
+      "keywords": ["load", "balancer", "listener", "lb"]
     },
     {
       "id": "ibm-cloud/load-balancer-listner",
@@ -1590,7 +1590,7 @@
       "asset": "icons/network/load-balancer-listner.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": ["load", "balancer", "listner"]
+      "keywords": ["load", "balancer", "listner", "lb"]
     },
     {
       "id": "ibm-cloud/load-balancer-pool",
@@ -1601,7 +1601,7 @@
       "asset": "icons/network/load-balancer-pool.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": ["load", "balancer", "pool"]
+      "keywords": ["load", "balancer", "pool", "lb"]
     },
     {
       "id": "ibm-cloud/load-balancer-vpc",
@@ -1612,7 +1612,7 @@
       "asset": "icons/network/load-balancer-vpc.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": ["load", "balancer", "vpc"]
+      "keywords": ["load", "balancer", "vpc", "lb"]
     },
     {
       "id": "ibm-cloud/local-load-balancer",
@@ -1623,7 +1623,7 @@
       "asset": "icons/network/local-load-balancer.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": ["local", "load", "balancer"]
+      "keywords": ["local", "load", "balancer", "lb"]
     },
     {
       "id": "ibm-cloud/location",
@@ -1810,7 +1810,7 @@
       "asset": "icons/network/network-load-balancer.svg",
       "tier": "ibm-cloud",
       "color": "#1192E8",
-      "keywords": ["network", "load", "balancer"]
+      "keywords": ["network", "load", "balancer", "lb"]
     },
     {
       "id": "ibm-cloud/network-overlay",
@@ -2448,7 +2448,7 @@
       "asset": "icons/compute/virtual-server.svg",
       "tier": "ibm-cloud",
       "color": "#198038",
-      "keywords": ["virtual", "server"]
+      "keywords": ["virtual", "server", "vm", "vsi"]
     },
     {
       "id": "ibm-cloud/virtual-server-classic",
@@ -2459,7 +2459,7 @@
       "asset": "icons/compute/virtual-server-classic.svg",
       "tier": "ibm-cloud",
       "color": "#198038",
-      "keywords": ["virtual", "server", "classic"]
+      "keywords": ["virtual", "server", "classic", "vm", "vsi"]
     },
     {
       "id": "ibm-cloud/vlan",

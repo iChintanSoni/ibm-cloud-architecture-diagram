@@ -22,7 +22,15 @@ Ship a usable, on-spec human editor in the browser.
   SVGs): 242 icons across 11 categories (a `groups` category and 35 icons added per
   [D23](00-decision-log.md#d23--catalog-gains-a-groups-icon-category-narrowing-d21--locked)). See
   [Icon Catalog](04-icon-catalog.md).
-- `core/catalog` runtime search/resolve.
+- `core/catalog` runtime search/resolve. Keywords are auto-tokenized from each icon's own literal
+  upstream name at build time, with a manual `packages/catalog-build/src/keywordOverrides.ts` table
+  layered on top for architecture terms with no name overlap — first added for `"region"`, `"cache"`,
+  `"on-prem"`/`"on-premises"` (M22.3, 2026-07-30), extended for `"lb"` (all 9 load-balancer icons),
+  `"k8s"` (Kubernetes specifically, not OpenShift), and `"vm"`/`"vsi"` (Virtual Server only, not the
+  more specific instance-profile/group icons) after `apps/web` dogfooding found all four as genuine
+  zero-result searches (M25.2, 2026-08-04). Each override is hand-applied directly to the already-
+  generated `packages/catalog/2.0.0/index.json` too, since a full `pnpm generate` rebuild is gated
+  behind IBM Design sign-off and out of scope for a keyword-only fix.
 
 #### M3 — Semantic elements & containers
 
