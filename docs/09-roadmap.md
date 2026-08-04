@@ -889,7 +889,14 @@ follow-up.
    position to match) without touching the scene. No grid/sibling/16px-inset snapping yet, per
    M17's own "live 16px buffer enforcement... rather than the pad applying only at group creation."
    Keyboard parity needed no new code: the Properties panel's typed X/Y/W/H fields already covered
-   it, mirroring how M16.1 found arrow-key nudge already covered drag-to-move.
+   it, mirroring how M16.1 found arrow-key nudge already covered drag-to-move. (M25.1, 2026-08-04)
+   Found via `apps/web` dogfooding: those X/Y/W/H fields (and Rotation, and a frame's Presentation
+   order — every `NumberInput` in `InspectorPanel.tsx`) silently _concatenated_ on edit rather than
+   replacing — clicking a "48" width and typing "50" produced "4850", since a bare `<input
+type="number">` has no select-on-focus behavior and the click just places the cursor at the end.
+   Fixed with `onFocus={(event) => event.target.select()}` on all three `NumberInput` usages —
+   confirmed live that `.select()` genuinely selects a `type="number"` input's text in both real
+   Chrome and jsdom (test env), despite both reporting `selectionStart`/`selectionEnd` as `null`.
 3. ✅ **Marquee selection (fully-enclosed) and Ctrl/Cmd+A.** A new `marquee` mode on
    `CanvasController`, armed by a pointerdown on empty canvas or a Frame's own background (a Frame
    has no drag semantics and typically spans most of the canvas, so treating it like any other

@@ -295,6 +295,11 @@ function ElementProperties({
                 label={field.toUpperCase()}
                 {...(field === "w" || field === "h" ? { min: 1 } : {})}
                 defaultValue={element[field]}
+                // Selects the existing value on focus so a click-then-type replaces it instead of
+                // inserting at the click position — a bare <input type="number"> has no such
+                // behavior by default, so typing into an already-populated field silently
+                // concatenated (e.g. clicking a "48" width and typing "50" produced "4850").
+                onFocus={(event) => event.target.select()}
                 onBlur={(event) =>
                   commitNumber(element.id, field, event.target.value, onUpdate)
                 }
@@ -322,6 +327,7 @@ function ElementProperties({
               min={0}
               max={359}
               defaultValue={element.rotation ?? 0}
+              onFocus={(event) => event.target.select()}
               onBlur={(event) => {
                 const v = Number(event.target.value);
                 if (Number.isFinite(v))
@@ -394,6 +400,7 @@ function ElementProperties({
           label="Presentation order"
           min={0}
           defaultValue={element.order}
+          onFocus={(event) => event.target.select()}
           onBlur={(event) =>
             commitNumber(element.id, "order", event.target.value, onUpdate)
           }

@@ -157,6 +157,39 @@ describe("InspectorPanel", () => {
     expect(onUpdate).toHaveBeenCalledWith("vpc", { x: 11 });
   });
 
+  it("selects a numeric field's existing value on focus, so typing replaces rather than concatenates (F4)", () => {
+    act(() => {
+      root.render(
+        <InspectorPanel
+          elements={elements}
+          selectedIds={["vpc"]}
+          validationCount={0}
+          validationContent={<p>No issues</p>}
+          frames={[]}
+          onJumpToFrame={vi.fn()}
+          onTogglePresent={vi.fn()}
+          onPresentStep={vi.fn()}
+          onSelect={vi.fn()}
+          onUpdate={vi.fn()}
+          onReparent={vi.fn()}
+          onToggleLockElement={vi.fn()}
+          onToggleHideElement={vi.fn()}
+        />,
+      );
+    });
+
+    const selectSpy = vi.spyOn(HTMLInputElement.prototype, "select");
+    const xInput = container.querySelector<HTMLInputElement>(
+      "#icad-property-x-vpc",
+    )!;
+    act(() =>
+      xInput.dispatchEvent(new FocusEvent("focusin", { bubbles: true })),
+    );
+
+    expect(selectSpy).toHaveBeenCalledTimes(1);
+    selectSpy.mockRestore();
+  });
+
   it("shows IBM's own connector names in the type selector, not the raw kebab-case schema value", () => {
     act(() => {
       root.render(
