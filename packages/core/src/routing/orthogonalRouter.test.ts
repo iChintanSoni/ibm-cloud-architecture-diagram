@@ -282,6 +282,40 @@ describe("routeOrthogonal with containers (border clearance)", () => {
   });
 });
 
+describe("routeOrthogonal with stubExtraPx (M27.5)", () => {
+  it("produces the same path whether stubExtraPx is omitted or explicitly 0", () => {
+    const from = { point: { x: 100, y: 100 }, side: "s" as const };
+    const to = { point: { x: 300, y: 100 }, side: "s" as const };
+
+    expect(routeOrthogonal({ ...from, stubExtraPx: 0 }, to, [])).toEqual(
+      routeOrthogonal(from, to, []),
+    );
+  });
+
+  it("shifts the router's bend point when a stub-length difference is what separates two otherwise-tied L-shaped routes (the ROKS multi-zone-LB dogfooding shape)", () => {
+    // A blocker positioned to rule out the "bend near target" L-path (the one that would turn
+    // right at endStub.x), forcing the router toward "bend near source" instead - exactly the
+    // shape where sibling connectors sharing a port (routeConnector.ts's portStubStagger) need a
+    // stub-length difference to visibly separate *where* each one turns, not just how far each
+    // travels before turning.
+    const blocker: Rect = { x: 260, y: 100, w: 40, h: 150 };
+    const from = { point: { x: 0, y: 0 }, side: "e" as const };
+    const to = { point: { x: 300, y: 300 }, side: "w" as const };
+
+    const unstaggered = routeOrthogonal(from, to, [blocker]);
+    const staggered = routeOrthogonal({ ...from, stubExtraPx: 14 }, to, [
+      blocker,
+    ]);
+
+    expect(pathCrossesObstacles(unstaggered, [blocker])).toBe(false);
+    expect(pathCrossesObstacles(staggered, [blocker])).toBe(false);
+    // Same shape (one bend, near the source) for both, but at a different x - staggered by
+    // exactly the requested extra stub length, not some unrelated side effect of the blocker.
+    expect(staggered[1]!.x).toBe(unstaggered[1]!.x + 14);
+    expect(staggered[1]!.y).toBe(unstaggered[1]!.y);
+  });
+});
+
 describe("pathCrossesObstacles", () => {
   it("detects a straight segment passing through a rect", () => {
     const points = [

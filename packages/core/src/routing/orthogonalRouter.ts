@@ -11,6 +11,13 @@ export interface Rect {
 export interface RoutePort {
   point: Point;
   side: PortSide;
+  /**
+   * Extra px added atop the router's own base STUB for this port only (default 0) — see
+   * routeConnector.ts's portStubStagger: staggers where a connector first becomes free to bend,
+   * so sibling connectors sharing a port don't all choose the identical bend point and produce an
+   * uneven or overlapping shared trunk before diverging toward their own distinct targets (M27.5).
+   */
+  stubExtraPx?: number;
 }
 
 /**
@@ -83,13 +90,14 @@ function sideDelta(side: PortSide): Point {
 }
 
 function stubPoint(port: RoutePort, other: Point): Point {
+  const length = STUB + (port.stubExtraPx ?? 0);
   const d = sideDelta(port.side);
   if (d.x === 0 && d.y === 0) {
     // Omnidirectional port: bias toward the west->east reading convention.
     const dir = other.x >= port.point.x ? 1 : -1;
-    return { x: port.point.x + dir * STUB, y: port.point.y };
+    return { x: port.point.x + dir * length, y: port.point.y };
   }
-  return { x: port.point.x + d.x * STUB, y: port.point.y + d.y * STUB };
+  return { x: port.point.x + d.x * length, y: port.point.y + d.y * length };
 }
 
 function dedupeSorted(values: number[]): number[] {

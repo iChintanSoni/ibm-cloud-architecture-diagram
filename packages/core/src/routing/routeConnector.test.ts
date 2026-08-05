@@ -570,3 +570,45 @@ describe("connectorLabelRectsFor", () => {
     expect(pathCrossesObstacles(fullPath, labelRects)).toBe(false);
   });
 });
+
+describe("routeConnectorInScene stub staggering for sibling connectors (M27.5)", () => {
+  it("bends sibling connectors sharing a port at different points instead of an identical shared x (the ROKS multi-zone-LB dogfooding shape)", () => {
+    // Reconstruction of the actual dogfooding bug: one "hub" (the multi-zone load balancer) fans
+    // out to 3 targets (zone load balancers) sharing its east port. Before M27.5, every sibling's
+    // route bent at the exact same x once it needed to travel around an obstacle - reading as one
+    // shared "trunk" line rather than 3 individually spaced connectors. A wide blocker between the
+    // hub and the targets rules out each connector's "bend near target" option (all 3 targets
+    // share the same x, so that L-path's turn would land on the identical x for every sibling
+    // regardless of staggering), forcing the "bend near source" option instead - where the
+    // per-sibling stub-length stagger (routeConnector.ts's portStubStagger) actually shows up.
+    const scene = sceneOf([
+      icon("hub", 0, 300),
+      icon("z1", 600, -200),
+      icon("z2", 600, 300),
+      { ...icon("z3", 600, 800) },
+      { ...icon("blocker", 560, 200), w: 40, h: 500 },
+      connector("c1", "hub", "e", "z1", "w"),
+      connector("c2", "hub", "e", "z2", "w"),
+      connector("c3", "hub", "e", "z3", "w"),
+    ]);
+
+    const bendXOf = (connectorId: string): number => {
+      const conn = scene.get(connectorId) as ConnectorElement;
+      const waypoints = routeConnectorInScene(scene, conn);
+      const fullPath = connectorPathPoints(scene, { ...conn, waypoints });
+      // The first point after the anchor where the path stops traveling due-east (its own port
+      // direction) is its first real bend.
+      const bend = fullPath.find((p) => p.x !== fullPath[0]!.x);
+      if (!bend)
+        throw new Error(`${connectorId} never bends - test setup is vacuous`);
+      return bend.x;
+    };
+
+    const c1Bend = bendXOf("c1");
+    const c3Bend = bendXOf("c3");
+
+    // c1 is the topmost sibling (fan index 0), c3 the bottommost (fan index 2) - staggered stub
+    // length means the later sibling travels further east before it's free to bend.
+    expect(c3Bend).toBeGreaterThan(c1Bend);
+  });
+});

@@ -329,6 +329,43 @@ export function connectorLabelRectsFor(scene: Scene, selfId: string): Rect[] {
 }
 
 /**
+ * Where a connector sharing its start/end port with sibling connectors falls in that port's
+ * fan-out order — factored out of connectorAnchorPoint (below) so portStubStagger (further down)
+ * can order its own, separate effect (staggered stub length) the same way, rather than the two
+ * independently re-deriving what "sibling order" means and risking drifting apart. `index` is
+ * 0-based, ordered the same way the other endpoints are actually laid out (top-to-bottom for an
+ * e/w side, left-to-right for an n/s side) — a non-crossing fan, not an arbitrary id-order one.
+ */
+function siblingFanIndex(
+  scene: Scene,
+  elementId: string,
+  side: PortSide,
+  connectorId: string,
+): { index: number; count: number } | undefined {
+  if (side !== "n" && side !== "e" && side !== "s" && side !== "w")
+    return undefined;
+  const siblings = portGroupsFor(scene).get(portGroupKey(elementId, side));
+  if (!siblings || siblings.length <= 1) return undefined;
+
+  const spreadOnY = side === "e" || side === "w";
+  const ordered = siblings
+    .map((s) => {
+      const other = scene.get(s.otherElementId);
+      const pos = other
+        ? spreadOnY
+          ? other.y + other.h / 2
+          : other.x + other.w / 2
+        : 0;
+      return { ...s, pos };
+    })
+    .sort((a, b) => a.pos - b.pos);
+
+  const index = ordered.findIndex((s) => s.connectorId === connectorId);
+  if (index === -1) return undefined;
+  return { index, count: ordered.length };
+}
+
+/**
  * The point a connector's line actually draws from/to at one of its two ends — `portPoint`'s
  * exact port center, unless 2+ connectors in the scene share that same (element, side), in which
  * case each gets spread along the side instead of stacking on the same point. Real port side
@@ -352,36 +389,40 @@ export function connectorAnchorPoint(
   const base = portPoint(el, side);
   if (side !== "n" && side !== "e" && side !== "s" && side !== "w") return base;
 
-  const siblings = portGroupsFor(scene).get(portGroupKey(elementId, side));
-  if (!siblings || siblings.length <= 1) return base;
+  const fan = siblingFanIndex(scene, elementId, side, connectorId);
+  if (!fan) return base;
 
-  // Spreads along the side in the same order as the other endpoints are actually laid out
-  // (top-to-bottom for an e/w side, left-to-right for an n/s side) — a non-crossing fan, rather
-  // than an arbitrary id-order one.
   const spreadOnY = side === "e" || side === "w";
-  const ordered = siblings
-    .map((s) => {
-      const other = scene.get(s.otherElementId);
-      const pos = other
-        ? spreadOnY
-          ? other.y + other.h / 2
-          : other.x + other.w / 2
-        : 0;
-      return { ...s, pos };
-    })
-    .sort((a, b) => a.pos - b.pos);
-
-  const index = ordered.findIndex((s) => s.connectorId === connectorId);
-  if (index === -1) return base;
-
-  const fraction = (index + 1) / (ordered.length + 1);
+  const fraction = (fan.index + 1) / (fan.count + 1);
   const ratioSpan = (spreadOnY ? el.h : el.w) * PORT_FAN_SPAN_RATIO;
-  const minSpan = MIN_PORT_SEPARATION_PX * (ordered.length + 1);
+  const minSpan = MIN_PORT_SEPARATION_PX * (fan.count + 1);
   const span = Math.max(ratioSpan, minSpan);
   const delta = (fraction - 0.5) * span;
   return spreadOnY
     ? { x: base.x, y: base.y + delta }
     : { x: base.x + delta, y: base.y };
+}
+
+/**
+ * Extra px added atop the router's own base stub length (orthogonalRouter.ts's STUB) for a
+ * connector sharing its port with siblings — each sibling's first allowed bend point staggers by
+ * one step, so connectors fanning out of (or into) the same side don't all bend at the identical
+ * x/y and produce an uneven or overlapping shared trunk before diverging toward their own distinct
+ * targets (M27.5 - "parallel connectors should stay evenly spaced"). Ordered via the same
+ * siblingFanIndex connectorAnchorPoint itself uses, so the two effects compose into one consistent
+ * cascade instead of fighting each other (e.g. the topmost sibling both exits highest *and* bends
+ * soonest).
+ */
+const STUB_STAGGER_PX = 14;
+
+function portStubStagger(
+  scene: Scene,
+  elementId: string,
+  side: PortSide,
+  connectorId: string,
+): number {
+  const fan = siblingFanIndex(scene, elementId, side, connectorId);
+  return fan ? fan.index * STUB_STAGGER_PX : 0;
 }
 
 /**
@@ -449,6 +490,12 @@ export function routeConnectorInScene(
         connector.id,
       ),
       side: connector.from.port,
+      stubExtraPx: portStubStagger(
+        scene,
+        fromEl.id,
+        connector.from.port,
+        connector.id,
+      ),
     },
     {
       point: connectorAnchorPoint(
@@ -458,6 +505,12 @@ export function routeConnectorInScene(
         connector.id,
       ),
       side: connector.to.port,
+      stubExtraPx: portStubStagger(
+        scene,
+        toEl.id,
+        connector.to.port,
+        connector.id,
+      ),
     },
     obstacles,
     softObstacles,
