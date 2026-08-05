@@ -107,6 +107,14 @@ interface BaseElement {
    * (M18.4, docs/10-canvas-parity-plan.md)
    */
   hidden?: boolean;
+  /**
+   * Opts this element out of linter/rules.ts's containerChildPaddingRule (M27.6): set when a
+   * child deliberately sits closer to its container's edge than the app's own
+   * CONTAINER_CHILD_PADDING_PX convention expects (e.g. a decorative gutter/band, like the ROKS
+   * reference templates' "Master" strip) — a real, intentional layout choice, not a coordinate
+   * mistake the rule should keep flagging. Has no effect on any other rule or on rendering itself.
+   */
+  gutterExempt?: boolean;
 }
 
 export interface IconNodeElement extends BaseElement {

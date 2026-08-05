@@ -12,6 +12,7 @@ import {
   obstaclesFor,
 } from "../routing/routeConnector.js";
 import type { Scene } from "../scene/scene.js";
+import { CONTAINER_CHILD_PADDING_PX } from "../scene/containerPadding.js";
 import type {
   ConnectorElement,
   ConnectorType,
@@ -341,9 +342,10 @@ export const nodeWithoutLocationRule: Rule = (scene): Diagnostic[] => {
  * top-level, not a visual nesting container children are drawn inside. */
 const BOUNDS_ENFORCING_CONTAINERS = new Set(["box", "group", "zone"]);
 
-/** Placed a repositioned child this far inside its container's own edges — matches the 16px
- * inset convention the authoring skill already tells agents to place new children within. */
-const CONTAINER_INSET = 16;
+/** Placed a repositioned child this far inside its container's own edges — the app's shared
+ * child-to-container padding convention (scene/containerPadding.ts), which the authoring skill
+ * already tells agents to place new children within. */
+const CONTAINER_INSET = CONTAINER_CHILD_PADDING_PX;
 
 /**
  * A child with a real containing Box/Group/Zone whose geometry doesn't overlap that container's
@@ -383,6 +385,67 @@ export const childOutsideParentBoundsRule: Rule = (scene): Diagnostic[] => {
           parent.y + CONTAINER_INSET - el.y,
         ),
         "Move inside container",
+      ),
+    );
+  }
+  return diagnostics;
+};
+
+/**
+ * A child that's genuinely *inside* its container (not childOutsideParentBoundsRule's territory
+ * — complete disjunction — nor an overhang past an edge, left for that rule's own future overhang
+ * extension) but sitting closer to one of the container's edges than
+ * CONTAINER_CHILD_PADDING_PX (scene/containerPadding.ts) — the app's one child-to-container inset
+ * convention, applied consistently everywhere else (snap guides, auto-grow, resize-reflow,
+ * grouping) but never previously validated for hand-authored or agent-authored geometry that
+ * never went through any of those interactive paths.
+ *
+ * Advisory (`info`, not `warn`): a tight-but-still-inside child is routinely a deliberate layout
+ * choice (a border-flush accent strip, a tightly fitted icon), not a coordinate mistake — so this
+ * offers an explicit per-element opt-out (`gutterExempt`) rather than forcing every diagram to
+ * either satisfy the convention or accept a louder warning. This is the data-level version of what
+ * the ROKS reference templates' "Master" band gutter previously only self-declared via a source
+ * code comment, which a lint rule has no way to read.
+ */
+export const containerChildPaddingRule: Rule = (scene): Diagnostic[] => {
+  const diagnostics: Diagnostic[] = [];
+  for (const el of scene.all()) {
+    if (!el.parentId || el.type === "connector" || el.type === "frame")
+      continue;
+    if (el.gutterExempt) continue;
+    const parent = scene.get(el.parentId);
+    if (!parent || !BOUNDS_ENFORCING_CONTAINERS.has(parent.type)) continue;
+
+    const left = el.x - parent.x;
+    const right = parent.x + parent.w - (el.x + el.w);
+    const top = el.y - parent.y;
+    const bottom = parent.y + parent.h - (el.y + el.h);
+    // Only an edge the child is genuinely inside of (a negative gap is an overhang -
+    // childOutsideParentBoundsRule's territory, not this rule's) counts as "too tight."
+    const isTight = (gap: number) =>
+      gap >= 0 && gap < CONTAINER_CHILD_PADDING_PX;
+    if (![left, right, top, bottom].some(isTight)) continue;
+
+    const dx = isTight(left)
+      ? CONTAINER_CHILD_PADDING_PX - left
+      : isTight(right)
+        ? -(CONTAINER_CHILD_PADDING_PX - right)
+        : 0;
+    const dy = isTight(top)
+      ? CONTAINER_CHILD_PADDING_PX - top
+      : isTight(bottom)
+        ? -(CONTAINER_CHILD_PADDING_PX - bottom)
+        : 0;
+
+    diagnostics.push(
+      diagnostic(
+        "container-child-padding",
+        "info",
+        "containment",
+        el.id,
+        `"${el.id}" sits closer than ${CONTAINER_CHILD_PADDING_PX}px to its container "${parent.id}"'s edge.`,
+        moveElements(scene, [el.id], dx, dy),
+        "Move inside padding",
       ),
     );
   }
@@ -733,6 +796,12 @@ export const ruleMetadata: RuleMetadata[] = [
     defaultSeverity: "warn",
   },
   {
+    id: "container-child-padding",
+    title: "Container padding",
+    category: "containment",
+    defaultSeverity: "info",
+  },
+  {
     id: "missing-label",
     title: "Required labels",
     category: "labels",
@@ -815,6 +884,7 @@ export const defaultRules: Rule[] = [
   secondaryStrokeRule,
   nodeWithoutLocationRule,
   childOutsideParentBoundsRule,
+  containerChildPaddingRule,
   missingLabelRule,
   duplicateLabelRule,
   danglingConnectorRule,

@@ -4,6 +4,7 @@ import {
   boundsOfElements,
   fitRectWithPadding,
 } from "../scene/bounds.js";
+import { CONTAINER_CHILD_PADDING_PX } from "../scene/containerPadding.js";
 import { CommandBus } from "../commands/commandBus.js";
 import {
   addElement,
@@ -222,6 +223,8 @@ export interface ElementPropertiesPatch {
   locked?: boolean;
   /** Hide or show the element via the Properties panel (M18.4). */
   hidden?: boolean;
+  /** Opts out of the linter's container-child-padding advisory for a deliberate gutter (M27.6). */
+  gutterExempt?: boolean;
   /** Rotation in degrees 0–359; 0 or absent means no rotation (M20). */
   rotation?: number;
 }
@@ -1374,7 +1377,7 @@ export class Editor {
     const bbox = this.boundsOf(existing);
     if (!bbox) return undefined;
 
-    const padding = opts.padding ?? 16;
+    const padding = opts.padding ?? CONTAINER_CHILD_PADDING_PX;
     const parents = new Set(existing.map((id) => this.scene.get(id)!.parentId));
     const parentId = parents.size === 1 ? [...parents][0] : undefined;
 

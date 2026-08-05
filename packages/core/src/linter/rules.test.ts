@@ -17,6 +17,7 @@ import {
   connectorCrossesObstacleRule,
   connectorPortRule,
   containerBorderRule,
+  containerChildPaddingRule,
   containerSemanticRule,
   danglingConnectorRule,
   duplicateLabelRule,
@@ -113,10 +114,10 @@ function catalog(): Catalog {
 }
 
 describe("default conformance rules", () => {
-  it("publishes a unique IBM-default metadata entry for all 20 supported rules", () => {
+  it("publishes a unique IBM-default metadata entry for all 21 supported rules", () => {
     const ids = ruleMetadata.map((rule) => rule.id);
-    expect(ids).toHaveLength(20);
-    expect(new Set(ids).size).toBe(20);
+    expect(ids).toHaveLength(21);
+    expect(new Set(ids).size).toBe(21);
     expect(ids).toEqual(
       expect.arrayContaining([
         "container-semantic",
@@ -127,6 +128,7 @@ describe("default conformance rules", () => {
         "secondary-color-stroke",
         "node-without-location",
         "child-outside-parent-bounds",
+        "container-child-padding",
         "missing-label",
         "duplicate-label",
         "dangling-connector",
@@ -356,6 +358,73 @@ describe("default conformance rules", () => {
     scene._put({ ...icon("far-from-frame", "frame"), x: 999, y: 999 });
 
     expect(childOutsideParentBoundsRule(scene)).toHaveLength(0);
+  });
+
+  it("flags a child that's inside its container but hugging one edge closer than the 16px padding convention", () => {
+    const scene = new Scene();
+    scene._put(box("container")); // (0, 0, 100, 100)
+    scene._put({ ...icon("tight", "container"), x: 5, y: 20 }); // left gap = 5, < 16
+
+    const diagnostics = containerChildPaddingRule(scene);
+    expect(diagnostics).toHaveLength(1);
+    expect(diagnostics[0]).toMatchObject({
+      ruleId: "container-child-padding",
+      severity: "info",
+      category: "containment",
+      elementId: "tight",
+    });
+
+    diagnostics[0]!.quickFix!.do(scene);
+    // Nudged inward on the tight (left) edge only - the already-comfortable top gap (20) is
+    // left untouched.
+    expect(scene.get("tight")).toMatchObject({ x: 16, y: 20 });
+  });
+
+  it("does not flag a child that already respects the padding convention on every edge", () => {
+    const scene = new Scene();
+    scene._put(box("container")); // (0, 0, 100, 100)
+    scene._put({ ...icon("comfortable", "container"), x: 20, y: 20 });
+    expect(containerChildPaddingRule(scene)).toHaveLength(0);
+  });
+
+  it("does not flag an overhanging/disjoint child - that's childOutsideParentBoundsRule's territory, not this rule's", () => {
+    const scene = new Scene();
+    scene._put(box("container")); // (0, 0, 100, 100)
+    // Same overhang shape as childOutsideParentBoundsRule's own "merely overhangs" test above -
+    // a negative gap (overhang), not merely a small positive one.
+    scene._put({ ...icon("overhanging", "container"), x: 90, y: 20 });
+    expect(containerChildPaddingRule(scene)).toHaveLength(0);
+  });
+
+  it("respects a per-element gutterExempt opt-out for a deliberate gutter", () => {
+    const scene = new Scene();
+    scene._put(box("container")); // (0, 0, 100, 100)
+    scene._put({
+      ...icon("deliberate-gutter", "container"),
+      x: 0,
+      y: 20,
+      gutterExempt: true,
+    });
+    expect(containerChildPaddingRule(scene)).toHaveLength(0);
+  });
+
+  it("ignores elements with no parentId, and containers that don't enforce bounds (Frame)", () => {
+    const scene = new Scene();
+    scene._put(icon("top-level")); // no parentId at all
+    scene._put({
+      id: "frame",
+      type: "frame",
+      semantic: "boundary",
+      name: "Section",
+      order: 1,
+      x: 0,
+      y: 0,
+      w: 100,
+      h: 100,
+    });
+    scene._put({ ...icon("flush-with-frame", "frame"), x: 0, y: 0 });
+
+    expect(containerChildPaddingRule(scene)).toHaveLength(0);
   });
 
   it("detects duplicate labels case-insensitively and ignores connector labels", () => {

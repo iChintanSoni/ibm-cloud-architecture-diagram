@@ -1,4 +1,5 @@
 import type { Rect } from "../routing/orthogonalRouter.js";
+import { CONTAINER_CHILD_PADDING_PX } from "../scene/containerPadding.js";
 
 /**
  * The 8 handles IBM's kit prescribes ("Prescribed location / Scaling elements",
@@ -124,7 +125,7 @@ function clamp(value: number, min: number, max: number): number {
 export function reflowChildren(
   children: ReadonlyArray<{ id: string } & Rect>,
   containerAfter: Rect,
-  padding = 16,
+  padding = CONTAINER_CHILD_PADDING_PX,
 ): Map<string, Rect> {
   const patches = new Map<string, Rect>();
   const minX = containerAfter.x + padding;

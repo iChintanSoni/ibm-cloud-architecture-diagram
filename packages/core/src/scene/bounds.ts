@@ -1,4 +1,5 @@
 import type { Rect } from "../routing/orthogonalRouter.js";
+import { CONTAINER_CHILD_PADDING_PX } from "./containerPadding.js";
 import type { Scene } from "./scene.js";
 import type { ElementId, SceneElement } from "./types.js";
 
@@ -153,7 +154,7 @@ export function fitRectWithPadding(
 export function autoFitContainer(
   scene: Scene,
   containerId: ElementId,
-  padding = 16,
+  padding = CONTAINER_CHILD_PADDING_PX,
 ): Rect | undefined {
   const container = scene.get(containerId);
   if (!container) return undefined;

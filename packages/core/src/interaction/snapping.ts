@@ -1,4 +1,5 @@
 import { boundsOf } from "../scene/bounds.js";
+import { CONTAINER_CHILD_PADDING_PX } from "../scene/containerPadding.js";
 import type { Scene } from "../scene/scene.js";
 import type { ElementId } from "../scene/types.js";
 import type { Rect } from "../routing/orthogonalRouter.js";
@@ -28,8 +29,10 @@ export interface SnapOptions {
 
 const DEFAULT_TOLERANCE = 6;
 
-/** Matches `Editor.groupElements`'s own default container padding (createEditor.ts). */
-export const PARENT_INSET = 16;
+/** The app's shared child-to-container padding convention (see scene/containerPadding.ts) —
+ * kept exported under this file's own established name since it's part of this module's public
+ * API (clampRectToParentInset, and consumers like canvasController.ts/its tests). */
+export const PARENT_INSET = CONTAINER_CHILD_PADDING_PX;
 
 interface Candidate {
   /** Signed adjustment that lands the given edge/center exactly on the target line. */

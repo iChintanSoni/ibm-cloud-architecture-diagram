@@ -2,6 +2,7 @@ import { routeConnectorInScene } from "../routing/routeConnector.js";
 import type { AlignMove } from "../scene/align.js";
 import type { DistributeMove } from "../scene/distribute.js";
 import { autoFitContainer } from "../scene/bounds.js";
+import { CONTAINER_CHILD_PADDING_PX } from "../scene/containerPadding.js";
 import type { Scene } from "../scene/scene.js";
 import type {
   ConformanceSettings,
@@ -179,7 +180,7 @@ export function moveElements(
 export function autoGrowContainer(
   scene: Scene,
   containerId: ElementId,
-  padding = 16,
+  padding = CONTAINER_CHILD_PADDING_PX,
 ): Command {
   const previous = scene.get(containerId);
   return {

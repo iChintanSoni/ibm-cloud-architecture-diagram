@@ -100,7 +100,10 @@ describe("Linter", () => {
   it("also accepts a group nested inside a box", () => {
     const scene = new Scene();
     scene._put(box("subnet", "Subnet"));
-    scene._put(group("sg", "subnet"));
+    // Inset within the box's own 16px padding convention (container-child-padding, M27.6) - this
+    // test is about semantic acceptance of Group-inside-Box, not padding, so the fixture shouldn't
+    // incidentally trip an unrelated rule.
+    scene._put({ ...group("sg", "subnet"), x: 16, y: 16, w: 60, h: 60 });
 
     const diagnostics = new Linter().run(scene);
     expect(diagnostics).toEqual([]);

@@ -152,6 +152,12 @@ export const elementPropertiesPatchSchema = z.object({
   annotation: connectorAnnotationSchema.optional(),
   locked: z.boolean().optional().describe("Lock or unlock the element (M18.4)"),
   hidden: z.boolean().optional().describe("Hide or show the element (M18.4)"),
+  gutterExempt: z
+    .boolean()
+    .optional()
+    .describe(
+      "Opt this element out of the container-child-padding advisory for a deliberate gutter, e.g. a decorative band placed closer to its container's edge than the app's 16px convention on purpose (M27.6)",
+    ),
   rotation: z
     .number()
     .min(0)
