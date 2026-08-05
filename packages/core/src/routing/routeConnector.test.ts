@@ -396,4 +396,65 @@ describe("containerLabelRectsFor", () => {
       fullPath.some((p) => p.x >= 300 && p.x <= 700 && p.y >= 0 && p.y <= 200),
     ).toBe(true);
   });
+
+  it("keeps a connector from hugging a related container's border it merely passes alongside before entering", () => {
+    // Recreates the actual dogfooding bug (ROKS template): a source outside a container connects
+    // to a target nested deep inside it. A hard obstacle in between forces the route to travel a
+    // long stretch alongside the outer container's top border before diving down to the target -
+    // exactly the shape that used to land precisely on (or a few px inside) that border, since
+    // "outer" is an ancestor of the target endpoint and so is exempt from
+    // containerAvoidanceRectsFor's soft-obstacle channel (M4 - legitimately crossed).
+    const scene = sceneOf([
+      box("outer", 200, 100, 400, 300),
+      box("inner", 500, 300, 60, 60, "outer"),
+      icon("target", 510, 310, "inner"),
+      icon("source", 0, 76),
+      { ...icon("blocker", 100, 150), w: 300, h: 100 },
+      connector("c1", "source", "e", "target", "w"),
+    ]);
+    const conn = scene.get("c1") as ConnectorElement;
+    const waypoints = routeConnectorInScene(scene, conn);
+    const fullPath = connectorPathPoints(scene, { ...conn, waypoints });
+
+    const outerTop = 100;
+    let sawOverlappingSegment = false;
+    for (let i = 0; i < fullPath.length - 1; i += 1) {
+      const a = fullPath[i]!;
+      const b = fullPath[i + 1]!;
+      if (a.y !== b.y) continue; // only horizontal segments can hug a top edge
+      const overlapsOuterWidth =
+        Math.min(a.x, b.x) < 600 && Math.max(a.x, b.x) > 200;
+      if (!overlapsOuterWidth) continue;
+      sawOverlappingSegment = true;
+      expect(Math.abs(a.y - outerTop)).toBeGreaterThanOrEqual(10);
+    }
+    // Guards against a vacuous pass: the blocker must actually force some horizontal segment to
+    // cross outer's width, or the assertion above never ran.
+    expect(sawOverlappingSegment).toBe(true);
+  });
+
+  it("excludes a connector's own two endpoint containers from border clearance (attachment isn't hugging)", () => {
+    // A connector directly between two boxes (both endpoints are themselves containers) is the
+    // simplest possible scene the border-clearance channel could see: no other container is
+    // present or relevant. If containerRectsFor's own two endpoints weren't excluded, their edges
+    // would still add new candidate grid lines purely from being present in the `containers` list
+    // (regardless of whether any actual penalty fires), which was enough to perturb Dijkstra's
+    // tie-breaking for this exact shape and silently produce a different, endpoint-position-
+    // independent route (M27.1 dogfooding regression, caught by createEditor.test.ts's distribute
+    // suite). Asserts the fix by checking the route reacts to the target box moving, which it
+    // could only fail to do if some part of the route had become anchored to fixed grid lines
+    // instead of the endpoints' actual positions.
+    const scene = sceneOf([
+      box("a", 0, 0, 100, 60),
+      box("b", 200, 200, 100, 60),
+      connector("c1", "a", "e", "b", "w"),
+    ]);
+    const conn = scene.get("c1") as ConnectorElement;
+    const before = routeConnectorInScene(scene, conn);
+
+    scene._put(box("b", 400, 200, 100, 60));
+    const after = routeConnectorInScene(scene, conn);
+
+    expect(after).not.toEqual(before);
+  });
 });

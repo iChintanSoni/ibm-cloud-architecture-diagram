@@ -44,6 +44,28 @@ const EPSILON = 0.01;
  * need soft-obstacle avoidance at all.
  */
 const SOFT_OBSTACLE_RELEVANCE_MARGIN = 150;
+/**
+ * Minimum clearance a route tries to keep from a container's (box/group/zone) border when running
+ * *parallel* to it — distinct from PADDING, which governs clearance from hard/soft obstacle rects.
+ * Containers are deliberately never obstacles (see routeOrthogonal's doc comment below — connectors
+ * must be able to cross a box/zone boundary), so without this a route parallel to a container edge
+ * has no cost reason to stand off from it, and can end up running exactly along — or a few px
+ * inside — a border it isn't even trying to cross. Only ever charged against a segment's
+ * same-orientation edge pair (horizontal segment vs. top/bottom, vertical vs. left/right) — a
+ * perpendicular crossing segment is tested against the opposite pair and so is never charged this
+ * cost, regardless of proximity. Tunable; refine by visual inspection, not by re-deriving
+ * analytically.
+ */
+const BORDER_CLEARANCE_PX = 10;
+/**
+ * Cost per pixel of a segment's overlap with a container edge's extent while within
+ * BORDER_CLEARANCE_PX of it, scaled by proximity (right on the edge costs full price per px,
+ * fading toward 0 at the clearance boundary) — a brief, unavoidable graze costs little, while
+ * hugging a long stretch of border costs roughly as much as a real unrelated-container crossing
+ * (CONTAINER_SOFT_OBSTACLE_PENALTY in routeConnector.ts), enough to justify a modest detour when
+ * one exists nearby. Tunable.
+ */
+const BORDER_HUG_PENALTY_PER_PX = 2;
 
 function sideDelta(side: PortSide): Point {
   switch (side) {
@@ -119,6 +141,53 @@ export function pathCrossesObstacles(
       return true;
   }
   return false;
+}
+
+/**
+ * Extra Dijkstra edge cost for a segment running parallel to, and within BORDER_CLEARANCE_PX of, a
+ * container's border, proportional to how much of the edge's extent the segment overlaps and how
+ * close it is. Only ever tests a segment against the container edges it could actually be parallel
+ * to — a horizontal segment against top/bottom, a vertical segment against left/right — so a
+ * legitimate perpendicular crossing (opposite-orientation edge) is never charged, and a segment
+ * that's neither purely horizontal nor purely vertical (shouldn't occur — this router only ever
+ * emits axis-aligned segments) is charged nothing.
+ */
+function borderHugCost(
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+  containers: Rect[],
+): number {
+  let cost = 0;
+  if (Math.abs(ay - by) < EPSILON) {
+    const lo = Math.min(ax, bx);
+    const hi = Math.max(ax, bx);
+    for (const r of containers) {
+      for (const edgeY of [r.y, r.y + r.h]) {
+        const dist = Math.abs(ay - edgeY);
+        if (dist >= BORDER_CLEARANCE_PX) continue;
+        const overlap = Math.min(hi, r.x + r.w) - Math.max(lo, r.x);
+        if (overlap <= EPSILON) continue;
+        const proximity = (BORDER_CLEARANCE_PX - dist) / BORDER_CLEARANCE_PX;
+        cost += BORDER_HUG_PENALTY_PER_PX * overlap * proximity;
+      }
+    }
+  } else if (Math.abs(ax - bx) < EPSILON) {
+    const lo = Math.min(ay, by);
+    const hi = Math.max(ay, by);
+    for (const r of containers) {
+      for (const edgeX of [r.x, r.x + r.w]) {
+        const dist = Math.abs(ax - edgeX);
+        if (dist >= BORDER_CLEARANCE_PX) continue;
+        const overlap = Math.min(hi, r.y + r.h) - Math.max(lo, r.y);
+        if (overlap <= EPSILON) continue;
+        const proximity = (BORDER_CLEARANCE_PX - dist) / BORDER_CLEARANCE_PX;
+        cost += BORDER_HUG_PENALTY_PER_PX * overlap * proximity;
+      }
+    }
+  }
+  return cost;
 }
 
 /** Drops consecutive duplicate/collinear points so the rendered path has only real bends. */
@@ -234,12 +303,20 @@ function directRoute(from: RoutePort, to: RoutePort): Point[] {
  * channel: unlike the hard obstacles above, crossing one is never forbidden, only discouraged by
  * its own per-rect penalty cost. A segment crossing several overlapping soft obstacles pays for
  * all of them, summed, not just one.
+ *
+ * containers (default none) is a third, independent channel — see BORDER_CLEARANCE_PX's doc
+ * comment above — that discourages a route from running *parallel to and within
+ * BORDER_CLEARANCE_PX of* a container's border, without discouraging crossing it at all (a
+ * perpendicular crossing is never charged). This is deliberately not folded into softObstacles:
+ * SoftObstacle's per-rect flat penalty models "avoid this whole rect's interior," which is the
+ * wrong shape for "don't hug this edge but feel free to cross it."
  */
 export function routeOrthogonal(
   from: RoutePort,
   to: RoutePort,
   obstacles: Rect[],
   softObstacles: SoftObstacle[] = [],
+  containers: Rect[] = [],
 ): Point[] {
   const startStub = stubPoint(from, to.point);
   const endStub = stubPoint(to, from.point);
@@ -259,6 +336,16 @@ export function routeOrthogonal(
       s.rect.y + s.rect.h >= relevanceTop &&
       s.rect.y <= relevanceBottom,
   );
+  // Same relevance pruning as relevantSoft above, applied to the containers channel — a diagram
+  // with many containers scattered elsewhere on the canvas shouldn't blow MAX_GRID_NODES for a
+  // connector that has no border-clearance interaction with most of them.
+  const relevantContainers = containers.filter(
+    (r) =>
+      r.x + r.w >= relevanceLeft &&
+      r.x <= relevanceRight &&
+      r.y + r.h >= relevanceTop &&
+      r.y <= relevanceBottom,
+  );
 
   const xs = dedupeSorted([
     startStub.x,
@@ -268,6 +355,15 @@ export function routeOrthogonal(
       s.rect.x - PADDING,
       s.rect.x + s.rect.w + PADDING,
     ]),
+    // Candidate lines just outside (and just inside) each vertical edge's clearance zone, so the
+    // Dijkstra search actually has somewhere non-hugging to snap to — borderHugCost alone can only
+    // penalize paths built from grid lines that already exist.
+    ...relevantContainers.flatMap((r) => [
+      r.x - BORDER_CLEARANCE_PX,
+      r.x + BORDER_CLEARANCE_PX,
+      r.x + r.w - BORDER_CLEARANCE_PX,
+      r.x + r.w + BORDER_CLEARANCE_PX,
+    ]),
   ]);
   const ys = dedupeSorted([
     startStub.y,
@@ -276,6 +372,12 @@ export function routeOrthogonal(
     ...relevantSoft.flatMap((s) => [
       s.rect.y - PADDING,
       s.rect.y + s.rect.h + PADDING,
+    ]),
+    ...relevantContainers.flatMap((r) => [
+      r.y - BORDER_CLEARANCE_PX,
+      r.y + BORDER_CLEARANCE_PX,
+      r.y + r.h - BORDER_CLEARANCE_PX,
+      r.y + r.h + BORDER_CLEARANCE_PX,
     ]),
   ]);
 
@@ -340,6 +442,7 @@ export function routeOrthogonal(
           segmentCrossesRect(ax, ay, bx, by, s.rect) ? sum + s.penalty : sum,
         0,
       );
+      cost += borderHugCost(ax, ay, bx, by, relevantContainers);
 
       const nextCost = current.cost + cost;
       const nextKey = stateKey(n.i, n.j, n.dir);

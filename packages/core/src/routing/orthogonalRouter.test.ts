@@ -208,6 +208,80 @@ describe("routeOrthogonal with soft obstacles", () => {
   });
 });
 
+describe("routeOrthogonal with containers (border clearance)", () => {
+  it("omitting the 5th arg and passing [] produce identical paths", () => {
+    const obstacles: Rect[] = [{ x: 180, y: 0, w: 40, h: 60 }];
+    const from = { point: { x: 100, y: 30 }, side: "e" as const };
+    const to = { point: { x: 300, y: 30 }, side: "w" as const };
+
+    const withoutArg = routeOrthogonal(from, to, obstacles, []);
+    const withEmptyArray = routeOrthogonal(from, to, obstacles, [], []);
+
+    expect(withEmptyArray).toEqual(withoutArg);
+  });
+
+  it("detours off a border it would otherwise run exactly along", () => {
+    const containers: Rect[] = [{ x: 150, y: 30, w: 100, h: 100 }];
+    const from = { point: { x: 100, y: 30 }, side: "e" as const };
+    const to = { point: { x: 300, y: 30 }, side: "w" as const };
+
+    // Baseline: with no containers channel, the direct route runs exactly along the container's
+    // top edge for the whole middle stretch - this is the bug being fixed.
+    const withoutContainers = routeOrthogonal(from, to, []);
+    expect(withoutContainers.every((p) => p.y === 30)).toBe(true);
+
+    const withContainers = routeOrthogonal(from, to, [], [], containers);
+    expect(withContainers[0]).toEqual(from.point);
+    expect(withContainers[withContainers.length - 1]).toEqual(to.point);
+    expect(withContainers.some((p) => p.y !== 30)).toBe(true);
+  });
+
+  it("detours off a border it's merely hugging a few px inside, not just exact coincidence", () => {
+    // Mirrors the ROKS diagram bug more literally: the route isn't exactly on the border, just
+    // within clearance of it (here, 4px) - proximity-based, not an exact-match check.
+    const containers: Rect[] = [{ x: 150, y: 34, w: 100, h: 100 }];
+    const from = { point: { x: 100, y: 30 }, side: "e" as const };
+    const to = { point: { x: 300, y: 30 }, side: "w" as const };
+
+    const withoutContainers = routeOrthogonal(from, to, []);
+    expect(withoutContainers.every((p) => p.y === 30)).toBe(true);
+
+    const withContainers = routeOrthogonal(from, to, [], [], containers);
+    expect(withContainers.some((p) => p.y !== 30)).toBe(true);
+  });
+
+  it("does not penalize a straight perpendicular crossing through a container", () => {
+    // The path's x=100 sits centered in the container's width (50-150), nowhere near its left/
+    // right edges - a vertical segment is only ever tested against left/right, so this must be
+    // completely unaffected by the container's presence.
+    const containers: Rect[] = [{ x: 50, y: 100, w: 100, h: 100 }];
+    const from = { point: { x: 100, y: 0 }, side: "s" as const };
+    const to = { point: { x: 100, y: 300 }, side: "n" as const };
+
+    const withContainers = routeOrthogonal(from, to, [], [], containers);
+    const withoutContainers = routeOrthogonal(from, to, []);
+
+    expect(withContainers).toEqual(withoutContainers);
+    expect(withContainers.every((p) => p.x === 100)).toBe(true);
+  });
+
+  it("ignores containers far from the route (relevance filter keeps the grid bounded)", () => {
+    const from = { point: { x: 0, y: 0 }, side: "e" as const };
+    const to = { point: { x: 200, y: 0 }, side: "w" as const };
+    const farContainers: Rect[] = Array.from({ length: 100 }, (_, i) => ({
+      x: 5000 + i * 50,
+      y: 5000 + i * 50,
+      w: 20,
+      h: 20,
+    }));
+
+    const withFar = routeOrthogonal(from, to, [], [], farContainers);
+    const without = routeOrthogonal(from, to, []);
+
+    expect(withFar).toEqual(without);
+  });
+});
+
 describe("pathCrossesObstacles", () => {
   it("detects a straight segment passing through a rect", () => {
     const points = [

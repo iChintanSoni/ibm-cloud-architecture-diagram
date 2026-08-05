@@ -23,6 +23,23 @@ const CONTAINER_SOFT_OBSTACLE_PENALTY = 80;
  * container's empty interior, so it's worth a larger detour to avoid. Tunable, same as above.
  */
 const LABEL_SOFT_OBSTACLE_PENALTY = 200;
+/**
+ * Distinct from both penalty channels above: containerRectsFor's containers are passed to
+ * routeOrthogonal's `containers` channel (minus the connector's own two endpoints, see
+ * routeConnectorInScene) so a route never runs parallel to and hugging a border it's allowed —
+ * even expected — to cross. Border clearance and "may this be crossed" are orthogonal questions:
+ * an *ancestor* of an endpoint is exactly the kind of border a connector legitimately crosses per
+ * the M4 decision, and is exactly where the ugly exact-on-the-border / few-px-inside routes this
+ * fixes were coming from, so this deliberately does NOT use containerAvoidanceRectsFor's fuller
+ * ancestor/descendant relatedness exemption — only the two literal endpoint elements themselves
+ * are excluded, nothing about their ancestor chains. (Excluding only the direct endpoints, not
+ * ancestors too, is still enough to avoid the failure mode this guards against: a connector
+ * touching its own endpoint's border at the port is attachment, not hugging, and including that
+ * endpoint's own edges was adding grid lines that could shift orthogonalRouter's Dijkstra
+ * tie-breaking for routes having nothing to do with border clearance at all — e.g. two boxes
+ * connected directly to each other, no other containers involved.) See orthogonalRouter.ts's
+ * BORDER_CLEARANCE_PX doc comment for the actual mechanism.
+ */
 
 /**
  * Fraction of an element's own side length available for spreading multiple connectors that
@@ -299,6 +316,9 @@ export function routeConnectorInScene(
       penalty: LABEL_SOFT_OBSTACLE_PENALTY,
     })),
   ];
+  const containers = containerRectsFor(scene)
+    .filter((c) => c.id !== fromEl.id && c.id !== toEl.id)
+    .map((c) => c.rect);
   const path = routeOrthogonal(
     {
       point: connectorAnchorPoint(
@@ -320,6 +340,7 @@ export function routeConnectorInScene(
     },
     obstacles,
     softObstacles,
+    containers,
   );
   return path.slice(1, -1);
 }
