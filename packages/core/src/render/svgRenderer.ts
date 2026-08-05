@@ -30,7 +30,7 @@ import {
   containerLabelMaxWidth,
 } from "./containerLabel.js";
 import { createSvgElement, setAttrs } from "./dom.js";
-import { portPoint, type Point } from "./port.js";
+import { pointAtFraction, portPoint, type Point } from "./port.js";
 import { ellipsize, wrapText } from "./textMetrics.js";
 import type { ViewportState } from "./viewport.js";
 
@@ -219,28 +219,6 @@ const CONNECTOR_STYLE: Record<ConnectorType, ConnectorStyleSpec> = {
   implementation: { dash: "4 3", endMarker: "arrow-hollow" },
   extends: { endMarker: "arrow-hollow" },
 };
-
-/** Point at a fraction `t` (0..1) along a polyline's total length. */
-function pointAtFraction(points: Point[], t: number): Point {
-  const segments = points.slice(0, -1).map((p, i) => {
-    const q = points[i + 1]!;
-    return Math.hypot(q.x - p.x, q.y - p.y);
-  });
-  const total = segments.reduce((a, b) => a + b, 0);
-  if (total === 0) return points[0]!;
-  let remaining = total * Math.min(1, Math.max(0, t));
-  for (let i = 0; i < segments.length; i += 1) {
-    const len = segments[i]!;
-    if (remaining <= len || i === segments.length - 1) {
-      const ratio = len === 0 ? 0 : remaining / len;
-      const p = points[i]!;
-      const q = points[i + 1]!;
-      return { x: p.x + (q.x - p.x) * ratio, y: p.y + (q.y - p.y) * ratio };
-    }
-    remaining -= len;
-  }
-  return points[0]!;
-}
 
 /**
  * Offsets a rectilinear (axis-aligned) polyline to a parallel path, used for

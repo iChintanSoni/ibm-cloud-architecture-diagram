@@ -87,6 +87,27 @@ describe("createEditor", () => {
     ).toBe("Payments platform");
   });
 
+  it("auto-sizes a new text element's width from its actual string, not a flat default (M27.4)", () => {
+    const short = editor.addText({ at: { x: 0, y: 0 }, text: "OK" });
+    const long = editor.addText({
+      at: { x: 0, y: 100 },
+      text: "A much longer label describing this component in detail",
+    });
+    const shortW = (editor.scene.get(short) as { w: number }).w;
+    const longW = (editor.scene.get(long) as { w: number }).w;
+    expect(longW).toBeGreaterThan(shortW);
+  });
+
+  it("still honors an explicit w/h override for a new text element", () => {
+    const id = editor.addText({
+      at: { x: 0, y: 0 },
+      text: "OK",
+      w: 300,
+      h: 40,
+    });
+    expect(editor.scene.get(id)).toMatchObject({ w: 300, h: 40 });
+  });
+
   it("adds named frames with presentation order through the public API", () => {
     const overview = editor.addFrame({
       at: { x: 0, y: 0 },

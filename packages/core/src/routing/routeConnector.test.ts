@@ -9,6 +9,7 @@ import type {
 import { containerLabelRect } from "../render/containerLabel.js";
 import {
   connectorAnchorPoint,
+  connectorLabelRectsFor,
   connectorPathPoints,
   containerAvoidanceRectsFor,
   containerLabelRectsFor,
@@ -456,5 +457,116 @@ describe("containerLabelRectsFor", () => {
     const after = routeConnectorInScene(scene, conn);
 
     expect(after).not.toEqual(before);
+  });
+});
+
+describe("obstaclesFor (rotation-aware hard obstacles, M27.4)", () => {
+  it("uses a rotated text element's real footprint, not its unrotated stored box", () => {
+    // Mirrors the actual ROKS "Master" label bug: a Text element's stored x/y/w/h describes its
+    // *unrotated* footprint (rotation pivots about that box's own center) - a wide, short box here
+    // (60x20) that becomes tall and narrow (20x60) once rotated -90deg. A route that only avoided
+    // the raw unrotated box would cut straight through the real, rotated glyph.
+    const rotatedText = {
+      id: "master-label",
+      type: "text",
+      semantic: "node",
+      text: "Master",
+      rotation: -90,
+      // Center (300,100); half-extents (30,10) pre-rotation, swapped to (10,30) once rotated -90.
+      x: 270,
+      y: 90,
+      w: 60,
+      h: 20,
+    } as SceneElement;
+
+    const scene = sceneOf([
+      icon("source", 0, 56),
+      icon("target", 600, 56),
+      rotatedText,
+      connector("c1", "source", "e", "target", "w"),
+    ]);
+    const conn = scene.get("c1") as ConnectorElement;
+    const waypoints = routeConnectorInScene(scene, conn);
+    const fullPath = connectorPathPoints(scene, { ...conn, waypoints });
+
+    const rotatedRect = { x: 290, y: 70, w: 20, h: 60 };
+    expect(pathCrossesObstacles(fullPath, [rotatedRect])).toBe(false);
+
+    // Guards against a vacuous pass: without rotation-awareness the shortest path here is simply
+    // the straight horizontal line both ports sit on (y=80), which the *unrotated* box (y:90-110)
+    // never touches at all - so unpatched code would have returned exactly this line, oblivious to
+    // where the text actually paints.
+    const straightLine = [
+      { x: 48, y: 80 },
+      { x: 600, y: 80 },
+    ];
+    expect(pathCrossesObstacles(straightLine, [rotatedRect])).toBe(true);
+  });
+});
+
+describe("connectorLabelRectsFor", () => {
+  it("is empty when no other connector carries any text", () => {
+    const scene = sceneOf([
+      icon("a", 0, 0),
+      icon("b", 300, 0),
+      connector("c1", "a", "e", "b", "w"),
+    ]);
+    expect(connectorLabelRectsFor(scene, "c1")).toEqual([]);
+  });
+
+  it("excludes the connector's own text even when it's the only one asking", () => {
+    // A connector's own text sits at a fraction along *its own* path, which doesn't exist yet
+    // while that very path is being decided - it can never appear in its own avoidance list.
+    const scene = sceneOf([
+      icon("a", 0, 0),
+      icon("b", 300, 0),
+      { ...connector("c1", "a", "e", "b", "w"), label: { text: "HTTPS" } },
+    ]);
+    expect(connectorLabelRectsFor(scene, "c1")).toEqual([]);
+  });
+
+  it("includes another connector's label, annotation, cardinality, and sequence badge as separate rects", () => {
+    const scene = sceneOf([
+      icon("a", 0, 0),
+      icon("b", 300, 0),
+      {
+        ...connector("labeled", "a", "e", "b", "w"),
+        label: { text: "HTTPS" },
+        annotation: { name: "HTTPS", security: "TLS1.3", port: "443" },
+        cardinality: { from: "1", to: "0..N" },
+        sequence: "1",
+      },
+    ]);
+    const rects = connectorLabelRectsFor(scene, "some-other-connector");
+    // label + annotation + cardinality.from + cardinality.to + sequence badge.
+    expect(rects).toHaveLength(5);
+    for (const r of rects) {
+      expect(r.w).toBeGreaterThan(0);
+      expect(r.h).toBeGreaterThan(0);
+    }
+  });
+
+  it("steers routeConnectorInScene's path clear of another connector's own text label", () => {
+    const scene = sceneOf([
+      icon("p1", 0, 0),
+      icon("p2", 300, 0),
+      {
+        ...connector("labeled", "p1", "e", "p2", "w"),
+        label: { text: "HTTPS TLS1.3" },
+      },
+      icon("q1", 150, -80),
+      icon("q2", 150, 150),
+      connector("crossing", "q1", "s", "q2", "n"),
+    ]);
+    const labelRects = connectorLabelRectsFor(scene, "crossing");
+    // Guards against a vacuous pass: the labeled connector's text must have actually produced a
+    // rect for "crossing" to have anything to avoid.
+    expect(labelRects.length).toBeGreaterThan(0);
+
+    const crossing = scene.get("crossing") as ConnectorElement;
+    const waypoints = routeConnectorInScene(scene, crossing);
+    const fullPath = connectorPathPoints(scene, { ...crossing, waypoints });
+
+    expect(pathCrossesObstacles(fullPath, labelRects)).toBe(false);
   });
 });

@@ -38,6 +38,7 @@ import { applyQuickFix, applyQuickFixes } from "../linter/quickFix.js";
 import type { Diagnostic, Severity } from "../linter/types.js";
 import { portPoint, type Point } from "../render/port.js";
 import { SvgRenderer, type ResolvedTheme } from "../render/svgRenderer.js";
+import { measureText } from "../render/textMetrics.js";
 import { ViewportController } from "../render/viewport.js";
 import type { Rect } from "../routing/orthogonalRouter.js";
 import { pickPorts } from "../routing/pickPorts.js";
@@ -340,6 +341,14 @@ function buildActorElement(
   };
 }
 
+/** Fallback single-line height for a new text element — h isn't measured (only w is, via
+ * measureText below): wrapping/multi-line text elements aren't a concept this builder handles,
+ * matching svgRenderer.ts's own unbounded single-line rendering of the "text" element type. */
+const DEFAULT_TEXT_ELEMENT_HEIGHT_PX = 20;
+/** Floor on an auto-sized text element's width, so a very short or empty string doesn't collapse
+ * to a near-zero-width (and thus effectively invisible/unselectable) element. */
+const MIN_TEXT_ELEMENT_WIDTH_PX = 20;
+
 function buildTextElement(
   opts: Omit<PlacementOptions, "label"> & { text: string },
 ): TextElement {
@@ -351,8 +360,14 @@ function buildTextElement(
     text: opts.text,
     x: opts.at.x,
     y: opts.at.y,
-    w: opts.w ?? 120,
-    h: opts.h ?? 20,
+    // Auto-sized from the actual string (M27.4) rather than a flat guess, so this element's own
+    // stored bounding box — used for rotation pivot, hit-testing, and as a hard routing obstacle
+    // (routeConnector.ts's obstaclesFor) — reflects where the text really paints instead of an
+    // arbitrary constant that's routinely too wide (short strings) or too narrow (long ones).
+    w:
+      opts.w ??
+      Math.max(MIN_TEXT_ELEMENT_WIDTH_PX, Math.ceil(measureText(opts.text))),
+    h: opts.h ?? DEFAULT_TEXT_ELEMENT_HEIGHT_PX,
     ...(opts.parentId ? { parentId: opts.parentId } : {}),
   };
 }

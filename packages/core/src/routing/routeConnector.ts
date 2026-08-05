@@ -1,7 +1,10 @@
+import { rotatedBounds } from "../scene/bounds.js";
 import type { Scene } from "../scene/scene.js";
+import { formatConnectorAnnotation } from "../scene/connectorAnnotation.js";
 import type { ConnectorElement, PortSide } from "../scene/types.js";
 import { containerLabelRect } from "../render/containerLabel.js";
-import { portPoint, type Point } from "../render/port.js";
+import { pointAtFraction, portPoint, type Point } from "../render/port.js";
+import { measureText } from "../render/textMetrics.js";
 import {
   routeOrthogonal,
   type Rect,
@@ -23,6 +26,15 @@ const CONTAINER_SOFT_OBSTACLE_PENALTY = 80;
  * container's empty interior, so it's worth a larger detour to avoid. Tunable, same as above.
  */
 const LABEL_SOFT_OBSTACLE_PENALTY = 200;
+/**
+ * Cost added for a segment crossing another connector's own text (label/protocol annotation/
+ * cardinality/sequence badge) — same magnitude as LABEL_SOFT_OBSTACLE_PENALTY (crossing literal
+ * text is the defect being penalized either way, regardless of whether it's a container's title or
+ * a connector's own caption). Kept as its own named constant rather than reusing
+ * LABEL_SOFT_OBSTACLE_PENALTY directly since the two protect conceptually different things and may
+ * need to be tuned independently later.
+ */
+const CONNECTOR_LABEL_SOFT_OBSTACLE_PENALTY = 200;
 /**
  * Distinct from both penalty channels above: containerRectsFor's containers are passed to
  * routeOrthogonal's `containers` channel (minus the connector's own two endpoints, see
@@ -219,6 +231,103 @@ export function containerLabelRectsFor(scene: Scene): Rect[] {
   return rects;
 }
 
+/** Matches svgRenderer.ts's renderConnector/annotationLabel/cardinalityLabel font-size (11px). */
+const CONNECTOR_TEXT_FONT_SIZE_PX = 11;
+/** Sequence badge circle radius — matches svgRenderer.ts's sequenceBadge (r=9). */
+const SEQUENCE_BADGE_RADIUS_PX = 9;
+
+/**
+ * Approximate on-screen footprint of a piece of connector-adjacent text, anchor-centered
+ * horizontally (every connector text helper in svgRenderer.ts uses text-anchor="middle") at `at`,
+ * with its SVG baseline offset vertically from `at.y` by `baselineOffsetY` — mirroring each
+ * helper's own y formula (renderConnector's label: -10, annotationLabel: +20, cardinalityLabel:
+ * -4). Height approximates a real glyph's ascent+descent as a multiple of font-size, the same
+ * "tunable by eye, not derived" precedent as containerLabel.ts's own heuristics; there being no
+ * real font-metrics API anywhere in this package (textMetrics.ts's own module doc comment).
+ */
+function centeredTextRect(
+  at: Point,
+  text: string,
+  baselineOffsetY: number,
+): Rect {
+  const w = measureText(text, CONNECTOR_TEXT_FONT_SIZE_PX);
+  const h = CONNECTOR_TEXT_FONT_SIZE_PX * 1.2;
+  return {
+    x: at.x - w / 2,
+    y: at.y + baselineOffsetY - CONNECTOR_TEXT_FONT_SIZE_PX,
+    w,
+    h,
+  };
+}
+
+/**
+ * Every OTHER connector's own rendered text (label / protocol annotation / cardinality / sequence
+ * badge), as a soft obstacle a connector currently being routed should prefer to avoid — mirrors
+ * containerLabelRectsFor's "avoid literal text, not just container padding" intent, but for text
+ * that floats along a connector's own path rather than sitting beside a container's corner icon.
+ *
+ * Excludes `selfId`: a connector's own text sits at fractions along *its own* path
+ * (connectorPathPoints), which doesn't exist yet while that very path is being decided by this
+ * function's caller — a route can't be steered around a rect that's a function of the route itself.
+ * Every OTHER connector's rect, by contrast, is derived from that connector's already-known current
+ * path (its stored waypoints plus its live anchor points), so reading it here isn't circular. When
+ * several connectors are (re-)routed in the same batch (e.g. routeTemplateConnectors,
+ * scene_apply's batch authoring), routing order determines which connectors' text is already
+ * visible to which later ones — accepted, the same order-dependence every other soft-obstacle list
+ * in this router already carries (e.g. containerAvoidanceRectsFor's per-connector relatedness).
+ */
+export function connectorLabelRectsFor(scene: Scene, selfId: string): Rect[] {
+  const rects: Rect[] = [];
+  for (const el of scene.all()) {
+    if (el.type !== "connector" || el.id === selfId) continue;
+    const hasText =
+      el.label?.text ||
+      el.annotation ||
+      el.cardinality?.from ||
+      el.cardinality?.to ||
+      el.sequence;
+    if (!hasText) continue;
+
+    const points = connectorPathPoints(scene, el);
+    if (points.length < 2) continue;
+
+    if (el.label?.text) {
+      rects.push(
+        centeredTextRect(pointAtFraction(points, 0.5), el.label.text, -10),
+      );
+    }
+    if (el.annotation) {
+      rects.push(
+        centeredTextRect(
+          pointAtFraction(points, 0.5),
+          formatConnectorAnnotation(el.annotation),
+          20,
+        ),
+      );
+    }
+    if (el.cardinality?.from) {
+      rects.push(
+        centeredTextRect(pointAtFraction(points, 0.1), el.cardinality.from, -4),
+      );
+    }
+    if (el.cardinality?.to) {
+      rects.push(
+        centeredTextRect(pointAtFraction(points, 0.9), el.cardinality.to, -4),
+      );
+    }
+    if (el.sequence) {
+      const at = pointAtFraction(points, 0.5);
+      rects.push({
+        x: at.x - SEQUENCE_BADGE_RADIUS_PX,
+        y: at.y - SEQUENCE_BADGE_RADIUS_PX,
+        w: SEQUENCE_BADGE_RADIUS_PX * 2,
+        h: SEQUENCE_BADGE_RADIUS_PX * 2,
+      });
+    }
+  }
+  return rects;
+}
+
 /**
  * The point a connector's line actually draws from/to at one of its two ends — `portPoint`'s
  * exact port center, unless 2+ connectors in the scene share that same (element, side), in which
@@ -280,6 +389,14 @@ export function connectorAnchorPoint(
  * frame) are excluded deliberately — IBM deployment diagrams routinely draw
  * a connector crossing a box or zone boundary, so treating those as
  * obstacles would make most real diagrams unroutable cleanly.
+ *
+ * Uses rotatedBounds rather than the element's raw x/y/w/h: a rotated element's stored box
+ * describes its *unrotated* footprint (rotation is applied about that box's own center, see
+ * scene/bounds.ts's rotatedCorners), so for anything with a non-zero rotation — most commonly a
+ * standalone Text element rotated to run vertically alongside a boundary — the raw box can miss
+ * where the shape actually paints entirely. This was the direct cause of a connector visibly
+ * painting straight through a rotated text label's real footprint despite an obstacle "covering"
+ * its unrotated one.
  */
 function obstaclesFor(scene: Scene, excludeIds: Set<string>): Rect[] {
   return scene
@@ -289,7 +406,7 @@ function obstaclesFor(scene: Scene, excludeIds: Set<string>): Rect[] {
         (el.type === "iconNode" || el.type === "actor" || el.type === "text") &&
         !excludeIds.has(el.id),
     )
-    .map((el) => ({ x: el.x, y: el.y, w: el.w, h: el.h }));
+    .map((el) => rotatedBounds(el));
 }
 
 /**
@@ -314,6 +431,10 @@ export function routeConnectorInScene(
     ...containerLabelRectsFor(scene).map((rect) => ({
       rect,
       penalty: LABEL_SOFT_OBSTACLE_PENALTY,
+    })),
+    ...connectorLabelRectsFor(scene, connector.id).map((rect) => ({
+      rect,
+      penalty: CONNECTOR_LABEL_SOFT_OBSTACLE_PENALTY,
     })),
   ];
   const containers = containerRectsFor(scene)
