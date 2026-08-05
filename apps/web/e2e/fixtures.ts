@@ -9,8 +9,13 @@ export async function startBlankDiagram(page: Page): Promise<void> {
   await page.getByRole("button", { name: "Create diagram" }).click();
   // Carbon's Modal keeps rendering (mid closing-transition, focus-trap sentinels and all) for a
   // beat after the "open" prop flips — wait for it to fully leave the DOM before proceeding, or
-  // an a11y scan run too early flags its (mid-transition, transient) contents.
-  await page.locator('[aria-label="New diagram"]').waitFor({ state: "hidden" });
+  // an a11y scan run too early flags its (mid-transition, transient) contents. Scoped to
+  // role=dialog: once the reference-architecture list made the body scrollable, Carbon's Modal
+  // also stamps the same aria-label onto an inner role="region" content wrapper, so the bare
+  // attribute selector matches two elements.
+  await page
+    .getByRole("dialog", { name: "New diagram" })
+    .waitFor({ state: "hidden" });
   await page
     .locator(".icad-canvas svg[data-icad-root]")
     .waitFor({ state: "visible" });
