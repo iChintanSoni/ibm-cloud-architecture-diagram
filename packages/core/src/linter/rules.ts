@@ -6,11 +6,20 @@ import {
   updateElement,
 } from "../commands/commands.js";
 import type { Command } from "../commands/types.js";
-import { pathCrossesObstacles } from "../routing/orthogonalRouter.js";
+import {
+  borderHugCost,
+  pathCrossesObstacles,
+} from "../routing/orthogonalRouter.js";
 import {
   connectorPathPoints,
   obstaclesFor,
 } from "../routing/routeConnector.js";
+import {
+  CONTAINER_LABEL_FONT_SIZE_PX,
+  containerLabelMaxWidth,
+} from "../render/containerLabel.js";
+import { nodeLabelMaxWidth } from "../render/nodeLabel.js";
+import { ellipsize, wrapText } from "../render/textMetrics.js";
 import type { Scene } from "../scene/scene.js";
 import { CONTAINER_CHILD_PADDING_PX } from "../scene/containerPadding.js";
 import type {
@@ -115,6 +124,58 @@ export const duplicateLabelRule: Rule = (scene: Scene): Diagnostic[] => {
             label: { ...el.label, text: replacement },
           }),
           `Rename to "${replacement}"`,
+        ),
+      );
+    }
+  }
+  return diagnostics;
+};
+
+/**
+ * A label whose stored text is long enough that it renders visibly truncated — even after the
+ * same wrap-then-ellipsize treatment the renderer itself applies (M27.2/M27.3's textMetrics.ts):
+ * a container label ellipsized to fit its single line, or an icon/actor caption whose 2-line wrap
+ * still needed a trailing ellipsis. Purely informational (no quick fix - there's no principled
+ * automatic way to shorten someone's label text, or to know whether the container should instead
+ * grow to fit it), but valuable for LLM/agent-authored diagrams via MCP: the model may have no
+ * other way to notice its own chosen wording doesn't actually fit.
+ */
+export const textOverflowNeedsWrapRule: Rule = (scene): Diagnostic[] => {
+  const diagnostics: Diagnostic[] = [];
+  for (const el of scene.all()) {
+    const text = el.label?.text;
+    if (!text) continue;
+
+    if (el.type === "box" || el.type === "group" || el.type === "zone") {
+      const rendered = ellipsize(
+        text,
+        containerLabelMaxWidth(el),
+        "end",
+        CONTAINER_LABEL_FONT_SIZE_PX,
+      );
+      if (rendered === text) continue;
+      diagnostics.push(
+        diagnostic(
+          "text-overflow-needs-wrap",
+          "info",
+          "labels",
+          el.id,
+          `"${el.id}"'s label doesn't fit and renders truncated as "${rendered}".`,
+        ),
+      );
+    } else if (el.type === "iconNode" || el.type === "actor") {
+      const lines = wrapText(text, nodeLabelMaxWidth(el, scene), {
+        maxLines: 2,
+      });
+      const lastLine = lines[lines.length - 1];
+      if (!lastLine?.endsWith("…")) continue;
+      diagnostics.push(
+        diagnostic(
+          "text-overflow-needs-wrap",
+          "info",
+          "labels",
+          el.id,
+          `"${el.id}"'s label doesn't fit on two lines and renders truncated.`,
         ),
       );
     }
@@ -392,6 +453,55 @@ export const childOutsideParentBoundsRule: Rule = (scene): Diagnostic[] => {
 };
 
 /**
+ * A child that overlaps its container, but only partially — more than half its own area hangs off
+ * the edge. Distinct from childOutsideParentBoundsRule (zero overlap) and deliberately narrower
+ * than "any overhang at all": that rule's own doc comment already establishes that a child sitting
+ * flush against, or slightly past, its container's border is a legitimate, common layout choice,
+ * not a mistake — this rule respects that same judgment call, only firing once a child reads as
+ * "mostly outside" rather than "mostly inside with a bit spilling over."
+ */
+export const childOverhangsParentRule: Rule = (scene): Diagnostic[] => {
+  const diagnostics: Diagnostic[] = [];
+  for (const el of scene.all()) {
+    if (!el.parentId || el.type === "connector" || el.type === "frame")
+      continue;
+    const parent = scene.get(el.parentId);
+    if (!parent || !BOUNDS_ENFORCING_CONTAINERS.has(parent.type)) continue;
+
+    const overlapW = Math.max(
+      0,
+      Math.min(el.x + el.w, parent.x + parent.w) - Math.max(el.x, parent.x),
+    );
+    const overlapH = Math.max(
+      0,
+      Math.min(el.y + el.h, parent.y + parent.h) - Math.max(el.y, parent.y),
+    );
+    const overlapArea = overlapW * overlapH;
+    if (overlapArea <= 0) continue; // fully disjoint - childOutsideParentBoundsRule's territory
+    const childArea = el.w * el.h;
+    if (childArea <= 0 || overlapArea >= childArea / 2) continue;
+
+    diagnostics.push(
+      diagnostic(
+        "child-overhangs-parent",
+        "warn",
+        "containment",
+        el.id,
+        `"${el.id}" mostly hangs off its container "${parent.id}"'s edge — more than half its area sits outside.`,
+        moveElements(
+          scene,
+          [el.id],
+          parent.x + CONTAINER_INSET - el.x,
+          parent.y + CONTAINER_INSET - el.y,
+        ),
+        "Move inside container",
+      ),
+    );
+  }
+  return diagnostics;
+};
+
+/**
  * A child that's genuinely *inside* its container (not childOutsideParentBoundsRule's territory
  * — complete disjunction — nor an overhang past an edge, left for that rule's own future overhang
  * extension) but sitting closer to one of the container's edges than
@@ -448,6 +558,73 @@ export const containerChildPaddingRule: Rule = (scene): Diagnostic[] => {
         "Move inside padding",
       ),
     );
+  }
+  return diagnostics;
+};
+
+function rectsOverlap(
+  a: { x: number; y: number; w: number; h: number },
+  b: { x: number; y: number; w: number; h: number },
+): boolean {
+  return (
+    a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y
+  );
+}
+
+/**
+ * Two elements sharing the same parent (or both top-level, sharing no parent) whose bounding boxes
+ * genuinely overlap — occluding or visually merging with each other, usually a real defect
+ * regardless of diagram style, unlike a mere close gap (deliberately not flagged: siblings sitting
+ * flush against or close to one another is routine and often intentional, e.g. a row of icons).
+ *
+ * Respects the same `gutterExempt` opt-out containerChildPaddingRule does: a deliberate decorative
+ * overlay (e.g. the ROKS reference templates' translucent "Master" band, drawn across all 3 zones
+ * on purpose) is exactly the shape this would otherwise flag as a mistake. If either side of an
+ * overlapping pair is exempt, that pair is skipped entirely — the overlap is intentional because
+ * of that element, regardless of what the other one is.
+ *
+ * Scoped to same-parent siblings only, grouped in one O(n) pass, then compared pairwise only
+ * *within* each (typically small) group — not all-pairs across the whole scene, which would be
+ * O(n²) against the perf budgets M27.3 already flagged as tight (docs/09-roadmap.md#m12).
+ * Connectors are excluded: their own stored x/y/w/h is a degenerate 0x0 rect (docs/02-architecture.md), not a real footprint.
+ */
+export const siblingOverlapRule: Rule = (scene): Diagnostic[] => {
+  const groups = new Map<string, SceneElement[]>();
+  for (const el of scene.all()) {
+    if (el.type === "connector") continue;
+    const key = el.parentId ?? "";
+    const list = groups.get(key);
+    if (list) list.push(el);
+    else groups.set(key, [el]);
+  }
+
+  const diagnostics: Diagnostic[] = [];
+  const flagged = new Set<string>();
+  for (const siblings of groups.values()) {
+    for (let i = 0; i < siblings.length; i += 1) {
+      for (let j = i + 1; j < siblings.length; j += 1) {
+        const a = siblings[i]!;
+        const b = siblings[j]!;
+        if (a.gutterExempt || b.gutterExempt) continue;
+        if (!rectsOverlap(a, b)) continue;
+        for (const [el, other] of [
+          [a, b],
+          [b, a],
+        ] as const) {
+          if (flagged.has(el.id)) continue;
+          flagged.add(el.id);
+          diagnostics.push(
+            diagnostic(
+              "sibling-overlap",
+              "warn",
+              "layout",
+              el.id,
+              `"${el.id}" overlaps sibling element "${other.id}".`,
+            ),
+          );
+        }
+      }
+    }
   }
   return diagnostics;
 };
@@ -611,6 +788,58 @@ export const connectorCrossesObstacleRule: Rule = (
         "connectors",
         el.id,
         `Connector "${el.id}" crosses another shape; a clean orthogonal route is available.`,
+        autoRouteConnector(scene, el.id),
+        "Re-route",
+      ),
+    );
+  }
+  return diagnostics;
+};
+
+/**
+ * A connector whose final rendered path runs parallel to, and within the router's own border-
+ * clearance distance of, an unrelated container's edge — the static residual counterpart to
+ * M27.1's live routing-time deterrent (orthogonalRouter.ts's borderHugCost), which only ever runs
+ * while the router itself is computing a fresh auto route. A `routing: "manual"` connector (hand-
+ * set waypoints, e.g. from raw .icad JSON or direct MCP authoring) never passes through that cost
+ * model at all, and even an auto-routed connector's waypoints can drift out of compliance if
+ * hand-edited afterward — this rule catches both by re-checking the actual stored path rather than
+ * trusting how it was produced. Reuses the router's own borderHugCost function directly so
+ * "hugging" means the exact same thing here as it does during live routing.
+ */
+export const connectorBorderHugRule: Rule = (scene): Diagnostic[] => {
+  const diagnostics: Diagnostic[] = [];
+  for (const el of scene.all()) {
+    if (el.type !== "connector") continue;
+    if (!scene.has(el.from.elementId) || !scene.has(el.to.elementId)) continue;
+
+    const containers = scene
+      .all()
+      .filter(
+        (c) =>
+          (c.type === "box" || c.type === "group" || c.type === "zone") &&
+          c.id !== el.from.elementId &&
+          c.id !== el.to.elementId,
+      )
+      .map((c) => ({ x: c.x, y: c.y, w: c.w, h: c.h }));
+    if (containers.length === 0) continue;
+
+    const points = connectorPathPoints(scene, el);
+    let hugs = false;
+    for (let i = 0; i < points.length - 1 && !hugs; i += 1) {
+      const a = points[i]!;
+      const b = points[i + 1]!;
+      if (borderHugCost(a.x, a.y, b.x, b.y, containers) > 0) hugs = true;
+    }
+    if (!hugs) continue;
+
+    diagnostics.push(
+      diagnostic(
+        "connector-border-hug",
+        "warn",
+        "connectors",
+        el.id,
+        `Connector "${el.id}" runs alongside a container's border closer than the router's own clearance convention.`,
         autoRouteConnector(scene, el.id),
         "Re-route",
       ),
@@ -796,6 +1025,12 @@ export const ruleMetadata: RuleMetadata[] = [
     defaultSeverity: "warn",
   },
   {
+    id: "child-overhangs-parent",
+    title: "Child overhang",
+    category: "containment",
+    defaultSeverity: "warn",
+  },
+  {
     id: "container-child-padding",
     title: "Container padding",
     category: "containment",
@@ -812,6 +1047,12 @@ export const ruleMetadata: RuleMetadata[] = [
     title: "Duplicate labels",
     category: "labels",
     defaultSeverity: "warn",
+  },
+  {
+    id: "text-overflow-needs-wrap",
+    title: "Text overflow",
+    category: "labels",
+    defaultSeverity: "info",
   },
   {
     id: "dangling-connector",
@@ -838,6 +1079,12 @@ export const ruleMetadata: RuleMetadata[] = [
     defaultSeverity: "warn",
   },
   {
+    id: "connector-border-hug",
+    title: "Connector border clearance",
+    category: "connectors",
+    defaultSeverity: "warn",
+  },
+  {
     id: "connector-annotation-incomplete",
     title: "Annotation name",
     category: "connectors",
@@ -847,6 +1094,12 @@ export const ruleMetadata: RuleMetadata[] = [
     id: "connector-annotation-invalid-port",
     title: "Annotation port",
     category: "connectors",
+    defaultSeverity: "warn",
+  },
+  {
+    id: "sibling-overlap",
+    title: "Sibling overlap",
+    category: "layout",
     defaultSeverity: "warn",
   },
   {
@@ -884,14 +1137,18 @@ export const defaultRules: Rule[] = [
   secondaryStrokeRule,
   nodeWithoutLocationRule,
   childOutsideParentBoundsRule,
+  childOverhangsParentRule,
   containerChildPaddingRule,
   missingLabelRule,
   duplicateLabelRule,
+  textOverflowNeedsWrapRule,
   danglingConnectorRule,
   standardConnectorTypeRule,
   connectorPortRule,
   connectorCrossesObstacleRule,
+  connectorBorderHugRule,
   connectorAnnotationRule,
+  siblingOverlapRule,
   westEastFlowRule,
   iconGeometryRule,
   nonZeroRotationRule,

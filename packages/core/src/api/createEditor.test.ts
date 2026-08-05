@@ -619,8 +619,11 @@ describe("createEditor", () => {
 
   it("summarizes configured error, warning, and info diagnostics", () => {
     editor.addBox({ at: { x: 0, y: 0 } });
+    // Clear of the box's own default 240px width (sibling-overlap, M27.7) - this test is about
+    // severity summarization machinery, not spacing, so the fixture shouldn't incidentally trip
+    // an unrelated rule.
     editor.addGroup({
-      at: { x: 200, y: 0 },
+      at: { x: 500, y: 0 },
       label: "Security group",
       style: { dashed: false },
     });

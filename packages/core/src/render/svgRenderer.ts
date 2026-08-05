@@ -30,6 +30,7 @@ import {
   containerLabelMaxWidth,
 } from "./containerLabel.js";
 import { createSvgElement, setAttrs } from "./dom.js";
+import { nodeLabelMaxWidth } from "./nodeLabel.js";
 import { pointAtFraction, portPoint, type Point } from "./port.js";
 import { ellipsize, wrapText } from "./textMetrics.js";
 import type { ViewportState } from "./viewport.js";
@@ -86,9 +87,6 @@ const CONNECTOR_ANNOTATION_MAX_WIDTH = 220;
 const CARDINALITY_LABEL_MAX_WIDTH = 60;
 const SEQUENCE_BADGE_MAX_WIDTH = 16;
 
-/** Used when an icon/actor label has no parent to derive available width from (e.g. detached in
- * tests, or a top-level element) — generous enough that wrapping stays rare in that fallback case. */
-const FALLBACK_LABEL_MAX_WIDTH = 200;
 /** Vertical spacing between stacked label lines, ~1.1x DEFAULT_FONT_SIZE_PX (textMetrics.ts) —
  * enough to keep ascenders/descenders of adjacent lines from touching at the unset root font-size
  * labelText inherits (~16-18px). */
@@ -1197,23 +1195,6 @@ export class SvgRenderer {
     return text;
   }
 
-  /**
-   * The available width for an icon/actor's own caption to wrap within before it would run past
-   * its parent container's edge — mirrors containerLabelMaxWidth's "don't overflow the boundary"
-   * intent, but centered rather than left-anchored, since these captions are centered under/over
-   * their element (see labelText). Falls back to a generous flat width when there's no parent to
-   * derive it from (a detached element in tests, or a top-level icon on the canvas itself, which
-   * has no enclosing box/zone to respect).
-   */
-  private labelMaxWidth(el: SceneElement, scene: Scene): number {
-    const parent = el.parentId ? scene.get(el.parentId) : undefined;
-    if (!parent) return FALLBACK_LABEL_MAX_WIDTH;
-    const centerX = el.x + el.w / 2;
-    const left = centerX - parent.x;
-    const right = parent.x + parent.w - centerX;
-    return Math.max(0, 2 * Math.min(left, right));
-  }
-
   private labelText(el: SceneElement, scene: Scene): SVGTextElement {
     const text = createSvgElement("text");
     const position = el.label?.position ?? "s";
@@ -1223,7 +1204,7 @@ export class SvgRenderer {
 
     const raw = el.label?.text ?? "";
     const lines = raw
-      ? wrapText(raw, this.labelMaxWidth(el, scene), { maxLines: 2 })
+      ? wrapText(raw, nodeLabelMaxWidth(el, scene), { maxLines: 2 })
       : [];
 
     if (lines.length <= 1) {

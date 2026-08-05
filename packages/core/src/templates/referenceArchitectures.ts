@@ -414,7 +414,10 @@ function srMzClusterElements(options: SrMzOptions): SceneElement[] {
   // paint over each zone's label row in turn. Stops 10px short of the subnet's left edge. The
   // label's own bounding box (used for rotation pivot and as a hard routing obstacle, see
   // routeConnector.ts's obstaclesFor) is kept small and centered on the band so it doesn't
-  // encroach on the Multi-zone-LB-to-zone connectors that cross this gutter.
+  // encroach on the Multi-zone-LB-to-zone connectors that cross this gutter. Both elements are
+  // marked gutterExempt (M27.6/M27.7): the band deliberately spans and overlaps all 3 zones, which
+  // siblingOverlapRule would otherwise read as a coordinate mistake rather than the intentional
+  // decorative overlay it is.
   const masterX = zoneX + 72;
   const masterY = zone1Y;
   const zone3Y = zone1Y + 2 * (ZONE_H + ZONE_GAP);
@@ -423,8 +426,8 @@ function srMzClusterElements(options: SrMzOptions): SceneElement[] {
   const masterHeight = masterBottom - masterY;
   const masterCenterX = masterX + masterWidth / 2;
   const masterCenterY = masterY + masterHeight / 2;
-  elements.push(
-    box(
+  elements.push({
+    ...box(
       masterId,
       undefined,
       undefined,
@@ -437,7 +440,8 @@ function srMzClusterElements(options: SrMzOptions): SceneElement[] {
       -35,
       MASTER_BAND_FILL,
     ),
-  );
+    gutterExempt: true,
+  });
   const masterLabel: TextElement = {
     id: masterLabelId,
     type: "text",
@@ -451,6 +455,7 @@ function srMzClusterElements(options: SrMzOptions): SceneElement[] {
     h: 20,
     parentId: clusterId,
     z: -20,
+    gutterExempt: true,
   };
   elements.push(masterLabel);
 

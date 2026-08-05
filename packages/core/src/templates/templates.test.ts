@@ -189,17 +189,21 @@ describe("reference architecture templates (docs/00-decision-log.md#d30)", () =>
       expect(zones).toHaveLength(3);
       expect(subnets).toHaveLength(3);
 
-      // Four documented, advisory-only diagnostic categories (docs/00-decision-log.md#d30):
+      // Five documented, advisory-only diagnostic categories (docs/00-decision-log.md#d30):
       // the decorative "Master" band is an unlabeled Box (missing-label) carrying a separately-
-      // rotated Text label (non-zero-rotation) so the band's own border isn't rotated; IBM's
-      // source diagrams themselves reuse "Load Balancer"/"Worker Node 1"/"Worker Node 2" labels
-      // identically across all 3 zones (duplicate-label ×9 — 3 labels each shared by 3 elements);
-      // and each zone's 2 Worker Node icons sit closer than the app's 16px convention to their
-      // subnet's edge (container-child-padding ×6 — M27.6), a direct symptom of the vertical
-      // worker-stack layout compensation this same file documents (see the "worker vertical-stack"
-      // comment above) — flagged here as a known, pre-existing finding this rule surfaces rather
-      // than fixes; M27.8 revisits that compensation now that M27.1/M27.4's router improvements
-      // may make it unnecessary.
+      // rotated Text label (non-zero-rotation) so the band's own border isn't rotated - both are
+      // also marked gutterExempt (M27.6/M27.7) so the band's own deliberate overlap with all 3
+      // zones doesn't trip sibling-overlap; IBM's source diagrams themselves reuse "Load
+      // Balancer"/"Worker Node 1"/"Worker Node 2" labels identically across all 3 zones
+      // (duplicate-label ×9 — 3 labels each shared by 3 elements); each zone's 2 Worker Node icons
+      // sit closer than the app's 16px convention to their subnet's edge (container-child-padding
+      // ×6 — M27.6), a direct symptom of the vertical worker-stack layout compensation this same
+      // file documents (see the "worker vertical-stack" comment above); and the "Public Network"
+      // container's label doesn't fit its own fixed width and renders ellipsized
+      // (text-overflow-needs-wrap ×1 — M27.7). None of these are fixed here - they're known,
+      // pre-existing findings these rules now surface rather than silently missing; M27.8 revisits
+      // the underlying template layout (worker stacking, PUBLIC_NETWORK_W, and friends) now that
+      // M27.1/M27.4's router improvements may make some of today's compensations unnecessary.
       const diagnostics = new Linter({ catalog: catalogFor(scene.all()) }).run(
         scene,
       );
@@ -211,6 +215,7 @@ describe("reference architecture templates (docs/00-decision-log.md#d30)", () =>
         "non-zero-rotation": 1,
         "duplicate-label": 9,
         "container-child-padding": 6,
+        "text-overflow-needs-wrap": 1,
       });
     },
   );

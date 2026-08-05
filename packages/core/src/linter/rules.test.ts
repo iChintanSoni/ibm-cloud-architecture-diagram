@@ -13,7 +13,9 @@ import {
   catalogIconRule,
   catalogVersionMismatchRule,
   childOutsideParentBoundsRule,
+  childOverhangsParentRule,
   connectorAnnotationRule,
+  connectorBorderHugRule,
   connectorCrossesObstacleRule,
   connectorPortRule,
   containerBorderRule,
@@ -27,7 +29,9 @@ import {
   primaryFillRule,
   ruleMetadata,
   secondaryStrokeRule,
+  siblingOverlapRule,
   standardConnectorTypeRule,
+  textOverflowNeedsWrapRule,
   westEastFlowRule,
 } from "./rules.js";
 
@@ -114,10 +118,10 @@ function catalog(): Catalog {
 }
 
 describe("default conformance rules", () => {
-  it("publishes a unique IBM-default metadata entry for all 21 supported rules", () => {
+  it("publishes a unique IBM-default metadata entry for all 25 supported rules", () => {
     const ids = ruleMetadata.map((rule) => rule.id);
-    expect(ids).toHaveLength(21);
-    expect(new Set(ids).size).toBe(21);
+    expect(ids).toHaveLength(25);
+    expect(new Set(ids).size).toBe(25);
     expect(ids).toEqual(
       expect.arrayContaining([
         "container-semantic",
@@ -128,15 +132,19 @@ describe("default conformance rules", () => {
         "secondary-color-stroke",
         "node-without-location",
         "child-outside-parent-bounds",
+        "child-overhangs-parent",
         "container-child-padding",
         "missing-label",
         "duplicate-label",
+        "text-overflow-needs-wrap",
         "dangling-connector",
         "non-standard-connector",
         "connector-not-bound-to-port",
         "connector-crosses-obstacle",
+        "connector-border-hug",
         "connector-annotation-incomplete",
         "connector-annotation-invalid-port",
+        "sibling-overlap",
         "west-east-flow-reversal",
         "icon-geometry",
         "non-zero-rotation",
@@ -605,5 +613,187 @@ describe("default conformance rules", () => {
     expect(containerSemanticRule(scene)[0]).toMatchObject({
       ruleId: "container-semantic",
     });
+  });
+});
+
+describe("childOverhangsParentRule", () => {
+  it("flags a child that mostly hangs off its container's edge", () => {
+    const scene = new Scene();
+    scene._put(box("container")); // (0, 0, 100, 100)
+    // Overlap area = 20*48 = 960 of a 48*48=2304 child - well under half.
+    scene._put({ ...icon("mostly-out", "container"), x: 80, y: 20 });
+
+    const diagnostics = childOverhangsParentRule(scene);
+    expect(diagnostics).toHaveLength(1);
+    expect(diagnostics[0]).toMatchObject({
+      ruleId: "child-overhangs-parent",
+      severity: "warn",
+      category: "containment",
+      elementId: "mostly-out",
+    });
+  });
+
+  it("does not flag a child that's mostly inside with only a small overhang", () => {
+    const scene = new Scene();
+    scene._put(box("container")); // (0, 0, 100, 100)
+    // Overlap area = 40*48 = 1920 of a 2304 child - well over half.
+    scene._put({ ...icon("mostly-in", "container"), x: 60, y: 20 });
+    expect(childOverhangsParentRule(scene)).toHaveLength(0);
+  });
+
+  it("does not flag a fully disjoint child - that's childOutsideParentBoundsRule's territory", () => {
+    const scene = new Scene();
+    scene._put(box("container")); // (0, 0, 100, 100)
+    scene._put({ ...icon("disjoint", "container"), x: 500, y: 500 });
+    expect(childOverhangsParentRule(scene)).toHaveLength(0);
+  });
+});
+
+describe("siblingOverlapRule", () => {
+  it("flags two overlapping same-parent (here: both top-level) siblings, one diagnostic each", () => {
+    const scene = new Scene();
+    scene._put(box("a", 0)); // (0, 0, 100, 100)
+    scene._put(box("b", 50)); // (50, 0, 100, 100) - overlaps a by 50px
+
+    const diagnostics = siblingOverlapRule(scene);
+    expect(diagnostics.map((d) => d.elementId).sort()).toEqual(["a", "b"]);
+    expect(diagnostics[0]).toMatchObject({
+      ruleId: "sibling-overlap",
+      severity: "warn",
+      category: "layout",
+    });
+  });
+
+  it("does not flag siblings that don't overlap, even when close", () => {
+    const scene = new Scene();
+    scene._put(box("a", 0));
+    scene._put(box("b", 150)); // (150, 0, 100, 100) - clear of a's (0,0,100,100)
+    expect(siblingOverlapRule(scene)).toHaveLength(0);
+  });
+
+  it("does not flag overlapping elements that belong to different parents", () => {
+    const scene = new Scene();
+    scene._put(box("parent-a", 0));
+    scene._put(box("parent-b", 500));
+    // Same geometry as each other, but different parents - not siblings.
+    scene._put(icon("child-a", "parent-a"));
+    scene._put(icon("child-b", "parent-b"));
+    expect(siblingOverlapRule(scene)).toHaveLength(0);
+  });
+
+  it("respects gutterExempt on either side of an overlapping pair (deliberate decorative overlay)", () => {
+    const scene = new Scene();
+    scene._put(box("a", 0));
+    scene._put({ ...box("b", 50), gutterExempt: true });
+    expect(siblingOverlapRule(scene)).toHaveLength(0);
+  });
+
+  it("excludes connectors, whose stored geometry is a degenerate rect, not a real footprint", () => {
+    const scene = new Scene();
+    scene._put(icon("a")); // (20, 20, 48, 48)
+    scene._put({ ...icon("b"), x: 500, y: 500 }); // clear of "a" - no real overlap
+    // Both connectors share the same degenerate (0,0,1,1) rect from the connector() helper -
+    // if connectors weren't excluded, this pair would itself read as "overlapping."
+    scene._put(connector("c1", "a", "b"));
+    scene._put(connector("c2", "a", "b"));
+    expect(siblingOverlapRule(scene)).toHaveLength(0);
+  });
+});
+
+describe("connectorBorderHugRule", () => {
+  it("flags a manually-routed connector whose stored path hugs an unrelated container's border", () => {
+    const scene = new Scene();
+    scene._put({ ...box("outer", 200), y: 100, w: 400, h: 300 });
+    // Source/target sit so their own ports land exactly on outer's top edge (y=100), with no
+    // waypoints of their own - the straight line between them runs directly along that border.
+    scene._put({ ...icon("source"), x: 0, y: 76 });
+    scene._put({ ...icon("target"), x: 700, y: 76 });
+    scene._put(
+      connector("hugging", "source", "target", {
+        routing: "manual",
+        waypoints: [],
+      }),
+    );
+
+    const diagnostics = connectorBorderHugRule(scene);
+    expect(diagnostics).toHaveLength(1);
+    expect(diagnostics[0]).toMatchObject({
+      ruleId: "connector-border-hug",
+      severity: "warn",
+      category: "connectors",
+      elementId: "hugging",
+    });
+    expect(diagnostics[0]!.quickFix).toBeDefined();
+  });
+
+  it("does not flag a connector that stays clear of every container's border", () => {
+    const scene = new Scene();
+    scene._put({ ...box("outer", 200), y: 800, w: 400, h: 300 }); // far away
+    scene._put({ ...icon("source"), x: 0, y: 76 });
+    scene._put({ ...icon("target"), x: 700, y: 76 });
+    scene._put(
+      connector("clean", "source", "target", {
+        routing: "manual",
+        waypoints: [],
+      }),
+    );
+    expect(connectorBorderHugRule(scene)).toHaveLength(0);
+  });
+});
+
+describe("textOverflowNeedsWrapRule", () => {
+  it("flags a container label that doesn't fit its own boundary", () => {
+    const scene = new Scene();
+    scene._put({
+      ...box("narrow"),
+      w: 40,
+      label: { text: "A Very Long Container Label" },
+    });
+
+    const diagnostics = textOverflowNeedsWrapRule(scene);
+    expect(diagnostics).toHaveLength(1);
+    expect(diagnostics[0]).toMatchObject({
+      ruleId: "text-overflow-needs-wrap",
+      severity: "info",
+      category: "labels",
+      elementId: "narrow",
+    });
+  });
+
+  it("does not flag a container label that comfortably fits", () => {
+    const scene = new Scene();
+    scene._put({ ...box("wide"), label: { text: "OK" } });
+    expect(textOverflowNeedsWrapRule(scene)).toHaveLength(0);
+  });
+
+  it("flags an icon/actor caption that still needs ellipsis after wrapping to two lines", () => {
+    const scene = new Scene();
+    scene._put({
+      ...icon("long-caption"),
+      label: {
+        text: "A Really Long Multi Word Icon Caption That Definitely Will Not Fit In Two Lines",
+      },
+    });
+
+    const diagnostics = textOverflowNeedsWrapRule(scene);
+    expect(diagnostics).toHaveLength(1);
+    expect(diagnostics[0]).toMatchObject({
+      ruleId: "text-overflow-needs-wrap",
+      severity: "info",
+      elementId: "long-caption",
+    });
+  });
+
+  it("does not flag an icon/actor caption that fits within two lines", () => {
+    const scene = new Scene();
+    scene._put({ ...icon("short-caption"), label: { text: "Web Server" } });
+    expect(textOverflowNeedsWrapRule(scene)).toHaveLength(0);
+  });
+
+  it("ignores elements with no label", () => {
+    const scene = new Scene();
+    scene._put({ ...box("no-label-box"), label: undefined });
+    scene._put(icon("no-label-icon"));
+    expect(textOverflowNeedsWrapRule(scene)).toHaveLength(0);
   });
 });

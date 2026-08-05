@@ -223,7 +223,8 @@ export interface ElementPropertiesPatch {
   locked?: boolean;
   /** Hide or show the element via the Properties panel (M18.4). */
   hidden?: boolean;
-  /** Opts out of the linter's container-child-padding advisory for a deliberate gutter (M27.6). */
+  /** Opts out of the linter's container-child-padding and sibling-overlap advisories for a
+   * deliberate decorative layout choice (M27.6/M27.7). */
   gutterExempt?: boolean;
   /** Rotation in degrees 0–359; 0 or absent means no rotation (M20). */
   rotation?: number;

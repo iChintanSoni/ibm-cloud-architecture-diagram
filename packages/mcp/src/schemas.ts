@@ -156,7 +156,7 @@ export const elementPropertiesPatchSchema = z.object({
     .boolean()
     .optional()
     .describe(
-      "Opt this element out of the container-child-padding advisory for a deliberate gutter, e.g. a decorative band placed closer to its container's edge than the app's 16px convention on purpose (M27.6)",
+      "Opt this element out of the container-child-padding and sibling-overlap advisories for a deliberate decorative layout choice, e.g. a band placed closer to its container's edge or overlapping a sibling on purpose (M27.6/M27.7)",
     ),
   rotation: z
     .number()

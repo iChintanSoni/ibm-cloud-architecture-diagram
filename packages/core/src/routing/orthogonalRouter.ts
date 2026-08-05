@@ -159,8 +159,14 @@ export function pathCrossesObstacles(
  * legitimate perpendicular crossing (opposite-orientation edge) is never charged, and a segment
  * that's neither purely horizontal nor purely vertical (shouldn't occur — this router only ever
  * emits axis-aligned segments) is charged nothing.
+ *
+ * Exported (beyond this file's own live-routing use) so linter/rules.ts's
+ * connectorBorderHugRule (M27.7) can reuse the exact same "is this segment hugging" math as a
+ * static, non-zero-cost check — a residual guard for manually-routed connectors (routing:
+ * "manual", so this cost never ran against them) or waypoints hand-edited after the fact, neither
+ * of which the router's own live cost model ever gets a chance to discourage.
  */
-function borderHugCost(
+export function borderHugCost(
   ax: number,
   ay: number,
   bx: number,
