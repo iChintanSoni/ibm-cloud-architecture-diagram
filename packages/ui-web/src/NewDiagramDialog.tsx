@@ -1,5 +1,9 @@
 import { Modal, RadioButton, RadioButtonGroup } from "@carbon/react";
-import { DIAGRAM_TEMPLATES, type DiagramTemplateId } from "@icad/core";
+import {
+  DIAGRAM_TEMPLATES,
+  REFERENCE_ARCHITECTURE_TEMPLATES,
+  type DiagramTemplateId,
+} from "@icad/core";
 import { useState } from "react";
 
 export interface NewDiagramDialogProps {
@@ -41,12 +45,33 @@ export function NewDiagramDialog({
       )}
       <RadioButtonGroup
         name="icad-diagram-template"
-        legendText="Diagram template"
+        legendText="Diagram level"
         orientation="vertical"
         valueSelected={selection}
         onChange={(value) => setSelection(value as DiagramTemplateId)}
       >
         {DIAGRAM_TEMPLATES.map((template) => (
+          <RadioButton
+            key={template.id}
+            id={`icad-template-${template.id}`}
+            value={template.id}
+            labelText={
+              <span className="icad-new-diagram__option">
+                <strong>{template.name}</strong>
+                <span>{template.description}</span>
+              </span>
+            }
+          />
+        ))}
+      </RadioButtonGroup>
+      <RadioButtonGroup
+        name="icad-reference-architecture-template"
+        legendText="Reference architectures"
+        orientation="vertical"
+        valueSelected={selection}
+        onChange={(value) => setSelection(value as DiagramTemplateId)}
+      >
+        {REFERENCE_ARCHITECTURE_TEMPLATES.map((template) => (
           <RadioButton
             key={template.id}
             id={`icad-template-${template.id}`}

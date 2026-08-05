@@ -29,13 +29,17 @@ export function registerDocumentTools(
     {
       title: "Start a new diagram",
       description:
-        "Replace the current document with a fresh IBM-level starter template (docs/09-roadmap.md#m73--ibm-level-templates-and-frame-authoring). " +
-        "For any level but blank, this seeds a full worked example (frame, boxes, icons, connectors) by default — " +
-        "pass seedExampleContent: false for an empty canvas that still carries the level's diagramLevel meta, so " +
-        "it still runs that level's full linter rule set (e.g. the containment check for high-level/detailed). " +
-        "Recommended when building a diagram from a requirement, since the seeded example would otherwise sit " +
-        "in the same space as whatever gets built next. Errors if the current document has unsaved changes " +
-        "— pass force: true to discard them.",
+        "Replace the current document with a fresh starter template: one of IBM's 4 diagram levels " +
+        "(docs/09-roadmap.md#m73--ibm-level-templates-and-frame-authoring) or one of 4 built-in IBM " +
+        "reference architectures — IKS/ROKS Single Region Multi-Zone on Classic or VPC infrastructure " +
+        "(docs/09-roadmap.md#m26--reference-architecture-templates), all of which carry diagramLevel " +
+        '"detailed". For any level but blank, this seeds a full worked example (frame, boxes, icons, ' +
+        "connectors) by default — pass seedExampleContent: false for an empty canvas that still carries " +
+        "the level's diagramLevel meta, so it still runs that level's full linter rule set (e.g. the " +
+        "containment check for high-level/detailed). Recommended when building a diagram from a " +
+        "requirement, since the seeded example would otherwise sit in the same space as whatever gets " +
+        "built next. Errors if the current document has unsaved changes — pass force: true to discard " +
+        "them.",
       inputSchema: {
         level: diagramTemplateIdSchema,
         force: forceSchema,

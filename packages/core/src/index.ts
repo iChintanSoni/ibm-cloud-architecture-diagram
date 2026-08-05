@@ -140,7 +140,9 @@ export {
   type CreateTemplateDocumentOptions,
   type DiagramTemplate,
   type DiagramTemplateId,
+  type ReferenceArchitectureTemplateId,
 } from "./templates/templates.js";
+export { REFERENCE_ARCHITECTURE_TEMPLATES } from "./templates/referenceArchitectures.js";
 
 // Public API
 export {

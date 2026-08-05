@@ -218,6 +218,39 @@ Closed out the remaining M7 chrome: a real pan/zoom camera plus the surfaces tha
 element or frame by name via Find, step through a presentation, and keep their chosen theme across
 a reload.
 
+#### M26 — Reference architecture templates
+
+✅ **Done** (2026-08-04)
+
+Extended M7.3's template mechanism with 4 new, fixed built-in templates — faithful reproductions of
+IBM's own published "Single Region, Multi-Zone" Kubernetes/OpenShift reference architectures
+(see [D30](00-decision-log.md#d30--iksroks-single-region-multi-zone-reference-diagrams-ship-as-4-built-in-templates--locked)
+for the full source→catalog icon mapping and the fidelity trade-offs made along the way):
+
+1. Added `iks-sr-mz-classic`, `iks-sr-mz-vpc`, `roks-sr-mz-classic`, `roks-sr-mz-vpc` as new
+   `DiagramTemplateId` values, decoupled from `DocumentMeta["diagramLevel"]` (all 4 map to
+   `"detailed"` via a new `TEMPLATE_DIAGRAM_LEVEL` lookup) — these are worked examples at IBM's
+   existing detailed/deployment level, not a 5th diagram level.
+2. Added `packages/core/src/templates/referenceArchitectures.ts`: one parametrized builder
+   (distribution × infrastructure) producing the full Client → Multi-zone LB → 3× (Availability
+   Zone → Subnet → Load Balancer → 2 Worker Nodes) skeleton, called 4 times for the 4 fixed,
+   independent product-facing ids. Moved the shared `frame`/`actor`/`icon`/`connector` element
+   builders out of `templates.ts` into a new `elementBuilders.ts` so both modules could reuse them
+   without a runtime circular import.
+3. `NewDiagramDialog` gained a second, separately-labeled "Reference architectures" radio group
+   alongside the existing "Diagram level" group, sharing one selection/create flow.
+4. `packages/mcp`'s `diagramTemplateIdSchema` and `doc_create` description grew to cover the 4 new
+   ids, so agents can seed these templates the same way humans do.
+5. Covered all 4 templates with core template tests (structure/containment/serialization validity,
+   `diagramLevel` resolution, and an exact expected-diagnostic-count assertion for the 3 documented,
+   advisory-only lint categories — see D30) and a `NewDiagramDialog` component test for the new
+   radio group and its `onCreate` id.
+
+**Done when:** a user can pick any of the 4 IKS/ROKS × Classic/VPC reference architectures from the
+New Diagram dialog (or an agent via `doc_create`), get a structurally faithful, fully-labeled
+starting diagram matching IBM's own published reference, and continue editing it through the shared
+command surface like any other template.
+
 #### M8 — Accessibility to AA
 
 🟡 **In progress** — everything automatable is done, and a live-browser verification pass has since

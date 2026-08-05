@@ -4,6 +4,7 @@ import type { CatalogManifest } from "../catalog/types.js";
 import { fromIcad } from "../io/icad.js";
 import { Linter } from "../linter/linter.js";
 import type { SceneElement } from "../scene/types.js";
+import { REFERENCE_ARCHITECTURE_TEMPLATES } from "./referenceArchitectures.js";
 import {
   DIAGRAM_TEMPLATES,
   createTemplateDocument,
@@ -124,6 +125,86 @@ describe("diagram templates", () => {
       });
       expect(doc.meta.diagramLevel).toBe(templateId);
       expect(doc.elements).toEqual([]);
+    },
+  );
+});
+
+describe("reference architecture templates (docs/00-decision-log.md#d30)", () => {
+  it("publishes the four IKS/ROKS Single Region Multi-Zone choices", () => {
+    expect(
+      REFERENCE_ARCHITECTURE_TEMPLATES.map((template) => template.id),
+    ).toEqual([
+      "iks-sr-mz-classic",
+      "iks-sr-mz-vpc",
+      "roks-sr-mz-classic",
+      "roks-sr-mz-vpc",
+    ]);
+  });
+
+  it.each(REFERENCE_ARCHITECTURE_TEMPLATES.map((template) => template.id))(
+    "builds a structurally valid, serializable %s document at the detailed diagram level",
+    (templateId) => {
+      const doc = createTemplateDocument(templateId, {
+        catalog: catalogPin,
+        theme: "dark",
+        now: "2026-07-23T00:00:00.000Z",
+      });
+      const scene = fromIcad(doc);
+      const ids = new Set(scene.all().map((element) => element.id));
+
+      expect(doc.meta.diagramLevel).toBe("detailed");
+      expect(doc.canvas.theme).toBe("dark");
+      expect(scene.all()).toEqual(doc.elements);
+      for (const element of scene.all()) {
+        if (element.parentId) expect(ids.has(element.parentId)).toBe(true);
+        if (element.type === "connector") {
+          expect(ids.has(element.from.elementId)).toBe(true);
+          expect(ids.has(element.to.elementId)).toBe(true);
+          expect(element.waypoints).toBeDefined();
+        }
+      }
+    },
+  );
+
+  it.each(REFERENCE_ARCHITECTURE_TEMPLATES.map((template) => template.id))(
+    "seeds %s inside a named frame with 3 zones, 3 subnets, and only the documented warnings",
+    (templateId) => {
+      const doc = createTemplateDocument(templateId, {
+        catalog: catalogPin,
+        now: "2026-07-23T00:00:00.000Z",
+      });
+      const scene = fromIcad(doc);
+      const frames = scene.all().filter((element) => element.type === "frame");
+      const zones = scene.all().filter((element) => element.type === "zone");
+      const subnets = scene
+        .all()
+        .filter(
+          (element) =>
+            element.type === "box" &&
+            element.catalogRef === "ibm-cloud/subnet-acl-rules",
+        );
+
+      expect(frames).toHaveLength(1);
+      expect(frames[0]?.name).toBeTruthy();
+      expect(zones).toHaveLength(3);
+      expect(subnets).toHaveLength(3);
+
+      // Three documented, advisory-only diagnostic categories (docs/00-decision-log.md#d30):
+      // the decorative "Master" band is an unlabeled Box (missing-label) carrying a separately-
+      // rotated Text label (non-zero-rotation) so the band's own border isn't rotated; and IBM's
+      // source diagrams themselves reuse "Load Balancer"/"Worker Node 1"/"Worker Node 2" labels
+      // identically across all 3 zones (duplicate-label ×9 — 3 labels each shared by 3 elements).
+      const diagnostics = new Linter({ catalog: catalogFor(scene.all()) }).run(
+        scene,
+      );
+      const counts: Record<string, number> = {};
+      for (const d of diagnostics)
+        counts[d.ruleId] = (counts[d.ruleId] ?? 0) + 1;
+      expect(counts).toEqual({
+        "missing-label": 1,
+        "non-zero-rotation": 1,
+        "duplicate-label": 9,
+      });
     },
   );
 });

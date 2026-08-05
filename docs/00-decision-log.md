@@ -394,3 +394,103 @@ than a step in the `.icad` schema `MIGRATIONS` registry.
   (`packages/core/src/linter/rules.ts`) — both already correct, neither changed by this decision.
   A new informational `catalog-version-mismatch` lint rule surfaces _why_ (the file's pinned
   version differs from the running app's), without treating it as an error.
+
+## Reference Architecture Templates
+
+### D30 — IKS/ROKS Single-Region-Multi-Zone reference diagrams ship as 4 built-in templates · Locked
+
+Extends [D14](#d14--ibm-level-templates--frames--locked)/M7.3's template mechanism with 4 new,
+fixed template ids (`iks-sr-mz-classic`, `iks-sr-mz-vpc`, `roks-sr-mz-classic`, `roks-sr-mz-vpc`) —
+faithful reproductions of IBM's own published reference architectures from
+[IBM-Cloud/architecture-icons](https://github.com/IBM-Cloud/architecture-icons)'s
+`drawio/templates/2.0/{iks,roks}_sr_mz_{classic,vpc}.drawio`, built by decoding each file's
+embedded base64 icon SVGs (including their `<title>` tags) and rendering the paired
+`images/2.0/Static/*.svg` for visual confirmation, rather than by any `.drawio` import
+([D7](#d7--export-only-interop-svgpng-no-drawio-import--locked) still holds — these are
+hand-built native `.icad` scene graphs, not a parser). A generic "save my own diagram as a
+template" feature was explicitly scoped out; this is only the 4 built-in reference templates.
+
+**Template id ≠ diagram level:** `DiagramTemplateId` (`packages/core/src/templates/templates.ts`)
+is no longer a type alias of `DocumentMeta["diagramLevel"]` — it's the diagram-level union plus a
+new `ReferenceArchitectureTemplateId` union, with a `TEMPLATE_DIAGRAM_LEVEL` lookup mapping all 4
+new ids to `"detailed"` (they're worked examples at the detailed/deployment level, not a 5th IBM
+diagram level). `packages/core/src/templates/referenceArchitectures.ts` holds one parametrized
+builder (`srMzClusterElements({ distribution: "iks" | "roks", infrastructure: "classic" | "vpc" })`)
+called 4 times with fixed arguments, keeping the 4 product-facing ids independent
+(`NewDiagramDialog` renders them as a second, separately-labeled radio group) while sharing one
+implementation. `frame`/`actor`/`icon`/`connector` moved out of `templates.ts` into a new
+`elementBuilders.ts` so both files could import them without a runtime circular dependency.
+
+**Source → catalog icon mapping** (every icon below is a confirmed 1:1 match, verified by
+base64-decoding the source `.drawio`'s embedded icon SVGs and reading their `<title>` tag):
+
+| Element                  | Catalog ref                           | Source `<title>`                                                                   |
+| ------------------------ | ------------------------------------- | ---------------------------------------------------------------------------------- |
+| Client                   | `ibm-cloud/user`                      | User                                                                               |
+| Public Network           | `ibm-cloud/public-network`            | Public Network Black                                                               |
+| IBM Cloud                | `ibm-cloud/ibm-cloud`                 | IBM Cloud Black                                                                    |
+| Region                   | `ibm-cloud/location`                  | Region Black                                                                       |
+| IBM VPC (vpc only)       | `ibm-cloud/ibm-cloud-vpc`             | IBM VPC Black                                                                      |
+| Kubernetes cluster (iks) | `ibm-cloud/kubernetes`                | — (D24's confirmed OpenShift-preset pattern applied to the Kubernetes counterpart) |
+| OpenShift cluster (roks) | `ibm-cloud/open-shift`                | — (D24-confirmed)                                                                  |
+| Subnet                   | `ibm-cloud/subnet-acl-rules`          | IBM Subnet : ACL Black                                                             |
+| Multi-zone LB (classic)  | `ibm-cloud/global-load-balancer`      | Global Load Balancer                                                               |
+| Multi-zone LB (vpc)      | `ibm-cloud/load-balancer-vpc`         | load-balancer--vpc                                                                 |
+| Zone LB (classic)        | `ibm-cloud/local-load-balancer`       | load-balancer--local                                                               |
+| Zone LB (vpc, "ALB")     | `ibm-cloud/load-balancer-application` | load-balancer--application                                                         |
+| Worker Node ×2           | `ibm-cloud/virtual-server-classic`    | Virtual Server Classic                                                             |
+
+Two fidelity tensions surfaced by this mapping, resolved in favor of matching these specific source
+files rather than silently deferring to older, narrower evidence:
+
+- **Subnet icon vs. [D24](#d24--regionvpcsubnet-are-box-only-availability-zoneon-prem-are-boundary--locked):**
+  D24 confirmed `ibm-cloud/subnet` (the plain Subnet glyph) from a different IBM worked example
+  (`DeployedTo.png`). These 4 files instead embed the "IBM Subnet: ACL" glyph
+  (`ibm-cloud/subnet-acl-rules`) for the identical Subnet-container role. Both are genuine IBM
+  materials disagreeing with each other; these templates use `subnet-acl-rules` to match what they
+  actually ship, without retracting D24's preset-table entry for the general case.
+- **Availability Zone corner icon:** the source's Zone containers carry a corner glyph, but no
+  matching icon has been extracted into the catalog yet ([Icon Catalog → Container
+  presets](04-icon-catalog.md#container-presets) already flags this gap, same shape as
+  [D23](#d23--catalog-gains-a-groups-icon-category-narrowing-d21--locked)'s find). These templates
+  ship the Zone boundary with no corner icon, matching the existing confirmed preset; pulling the
+  real glyph into `packages/catalog-build` is a fast-follow, not part of this milestone.
+
+**The "Master" band:** all 4 sources draw a translucent green vertical band, labeled "Master" in
+rotated text, that visually spans across the 3 Availability Zone containers without actually
+parenting anything — decorative, showing that master nodes are distributed across zones. Built as a
+plain sibling `Box` (on-palette Compute pair `stroke: #198038` / `fill: #defbe6`, so
+`offPaletteColorRule` doesn't fire) confined to the empty gutter strip to the left of each zone's
+Subnet — it never geometrically overlaps the Subnet/LB/Worker content, so z-order among the 3 Zone
+siblings and the Master band doesn't matter — plus an independently-rotated `Text` element for the
+label (rotating the Box itself would incorrectly rotate its border). The Box is deliberately left
+unlabeled (a labeled Box would additionally render IBM's normal top-left corner label, duplicating
+the rotated one), and the Text's bounding box is kept small (20×20, centered on the band) since
+`routeConnector.ts`'s `obstaclesFor` treats `text` elements as hard routing obstacles — a larger
+box previously collided with the Multi-zone-LB-to-zone-2 connector, which crosses this exact gutter.
+
+**Worker layout departs from the source's side-by-side arrangement:** IBM's diagrams place both
+Worker Nodes side-by-side at the same height, right of the zone's Load Balancer. Reproducing that
+literally made the LB→Worker-2 connector's straight route cross the Worker-1 icon — `iconNode`
+elements are hard obstacles, but the auto-router (`routeConnectorInScene`) doesn't guarantee a
+detour for this specific "closer sibling sits directly between the port and the far target"
+configuration, so it still produces a crossing path
+(`connector-crosses-obstacle` on every LB→Worker-2 connector). Stacking the two Workers vertically
+instead (both still directly connected from the LB, matching the source's fan-out semantics) avoids
+the configuration entirely rather than fighting the router. A minor, visible departure from the
+source's exact icon arrangement, worth revisiting if the router's obstacle avoidance improves.
+
+**Expected linter output:** every instantiated template carries exactly 3 diagnostic categories,
+all advisory (`warn`) and pre-identified rather than bugs: `missing-label` ×1 (the Master Box,
+above), `non-zero-rotation` ×1 (the Master label, [D28](#d28--constrained-defaults-full-range-on-demand--locked)'s
+documented rotation escape hatch), and `duplicate-label` ×9 — IBM's own source diagrams reuse
+"Load Balancer"/"ALB", "Worker Node 1", and "Worker Node 2" identically across all 3 zones, so this
+is inherent to the reference content, not introduced by this implementation.
+
+- **Why:** The user asked for exact reproductions of these 4 specific published diagrams as
+  starter templates, so a user building this shape of architecture starts from IBM's own worked
+  example instead of a blank canvas — narrower and faster to ship than a general save-as-template
+  feature, and consistent with shipping one milestone slice at a time.
+- **Consequence:** `packages/mcp`'s `doc_create` gains the 4 new ids in `diagramTemplateIdSchema`
+  for free, so agents can seed these templates the same way humans do from the New Diagram dialog.
+  See [Roadmap M26](09-roadmap.md#m26--reference-architecture-templates).

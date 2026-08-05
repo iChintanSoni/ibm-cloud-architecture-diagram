@@ -69,6 +69,10 @@ export const diagramTemplateIdSchema = z.enum([
   "system-context",
   "high-level",
   "detailed",
+  "iks-sr-mz-classic",
+  "iks-sr-mz-vpc",
+  "roks-sr-mz-classic",
+  "roks-sr-mz-vpc",
 ]);
 
 export const iconMetaSchema = z.object({

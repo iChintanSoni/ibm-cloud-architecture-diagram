@@ -2,23 +2,48 @@ import { ICAD_FORMAT, ICAD_VERSION, type IcadDocument } from "../io/icad.js";
 import { routeConnectorInScene } from "../routing/routeConnector.js";
 import { Scene } from "../scene/scene.js";
 import type {
-  ActorElement,
   CanvasSettings,
   CatalogRefPin,
-  ConnectorElement,
   DocumentMeta,
-  FrameElement,
-  IconNodeElement,
   SceneElement,
 } from "../scene/types.js";
+import { actor, connector, frame, icon } from "./elementBuilders.js";
+import {
+  REFERENCE_ARCHITECTURE_TEMPLATES,
+  referenceArchitectureElementsFor,
+  type ReferenceArchitectureTemplateId,
+} from "./referenceArchitectures.js";
 
-export type DiagramTemplateId = DocumentMeta["diagramLevel"];
+export type { ReferenceArchitectureTemplateId } from "./referenceArchitectures.js";
+
+/**
+ * Distinct from `DocumentMeta["diagramLevel"]`: the 4 reference-architecture ids are all
+ * "detailed/deployment"-level worked examples (see TEMPLATE_DIAGRAM_LEVEL below), not a 5th
+ * diagram level of their own (docs/09-roadmap.md#m26--reference-architecture-templates).
+ */
+export type DiagramTemplateId =
+  DocumentMeta["diagramLevel"] | ReferenceArchitectureTemplateId;
 
 export interface DiagramTemplate {
   id: DiagramTemplateId;
   name: string;
   description: string;
 }
+
+/** Every template id maps to the diagram level whose linter rule set it should run under. */
+const TEMPLATE_DIAGRAM_LEVEL: Record<
+  DiagramTemplateId,
+  DocumentMeta["diagramLevel"]
+> = {
+  blank: "blank",
+  "system-context": "system-context",
+  "high-level": "high-level",
+  detailed: "detailed",
+  "iks-sr-mz-classic": "detailed",
+  "iks-sr-mz-vpc": "detailed",
+  "roks-sr-mz-classic": "detailed",
+  "roks-sr-mz-vpc": "detailed",
+};
 
 export const DIAGRAM_TEMPLATES: readonly DiagramTemplate[] = [
   {
@@ -65,89 +90,11 @@ const TEMPLATE_TITLES: Record<DiagramTemplateId, string> = {
   "system-context": "System context",
   "high-level": "High-level architecture",
   detailed: "Detailed deployment",
+  "iks-sr-mz-classic": "IKS, Single Region Multi-Zone (Classic)",
+  "iks-sr-mz-vpc": "IKS, Single Region Multi-Zone (VPC)",
+  "roks-sr-mz-classic": "ROKS, Single Region Multi-Zone (Classic)",
+  "roks-sr-mz-vpc": "ROKS, Single Region Multi-Zone (VPC)",
 };
-
-function frame(id: string, name: string, w: number, h: number): FrameElement {
-  return {
-    id,
-    type: "frame",
-    semantic: "boundary",
-    name,
-    order: 1,
-    x: 20,
-    y: 20,
-    w,
-    h,
-    z: -100,
-  };
-}
-
-function actor(
-  id: string,
-  label: string,
-  x: number,
-  y: number,
-  parentId: string,
-  catalogRef = "ibm-cloud/user",
-): ActorElement {
-  return {
-    id,
-    type: "actor",
-    semantic: "actor",
-    catalogRef,
-    label: { text: label },
-    x,
-    y,
-    w: 48,
-    h: 48,
-    parentId,
-  };
-}
-
-function icon(
-  id: string,
-  catalogRef: string,
-  label: string,
-  x: number,
-  y: number,
-  parentId: string,
-): IconNodeElement {
-  return {
-    id,
-    type: "iconNode",
-    semantic: "node",
-    catalogRef,
-    label: { text: label },
-    x,
-    y,
-    w: 48,
-    h: 48,
-    parentId,
-  };
-}
-
-function connector(
-  id: string,
-  from: string,
-  to: string,
-  flowColor: "public" | "private" = "private",
-): ConnectorElement {
-  return {
-    id,
-    type: "connector",
-    semantic: "node",
-    x: 0,
-    y: 0,
-    w: 1,
-    h: 1,
-    from: { elementId: from, port: "e" },
-    to: { elementId: to, port: "w" },
-    connectorType: "connection",
-    direction: "unidirectional",
-    flowColor,
-    routing: "auto",
-  };
-}
 
 function systemContextElements(): SceneElement[] {
   const frameId = "system-context-frame";
@@ -425,7 +372,18 @@ function detailedElements(): SceneElement[] {
   ];
 }
 
+function isReferenceArchitectureTemplateId(
+  templateId: DiagramTemplateId,
+): templateId is ReferenceArchitectureTemplateId {
+  return REFERENCE_ARCHITECTURE_TEMPLATES.some(
+    (template) => template.id === templateId,
+  );
+}
+
 function elementsFor(templateId: DiagramTemplateId): SceneElement[] {
+  if (isReferenceArchitectureTemplateId(templateId)) {
+    return referenceArchitectureElementsFor(templateId);
+  }
   switch (templateId) {
     case "blank":
       return [];
@@ -455,9 +413,10 @@ export function createTemplateDocument(
   templateId: DiagramTemplateId,
   options: CreateTemplateDocumentOptions,
 ): IcadDocument {
-  const descriptor = DIAGRAM_TEMPLATES.find(
-    (template) => template.id === templateId,
-  );
+  const descriptor = [
+    ...DIAGRAM_TEMPLATES,
+    ...REFERENCE_ARCHITECTURE_TEMPLATES,
+  ].find((template) => template.id === templateId);
   if (!descriptor) throw new Error(`Unknown diagram template: "${templateId}"`);
   const now = options.now ?? new Date().toISOString();
   return {
@@ -466,7 +425,7 @@ export function createTemplateDocument(
     catalog: { ...options.catalog },
     meta: {
       title: TEMPLATE_TITLES[templateId],
-      diagramLevel: templateId,
+      diagramLevel: TEMPLATE_DIAGRAM_LEVEL[templateId],
       createdAt: now,
       updatedAt: now,
     },

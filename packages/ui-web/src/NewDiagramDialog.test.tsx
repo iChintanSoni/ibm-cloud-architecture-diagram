@@ -61,4 +61,35 @@ describe("NewDiagramDialog", () => {
 
     expect(onCreate).toHaveBeenCalledWith("detailed");
   });
+
+  it("also offers the 4 built-in IBM reference architectures", () => {
+    const onCreate = vi.fn();
+    act(() => {
+      root.render(
+        <NewDiagramDialog
+          open
+          hasExistingContent={false}
+          onClose={vi.fn()}
+          onCreate={onCreate}
+        />,
+      );
+    });
+
+    expect(
+      document.body.querySelectorAll(
+        'input[name="icad-reference-architecture-template"]',
+      ),
+    ).toHaveLength(4);
+
+    const roksVpc = document.body.querySelector<HTMLInputElement>(
+      "#icad-template-roks-sr-mz-vpc",
+    )!;
+    act(() => roksVpc.click());
+    const createButton = [...document.body.querySelectorAll("button")].find(
+      (button) => button.textContent?.trim() === "Create diagram",
+    )!;
+    act(() => createButton.click());
+
+    expect(onCreate).toHaveBeenCalledWith("roks-sr-mz-vpc");
+  });
 });
