@@ -461,31 +461,44 @@ rotated text, that visually spans across the 3 Availability Zone containers with
 parenting anything — decorative, showing that master nodes are distributed across zones. Built as a
 plain sibling `Box` (on-palette Compute pair `stroke: #198038` / `fill: #defbe6`, so
 `offPaletteColorRule` doesn't fire) confined to the empty gutter strip to the left of each zone's
-Subnet — it never geometrically overlaps the Subnet/LB/Worker content, so z-order among the 3 Zone
-siblings and the Master band doesn't matter — plus an independently-rotated `Text` element for the
-label (rotating the Box itself would incorrectly rotate its border). The Box is deliberately left
-unlabeled (a labeled Box would additionally render IBM's normal top-left corner label, duplicating
-the rotated one), and the Text's bounding box is kept small (20×20, centered on the band) since
-`routeConnector.ts`'s `obstaclesFor` treats `text` elements as hard routing obstacles — a larger
-box previously collided with the Multi-zone-LB-to-zone-2 connector, which crosses this exact gutter.
+Subnet, plus an independently-rotated `Text` element for the label (rotating the Box itself would
+incorrectly rotate its border). The Box is deliberately left unlabeled (a labeled Box would
+additionally render IBM's normal top-left corner label, duplicating the rotated one). Both the Box
+and the Text carry `gutterExempt: true` (M27.6/M27.7, a router/lint-quality pass — see commit
+history, not a roadmap entry of its own): the band deliberately overlaps all 3 Zone containers by
+design, which the linter's `siblingOverlapRule` would otherwise read as a coordinate mistake. The
+Text's own `w`/`h` is measured from the real "Master" string (M27.4, `measureText`) in its
+_unrotated_ orientation rather than a fixed square — a square's axis-aligned bounds are
+rotation-invariant, so a fixed box never actually matched where the rotated glyphs paint in either
+orientation; a real measurement does, once `rotatedBounds` derives the rotated footprint from it,
+and that's also what `routeConnector.ts`'s `obstaclesFor` now avoids for real.
 
-**Worker layout departs from the source's side-by-side arrangement:** IBM's diagrams place both
-Worker Nodes side-by-side at the same height, right of the zone's Load Balancer. Reproducing that
-literally made the LB→Worker-2 connector's straight route cross the Worker-1 icon — `iconNode`
-elements are hard obstacles, but the auto-router (`routeConnectorInScene`) doesn't guarantee a
-detour for this specific "closer sibling sits directly between the port and the far target"
-configuration, so it still produces a crossing path
-(`connector-crosses-obstacle` on every LB→Worker-2 connector). Stacking the two Workers vertically
-instead (both still directly connected from the LB, matching the source's fan-out semantics) avoids
-the configuration entirely rather than fighting the router. A minor, visible departure from the
-source's exact icon arrangement, worth revisiting if the router's obstacle avoidance improves.
+**Worker layout matches the source's side-by-side arrangement** (M27.8): IBM's diagrams place both
+Worker Nodes side-by-side at the same height, right of the zone's Load Balancer. This originally
+shipped as a vertical stack instead — reproducing the side-by-side
+arrangement literally made the LB→Worker-2 connector's straight route cross the Worker-1 icon, and
+the pre-M27 router didn't reliably detour around it. Reverted once the router gained real border/
+obstacle clearance; confirmed _genuinely_ resolved, not just hidden, by testing `routeOrthogonal`
+directly against the exact geometry: a 30px gap between the two Worker icons still failed (every
+candidate vertical bend line landed inside Worker-1's own router-padded footprint, both docked
+against the router's own 20px port-stub length plus 12px obstacle padding), while the 40px gap
+this ships with clears it with margin.
 
-**Expected linter output:** every instantiated template carries exactly 3 diagnostic categories,
-all advisory (`warn`) and pre-identified rather than bugs: `missing-label` ×1 (the Master Box,
-above), `non-zero-rotation` ×1 (the Master label, [D28](#d28--constrained-defaults-full-range-on-demand--locked)'s
-documented rotation escape hatch), and `duplicate-label` ×9 — IBM's own source diagrams reuse
-"Load Balancer"/"ALB", "Worker Node 1", and "Worker Node 2" identically across all 3 zones, so this
-is inherent to the reference content, not introduced by this implementation.
+**Expected linter output** has grown as the M27 epic added rule coverage — no longer a fixed
+3-category baseline. As of M27.8, every instantiated template carries: `missing-label` ×1 (the
+Master Box, above), `non-zero-rotation` ×1 (the Master label,
+[D28](#d28--constrained-defaults-full-range-on-demand--locked)'s documented rotation escape hatch),
+`duplicate-label` ×9 (IBM's own source diagrams reuse "Load Balancer"/"ALB", "Worker Node 1", and
+"Worker Node 2" identically across all 3 zones — inherent to the reference content, not introduced
+by this implementation), `connector-border-hug` ×1 (`mzlb-to-lb-2`'s route grazes Subnet-2's own
+bottom edge by a few px over a short stretch while legitimately entering it — an accepted "brief,
+unavoidable graze," the exact case `orthogonalRouter.ts`'s border-clearance cost model is tuned to
+tolerate cheaply rather than force a full detour for), and `text-overflow-needs-wrap` ×1 (the
+"Public Network" container's own fixed width doesn't fit its label — left as a known finding,
+since widening it cascades into `frameW`/`ibmCloudX` and the rest of the layout downstream). All
+four are advisory (`warn`/`info`) and pre-identified rather than bugs; `templates.test.ts` asserts
+this exact set so a future regression (or future fix) is a deliberate, reviewed test change, not a
+silent drift.
 
 - **Why:** The user asked for exact reproductions of these 4 specific published diagrams as
   starter templates, so a user building this shape of architecture starts from IBM's own worked

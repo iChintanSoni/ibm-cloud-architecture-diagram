@@ -5,6 +5,8 @@ import type {
   TextElement,
   ZoneElement,
 } from "../scene/types.js";
+import { measureText } from "../render/textMetrics.js";
+import { CONTAINER_CHILD_PADDING_PX } from "../scene/containerPadding.js";
 import { actor, connector, icon } from "./elementBuilders.js";
 import type { DiagramTemplate } from "./templates.js";
 
@@ -161,17 +163,34 @@ function srMzClusterElements(options: SrMzOptions): SceneElement[] {
 
   // Layout computed bottom-up: each container's size is its content's size plus a fixed padding,
   // so nesting never collapses to zero inset (see docs/00-decision-log.md#d30). One shared
-  // zone/subnet size for all 3 zones, stacked vertically. Workers stack vertically within a
-  // subnet (rather than side-by-side, as IBM's source draws them) so a straight Load-Balancer to
-  // -Worker connector never has to cross the *other* worker's icon — the auto-router's obstacle
-  // avoidance doesn't guarantee a detour for that case, and stacking sidesteps it entirely instead
-  // of fighting the router.
+  // zone/subnet size for all 3 zones, stacked vertically. Workers sit side-by-side within a
+  // subnet, matching IBM's own source drawing (D30) — this used to be a vertical stack instead,
+  // worked around the risk of a straight Load-Balancer-to-Worker-2 connector crossing Worker-1's
+  // icon sitting directly in between, back when the router gave containers/borders no clearance at
+  // all (pre-M27.1) and had no rotation/connector-label obstacle accuracy (pre-M27.4). Reverted now
+  // that both exist; templates.test.ts's own "only the documented warnings" assertion doubles as
+  // the regression check (a still-crossing connector would trip connector-crosses-obstacle, M27.7).
+  //
+  // PAD is intentionally 20, slightly above the app's own CONTAINER_CHILD_PADDING_PX=16 advisory
+  // minimum (M27.6) rather than reconciled to exactly match it: it governs several stacked margins
+  // at once here (zone-to-subnet, cluster-to-zone) in an already-dense nested layout, and 20 was
+  // the value this template shipped and was visually tuned against — changing it would rescale
+  // every container in all 4 templates for a purely cosmetic consistency win with no lint benefit
+  // (20 already clears the 16px minimum on every edge it governs).
   const PAD = 20;
   const HEADER = 32;
   const ICON = 48;
+  // Must clear the router's own STUB (20px) + PADDING (12px) obstacle clearance combined (32px),
+  // or a straight Worker-1-to-Worker-2 connector's own stub has nowhere obstacle-free to bend
+  // through between them — confirmed by testing routeOrthogonal directly against this exact
+  // geometry (30px, one increment below this, measurably fails: every vertical candidate line
+  // between the two icons falls inside Worker-1's own padded footprint, so the router silently
+  // falls back to a straight line through it). 40 clears that threshold with margin.
+  const WORKER_GAP = 40;
 
-  const SUBNET_CONTENT_W = 24 + ICON + 50 + ICON + 24; // pad, LB, gap, worker, pad
-  const SUBNET_CONTENT_H = 12 + ICON + 20 + ICON + 12; // pad, worker, gap, worker, pad
+  const SUBNET_CONTENT_W = 24 + ICON + 50 + ICON + WORKER_GAP + ICON + 24; // pad, LB, gap, worker 1, gap, worker 2, pad
+  const SUBNET_CONTENT_H =
+    CONTAINER_CHILD_PADDING_PX + ICON + CONTAINER_CHILD_PADDING_PX; // pad, icon row, pad
   const SUBNET_W = SUBNET_CONTENT_W;
   const SUBNET_H = SUBNET_CONTENT_H;
 
@@ -383,7 +402,7 @@ function srMzClusterElements(options: SrMzOptions): SceneElement[] {
         "ibm-cloud/virtual-server-classic",
         "Worker Node 1",
         subnetX + 24 + ICON + 50,
-        subnetY + 12,
+        subnetCenterY - ICON / 2,
         subnetId,
       ),
     );
@@ -392,8 +411,8 @@ function srMzClusterElements(options: SrMzOptions): SceneElement[] {
         worker2Id,
         "ibm-cloud/virtual-server-classic",
         "Worker Node 2",
-        subnetX + 24 + ICON + 50,
-        subnetY + SUBNET_H - 12 - ICON,
+        subnetX + 24 + ICON + 50 + ICON + WORKER_GAP,
+        subnetCenterY - ICON / 2,
         subnetId,
       ),
     );
@@ -411,13 +430,18 @@ function srMzClusterElements(options: SrMzOptions): SceneElement[] {
   // label. `masterX` clears every zone's own "Zone N" label text (containerLabelRect estimates
   // ~66px reach from the zone's left edge for that string) since Master is drawn after — and thus
   // on top of — all 3 zones and spans their combined height continuously, so it would otherwise
-  // paint over each zone's label row in turn. Stops 10px short of the subnet's left edge. The
-  // label's own bounding box (used for rotation pivot and as a hard routing obstacle, see
-  // routeConnector.ts's obstaclesFor) is kept small and centered on the band so it doesn't
-  // encroach on the Multi-zone-LB-to-zone connectors that cross this gutter. Both elements are
-  // marked gutterExempt (M27.6/M27.7): the band deliberately spans and overlaps all 3 zones, which
-  // siblingOverlapRule would otherwise read as a coordinate mistake rather than the intentional
-  // decorative overlay it is.
+  // paint over each zone's label row in turn. Stops 10px short of the subnet's left edge. Both
+  // elements are marked gutterExempt (M27.6/M27.7): the band deliberately spans and overlaps all 3
+  // zones, which siblingOverlapRule would otherwise read as a coordinate mistake rather than the
+  // intentional decorative overlay it is.
+  //
+  // The label's own w/h — its rotation pivot, and (via M27.4's rotatedBounds) its hard routing
+  // obstacle rect — is measured from the real "Master" string (M27.2's measureText) instead of a
+  // fixed 20x20 square: a square's axis-aligned bounds are rotation-invariant, so the old fixed
+  // box never actually matched where the rotated text paints in either orientation. Sized in its
+  // *unrotated* orientation (wide, short) and centered on the band; rotatedBounds then derives the
+  // correct tall-narrow footprint once -90deg is applied, matching what the vertical text actually
+  // covers.
   const masterX = zoneX + 72;
   const masterY = zone1Y;
   const zone3Y = zone1Y + 2 * (ZONE_H + ZONE_GAP);
@@ -442,6 +466,11 @@ function srMzClusterElements(options: SrMzOptions): SceneElement[] {
     ),
     gutterExempt: true,
   });
+  const MASTER_LABEL_FONT_SIZE_PX = 16;
+  const masterLabelW = Math.ceil(
+    measureText("Master", MASTER_LABEL_FONT_SIZE_PX),
+  );
+  const masterLabelH = 20;
   const masterLabel: TextElement = {
     id: masterLabelId,
     type: "text",
@@ -449,10 +478,10 @@ function srMzClusterElements(options: SrMzOptions): SceneElement[] {
     text: "Master",
     style: { stroke: MASTER_BAND_STROKE },
     rotation: -90,
-    x: masterCenterX - 10,
-    y: masterCenterY - 10,
-    w: 20,
-    h: 20,
+    x: masterCenterX - masterLabelW / 2,
+    y: masterCenterY - masterLabelH / 2,
+    w: masterLabelW,
+    h: masterLabelH,
     parentId: clusterId,
     z: -20,
     gutterExempt: true,

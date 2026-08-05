@@ -242,9 +242,9 @@ for the full source→catalog icon mapping and the fidelity trade-offs made alon
 4. `packages/mcp`'s `diagramTemplateIdSchema` and `doc_create` description grew to cover the 4 new
    ids, so agents can seed these templates the same way humans do.
 5. Covered all 4 templates with core template tests (structure/containment/serialization validity,
-   `diagramLevel` resolution, and an exact expected-diagnostic-count assertion for the 3 documented,
-   advisory-only lint categories — see D30) and a `NewDiagramDialog` component test for the new
-   radio group and its `onCreate` id.
+   `diagramLevel` resolution, and an exact expected-diagnostic-count assertion for the documented,
+   advisory-only lint categories — see D30, count since revised by the M27 router/lint-quality
+   pass) and a `NewDiagramDialog` component test for the new radio group and its `onCreate` id.
 
 **Done when:** a user can pick any of the 4 IKS/ROKS × Classic/VPC reference architectures from the
 New Diagram dialog (or an agent via `doc_create`), get a structurally faithful, fully-labeled

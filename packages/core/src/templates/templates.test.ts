@@ -189,21 +189,29 @@ describe("reference architecture templates (docs/00-decision-log.md#d30)", () =>
       expect(zones).toHaveLength(3);
       expect(subnets).toHaveLength(3);
 
-      // Five documented, advisory-only diagnostic categories (docs/00-decision-log.md#d30):
-      // the decorative "Master" band is an unlabeled Box (missing-label) carrying a separately-
-      // rotated Text label (non-zero-rotation) so the band's own border isn't rotated - both are
-      // also marked gutterExempt (M27.6/M27.7) so the band's own deliberate overlap with all 3
-      // zones doesn't trip sibling-overlap; IBM's source diagrams themselves reuse "Load
-      // Balancer"/"Worker Node 1"/"Worker Node 2" labels identically across all 3 zones
-      // (duplicate-label ×9 — 3 labels each shared by 3 elements); each zone's 2 Worker Node icons
-      // sit closer than the app's 16px convention to their subnet's edge (container-child-padding
-      // ×6 — M27.6), a direct symptom of the vertical worker-stack layout compensation this same
-      // file documents (see the "worker vertical-stack" comment above); and the "Public Network"
-      // container's label doesn't fit its own fixed width and renders ellipsized
-      // (text-overflow-needs-wrap ×1 — M27.7). None of these are fixed here - they're known,
-      // pre-existing findings these rules now surface rather than silently missing; M27.8 revisits
-      // the underlying template layout (worker stacking, PUBLIC_NETWORK_W, and friends) now that
-      // M27.1/M27.4's router improvements may make some of today's compensations unnecessary.
+      // Four documented, advisory-only diagnostic categories (docs/00-decision-log.md#d30). Two
+      // are stable across the whole M27 epic: the decorative "Master" band is an unlabeled Box
+      // (missing-label) carrying a separately-rotated Text label (non-zero-rotation) so the
+      // band's own border isn't rotated - both are marked gutterExempt (M27.6/M27.7) so the
+      // band's own deliberate overlap with all 3 zones doesn't trip sibling-overlap; and IBM's
+      // source diagrams themselves reuse "Load Balancer"/"Worker Node 1"/"Worker Node 2" labels
+      // identically across all 3 zones (duplicate-label ×9 — 3 labels each shared by 3 elements).
+      //
+      // M27.8 reverted the worker vertical-stack workaround to IBM's authentic side-by-side
+      // layout (see the layout comment above) — genuinely resolved, not just hidden: the previous
+      // attempt at this revert (kept only in git history) left WORKER_GAP=30, which measurably
+      // failed (routeOrthogonal, tested directly against that exact geometry, silently fell back
+      // to a straight line through Worker-1 because every candidate vertical bend line between
+      // the two icons landed inside Worker-1's own router-padded footprint); WORKER_GAP=40 clears
+      // that threshold, and container-child-padding's prior ×6 (the vertical stack's own worker-
+      // to-subnet-edge symptom) is gone too. What remains: a minor, expected residual -
+      // mzlb-to-lb-2's route grazes subnet-2's bottom edge by ~1.5px over a ~10px stretch while
+      // legitimately entering it to reach its own target (connector-border-hug ×1) - exactly the
+      // "brief, unavoidable graze" BORDER_HUG_PENALTY_PER_PX's own doc comment (orthogonalRouter.ts)
+      // says costs little enough that the router correctly prefers it over a full detour; and the
+      // "Public Network" container's label still doesn't fit its own fixed width and renders
+      // ellipsized (text-overflow-needs-wrap ×1) - PUBLIC_NETWORK_W feeds frameW/ibmCloudX
+      // downstream, so widening it is a wider layout change than this pass takes on.
       const diagnostics = new Linter({ catalog: catalogFor(scene.all()) }).run(
         scene,
       );
@@ -214,7 +222,7 @@ describe("reference architecture templates (docs/00-decision-log.md#d30)", () =>
         "missing-label": 1,
         "non-zero-rotation": 1,
         "duplicate-label": 9,
-        "container-child-padding": 6,
+        "connector-border-hug": 1,
         "text-overflow-needs-wrap": 1,
       });
     },
