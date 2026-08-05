@@ -25,10 +25,13 @@ import { PRIMARY_TO_SECONDARY_FILL } from "../theme/colorPalette.js";
 import {
   CONTAINER_GLYPH_INSET,
   CONTAINER_GLYPH_SIZE,
+  CONTAINER_LABEL_FONT_SIZE_PX,
   CONTAINER_LABEL_GAP,
+  containerLabelMaxWidth,
 } from "./containerLabel.js";
 import { createSvgElement, setAttrs } from "./dom.js";
 import { portPoint, type Point } from "./port.js";
+import { ellipsize, wrapText } from "./textMetrics.js";
 import type { ViewportState } from "./viewport.js";
 
 /** Used when the container reports a zero-size rect (e.g. detached in tests/jsdom). */
@@ -68,6 +71,28 @@ const SIDEBAR_TAB_HEIGHT = 32;
  * multiple live instances in one document (already true of markers, e.g. in tests) resolve to the
  * same visual result regardless of which instance's `<defs>` the browser matches first. */
 const GRID_PATTERN_ID = "icad-grid-pattern";
+
+/**
+ * Single-line ellipsis width caps (px) for connector-adjacent text — label, protocol annotation,
+ * cardinality, and sequence badge all float freely along a connector's path rather than being
+ * bound to a parent container's geometry the way containerLabelText/labelText are, so there's no
+ * natural "available width" to derive from layout. Picked generously (each comfortably fits IBM's
+ * own worked-example strings, e.g. "HTTPS TLS1.3:443") so truncation stays a rare last resort
+ * rather than a routine occurrence; the sequence badge's is deliberately tight since it's meant to
+ * hold a short index like "2a", not prose.
+ */
+const CONNECTOR_LABEL_MAX_WIDTH = 200;
+const CONNECTOR_ANNOTATION_MAX_WIDTH = 220;
+const CARDINALITY_LABEL_MAX_WIDTH = 60;
+const SEQUENCE_BADGE_MAX_WIDTH = 16;
+
+/** Used when an icon/actor label has no parent to derive available width from (e.g. detached in
+ * tests, or a top-level element) — generous enough that wrapping stays rare in that fallback case. */
+const FALLBACK_LABEL_MAX_WIDTH = 200;
+/** Vertical spacing between stacked label lines, ~1.1x DEFAULT_FONT_SIZE_PX (textMetrics.ts) —
+ * enough to keep ascenders/descenders of adjacent lines from touching at the unset root font-size
+ * labelText inherits (~16-18px). */
+const LABEL_LINE_HEIGHT_PX = 18;
 /** Side length of the single tiled grid rect, scene units — large enough that no realistic pan
  * ever scrolls past its edge (docs/09-roadmap.md#m12--performance-at-scale's benchmark tops out at
  * 2,000 elements, nowhere near this span) without needing to track/resize it against the live
@@ -1183,24 +1208,72 @@ export class SvgRenderer {
       (hasIcon ? CONTAINER_GLYPH_SIZE + CONTAINER_LABEL_GAP : 0);
     const y = el.y + CONTAINER_GLYPH_INSET + CONTAINER_GLYPH_SIZE / 2 + 5;
     setAttrs(text, { x, y, fill: "#161616" });
-    text.textContent = el.label?.text ?? "";
+    text.textContent = el.label?.text
+      ? ellipsize(
+          el.label.text,
+          containerLabelMaxWidth(el),
+          "end",
+          CONTAINER_LABEL_FONT_SIZE_PX,
+        )
+      : "";
     return text;
+  }
+
+  /**
+   * The available width for an icon/actor's own caption to wrap within before it would run past
+   * its parent container's edge — mirrors containerLabelMaxWidth's "don't overflow the boundary"
+   * intent, but centered rather than left-anchored, since these captions are centered under/over
+   * their element (see labelText). Falls back to a generous flat width when there's no parent to
+   * derive it from (a detached element in tests, or a top-level icon on the canvas itself, which
+   * has no enclosing box/zone to respect).
+   */
+  private labelMaxWidth(el: SceneElement, scene: Scene): number {
+    const parent = el.parentId ? scene.get(el.parentId) : undefined;
+    if (!parent) return FALLBACK_LABEL_MAX_WIDTH;
+    const centerX = el.x + el.w / 2;
+    const left = centerX - parent.x;
+    const right = parent.x + parent.w - centerX;
+    return Math.max(0, 2 * Math.min(left, right));
   }
 
   private labelText(el: SceneElement, scene: Scene): SVGTextElement {
     const text = createSvgElement("text");
     const position = el.label?.position ?? "s";
-    const point = {
-      x: el.x + el.w / 2,
-      y: position === "s" ? el.y + el.h + 14 : el.y - 6,
-    };
-    setAttrs(text, {
-      x: point.x,
-      y: point.y,
-      fill: this.labelStroke(el, scene),
-      "text-anchor": "middle",
+    const centerX = el.x + el.w / 2;
+    const singleLineY = position === "s" ? el.y + el.h + 14 : el.y - 6;
+    const fill = this.labelStroke(el, scene);
+
+    const raw = el.label?.text ?? "";
+    const lines = raw
+      ? wrapText(raw, this.labelMaxWidth(el, scene), { maxLines: 2 })
+      : [];
+
+    if (lines.length <= 1) {
+      setAttrs(text, {
+        x: centerX,
+        y: singleLineY,
+        fill,
+        "text-anchor": "middle",
+      });
+      text.textContent = lines[0] ?? "";
+      return text;
+    }
+
+    // Multi-line: explicit x/y per tspan (not relative dy chaining) so each line is independently
+    // positioned and testable on its own, rather than only as an accumulated chain. Kept out of the
+    // single-line path above entirely, so the common (unwrapped) case's DOM shape and attributes
+    // stay exactly as before - this only engages once a caption genuinely needs a second line.
+    setAttrs(text, { fill, "text-anchor": "middle" });
+    const baseY =
+      position === "s"
+        ? singleLineY
+        : singleLineY - (lines.length - 1) * LABEL_LINE_HEIGHT_PX;
+    lines.forEach((line, i) => {
+      const tspan = createSvgElement("tspan");
+      setAttrs(tspan, { x: centerX, y: baseY + i * LABEL_LINE_HEIGHT_PX });
+      tspan.textContent = line;
+      text.appendChild(tspan);
     });
-    text.textContent = el.label?.text ?? "";
     return text;
   }
 
@@ -1299,7 +1372,12 @@ export class SvgRenderer {
         "text-anchor": "middle",
         "font-size": 11,
       });
-      text.textContent = el.label.text;
+      text.textContent = ellipsize(
+        el.label.text,
+        CONNECTOR_LABEL_MAX_WIDTH,
+        "end",
+        11,
+      );
       g.appendChild(text);
     }
 
@@ -1331,7 +1409,12 @@ export class SvgRenderer {
       "text-anchor": "middle",
       "font-size": 11,
     });
-    text.textContent = formatConnectorAnnotation(annotation);
+    text.textContent = ellipsize(
+      formatConnectorAnnotation(annotation),
+      CONNECTOR_ANNOTATION_MAX_WIDTH,
+      "end",
+      11,
+    );
     return text;
   }
 
@@ -1349,7 +1432,7 @@ export class SvgRenderer {
       "text-anchor": "middle",
       "font-size": 11,
     });
-    el.textContent = text;
+    el.textContent = ellipsize(text, CARDINALITY_LABEL_MAX_WIDTH, "end", 11);
     return el;
   }
 
@@ -1377,7 +1460,7 @@ export class SvgRenderer {
       "text-anchor": "middle",
       "font-size": 10,
     });
-    label.textContent = text;
+    label.textContent = ellipsize(text, SEQUENCE_BADGE_MAX_WIDTH, "end", 10);
     badge.appendChild(circle);
     badge.appendChild(label);
     return badge;

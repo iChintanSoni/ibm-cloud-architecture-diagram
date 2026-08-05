@@ -9,6 +9,7 @@ import {
   CONTAINER_GLYPH_INSET,
   CONTAINER_GLYPH_SIZE,
   CONTAINER_LABEL_GAP,
+  containerLabelMaxWidth,
   containerLabelRect,
 } from "./containerLabel.js";
 
@@ -71,5 +72,34 @@ describe("containerLabelRect", () => {
   it("sets y to the container's own inset", () => {
     const rect = containerLabelRect(box({ y: 500, label: { text: "X" } }));
     expect(rect?.y).toBe(500 + CONTAINER_GLYPH_INSET);
+  });
+
+  it("clamps w to containerLabelMaxWidth instead of overflowing a narrow container", () => {
+    const el = box({
+      w: 60,
+      label: { text: "Private Subnet — Data Tier" },
+    });
+    const rect = containerLabelRect(el);
+    expect(rect!.w).toBeLessThanOrEqual(containerLabelMaxWidth(el));
+  });
+});
+
+describe("containerLabelMaxWidth", () => {
+  it("shrinks as the container gets narrower", () => {
+    const wide = containerLabelMaxWidth(box({ w: 300 }));
+    const narrow = containerLabelMaxWidth(box({ w: 60 }));
+    expect(narrow).toBeLessThan(wide);
+  });
+
+  it("shrinks further when a corner icon eats into the available width", () => {
+    const noIcon = containerLabelMaxWidth(box({ w: 150 }));
+    const withIcon = containerLabelMaxWidth(
+      box({ w: 150, catalogRef: "ibm-cloud/vpc" }),
+    );
+    expect(withIcon).toBeLessThan(noIcon);
+  });
+
+  it("never goes negative for a container narrower than the label's start inset", () => {
+    expect(containerLabelMaxWidth(box({ w: 5 }))).toBe(0);
   });
 });

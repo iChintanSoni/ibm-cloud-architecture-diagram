@@ -4,6 +4,7 @@ import type { CatalogManifest } from "../catalog/types.js";
 import { Scene } from "../scene/scene.js";
 import type { ConnectorElement, SceneElement } from "../scene/types.js";
 import { SvgRenderer } from "./svgRenderer.js";
+import { measureText } from "./textMetrics.js";
 
 const manifest: CatalogManifest = {
   id: "visual-fixtures",
@@ -898,6 +899,197 @@ describe("IBM published visual golden fixtures", () => {
       y: "44",
       "text-anchor": "middle",
     });
+  });
+
+  it("ellipsizes a container's own label instead of overflowing a narrow boundary (M27.3)", () => {
+    scene._put({
+      id: "narrow-box",
+      type: "box",
+      semantic: "deployedOn",
+      x: 0,
+      y: 0,
+      w: 80,
+      h: 100,
+      label: { text: "Private Subnet — Data Tier" },
+    });
+    renderer.render(scene);
+
+    const label = renderer.nodeFor("narrow-box")?.querySelector("text");
+    expect(label?.textContent).not.toBe("Private Subnet — Data Tier");
+    expect(label?.textContent?.endsWith("…")).toBe(true);
+  });
+
+  it("wraps an icon's caption onto up to two lines via tspans instead of overflowing its parent (M27.3)", () => {
+    // Same deterministic-repeated-word trick as textMetrics.test.ts's wrapText tests: an icon
+    // exactly centered in its parent gets labelMaxWidth === parent.w (left/right slack are equal),
+    // so sizing the parent to a known pair-width makes the 2-line, no-ellipsis split exact rather
+    // than approximate.
+    const pairWidth = measureText("Worker Worker");
+    const parentW = Math.ceil(pairWidth) + 5;
+    scene._put({
+      id: "wrap-parent",
+      type: "box",
+      semantic: "deployedOn",
+      x: 0,
+      y: 0,
+      w: parentW,
+      h: 200,
+    });
+    scene._put({
+      id: "wrap-icon",
+      type: "iconNode",
+      semantic: "node",
+      catalogRef: "fixture/server",
+      parentId: "wrap-parent",
+      x: (parentW - 48) / 2,
+      y: 20,
+      w: 48,
+      h: 48,
+      label: { text: "Worker Worker Worker Worker" },
+    });
+    renderer.render(scene);
+
+    const textEl = renderer.nodeFor("wrap-icon")?.querySelector("text");
+    const tspans = [...(textEl?.querySelectorAll("tspan") ?? [])];
+    expect(tspans.map((t) => t.textContent)).toEqual([
+      "Worker Worker",
+      "Worker Worker",
+    ]);
+    // Rejoining the tspans (DOM textContent concatenates adjacent text nodes with no separator,
+    // so the visual inter-word gap from tspan positioning isn't itself a space character) confirms
+    // no words were dropped while wrapping - the full caption still lives in scene data regardless
+    // (accessibleName() reads el.label.text directly, never the rendered DOM).
+    expect(tspans.map((t) => t.textContent).join(" ")).toBe(
+      "Worker Worker Worker Worker",
+    );
+    const ys = tspans.map((t) => Number(t.getAttribute("y")));
+    expect(ys[1]).toBeGreaterThan(ys[0]!);
+    expect(
+      tspans.every((t) => t.getAttribute("x") === tspans[0]?.getAttribute("x")),
+    ).toBe(true);
+  });
+
+  it("keeps an icon caption that already fits on a single line, un-wrapped (no tspan)", () => {
+    scene._put({
+      id: "fit-parent",
+      type: "box",
+      semantic: "deployedOn",
+      x: 0,
+      y: 0,
+      w: 400,
+      h: 200,
+    });
+    scene._put({
+      id: "fit-icon",
+      type: "iconNode",
+      semantic: "node",
+      catalogRef: "fixture/server",
+      parentId: "fit-parent",
+      x: 176,
+      y: 20,
+      w: 48,
+      h: 48,
+      label: { text: "LB" },
+    });
+    renderer.render(scene);
+
+    const textEl = renderer.nodeFor("fit-icon")?.querySelector("text");
+    expect(textEl?.querySelectorAll("tspan")).toHaveLength(0);
+    expect(textEl?.textContent).toBe("LB");
+    expect(textEl?.getAttribute("y")).not.toBeNull();
+  });
+
+  it("ellipsizes a connector's text label instead of overflowing its fixed width cap (M27.3)", () => {
+    scene._put({
+      id: "longlbl-from",
+      type: "box",
+      semantic: "deployedOn",
+      x: 0,
+      y: 0,
+      w: 48,
+      h: 48,
+    });
+    scene._put({
+      id: "longlbl-to",
+      type: "box",
+      semantic: "deployedOn",
+      x: 600,
+      y: 0,
+      w: 48,
+      h: 48,
+    });
+    scene._put({
+      id: "longlbl",
+      type: "connector",
+      semantic: "node",
+      x: 0,
+      y: 0,
+      w: 0,
+      h: 0,
+      from: { elementId: "longlbl-from", port: "e" },
+      to: { elementId: "longlbl-to", port: "w" },
+      connectorType: "association",
+      label: {
+        text: "A pathologically long connector label describing every hop of this request in exhaustive detail",
+      },
+      routing: "manual",
+      waypoints: [
+        { x: 48, y: 24 },
+        { x: 600, y: 24 },
+      ],
+    });
+    renderer.render(scene);
+
+    const label = renderer.nodeFor("longlbl")?.querySelector("text");
+    expect(label?.textContent?.length).toBeLessThan(
+      "A pathologically long connector label describing every hop of this request in exhaustive detail"
+        .length,
+    );
+    expect(label?.textContent?.endsWith("…")).toBe(true);
+  });
+
+  it("ellipsizes an overlong sequence badge instead of overflowing its circle (M27.3)", () => {
+    scene._put({
+      id: "longseq-from",
+      type: "box",
+      semantic: "deployedOn",
+      x: 0,
+      y: 0,
+      w: 48,
+      h: 48,
+    });
+    scene._put({
+      id: "longseq-to",
+      type: "box",
+      semantic: "deployedOn",
+      x: 240,
+      y: 0,
+      w: 48,
+      h: 48,
+    });
+    scene._put({
+      id: "longseq",
+      type: "connector",
+      semantic: "node",
+      x: 0,
+      y: 0,
+      w: 0,
+      h: 0,
+      from: { elementId: "longseq-from", port: "e" },
+      to: { elementId: "longseq-to", port: "w" },
+      connectorType: "association",
+      sequence: "step-1-of-many-in-this-sequence",
+      routing: "manual",
+      waypoints: [
+        { x: 48, y: 24 },
+        { x: 240, y: 24 },
+      ],
+    });
+    renderer.render(scene);
+
+    const badgeLabel = renderer.nodeFor("longseq")?.querySelector("text");
+    expect(badgeLabel?.textContent).not.toBe("step-1-of-many-in-this-sequence");
+    expect(badgeLabel?.textContent?.endsWith("…")).toBe(true);
   });
 
   function domOrder(): (string | null)[] {
