@@ -484,21 +484,33 @@ candidate vertical bend line landed inside Worker-1's own router-padded footprin
 against the router's own 20px port-stub length plus 12px obstacle padding), while the 40px gap
 this ships with clears it with margin.
 
+**Subnet's own corner label was obscured by its first child** (M28.1, found via live-browser
+dogfooding, not a roadmap entry of its own): the Subnet box carries its own catalog icon + label
+(`ibm-cloud/subnet-acl-rules`) in the same top-left 32px header band every labeled container
+reserves (`CONTAINER_GLYPH_INSET` + `CONTAINER_GLYPH_SIZE`), but `SUBNET_CONTENT_H` only reserved
+the generic `CONTAINER_CHILD_PADDING_PX` (16px) top inset before the LB/Worker icon row — 16px
+short of clearing that header. Since paint order is container-then-children (M18.1), the LB/ALB
+icon painted directly on top of the front half of "Subnet N", rendering as "et N". Fixed by
+reserving `HEADER` (32px, the same constant Zone→Subnet nesting already uses one level up) instead,
+growing `SUBNET_H` by 16px; every ancestor size (`ZONE_H` → `clusterH` → `vpcH`/`regionH` →
+`ibmCloudH` → `frameH`) and the Master band's height are formula-derived from it, so the whole
+layout re-derives correctly with no other manual coordinate changes. Confirmed in a live browser
+across all 4 templates post-fix, not just by the test suite.
+
 **Expected linter output** has grown as the M27 epic added rule coverage — no longer a fixed
-3-category baseline. As of M27.8, every instantiated template carries: `missing-label` ×1 (the
+3-category baseline. As of M28.1, every instantiated template carries: `missing-label` ×1 (the
 Master Box, above), `non-zero-rotation` ×1 (the Master label,
 [D28](#d28--constrained-defaults-full-range-on-demand--locked)'s documented rotation escape hatch),
 `duplicate-label` ×9 (IBM's own source diagrams reuse "Load Balancer"/"ALB", "Worker Node 1", and
 "Worker Node 2" identically across all 3 zones — inherent to the reference content, not introduced
-by this implementation), `connector-border-hug` ×1 (`mzlb-to-lb-2`'s route grazes Subnet-2's own
-bottom edge by a few px over a short stretch while legitimately entering it — an accepted "brief,
-unavoidable graze," the exact case `orthogonalRouter.ts`'s border-clearance cost model is tuned to
-tolerate cheaply rather than force a full detour for), and `text-overflow-needs-wrap` ×1 (the
-"Public Network" container's own fixed width doesn't fit its label — left as a known finding,
-since widening it cascades into `frameW`/`ibmCloudX` and the rest of the layout downstream). All
-four are advisory (`warn`/`info`) and pre-identified rather than bugs; `templates.test.ts` asserts
-this exact set so a future regression (or future fix) is a deliberate, reviewed test change, not a
-silent drift.
+by this implementation), and `text-overflow-needs-wrap` ×1 (the "Public Network" container's own
+fixed width doesn't fit its label — left as a known finding, since widening it cascades into
+`frameW`/`ibmCloudX` and the rest of the layout downstream). All three are advisory (`warn`/`info`)
+and pre-identified rather than bugs; `templates.test.ts` asserts this exact set so a future
+regression (or future fix) is a deliberate, reviewed test change, not a silent drift. M28.1's taller
+Subnet geometry also resolved the previously-documented `connector-border-hug` ×1 residual
+(`mzlb-to-lb-2`'s graze along Subnet-2's bottom edge) as a side effect — confirmed genuinely gone by
+the test run, not assumed.
 
 - **Why:** The user asked for exact reproductions of these 4 specific published diagrams as
   starter templates, so a user building this shape of architecture starts from IBM's own worked

@@ -189,8 +189,14 @@ function srMzClusterElements(options: SrMzOptions): SceneElement[] {
   const WORKER_GAP = 40;
 
   const SUBNET_CONTENT_W = 24 + ICON + 50 + ICON + WORKER_GAP + ICON + 24; // pad, LB, gap, worker 1, gap, worker 2, pad
-  const SUBNET_CONTENT_H =
-    CONTAINER_CHILD_PADDING_PX + ICON + CONTAINER_CHILD_PADDING_PX; // pad, icon row, pad
+  // Top padding is HEADER (32), not the generic CONTAINER_CHILD_PADDING_PX (16): Subnet renders
+  // its own corner icon+label (it carries a catalogRef, "ibm-cloud/subnet-acl-rules") in that same
+  // 32px-tall band, and a child painted at just the generic 16px inset visually overlaps it (paint
+  // order is container-then-children, M18.1, so the child paints on top of the container's own
+  // label) — the exact bug a live-browser dogfooding pass caught: "Subnet 1"'s label rendered as
+  // "et 1" with the ALB icon's tile painted over its front half. Mirrors the HEADER reservation
+  // Zone→Subnet nesting already uses one level up (`subnetY = zoneY + HEADER` below).
+  const SUBNET_CONTENT_H = HEADER + ICON + CONTAINER_CHILD_PADDING_PX; // header, icon row, pad
   const SUBNET_W = SUBNET_CONTENT_W;
   const SUBNET_H = SUBNET_CONTENT_H;
 
@@ -367,7 +373,9 @@ function srMzClusterElements(options: SrMzOptions): SceneElement[] {
     const worker2Id = `${prefix}-worker-${n}-2`;
     const zoneY = zone1Y + i * (ZONE_H + ZONE_GAP);
     const subnetY = zoneY + HEADER;
-    const subnetCenterY = subnetY + SUBNET_H / 2;
+    // Below Subnet's own header band, same reasoning as SUBNET_CONTENT_H above — content fills
+    // the row exactly (HEADER + ICON + CONTAINER_CHILD_PADDING_PX == SUBNET_H), no centering.
+    const subnetContentY = subnetY + HEADER;
 
     elements.push(
       zone(zoneId, `Zone ${n}`, zoneX, zoneY, ZONE_W, ZONE_H, clusterId, -40),
@@ -392,7 +400,7 @@ function srMzClusterElements(options: SrMzOptions): SceneElement[] {
         loadBalancerCatalogRef,
         loadBalancerLabel,
         subnetX + 24,
-        subnetCenterY - ICON / 2,
+        subnetContentY,
         subnetId,
       ),
     );
@@ -402,7 +410,7 @@ function srMzClusterElements(options: SrMzOptions): SceneElement[] {
         "ibm-cloud/virtual-server-classic",
         "Worker Node 1",
         subnetX + 24 + ICON + 50,
-        subnetCenterY - ICON / 2,
+        subnetContentY,
         subnetId,
       ),
     );
@@ -412,7 +420,7 @@ function srMzClusterElements(options: SrMzOptions): SceneElement[] {
         "ibm-cloud/virtual-server-classic",
         "Worker Node 2",
         subnetX + 24 + ICON + 50 + ICON + WORKER_GAP,
-        subnetCenterY - ICON / 2,
+        subnetContentY,
         subnetId,
       ),
     );

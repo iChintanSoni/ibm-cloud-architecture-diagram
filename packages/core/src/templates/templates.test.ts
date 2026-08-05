@@ -189,7 +189,7 @@ describe("reference architecture templates (docs/00-decision-log.md#d30)", () =>
       expect(zones).toHaveLength(3);
       expect(subnets).toHaveLength(3);
 
-      // Four documented, advisory-only diagnostic categories (docs/00-decision-log.md#d30). Two
+      // Three documented, advisory-only diagnostic categories (docs/00-decision-log.md#d30). Two
       // are stable across the whole M27 epic: the decorative "Master" band is an unlabeled Box
       // (missing-label) carrying a separately-rotated Text label (non-zero-rotation) so the
       // band's own border isn't rotated - both are marked gutterExempt (M27.6/M27.7) so the
@@ -204,14 +204,21 @@ describe("reference architecture templates (docs/00-decision-log.md#d30)", () =>
       // to a straight line through Worker-1 because every candidate vertical bend line between
       // the two icons landed inside Worker-1's own router-padded footprint); WORKER_GAP=40 clears
       // that threshold, and container-child-padding's prior ×6 (the vertical stack's own worker-
-      // to-subnet-edge symptom) is gone too. What remains: a minor, expected residual -
-      // mzlb-to-lb-2's route grazes subnet-2's bottom edge by ~1.5px over a ~10px stretch while
-      // legitimately entering it to reach its own target (connector-border-hug ×1) - exactly the
-      // "brief, unavoidable graze" BORDER_HUG_PENALTY_PER_PX's own doc comment (orthogonalRouter.ts)
-      // says costs little enough that the router correctly prefers it over a full detour; and the
-      // "Public Network" container's label still doesn't fit its own fixed width and renders
-      // ellipsized (text-overflow-needs-wrap ×1) - PUBLIC_NETWORK_W feeds frameW/ibmCloudX
-      // downstream, so widening it is a wider layout change than this pass takes on.
+      // to-subnet-edge symptom) is gone too.
+      //
+      // A live-browser dogfooding pass (M28.1) caught a real bug this count never exercised: each
+      // Subnet box's own corner label rendered as "et 1"/"et 2"/"et 3" instead of "Subnet N" — its
+      // first child (the LB/ALB icon) painted on top of the header's icon+label band, since Subnet
+      // only reserved the generic CONTAINER_CHILD_PADDING_PX (16px) top inset rather than its own
+      // HEADER (32px), unlike Zone→Subnet nesting one level up. Fixed by growing SUBNET_H to
+      // reserve HEADER before the icon row (referenceArchitectures.ts). That taller subnet
+      // geometry also happened to resolve the previously-documented connector-border-hug ×1
+      // residual (mzlb-to-lb-2's graze along subnet-2's bottom edge) — confirmed by this test run,
+      // not assumed: the router no longer needs that graze once the subnet has more vertical room.
+      //
+      // What remains: the "Public Network" container's label still doesn't fit its own fixed width
+      // and renders ellipsized (text-overflow-needs-wrap ×1) - PUBLIC_NETWORK_W feeds
+      // frameW/ibmCloudX downstream, so widening it is a wider layout change than this pass takes on.
       const diagnostics = new Linter({ catalog: catalogFor(scene.all()) }).run(
         scene,
       );
@@ -222,7 +229,6 @@ describe("reference architecture templates (docs/00-decision-log.md#d30)", () =>
         "missing-label": 1,
         "non-zero-rotation": 1,
         "duplicate-label": 9,
-        "connector-border-hug": 1,
         "text-overflow-needs-wrap": 1,
       });
     },

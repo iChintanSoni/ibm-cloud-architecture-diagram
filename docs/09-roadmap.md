@@ -244,7 +244,8 @@ for the full source→catalog icon mapping and the fidelity trade-offs made alon
 5. Covered all 4 templates with core template tests (structure/containment/serialization validity,
    `diagramLevel` resolution, and an exact expected-diagnostic-count assertion for the documented,
    advisory-only lint categories — see D30, count since revised by the M27 router/lint-quality
-   pass) and a `NewDiagramDialog` component test for the new radio group and its `onCreate` id.
+   pass and M28.1's Subnet header-overlap fix) and a `NewDiagramDialog` component test for the new
+   radio group and its `onCreate` id.
 
 **Done when:** a user can pick any of the 4 IKS/ROKS × Classic/VPC reference architectures from the
 New Diagram dialog (or an agent via `doc_create`), get a structurally faithful, fully-labeled
