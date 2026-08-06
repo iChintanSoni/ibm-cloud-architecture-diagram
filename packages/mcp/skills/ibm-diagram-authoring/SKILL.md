@@ -63,18 +63,46 @@ than search.
 
 ### 4. Build outside-in, west→east
 
+**Prefer one `scene_apply` call over many individual `element_add_*`/`connect*` calls.** For a
+diagram's initial build, batch every container, icon, actor, and connector for that section into a
+single `scene_apply({ ops: [...] })` call rather than one tool round-trip per element — it commits
+as one undo step, is all-or-nothing (nothing is applied if any op is invalid, and every failing op
+is reported, not just the first), and avoids the back-and-forth latency of dozens of sequential
+round-trips for what is conceptually one build. Reach for individual `element_add_*`/`connect*`/
+`connect_nearest` calls for later single-element touch-ups or edits to an existing diagram, not for
+the initial build of a section.
+
+Within one `scene_apply` call (or across individual calls), the same rules apply:
+
 1. Create containers before their contents: Zone → Box/Group → IconNode/Actor, always passing
-   `parentId` from the previous step's returned `id`. The engine applies the 16px inset
-   automatically — just give each child an `at`/`w`/`h` inside its parent's bounds.
+   `parentId` from the container's own `id`. **An op referenced later in the same `scene_apply`
+   array (as a `parentId` or a connector's `fromId`/`toId`) must be given an explicit `id` — there
+   is no automatic back-reference to an id `scene_apply` generated for an earlier op in the same
+   call.** The engine applies the 16px inset automatically — just give each child an `at`/`w`/`h`
+   inside its parent's bounds.
 2. Place public entry points (actors, external systems) at the smallest `x`; increasing `x`
    rightward through the flow, per the west→east convention. A rough 200–300px horizontal
    spacing between tiers reads cleanly at the default 48×48 icon size.
-3. Connect with `connect_nearest({ fromId, toId, connectorType, direction?, flowColor?, label? })`
-   unless a specific port matters, in which case use `connect` with explicit
-   `{ elementId, port }` refs (`port` ∈ `n`/`e`/`s`/`w`/`center`). Pick `connectorType` and
+3. Connect with `connect_nearest` (`{ kind: "connect_nearest", fromId, toId, connectorType,
+direction?, flowColor?, label? }` inside `scene_apply`, or the standalone tool with the same
+   fields) unless a specific port matters, in which case use `connect`/`{ kind: "connect" }` with
+   explicit `{ elementId, port }` refs (`port` ∈ `n`/`e`/`s`/`w`/`center`). Pick `connectorType` and
    `flowColor` per `ibm-diagram-spec`'s nomenclature — don't default everything to `"connection"`.
-4. Use `element_add_frame({ name, at, w, h })` if the diagram has distinct sections worth
-   presenting separately (e.g. multiple environments) — frames are always top-level.
+   **These two are not interchangeable and their endpoint fields are shaped differently — do not
+   mix them up:**
+   - `connect_nearest` takes flat string ids: `{ kind: "connect_nearest", fromId: "a", toId: "b" }`.
+     Never `from`/`to` here.
+   - `connect` takes port-ref objects, not plain ids: `{ kind: "connect", from: { elementId: "a",
+port: "e" }, to: { elementId: "b", port: "w" } }`. Never `fromId`/`toId` here.
+
+   Sending the wrong shape (e.g. `connect_nearest` with `from`/`to` objects, or `connect` with
+   bare `fromId`/`toId` strings) fails schema validation before the call ever reaches the
+   document — if that happens, don't guess again with another variant; re-read this exact list and
+   match one of the two shapes precisely.
+
+4. Use `element_add_frame`/`{ kind: "add_frame" }` (`{ name, at, w, h }`) if the diagram has
+   distinct sections worth presenting separately (e.g. multiple environments) — frames are always
+   top-level.
 
 ### 5. Validate as you go, not just at the end
 
@@ -100,26 +128,33 @@ catalog_search({ query: "vpc" })                 → ibm-cloud/vpc
 catalog_search({ query: "api gateway" })          → ibm-cloud/gateway-api
 catalog_search({ query: "object storage" })       → ibm-cloud/object-storage-application
 
-element_add_actor({ id: "customer", at: {x: 40,  y: 220}, label: "Customer" })
-element_add_zone({ id: "vpc", zoneKind: "vpc", at: {x: 200, y: 60}, w: 700, h: 420, label: "VPC" })
-element_add_group({ id: "app-tier", parentId: "vpc", at: {x: 260, y: 140}, w: 380, h: 240, label: "Application tier" })
-
-element_add_icon({ id: "gateway", parentId: "app-tier", catalogRef: "ibm-cloud/gateway-api",
-                    at: {x: 300, y: 220}, label: "API Gateway" })
-element_add_icon({ id: "app",     parentId: "app-tier", catalogRef: "ibm-cloud/instance-bx",
-                    at: {x: 540, y: 220}, label: "Application" })
-element_add_icon({ id: "storage", parentId: "vpc",      catalogRef: "ibm-cloud/object-storage-application",
-                    at: {x: 760, y: 220}, label: "Object storage" })
-
-connect_nearest({ fromId: "customer", toId: "gateway", connectorType: "connection",
-                   direction: "unidirectional", flowColor: "public", label: "HTTPS TLS1.3:443" })
-connect_nearest({ fromId: "gateway", toId: "app", connectorType: "connection",
-                   direction: "unidirectional", flowColor: "private" })
-connect_nearest({ fromId: "app", toId: "storage", connectorType: "connection",
-                   direction: "unidirectional", flowColor: "private" })
+scene_apply({
+  ops: [
+    { kind: "add_zone", id: "vpc", zoneKind: "vpc", at: {x: 200, y: 60}, w: 700, h: 420, label: "VPC" },
+    { kind: "add_group", id: "app-tier", parentId: "vpc", at: {x: 260, y: 140}, w: 380, h: 240, label: "Application tier" },
+    { kind: "add_actor", id: "customer", at: {x: 40, y: 220}, label: "Customer" },
+    { kind: "add_icon", id: "gateway", parentId: "app-tier", catalogRef: "ibm-cloud/gateway-api",
+      at: {x: 300, y: 220}, label: "API Gateway" },
+    { kind: "add_icon", id: "app", parentId: "app-tier", catalogRef: "ibm-cloud/instance-bx",
+      at: {x: 540, y: 220}, label: "Application" },
+    { kind: "add_icon", id: "storage", parentId: "vpc", catalogRef: "ibm-cloud/object-storage-application",
+      at: {x: 760, y: 220}, label: "Object storage" },
+    { kind: "connect_nearest", fromId: "customer", toId: "gateway", connectorType: "connection",
+      direction: "unidirectional", flowColor: "public", label: "HTTPS TLS1.3:443" },
+    { kind: "connect_nearest", fromId: "gateway", toId: "app", connectorType: "connection",
+      direction: "unidirectional", flowColor: "private" },
+    { kind: "connect_nearest", fromId: "app", toId: "storage", connectorType: "connection",
+      direction: "unidirectional", flowColor: "private" },
+  ]
+})
 
 lint()
 quickfix_apply_all()
 ```
+
+One `scene_apply` call built the whole section as a single undo step — containers (`vpc`, then
+`app-tier`, which references `vpc` as its `parentId`) come before the elements placed inside them,
+and every op the connectors reference (`customer`, `gateway`, `app`, `storage`) carries an explicit
+`id` since nothing after the first op in the array can rely on an auto-generated one.
 
 Then proceed to `ibm-diagram-export` to finish clean and produce the SVG.
