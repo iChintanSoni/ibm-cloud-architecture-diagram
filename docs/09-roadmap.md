@@ -1163,10 +1163,105 @@ with web/mcp/vscode/desktop (macOS/Windows/Linux) artifacts attached.
 desktop artifacts for all three desktop platforms, unattended (✅ — confirmed via a real tag push,
 not just workflow linting).
 
+## v6 — Autonomous agent runtime (Deep Agents + A2A) · [D31](00-decision-log.md#d31--new-agent-package-hosts-the-deep-agent-runtime-kept-separate-from-the-mcp-server--locked-v6)
+
+Close the gap [M9.2](#m92--agent-skills) left open: a real agent loop that drives `packages/mcp`
+end-to-end from natural language, not just documentation an agent framework could in principle
+follow. Introduces `apps/agent` — a LangChain JS Deep Agents runtime, exposed over A2A via
+[`@a2a-js/sdk`](https://github.com/a2aproject/a2a-js) — as the concrete "Solution Architecture
+Agent" [D15](00-decision-log.md#d15--mcp-full-authoring-toolset--locked-v2)/[D16](00-decision-log.md#d16--authoring--spec--export-agent-skills--locked-v2)
+already named. See [Agent Runtime](11-agent-runtime.md).
+
+#### M29 — Agent package scaffold + MCP subprocess lifecycle
+
+A new workspace package (`@icad/agent`), wired into the root `build`/`typecheck`/`lint`/`test`
+scripts like every other package. No agent/LLM logic yet — just the plumbing
+([D34](00-decision-log.md#d34--one-ephemeral-mcp-subprocess-per-task-single-task-at-a-time--locked-v6)):
+a wrapper (via `@langchain/mcp-adapters`) that spawns `packages/mcp/dist/index.js` as a stdio
+subprocess for one task, calls `doc_open`/`doc_create`, and tears the subprocess down after.
+
+**Done when:** an integration test spins a real subprocess and round-trips a real `.icad` + `.svg`
+through it (`doc_create` → `element_add_box` → `export_diagram` → `doc_save`), with no hand-written
+mock of the MCP protocol.
+
+#### M30 — Deep Agent orchestrator + sub-agents
+
+The orchestrator + `diagram-builder` + `conformance-exporter` sub-agent structure
+([D33](00-decision-log.md#d33--orchestrator-plus-two-sub-agents-diagram-builder-and-conformance-exporter--locked-v6)),
+each loading the appropriate existing `packages/mcp/skills/` `SKILL.md`. Configurable chat model
+via LangChain's generic interface
+([D36](00-decision-log.md#d36--agent-memory-is-ephemeral-per-task-the-llm-provider-is-configurable--locked-v6));
+ephemeral per-task memory. The hard export gate
+([D37](00-decision-log.md#d37--hard-export-gate-auto-fix-everything-fixable-then-block-on-remaining-errors--locked-v6)):
+lint → quickfix_apply_all loop → refuse to report success with any `error` diagnostic outstanding.
+
+**Confirm at kickoff, not assumed:** the exact LangChain JS package(s) for the Deep Agents pattern
+(sub-agent delegation, planning/todo tool, filesystem-backed memory) — spike first, the same way
+M9.1 spiked headless jsdom before committing to it.
+
+**Done when:** given a hardcoded natural-language requirement (no A2A surface yet), the agent
+produces a lint-clean `.icad` + exported SVG via a real spawned MCP subprocess, for at least one
+non-trivial multi-tier topology.
+
+#### M31 — Agent-side PNG export
+
+SVG→PNG conversion
+([D35](00-decision-log.md#d35--existing-diagrams-are-referenced-by-file-path-png-is-produced-agent-side--locked-v6))
+as the last step of `conformance-exporter`, after `export_diagram({ format: "svg" })` succeeds.
+
+**Done when:** a real run produces `.icad` + `.svg` + `.png` for the same diagram, and the PNG is
+visually confirmed to match the SVG (spot-checked, not just "didn't throw").
+
+#### M32 — A2A server surface
+
+`GenerateArchitectureDiagram` and `ModifyArchitectureDiagram` as two skills in an `AgentCard`
+([D32](00-decision-log.md#d32--a2a-server-is-primary-a2a-client-is-plumbing-only-localhost-only-no-auth--locked-v6)),
+served via `DefaultRequestHandler` + `InMemoryTaskStore` (sufficient given
+[D34](00-decision-log.md#d34--one-ephemeral-mcp-subprocess-per-task-single-task-at-a-time--locked-v6)'s
+single-task-at-a-time model) and the SDK's Express `jsonRpcHandler`/`agentCardHandler`
+(`UserBuilder.noAuthentication`), on `localhost:41241` (the SDK's own sample convention) unless
+overridden. `ModifyArchitectureDiagram` takes an explicit `.icad` path in its task input. An
+`AgentExecutor.execute()` implementation drives the orchestrator, publishing `AgentEvent.task` →
+`statusUpdate` (submitted → working, with sub-agent progress) → `artifactUpdate` (the `.icad`,
+`.svg`, `.png` paths) → a final `statusUpdate` (completed, or failed/input-required carrying
+[D37](00-decision-log.md#d37--hard-export-gate-auto-fix-everything-fixable-then-block-on-remaining-errors--locked-v6)'s
+diagnostics). `AgentExecutor.cancelTask()` kills the task's MCP subprocess early, mirroring the
+SDK's own cancellable-agent sample.
+
+**Done when:** a real A2A client call round-trips both skills against a running `apps/agent`
+server, including one cancelled mid-flight.
+
+#### M33 — A2A dev-harness CLI, plumbing-only A2A client, dogfooding
+
+A minimal CLI acting as an A2A client for local testing/dogfooding — modeled directly on the SDK's
+own sample `client.ts` (`ClientFactory` + `JsonRpcTransportFactory`, `sendMessageStream`, printing
+`task`/`statusUpdate`/`artifactUpdate` events as they arrive). The A2A client capability
+([D32](00-decision-log.md#d32--a2a-server-is-primary-a2a-client-is-plumbing-only-localhost-only-no-auth--locked-v6))
+is wired at the SDK level with no real delegate target yet. Closes with a real dogfooding session:
+several natural-language prompts (at least one new-diagram, one modify-existing) run through the
+live A2A server via the harness CLI, output visually verified via chrome-devtools MCP — the same
+rigor `packages/mcp` itself was held to in its own dogfooding sessions (see commit history for
+M22-M25).
+
+**Done when:** the dogfooding session runs to completion and its findings (if any) are written up
+and proposed as a follow-up milestone, same pattern as the M22/M23 dogfooding → fix-milestone
+cadence.
+
+**v6 exit criteria:** a real A2A caller (the dev-harness CLI, or any other A2A client) generates a
+valid, non-trivial topology from a paragraph of requirements, and separately modifies an existing
+`.icad` from a natural-language instruction — entirely through the A2A surface, with no human in
+the tool loop — closing the v2 exit-criteria gap [M9.2 flagged](#m92--agent-skills) ("needs an
+actual agent loop driving the MCP server end-to-end," previously only exercised via manual Claude
+Code dogfooding sessions, never a real autonomous agent).
+
 ## Explicitly deferred / revisit later
 
 - Real-time multi-user collaboration ([D4](00-decision-log.md#d4--local-first-single-user-files--locked) is single-user by design).
 - `.drawio` import / round-trip ([D7](00-decision-log.md#d7--export-only-interop-svgpng-no-drawio-import--locked)).
+- Concurrent multi-task A2A sessions, cross-session agent memory, and real A2A-client delegation to
+  another agent — all deferred by [v6](#v6--autonomous-agent-runtime-deep-agents--a2a)'s own
+  [D32](00-decision-log.md#d32--a2a-server-is-primary-a2a-client-is-plumbing-only-localhost-only-no-auth--locked-v6)/[D34](00-decision-log.md#d34--one-ephemeral-mcp-subprocess-per-task-single-task-at-a-time--locked-v6)/[D36](00-decision-log.md#d36--agent-memory-is-ephemeral-per-task-the-llm-provider-is-configurable--locked-v6),
+  pending real demand.
 - Cloud sync / share links / accounts.
 - Public open-source release (depends on IBM decision, [D17](00-decision-log.md#d17--official--ibm-internal-tool--locked)).
 

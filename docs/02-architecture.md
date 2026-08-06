@@ -39,13 +39,16 @@ ibm-cloud-diagram/
 ├── apps/
 │   ├── web/                  # v1 web shell (Vite): mounts core + ui-web
 │   ├── vscode/               # (v2) VS Code custom editor for .icad
-│   └── desktop/              # (v3) Tauri shell — src-tauri/ only; wraps apps/web's own build
+│   ├── desktop/              # (v3) Tauri shell — src-tauri/ only; wraps apps/web's own build
+│   └── agent/                # (v6) Deep Agents runtime over packages/mcp, exposed via A2A
 ├── docs/
 └── README.md
 ```
 
 > Only `apps/web`, `packages/core`, `packages/catalog(-build)`, and `packages/ui-web` are in the
-> **v1 MVP** ([D20](00-decision-log.md#d20--mvp--editor-first-web-shell--locked)). `packages/mcp` and the other apps are stubs until v2/v3.
+> **v1 MVP** ([D20](00-decision-log.md#d20--mvp--editor-first-web-shell--locked)). `packages/mcp`
+> and the other apps are stubs until v2/v3/v6 — see [Agent Runtime](11-agent-runtime.md) for
+> `apps/agent` specifically.
 
 ## The core
 

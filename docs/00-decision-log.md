@@ -519,3 +519,129 @@ the test run, not assumed.
 - **Consequence:** `packages/mcp`'s `doc_create` gains the 4 new ids in `diagramTemplateIdSchema`
   for free, so agents can seed these templates the same way humans do from the New Diagram dialog.
   See [Roadmap M26](09-roadmap.md#m26--reference-architecture-templates).
+
+## Agent Runtime (Deep Agents + A2A)
+
+### D31 — New agent package hosts the Deep Agent runtime, kept separate from the MCP server · Locked (v6)
+
+A new pnpm workspace package, `apps/agent`, implements the "Solution Architecture Agent"
+[D15](#d15--mcp-full-authoring-toolset--locked-v2)/[D16](#d16--authoring--spec--export-agent-skills--locked-v2)
+already described as the intended consumer of `packages/mcp`. It depends on `packages/mcp`'s built
+stdio server (spawned as a subprocess — see
+[D34](#d34--one-ephemeral-mcp-subprocess-per-task-single-task-at-a-time--locked-v6)) rather than
+merging agent-orchestration code into `packages/mcp` itself.
+
+- **Why:** `packages/mcp` stays a thin, dependency-light MCP server any MCP client can point at —
+  including ones that aren't this agent (Claude Code's own dogfooding sessions already do this).
+  Bolting LangChain, a chat-model SDK, and an A2A server into that same package would drag those
+  dependencies into the standalone MCP tarball
+  ([M21](09-roadmap.md#m21--licensing--release-packaging)) for every consumer, not just this one.
+- **Consequence:** A new workspace package following the existing shell-per-surface pattern
+  (`apps/web`/`apps/vscode`/`apps/desktop`, each thin over `packages/core`). See
+  [Agent Runtime](11-agent-runtime.md).
+
+### D32 — A2A server is primary; A2A client is plumbing-only, localhost-only, no auth · Locked (v6)
+
+`apps/agent` exposes two A2A skills in its `AgentCard` — `GenerateArchitectureDiagram` (new
+diagram from a natural-language requirement) and `ModifyArchitectureDiagram` (edit an existing
+`.icad` from a natural-language instruction) — over localhost-only HTTP (`DefaultRequestHandler` +
+the SDK's Express `jsonRpcHandler`, `userBuilder: UserBuilder.noAuthentication`), via the official
+[`@a2a-js/sdk`](https://github.com/a2aproject/a2a-js) (Apache-2.0, same license as this project).
+It also wires the SDK's client (`ClientFactory`), but nothing calls out to another agent yet.
+
+- **Why:** [Agent Integration](08-agent-integration.md) already named `GenerateArchitectureDiagram`
+  as the capability this project would eventually expose over A2A — this makes that literal.
+  Localhost-only, no-auth matches [D4](#d4--local-first-single-user-files--locked)'s existing
+  local-first/single-user scope, and `UserBuilder.noAuthentication` is a first-class supported mode
+  of the SDK itself, not a bypass — no bespoke auth-skipping code to write or maintain. A real
+  external delegate for the client side doesn't exist yet, so building real delegation now would be
+  speculative.
+- **Consequence:** No auth or session design is needed for v6. `AgentExecutor.cancelTask` (the
+  SDK's cancellation hook) is cheap to support given
+  [D34](#d34--one-ephemeral-mcp-subprocess-per-task-single-task-at-a-time--locked-v6)'s
+  fresh-subprocess-per-task model — cancelling a task just kills its subprocess early — so it ships
+  in v6 even though nothing else about concurrency does. If this agent ever needs to leave
+  localhost or serve multiple concurrent callers, that's a new decision building on D34, not
+  assumed here.
+
+### D33 — Orchestrator plus two sub-agents: diagram builder and conformance exporter · Locked (v6)
+
+A Deep Agents orchestrator interprets the request (plus, for a modification, the current
+`doc_get()` scene) and delegates to two sub-agents: **diagram-builder** (loads the existing
+`ibm-diagram-authoring` skill; drives `catalog_search`/`element_add_*`/`connect[_nearest]`/
+`scene_apply`) and **conformance-exporter** (loads `ibm-diagram-export`; drives
+`lint`/`quickfix_apply_all`/`export_diagram`/`doc_save` plus the new agent-side SVG→PNG step, see
+[D35](#d35--existing-diagrams-are-referenced-by-file-path-png-is-produced-agent-side--locked-v6)).
+Both share `ibm-diagram-spec` as common reference context.
+
+- **Why:** Mirrors the build-vs-validate boundary the three existing MCP skills already assume
+  ([D16](#d16--authoring--spec--export-agent-skills--locked-v2)); keeps each sub-agent's own
+  context small — the entire premise of the Deep Agents sub-agent pattern — rather than one prompt
+  juggling authoring conventions and export mechanics together.
+- **Consequence:** No third, finer-grained sub-agent tier (e.g., a standalone requirements-parsing
+  sub-agent) for v6; the orchestrator itself does requirement interpretation.
+
+### D34 — One ephemeral MCP subprocess per task, single task at a time · Locked (v6)
+
+For each A2A task, `apps/agent` spawns a fresh `packages/mcp` stdio subprocess, does `doc_open`
+(given an explicit path) or `doc_create`, runs the sub-agents against it, then `doc_save` + export
+
+- tears the subprocess down. No pooling or reuse across tasks; no concurrent tasks in v6.
+
+* **Why:** The MCP server holds exactly one open document for its whole process lifetime
+  ([AI agents & MCP](guide/05-ai-agents-mcp.md)) — fresh-per-task is the simplest correct mapping,
+  matches this initiative's single-user/local-first scope
+  ([D4](#d4--local-first-single-user-files--locked)), and sidesteps the stale-module-cache gotcha a
+  long-running MCP session has hit before (a rebuilt server binary is invisible to an
+  already-spawned process) since every task gets a clean process.
+* **Consequence:** No session-manager/subprocess-pool code for v6; each task pays a subprocess
+  cold-start cost, accepted as the right v6 tradeoff. Revisit if throughput ever becomes the
+  bottleneck — see the multi-caller note under
+  [D32](#d32--a2a-server-is-primary-a2a-client-is-plumbing-only-localhost-only-no-auth--locked-v6).
+
+### D35 — Existing diagrams are referenced by file path; PNG is produced agent-side · Locked (v6)
+
+`ModifyArchitectureDiagram`'s task input carries an explicit `.icad` file path (not inline file
+content) for the diagram being edited. After `export_diagram({ format: "svg" })` succeeds,
+`apps/agent` converts SVG to PNG itself rather than extending `packages/mcp`'s own export tool.
+
+- **Why:** A file path matches ICAD's local-first, shared-filesystem assumption
+  ([D4](#d4--local-first-single-user-files--locked)) and is the simplest thing that works for a
+  single-machine agent + caller. Real PNG export needs a browser canvas the headless MCP server
+  deliberately doesn't have
+  ([M9.1's deferral](09-roadmap.md#m91--catalog-document-authoring-and-conformancesvg-export-tools)) —
+  doing the SVG→PNG conversion in `apps/agent` instead keeps `packages/mcp` headless and unchanged
+  rather than reopening that deferral.
+- **Consequence:** `packages/mcp`'s `export_diagram` tool and its SVG-only limitation are untouched
+  by this initiative; `apps/agent` gains a small SVG-to-PNG conversion dependency (e.g. `resvg` —
+  confirmed at [M31](09-roadmap.md#m31--agent-side-png-export) kickoff) instead. Remote or
+  non-shared-filesystem callers are out of scope for v6.
+
+### D36 — Agent memory is ephemeral per task; the LLM provider is configurable · Locked (v6)
+
+Deep Agents' filesystem-backed memory/scratch state (its plan, intermediate reasoning, the working
+scene) is scoped to a single A2A task's lifetime and discarded once it completes — no
+cross-session or long-term memory in v6. The chat model is selected through LangChain's generic
+chat-model interface plus runtime config (provider/model/API key), not hardcoded to one vendor.
+
+- **Why:** Matches [D4](#d4--local-first-single-user-files--locked) (no accumulating server-side
+  state) and keeps model choice open — there's no reason to bind this agent to one vendor
+  prematurely.
+- **Consequence:** "The agent remembers my conventions across sessions" is explicit future scope,
+  not v6. Provider config (e.g., env vars) is part of
+  [M30](09-roadmap.md#m30--deep-agent-orchestrator--sub-agents).
+
+### D37 — Hard export gate: auto-fix everything fixable, then block on remaining errors · Locked (v6)
+
+The conformance-exporter sub-agent always runs `lint()` → `quickfix_apply_all()` → re-`lint()` in
+a loop until no further quick-fix resolves anything, then refuses to export or report success
+while any `error`-severity diagnostic remains — returning the diagnostics as a failed/needs-input
+A2A result instead. `warn`/`info` diagnostics are reported but never block.
+
+- **Why:** Matches the linter's own optional export-gate concept
+  ([D12](#d12--advisory-linter--quick-fixes--optional-export-gate--locked)) at its strictest
+  setting, applied unconditionally here since there's no human in the loop to eyeball a "mostly
+  clean" agent-authored diagram before it ships.
+- **Consequence:** A request whose diagram genuinely can't reach zero errors returns a clear
+  failure with diagnostics rather than a silently-degraded export. No configurable gate policy for
+  agent output in v6 (unlike the human editor's own configurable export-gate setting).

@@ -2,6 +2,10 @@
 
 > **v2 feature**, but the [core API](02-architecture.md#public-api-coreapi) is designed for it from
 > day one. The MVP ([D20](00-decision-log.md#d20--mvp--editor-first-web-shell--locked)) ships the human editor; the agent surface follows.
+>
+> This document covers the MCP server and Agent Skills — the toolset an agent framework uses. For
+> the actual autonomous agent that drives them end-to-end from natural language (a v6 feature), see
+> [Agent Runtime](11-agent-runtime.md).
 
 The goal is the flow sketched on the whiteboard: a **Solution Architecture agent** turns
 requirements into inputs for a **GenerateArchitectureDiagram** tool, gets a diagram back, and a
