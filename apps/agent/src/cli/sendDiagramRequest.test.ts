@@ -15,8 +15,8 @@ import type { RunDiagramTaskTiming } from "../runDiagramTask.js";
 const FAKE_TIMING: RunDiagramTaskTiming = {
   sessionStartMs: 0,
   docSetupMs: 0,
-  orchestratorMs: 0,
-  gateCheckMs: 0,
+  diagramBuilderMs: 0,
+  quickfixGateMs: 0,
   totalMs: 0,
 };
 

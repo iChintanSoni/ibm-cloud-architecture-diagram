@@ -1,5 +1,6 @@
+import { createDeepAgent } from "deepagents";
+import type { BaseLanguageModel } from "@langchain/core/language_models/base";
 import type { StructuredTool } from "@langchain/core/tools";
-import type { SubAgent } from "deepagents";
 import {
   CONFORMANCE_EXPORTER_TOOL_NAMES,
   DIAGRAM_BUILDER_TOOL_NAMES,
@@ -7,15 +8,22 @@ import {
 } from "./tools.js";
 import { loadSkillFiles, skillSourcePath, type SkillFile } from "./skills.js";
 
-export interface SubAgentBundle {
-  subAgent: SubAgent;
-  /** Extra `files` entries (the loaded SKILL.md content) to merge into the orchestrator's
-   * initial invoke state, so this sub-agent's `skills` source path resolves to real content on
-   * the shared ephemeral StateBackend (docs/00-decision-log.md#d36). */
+export interface AgentBundle {
+  agent: ReturnType<typeof createDeepAgent>;
+  /** `files` entries (the loaded SKILL.md content) to merge into this agent's initial `.invoke()`
+   * state, so its declared `skills` source path resolves to real content on the default ephemeral
+   * StateBackend (docs/00-decision-log.md#d36). */
   skillFiles: Record<string, SkillFile>;
 }
 
-const DIAGRAM_BUILDER_PROMPT = `You are the diagram-builder sub-agent for ICAD, an IBM Cloud \
+export interface AgentBuilderOptions {
+  model: BaseLanguageModel;
+  /** Every MCP tool available on the current session — filtered down to this agent's own subset
+   * internally (docs/00-decision-log.md#d33). */
+  tools: readonly StructuredTool[];
+}
+
+const DIAGRAM_BUILDER_PROMPT = `You are the diagram-builder agent for ICAD, an IBM Cloud \
 architecture diagram tool. You build or modify one diagram's elements and connectors by calling \
 the ICAD MCP authoring tools you've been given, guided by the ibm-diagram-authoring and \
 ibm-diagram-spec skills — read them before you start.
@@ -41,14 +49,15 @@ reporting that you built something without having called any authoring tool at a
 not a valid outcome. If you are ever unsure how to proceed, make your best attempt using the
 skills you were given rather than stopping early.
 
-Do not run lint, apply quick-fixes, or export — that is the conformance-exporter sub-agent's job,
-not yours. When you've finished building or modifying the elements the task asked for, report
-back a short summary of what you added or changed.`;
+Do not run lint, apply quick-fixes, or export — the caller handles conformance and export outside
+this conversation. When you've finished building or modifying the elements the task asked for,
+report back a short summary of what you added or changed and then stop.`;
 
-const CONFORMANCE_EXPORTER_PROMPT = `You are the conformance-exporter sub-agent for ICAD, an IBM \
-Cloud architecture diagram tool. The diagram-builder sub-agent has just finished building or \
-modifying a diagram; your job is to make it conformant, guided by the ibm-diagram-export and \
-ibm-diagram-spec skills — read them before you start.
+const CONFORMANCE_EXPORTER_PROMPT = `You are the conformance-exporter agent for ICAD, an IBM \
+Cloud architecture diagram tool. A diagram has just been built or modified, and an automatic \
+quick-fix pass has already run and resolved everything it could — your task message tells you \
+exactly which error-severity diagnostics remain and still need real judgment. Guided by the \
+ibm-diagram-export and ibm-diagram-spec skills — read them before you start.
 
 The diagram is NOT a file on disk and there is nothing to search for. It already exists as the
 currently-open document inside the ICAD MCP server's own state. lint(), quickfix_apply(), and
@@ -57,54 +66,49 @@ documented. Do not use glob/ls/read_file/grep (those search this conversation's 
 scratch filesystem, not the diagram) or ask the user where the file is — there is no file yet at
 this point, and none of your tools need one.
 
-Loop: call lint(), then quickfix_apply_all() (or targeted quickfix_apply for specific
-diagnostics), then lint() again — repeat until no further quick-fix resolves anything. Diagnostics
-that still have no quick-fix and are error-severity should be reported, not left silently unfixed.
+Resolve the remaining diagnostics using targeted quickfix_apply where available, or by fixing the
+underlying issue directly through the tools you have; call lint() again after each attempt to
+confirm. You do not export or save — the caller does that itself once you're done, using the real
+output paths directly (not relayed through you). Report back a short summary of what you fixed and
+any error-severity diagnostics that still remain — the caller runs its own final check and will
+not trust a diagram you report as clean without verifying it independently, so be honest about
+what's still broken rather than optimistic.`;
 
-You do not export or save — the caller does that itself once you're done, using the real output
-paths directly (not relayed through you). Report back a short summary of what you fixed and any
-error-severity diagnostics that remain — the caller runs its own final check and will not trust a
-diagram you report as clean without verifying it independently, so be honest about what's still
-broken rather than optimistic.`;
-
-export async function buildDiagramBuilderSubAgent(
-  tools: readonly StructuredTool[],
-): Promise<SubAgentBundle> {
+/** Builds diagram-builder as a standalone Deep Agent (not a sub-agent behind a `task`-tool
+ * delegation layer) — invoked directly by `runDiagramTask`. Async because it reads its real
+ * SKILL.md files off disk (skills.ts). */
+export async function buildDiagramBuilderAgent(
+  options: AgentBuilderOptions,
+): Promise<AgentBundle> {
   const skillFiles = await loadSkillFiles("diagram-builder", [
     "ibm-diagram-authoring",
     "ibm-diagram-spec",
   ]);
-  return {
-    subAgent: {
-      name: "diagram-builder",
-      description:
-        "Builds or modifies an IBM Cloud architecture diagram's elements and connectors from a " +
-        "natural-language requirement or edit instruction. Delegate to this first.",
-      systemPrompt: DIAGRAM_BUILDER_PROMPT,
-      tools: pickTools(tools, DIAGRAM_BUILDER_TOOL_NAMES),
-      skills: [skillSourcePath("diagram-builder")],
-    },
-    skillFiles,
-  };
+  const agent = createDeepAgent({
+    model: options.model,
+    tools: pickTools(options.tools, DIAGRAM_BUILDER_TOOL_NAMES),
+    systemPrompt: DIAGRAM_BUILDER_PROMPT,
+    skills: [skillSourcePath("diagram-builder")],
+  });
+  return { agent, skillFiles };
 }
 
-export async function buildConformanceExporterSubAgent(
-  tools: readonly StructuredTool[],
-): Promise<SubAgentBundle> {
+/** Builds conformance-exporter as a standalone Deep Agent, invoked directly by `runDiagramTask`
+ * — and only when procedural quick-fixing alone didn't reach zero errors (docs/00-decision-log.md#d33's
+ * amendment for M30.3): the two agents are no longer delegated between by an orchestrator LLM,
+ * since the choice of whether conformance-exporter runs at all is now fully deterministic. */
+export async function buildConformanceExporterAgent(
+  options: AgentBuilderOptions,
+): Promise<AgentBundle> {
   const skillFiles = await loadSkillFiles("conformance-exporter", [
     "ibm-diagram-export",
     "ibm-diagram-spec",
   ]);
-  return {
-    subAgent: {
-      name: "conformance-exporter",
-      description:
-        "Validates a diagram against the IBM conformance linter, applies quick-fixes, and " +
-        "exports it. Delegate to this after diagram-builder has finished.",
-      systemPrompt: CONFORMANCE_EXPORTER_PROMPT,
-      tools: pickTools(tools, CONFORMANCE_EXPORTER_TOOL_NAMES),
-      skills: [skillSourcePath("conformance-exporter")],
-    },
-    skillFiles,
-  };
+  const agent = createDeepAgent({
+    model: options.model,
+    tools: pickTools(options.tools, CONFORMANCE_EXPORTER_TOOL_NAMES),
+    systemPrompt: CONFORMANCE_EXPORTER_PROMPT,
+    skills: [skillSourcePath("conformance-exporter")],
+  });
+  return { agent, skillFiles };
 }

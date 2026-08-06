@@ -588,6 +588,19 @@ reference context.
   on `CONFORMANCE_EXPORTER_TOOL_NAMES` has the full account). See
   [Roadmap M30](09-roadmap.md#m30--deep-agent-orchestrator--sub-agents) for the complete list of
   live-testing findings.
+- **Amended again for M30.3:** the orchestrator LLM layer itself was removed. Its entire job —
+  "delegate to diagram-builder, then delegate to conformance-exporter, in that order, exactly
+  once each" — had already become fully procedural (D37's hard gate, and by M30.3, escalation to
+  conformance-exporter is conditional on whether a deterministic quick-fix pass alone reached zero
+  errors), so an LLM "orchestrator" was making a delegation decision with no real judgment left in
+  it. Confirmed live that the orchestrator itself could still get this wrong regardless — a real
+  run called both sub-agent delegations in the same message (parallel, not sequential), so
+  conformance-exporter validated a document diagram-builder hadn't built yet. `apps/agent` now
+  builds `diagram-builder` and `conformance-exporter` as two independent, standalone Deep Agents
+  (`subagents.ts`'s `buildDiagramBuilderAgent`/`buildConformanceExporterAgent`, each a direct
+  `createDeepAgent(...)` call, not a `SubAgent` behind a `task`-tool delegation layer), invoked
+  directly and sequentially by `runDiagramTask`'s own procedural code. This removes the
+  mis-sequencing bug class architecturally rather than by asking an LLM nicely not to do it again.
 
 ### D34 — One ephemeral MCP subprocess per task, single task at a time · Locked (v6)
 

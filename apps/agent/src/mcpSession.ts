@@ -43,7 +43,15 @@ function extractToolResultText(content: unknown): string {
  * its own mistake and retry with the right id. Only applied within {@link McpSession.tools} (what
  * an agent actually calls) — {@link McpSession.callTool}/{@link McpSession.callToolRaw} still
  * throw for real, since procedural callers (`runDiagramTask`, tests) should see genuine failures
- * directly, not a silently-degraded string. */
+ * directly, not a silently-degraded string.
+ *
+ * `verboseParsingErrors: true` was added after a *second* live finding: `@langchain/core`'s own
+ * schema-validation failure message is `"Received tool input did not match expected schema"` —
+ * with zero detail about which field or why — unless this flag is set, in which case it appends
+ * the real Zod error. A real run burned ~35 minutes alternating between wrong `scene_apply`
+ * connector-op shapes with no way to tell what was actually wrong from the error alone; this is
+ * likely the dominant cause of findings #4/#9's "the model can't recover" pattern, not a hard
+ * ceiling on model capability. */
 function withErrorRecovery(original: StructuredTool): StructuredTool {
   // Cast at the boundary: `original.schema` is a real Zod schema, but the specific Zod instance
   // `@langchain/mcp-adapters` builds it with doesn't structurally unify with `tool()`'s own Zod
@@ -62,6 +70,7 @@ function withErrorRecovery(original: StructuredTool): StructuredTool {
       name: original.name,
       description: original.description,
       schema: original.schema,
+      verboseParsingErrors: true,
     },
   );
   return wrapped as unknown as StructuredTool;

@@ -1366,21 +1366,49 @@ at a time, in order) but surfaced a ninth, different issue:
    it just couldn't work out the right shape from the error alone within a reasonable number of
    attempts. ✅ **Mitigated** — `ibm-diagram-authoring` now spells out both shapes side by side with
    an explicit "do not mix these up" callout, using the exact two field names each one needs.
-   **Not yet re-confirmed live** — the fix is cheap and clearly correct on inspection (matches the
-   real schema exactly), but the next live run to prove it actually helps a confused model recover
-   faster hadn't completed as of this writing.
 
-**Overall assessment of the M30.1 live-testing loop**: two independent runs earlier in this
-milestone (the original M30 "Done when" confirmation, and the first M30.1-specific check) already
-demonstrated a full, correct, non-duplicated success — M30's core capability and M30.1's
-correctness improvement are both genuinely proven, not assumed. The five further issues found
-while chasing a _clean timing number_ specifically (findings #5-#9) are real and now fixed or
-mitigated, but a fully clean, fast, first-try success on every single run isn't guaranteed with an
-8B local model doing multi-step tool orchestration — expect occasional retries or failures or
-docs/00-decision-log.md's D37 gate legitimately rejecting a run outright, honestly reported, never
-a silent false success. Continued live verification of the remaining pieces (M30.2, M30.3, M32/M33)
-proceeds where practical without treating every single run as a hard blocker on forward progress —
-each real bug found this way gets fixed and documented on its own merits, same as here.
+**Re-confirming finding #9's fix live surfaced its real root cause** — findings #4 and #9's whole
+"the model can't recover from a schema mistake" pattern turned out to be substantially explained by
+one thing, found by reading the _actual_ error text the model was receiving rather than assuming
+the model itself was simply not capable enough:
+
+10. **`@langchain/core`'s default tool-call error message discards the real validation error
+    entirely.** `"Received tool input did not match expected schema"` — no field, no path, no
+    expected-vs-received detail — unless a `verboseParsingErrors: true` option is set on the tool.
+    `McpSession`'s error-recovery wrapper (finding #3's fix) never set it, so every schema mistake
+    the model made came back as this one uninformative sentence, over and over, with no way for the
+    model to tell what was actually wrong. ✅ **Fixed** — `verboseParsingErrors: true` added to
+    `withErrorRecovery`'s wrapped tool (`mcpSession.ts`), plus a real regression test
+    (`mcpSession.test.ts`, a genuinely malformed `scene_apply` call through a real MCP session, no
+    LLM) proving the returned error string now contains real detail, not just a longer version of
+    the same generic sentence. **Measurably helped, did not fully solve it**: a live re-run of the
+    same failing prompt went from ~26-35 minutes down to ~8.5 minutes before still failing the same
+    way — real, substantial progress, not a complete fix. The deeper cause: `@langchain/mcp-adapters`
+    validates against the tool's JSON-Schema representation of `scene_apply`'s 9-way discriminated
+    `ops` union via a JSON-Schema `anyOf`-style validator, and when _no_ branch matches, the
+    reported failing branch can be the wrong one — confirmed directly: an op the model sent with
+    `kind: "connect_nearest"` and correct `fromId`/`toId` fields still came back reporting
+    `kind/const: Instance does not match "connect_nearest"`, which is not just unhelpful but
+    actively contradicts what the model actually sent. No array index is reported either, so even a
+    correct error can't be pinned to which of several ops in the batch caused it. This is
+    third-party validator behavior (`@langchain/mcp-adapters`'s JSON-Schema-based client-side
+    validation path, most likely `@cfworker/json-schema` underneath), not something fixable in this
+    project's own code without patching or replacing that dependency — **left as a documented, open
+    limitation**, not chased further this session.
+
+**Overall assessment of the M30 live-testing loop, end to end**: three independent runs across this
+milestone (the original M30 "Done when" confirmation, the first M30.1-specific check, and further
+partial successes along the way) demonstrated a full, correct, non-duplicated success — M30's core
+capability and M30.1's correctness improvement are both genuinely proven, not assumed. Ten real
+findings came out of chasing a clean timing number and then chasing full reliability past that:
+nine fixed outright, one (`scene_apply`'s misleading `anyOf` validation errors) diagnosed precisely
+and left open as a real, understood limitation of the current tooling rather than a mystery. A
+fully clean, fast, first-try success on every single run isn't guaranteed with an 8B local model
+driving a schema this complex — expect occasional retries or failures, or D37's gate legitimately
+rejecting a run outright, always honestly reported, never a silent false success. This is the
+natural stopping point for this session's live-verification work; M30.2's `think` A/B comparison
+and further `scene_apply` reliability work are left for a future session, tracked here rather than
+chased indefinitely.
 
 ##### M30.1 — Teach `scene_apply` batch-building in the authoring skill
 
@@ -1410,35 +1438,57 @@ it indirectly from a real speedup — still open.
 
 ##### M30.2 — Disable Ollama's reasoning mode for tool-calling turns
 
-Not yet built. Set `think: false` on the `ChatOllama` constructed in `model.ts`. Cheap, direct,
-already-verified-real option (`@langchain/ollama`'s `ChatOllamaCallOptions.think`). **Confirm before
-locking in as the default:** re-run the live dogfooding prompt with `think: false` and compare
-against a `think: true` baseline — finding #4's duplication may be partly a symptom of the model
-not reasoning enough about its own prior actions, so turning reasoning off entirely could make that
-worse even as it speeds up each turn. If quality regresses, keep `think` configurable
-(`ICAD_AGENT_MODEL_THINK` env var or similar) rather than hardcoding it off.
+✅ **Shipped as a configurable option** (2026-08-06), **not defaulted on**. `resolveChatModel`
+(`model.ts`) now accepts `think?: boolean`, resolved from `config.think`, then
+`$ICAD_AGENT_MODEL_THINK` ("true"/"false", throws on any other value), then left `undefined` (the
+model's own default — a "thinking" model like `qwen3` defaults to reasoning enabled). Passed
+straight through to `ChatOllamaCallOptions.think`, a real, verified option in the installed
+`@langchain/ollama` package. 5 unit tests cover the resolution order and the invalid-value case,
+all without needing a real Ollama server (`ChatOllama`'s constructor is lazy — no network call
+until an actual completion is requested).
 
-**Done when:** a live run with `think: false` completes measurably faster (see M30.4's timing) with
+**Deliberately left unset by default rather than hardcoded off**: by the time this shipped, the
+M30 dogfooding findings list had grown to nine real issues found via live testing, several
+specifically about the model needing _more_ deliberation, not less (findings #4's topology
+duplication, #9's schema-shape confusion). Flipping `think` off by default without a clean,
+confounder-free A/B comparison already in hand would be trading a measured problem (slow turns)
+for an unmeasured risk (worse decisions) — exactly the kind of call this project's own
+verify-before-committing culture argues against making on assumption. The option exists and is
+cheap to flip via env var for whoever runs the next comparison.
+
+**Done when:** a live run with `think: false` completes measurably faster (via M30.4's timing) with
 no regression in diagram correctness (element/connector count, no new duplication) versus a
-`think: true` baseline on the same prompt.
+`think: true` baseline on the same prompt. **Not yet done** — the option is real and tested, but
+the actual comparison run is deferred past this milestone's own scope, given how much the parallel
+finding-fixing work above already consumed of this session's live-testing budget.
 
-##### M30.3 — Deterministic pre-lint pass before escalating to the conformance-exporter sub-agent
+##### M30.3 — Deterministic pre-lint pass before escalating to conformance-exporter
 
-Not yet built. Before delegating to conformance-exporter, `runDiagramTask` (or the orchestrator's
-own flow) runs `lint()` → `quickfix_apply_all()` → `lint()` once, procedurally, in code — matching
-the same "don't trust the LLM with a mechanical step" reasoning already applied to the hard export
-gate (D37) and the path-relay fix (finding #1). Only invoke the conformance-exporter LLM sub-agent
-at all if error-severity diagnostics still remain after that automatic pass (the uncommon case,
-since `quickfix_apply_all` already resolves most rule violations without judgment). This is a
-real, deliberate scope change to conformance-exporter's role, not just a performance tweak — it
-already has a signed-off design from the reflection this milestone's live testing prompted, but
-implementation is deferred to be executed and verified on its own, per the usual one-milestone-at-
-a-time cadence.
+✅ **Shipped** (2026-08-06) — as an architectural simplification, not just a conditional call.
+Implementing this properly turned out to require removing the orchestrator LLM layer entirely: its
+only job (delegate to diagram-builder, then to conformance-exporter, in order, exactly once each)
+had already become fully procedural, and finding #8 (live-tested the same day) proved an LLM
+"orchestrator" could still get even that simple sequencing wrong — it called both delegations in
+the same message, and conformance-exporter ended up validating an empty document.
+`buildDiagramBuilderAgent`/`buildConformanceExporterAgent` (`subagents.ts`) now build two
+independent, standalone Deep Agents — no `task`-tool delegation layer, no orchestrator — invoked
+directly and sequentially by `runDiagramTask`'s own code: diagram-builder runs, then (no LLM
+involved) `quickfix_apply_all()` → `lint()` once; conformance-exporter is only built and invoked at
+all if error-severity diagnostics survive that, with the remaining diagnostics handed to it
+directly in its task message rather than making it re-discover them via its own `lint()` call. See
+[D33's amendment](00-decision-log.md#d33--orchestrator-plus-two-sub-agents-diagram-builder-and-conformance-exporter--locked-v6)
+for the full reasoning.
 
 **Done when:** a live run whose diagram is already quick-fixable to zero errors skips the
-conformance-exporter LLM delegation entirely (confirmed via the transcript showing no `task` call
-with `subagent_type: conformance-exporter`), and a live run that still needs real judgment (a
-manually-seeded unfixable diagnostic) still correctly falls through to the sub-agent.
+conformance-exporter delegation entirely, and a live run that still needs real judgment still
+correctly falls through to it. ✅ Both directions covered by a real regression test
+(`runDiagramTask.test.ts`, real MCP session + fake agents, no LLM): one proves conformance-exporter
+is never even constructed when the quick-fix pass alone reaches zero errors (a factory that throws
+if called), the other proves `timing.conformanceExporterMs` is present only when it actually ran —
+which caught a real bug of its own: the first implementation inferred "did conformance-exporter
+run" from comparing two timestamps, which is always true (time only moves forward) regardless of
+whether the branch executed. Fixed with an explicit `conformanceExporterInvoked` boolean instead.
+Live confirmation of the full restructured flow is still pending as of this writing.
 
 ##### M30.4 — Per-phase timing instrumentation
 

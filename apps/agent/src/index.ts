@@ -1,6 +1,11 @@
 export { McpSession } from "./mcpSession.js";
 export { resolveChatModel } from "./model.js";
-export { createDiagramOrchestrator } from "./orchestrator.js";
+export {
+  buildDiagramBuilderAgent,
+  buildConformanceExporterAgent,
+  type AgentBundle,
+  type AgentBuilderOptions,
+} from "./subagents.js";
 export { convertSvgToPng } from "./pngExport.js";
 export * from "./a2a/index.js";
 export {

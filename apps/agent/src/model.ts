@@ -9,9 +9,25 @@ export interface ModelConfig {
   /** Ollama only. Defaults to $OLLAMA_BASE_URL, then @langchain/ollama's own default
    * (http://localhost:11434). */
   baseUrl?: string;
+  /** Ollama only. Defaults to $ICAD_AGENT_MODEL_THINK, then unset (the model's own default —
+   * "thinking" models like qwen3 default to reasoning enabled). M30.2: a real, verified option
+   * (`ChatOllamaCallOptions.think`) that can measurably cut per-turn latency, but left
+   * caller-configurable rather than hardcoded off — a live A/B comparison hadn't confirmed
+   * disabling it by default is safe for diagram-correctness before this shipped (docs/09-roadmap.md's
+   * M30.2 entry). */
+  think?: boolean;
 }
 
 const DEFAULT_OLLAMA_MODEL = "qwen3:8b";
+
+function parseThinkEnv(value: string | undefined): boolean | undefined {
+  if (value === undefined) return undefined;
+  if (value === "true") return true;
+  if (value === "false") return false;
+  throw new Error(
+    `Invalid ICAD_AGENT_MODEL_THINK "${value}" — expected "true" or "false".`,
+  );
+}
 
 /** Provider-agnostic model resolution (docs/00-decision-log.md#d36): reads config/env instead of
  * hardcoding a vendor SDK. Only "ollama" is implemented today — this project's own local
@@ -27,10 +43,13 @@ export function resolveChatModel(config: ModelConfig = {}): BaseLanguageModel {
       const model =
         config.model ?? process.env.ICAD_AGENT_MODEL ?? DEFAULT_OLLAMA_MODEL;
       const baseUrl = config.baseUrl ?? process.env.OLLAMA_BASE_URL;
+      const think =
+        config.think ?? parseThinkEnv(process.env.ICAD_AGENT_MODEL_THINK);
       return new ChatOllama({
         model,
         temperature: 0,
         ...(baseUrl ? { baseUrl } : {}),
+        ...(think !== undefined ? { think } : {}),
       });
     }
     default:

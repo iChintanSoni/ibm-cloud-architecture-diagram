@@ -4,7 +4,10 @@ import type { BaseMessage } from "@langchain/core/messages";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { McpSession } from "./mcpSession.js";
 import { resolveChatModel } from "./model.js";
-import { createDiagramOrchestrator } from "./orchestrator.js";
+import {
+  buildConformanceExporterAgent,
+  buildDiagramBuilderAgent,
+} from "./subagents.js";
 import { convertSvgToPng } from "./pngExport.js";
 
 /** The 4 IBM diagram levels `doc_create` accepts for a *new* diagram. Deliberately narrower than
@@ -28,19 +31,22 @@ export interface RunDiagramTaskInput {
   outputPngPath?: string;
   /** Defaults to `resolveChatModel()` (docs/00-decision-log.md#d36). */
   model?: BaseLanguageModel;
-  /** LangGraph recursion limit for the orchestrator run. A real multi-tier diagram needs many
-   * sequential tool calls across two sub-agent delegations; the LangGraph default (25) is too
-   * low for that. */
+  /** LangGraph recursion limit for each agent run. A real multi-tier diagram needs many
+   * sequential tool calls; the LangGraph default (25) is too low for that. */
   recursionLimit?: number;
-  /** Aborts the in-flight orchestrator run (e.g. from an A2A `cancelTask` call, M32) — cheap to
+  /** Aborts the in-flight agent run(s) (e.g. from an A2A `cancelTask` call, M32) — cheap to
    * support given the fresh-subprocess-per-task model (docs/00-decision-log.md#d34): an abort
    * rejects `agent.invoke()`, and the `finally` block below still tears the MCP subprocess down
    * either way. */
   signal?: AbortSignal;
-  /** Defaults to `createDiagramOrchestrator`. Injectable so the gate/export logic below it can be
+  /** Defaults to `buildDiagramBuilderAgent`. Injectable so the gate/export logic below it can be
    * exercised in a test against a real spawned MCP subprocess without a real LLM — the same
    * pattern `IcadAgentExecutor`'s injectable `runTask` already uses. */
-  orchestratorFactory?: typeof createDiagramOrchestrator;
+  diagramBuilderFactory?: typeof buildDiagramBuilderAgent;
+  /** Defaults to `buildConformanceExporterAgent`. Only ever called when the procedural
+   * quick-fix pass (M30.3) didn't reach zero errors on its own — injectable for the same
+   * testing reason as `diagramBuilderFactory`. */
+  conformanceExporterFactory?: typeof buildConformanceExporterAgent;
 }
 
 export interface DiagnosticSummary {
@@ -51,7 +57,7 @@ export interface DiagnosticSummary {
 }
 
 /** Per-phase wall-clock timing (M30.4) — added after live testing showed a full run can take
- * anywhere from ~3 to ~20+ minutes on a local model with no way to tell *where* the time actually
+ * anywhere from ~3 to ~30+ minutes on a local model with no way to tell *where* the time actually
  * went from the outside. Every phase that ran is present; a run that fails early only has the
  * phases it reached. Milliseconds, via `performance.now()`. */
 export interface RunDiagramTaskTiming {
@@ -59,10 +65,14 @@ export interface RunDiagramTaskTiming {
   sessionStartMs: number;
   /** doc_create/doc_open, plus doc_get for a modification's scene context. */
   docSetupMs: number;
-  /** The Deep Agent orchestrator run — almost always the dominant phase. */
-  orchestratorMs: number;
-  /** The independent lint() call enforcing the hard export gate (D37). */
-  gateCheckMs: number;
+  /** The diagram-builder agent run — almost always the dominant phase. */
+  diagramBuilderMs: number;
+  /** The procedural doc_get (content check) + quickfix_apply_all + lint pass (M30.3) — no LLM
+   * involved. */
+  quickfixGateMs: number;
+  /** The conformance-exporter agent run, only present when the procedural quick-fix pass above
+   * didn't reach zero errors on its own (the uncommon case, M30.3). */
+  conformanceExporterMs?: number;
   /** export_diagram + doc_save + confirming both files landed on disk. */
   exportSaveMs?: number;
   /** Agent-side SVG→PNG conversion (D35), only present when `outputPngPath` was given. */
@@ -107,14 +117,30 @@ async function fileExists(path: string): Promise<boolean> {
   }
 }
 
+interface LintSummary {
+  diagnostics: DiagnosticSummary[];
+}
+
+async function lint(session: McpSession): Promise<LintSummary> {
+  return structuredContentOf(
+    await session.callToolRaw("lint", {}),
+  ) as unknown as LintSummary;
+}
+
+function errorsOf(summary: LintSummary): DiagnosticSummary[] {
+  return summary.diagnostics.filter((d) => d.severity === "error");
+}
+
 /**
  * Runs one diagram-generation-or-modification task end to end: opens/creates the document
  * procedurally (D35 — "new vs. modify" is the caller's explicit choice, not an LLM guess), runs
- * the Deep Agent orchestrator (diagram-builder → conformance-exporter, D33), verifies conformance
- * with its own independent lint() call (the hard export gate, D37 — never merely trusted to what
- * the LLM sub-agents report about their own work), then exports and saves procedurally with the
- * real output paths — also not delegated to the LLM, since a sub-agent asked to relay an exact
- * path through natural language isn't reliably trustworthy either (see `tools.ts`'s comment on
+ * the diagram-builder agent, then a procedural quick-fix pass (M30.3 — `quickfix_apply_all` needs
+ * no LLM judgment for the common case), escalating to the conformance-exporter agent only if
+ * error-severity diagnostics survive that. Every gate (content exists, lint is clean) is checked
+ * independently with a real `lint()`/`doc_get()` call (D37 — never merely trusted to what an LLM
+ * agent reports about its own work), then exports and saves procedurally with the real output
+ * paths — also not delegated to an LLM, since asking one to relay an exact path through natural
+ * language isn't reliably trustworthy either (see `tools.ts`'s comment on
  * `CONFORMANCE_EXPORTER_TOOL_NAMES`).
  */
 export async function runDiagramTask(
@@ -148,50 +174,94 @@ export async function runDiagramTask(
 
     const tools = await session.tools();
     const model = input.model ?? resolveChatModel();
-    const buildOrchestrator =
-      input.orchestratorFactory ?? createDiagramOrchestrator;
-    const { agent, skillFiles } = await buildOrchestrator({
-      model,
-      tools,
-    });
+    const invokeConfig = {
+      recursionLimit: input.recursionLimit ?? 100,
+      ...(input.signal ? { signal: input.signal } : {}),
+    };
 
-    const run = await agent.invoke(
+    const buildDiagramBuilder =
+      input.diagramBuilderFactory ?? buildDiagramBuilderAgent;
+    const diagramBuilder = await buildDiagramBuilder({ model, tools });
+    const builderRun = await diagramBuilder.agent.invoke(
       {
         messages: [{ role: "user", content: userMessage }],
-        files: skillFiles,
+        files: diagramBuilder.skillFiles,
       },
-      {
-        recursionLimit: input.recursionLimit ?? 100,
-        ...(input.signal ? { signal: input.signal } : {}),
-      },
+      invokeConfig,
     );
-    const transcript: BaseMessage[] = run.messages ?? [];
-    const tOrchestrator = performance.now();
+    const transcript: BaseMessage[] = builderRun.messages ?? [];
+    const tDiagramBuilder = performance.now();
 
-    // D37, enforced deterministically: never trust the sub-agents' own claim of "done." Checks
-    // both lint (zero errors) and real content (element count > 0) — found live that an empty
-    // document trivially passes lint (nothing to flag), so a run where diagram-builder silently
-    // built nothing at all was reporting `success: true` with zero elements before this check
-    // existed. See the M30 dogfooding findings in docs/09-roadmap.md.
-    const [lintResult, docResult] = await Promise.all([
-      session.callToolRaw("lint", {}),
-      session.callToolRaw("doc_get", {}),
-    ]);
-    const lint = structuredContentOf(lintResult) as unknown as {
-      diagnostics: DiagnosticSummary[];
-    };
-    const doc = structuredContentOf(docResult) as unknown as {
-      document: { elements: unknown[] };
-    };
+    // Content check happens before any lint/quick-fix work — an empty document trivially passes
+    // lint (nothing to flag), so this must be its own explicit check, not inferred from a clean
+    // lint result. See the M30 dogfooding findings in docs/09-roadmap.md.
+    const doc = structuredContentOf(
+      await session.callToolRaw("doc_get", {}),
+    ) as unknown as { document: { elements: unknown[] } };
+    if (doc.document.elements.length === 0) {
+      return {
+        success: false,
+        reason:
+          "The document has zero elements — the agent produced no content.",
+        transcript,
+        timing: {
+          sessionStartMs: tSessionStart - t0,
+          docSetupMs: tDocSetup - tSessionStart,
+          diagramBuilderMs: tDiagramBuilder - tDocSetup,
+          quickfixGateMs: performance.now() - tDiagramBuilder,
+          totalMs: performance.now() - t0,
+        },
+      };
+    }
+
+    // M30.3: procedural quick-fix pass, no LLM — `quickfix_apply_all` needs no judgment call for
+    // the diagnostics it can resolve at all, so there's no reason to spend an agent turn on it.
+    await session.callTool("quickfix_apply_all", {});
+    let lintSummary = await lint(session);
+    let errors = errorsOf(lintSummary);
+    const tQuickfixGate = performance.now();
+    let conformanceExporterInvoked = false;
+
+    if (errors.length > 0) {
+      conformanceExporterInvoked = true;
+      const buildConformanceExporter =
+        input.conformanceExporterFactory ?? buildConformanceExporterAgent;
+      const conformanceExporter = await buildConformanceExporter({
+        model,
+        tools,
+      });
+      const diagnosticsText = errors
+        .map((d) => `- ${d.ruleId}: ${d.message}`)
+        .join("\n");
+      const exporterRun = await conformanceExporter.agent.invoke(
+        {
+          messages: [
+            {
+              role: "user",
+              content:
+                "The automatic quick-fix pass already ran and resolved everything it could. " +
+                `These error-severity diagnostics remain and need real judgment:\n${diagnosticsText}`,
+            },
+          ],
+          files: conformanceExporter.skillFiles,
+        },
+        invokeConfig,
+      );
+      transcript.push(...(exporterRun.messages ?? []));
+      lintSummary = await lint(session);
+      errors = errorsOf(lintSummary);
+    }
     const tGateCheck = performance.now();
     const timingSoFar = {
       sessionStartMs: tSessionStart - t0,
       docSetupMs: tDocSetup - tSessionStart,
-      orchestratorMs: tOrchestrator - tDocSetup,
-      gateCheckMs: tGateCheck - tOrchestrator,
+      diagramBuilderMs: tDiagramBuilder - tDocSetup,
+      quickfixGateMs: tQuickfixGate - tDiagramBuilder,
+      ...(conformanceExporterInvoked
+        ? { conformanceExporterMs: tGateCheck - tQuickfixGate }
+        : {}),
     };
 
-    const errors = lint.diagnostics.filter((d) => d.severity === "error");
     if (errors.length > 0) {
       return {
         success: false,
@@ -201,18 +271,9 @@ export async function runDiagramTask(
         timing: { ...timingSoFar, totalMs: tGateCheck - t0 },
       };
     }
-    if (doc.document.elements.length === 0) {
-      return {
-        success: false,
-        reason:
-          "Lint is clean, but the document has zero elements — the agent produced no content.",
-        transcript,
-        timing: { ...timingSoFar, totalMs: tGateCheck - t0 },
-      };
-    }
 
     // Export + save happen here, procedurally, with the real paths — not delegated to the LLM.
-    // Found necessary during real M30 live-model testing: a sub-agent asked to relay an exact
+    // Found necessary during real M30 live-model testing: an agent asked to relay an exact
     // path through a natural-language delegation instruction invented one instead
     // (`/exports/diagram.svg`) rather than reproducing the real one it had been given.
     await session.callTool("export_diagram", {

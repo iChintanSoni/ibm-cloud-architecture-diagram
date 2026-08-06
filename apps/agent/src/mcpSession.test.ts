@@ -64,4 +64,41 @@ describe("McpSession", () => {
     },
     TEST_TIMEOUT_MS,
   );
+
+  it(
+    "surfaces a real, actionable schema-validation error to an agent tool call, not a generic message",
+    async () => {
+      // Regression test for a real live finding: @langchain/core's default error for a malformed
+      // tool call is "Received tool input did not match expected schema" with zero detail — a
+      // real qwen3:8b run burned ~35 minutes alternating between wrong scene_apply shapes with no
+      // way to tell what was actually wrong. `verboseParsingErrors: true` (mcpSession.ts's
+      // `withErrorRecovery`) should append the real Zod error instead.
+      session = await McpSession.start();
+      await session.callTool("doc_create", { level: "blank", force: true });
+
+      const tools = await session.tools();
+      const sceneApply = tools.find((t) => t.name === "scene_apply");
+      expect(sceneApply).toBeDefined();
+
+      // Deliberately malformed: connect_nearest requires string fromId/toId, not from/to objects.
+      const result = (await sceneApply!.invoke({
+        ops: [
+          {
+            kind: "connect_nearest",
+            from: { elementId: "a", port: "e" },
+            to: { elementId: "b", port: "w" },
+          },
+        ],
+      })) as string;
+
+      expect(result).toContain("Error calling scene_apply");
+      // The generic message alone, with no real detail appended, is exactly the bug this guards
+      // against — assert there's more here than just that one sentence.
+      expect(result.length).toBeGreaterThan(
+        "Error calling scene_apply: Received tool input did not match expected schema"
+          .length,
+      );
+    },
+    TEST_TIMEOUT_MS,
+  );
 });
