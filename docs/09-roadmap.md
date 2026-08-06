@@ -1211,6 +1211,8 @@ re-confirmed harmless by re-running that one file in isolation, clean).
 
 #### M30 — Deep Agent orchestrator + sub-agents
 
+✅ **Done** (2026-08-06)
+
 The orchestrator + `diagram-builder` + `conformance-exporter` sub-agent structure
 ([D33](00-decision-log.md#d33--orchestrator-plus-two-sub-agents-diagram-builder-and-conformance-exporter--locked-v6)),
 each loading the appropriate existing `packages/mcp/skills/` `SKILL.md`. Configurable chat model
@@ -1218,24 +1220,263 @@ via LangChain's generic interface
 ([D36](00-decision-log.md#d36--agent-memory-is-ephemeral-per-task-the-llm-provider-is-configurable--locked-v6));
 ephemeral per-task memory. The hard export gate
 ([D37](00-decision-log.md#d37--hard-export-gate-auto-fix-everything-fixable-then-block-on-remaining-errors--locked-v6)):
-lint → quickfix_apply_all loop → refuse to report success with any `error` diagnostic outstanding.
+`runDiagramTask` runs its own independent `lint()` after the orchestrator finishes and refuses to
+report success with any `error` diagnostic outstanding — never merely trusted to what the
+sub-agents report about their own work.
 
-**Confirm at kickoff, not assumed:** the exact LangChain JS package(s) for the Deep Agents pattern
-(sub-agent delegation, planning/todo tool, filesystem-backed memory) — spike first, the same way
-M9.1 spiked headless jsdom before committing to it.
+**Package confirmed at kickoff**: [`deepagents`](https://github.com/langchain-ai/deepagentsjs)
+(`createDeepAgent`, `SubAgent`, the default ephemeral `StateBackend`) +
+[`@langchain/ollama`](https://www.npmjs.com/package/@langchain/ollama) for the local dev model
+(D36) + the existing `@langchain/mcp-adapters` (M29). All real APIs verified against the installed
+packages' own source/types before writing code, the same discipline used for `@a2a-js/sdk` in M32.
 
 **Done when:** given a hardcoded natural-language requirement (no A2A surface yet), the agent
 produces a lint-clean `.icad` + exported SVG via a real spawned MCP subprocess, for at least one
-non-trivial multi-tier topology.
+non-trivial multi-tier topology. ✅ Confirmed with a real `qwen3:8b` (local Ollama) run: "A Customer
+actor connects through a Load Balancer to an Application tier group containing two Virtual Server
+instances, which connect to a PostgreSQL database" produced a real, lint-clean `.icad` + `.svg`.
+
+**Live dogfooding findings (2026-08-06)** — same rigor as `packages/mcp`'s own M22/M23 dogfooding:
+running the real pipeline against a real local model surfaced issues no amount of mocked/unit
+testing could have caught. Five real findings, in the order hit:
+
+1. **A sub-agent can't be trusted to relay an exact file path through a natural-language
+   delegation instruction.** ✅ **Fixed.** The orchestrator's system prompt told
+   conformance-exporter which path to `export_diagram`/`doc_save` to; a real run invented
+   `/exports/diagram.svg` instead of reproducing the real one, failing the task outright. Fix:
+   `export_diagram`/`doc_save` moved out of conformance-exporter's tools entirely, now called
+   procedurally by `runDiagramTask` with the real paths, after the lint gate passes. See the
+   amendment on [D33](00-decision-log.md#d33--orchestrator-plus-two-sub-agents-diagram-builder-and-conformance-exporter--locked-v6).
+2. **`@langchain/ollama`'s `ChatOllama` rejects non-string tool-message content**, and most
+   `@icad/mcp` tools return one (their `ok()` helper pairs a text summary with `structuredContent`
+   for the outputSchema; `@langchain/mcp-adapters` folds both into a `{type, text,
+structuredContent}` object when handed to the LLM). ✅ **Fixed.** `McpSession` now configures
+   `MultiServerMCPClient`'s `afterToolCall` hook to extract just the text
+   (`extractToolResultText`) before it ever reaches the model; `callToolRaw` (bypassing
+   mcp-adapters entirely) still exposes the real `structuredContent` for `runDiagramTask`'s own
+   deterministic checks.
+3. **A failed tool call crashed the entire agent run instead of coming back as a visible error the
+   model could react to.** A real run called `connect_nearest` with `"Customer"` (a label) instead
+   of the real generated element id; the resulting MCP validation error propagated as an uncaught
+   exception through LangGraph's `ToolNode`, killing the whole task rather than giving the model a
+   chance to notice its own mistake and retry. ✅ **Fixed.** `McpSession.tools()` now wraps every
+   tool with `withErrorRecovery`: a failed call returns `"Error calling {name}: {message}"` as a
+   normal string result instead of throwing. (`callTool`/`callToolRaw`, used by procedural code and
+   tests, are left unwrapped — those callers should see real failures directly.)
+4. **A small local model can silently duplicate its own work on a multi-step build.** One
+   successful run's `.icad` had 8 non-connector elements (Customer 1/2, Load Balancer 1/2,
+   Application Tier 1/2, PostgreSQL 1/2) but only 3 connectors — half the topology was a
+   disconnected duplicate, and diagram-builder's own final report didn't mention it, describing
+   exactly one clean topology. Lint passed anyway (duplicate elements with different labels don't
+   trip any conformance rule — this is a content-correctness problem, not a spec-conformance one,
+   the same class of gap the very first MCP dogfooding session flagged: "lint passing is not the
+   same as the diagram being legible"). 🟡 **Partially mitigated, not solved.** Tried giving
+   diagram-builder a live `doc_get` self-check tool plus an explicit "don't duplicate, check first"
+   prompt instruction — the prompt instruction is kept, but the `doc_get` tool grant regressed
+   finding #2 in a way not confidently root-caused before this milestone shipped (likely a
+   concurrency/timing interaction between `@langchain/mcp-adapters` and `@langchain/ollama` around
+   that specific call) and was reverted. **Documented as a known limitation of running a small
+   (8B) local model on a multi-step tool-calling task**, not a wiring bug — see
+   `apps/agent/src/tools.ts`'s comment on `DIAGRAM_BUILDER_TOOL_NAMES` for the full account.
+5. **High turn count / latency**: a full run takes 3-6 minutes on `qwen3:8b` on a laptop. Root
+   causes, confirmed by reading the actual transcript rather than assumed:
+   - diagram-builder issues one MCP tool call per element/connector (~10-15 turns for an 11-element
+     diagram) instead of using `scene_apply` (the batch tool M23.4 built for exactly this) — the
+     `ibm-diagram-authoring` skill predates M23.4 and has never taught it.
+   - `qwen3` generates verbose chain-of-thought reasoning before every single action (confirmed in
+     the transcript — several paragraphs just to decide to delegate to diagram-builder first);
+     `@langchain/ollama`'s `ChatOllama` exposes a real `think?: boolean` option to suppress this,
+     unused today.
+   - conformance-exporter's job (`lint` → `quickfix_apply_all` → re-`lint`) is largely mechanical,
+     but always goes through a full LLM sub-agent turn-sequence today, even when
+     `quickfix_apply_all` alone would resolve everything with zero judgment required.
+   - Not attributable to any single bug — inherent to chaining many sequential local-model
+     inference turns, each slower than a hosted API's, with no batching. 🔴 **Open — see M30.1-M30.4
+     below.**
+
+Non-obvious gotcha worth remembering if `apps/agent`'s tool-call layer is touched again: **a
+"fix" validated only by a passing unit test can still regress a live-model run** — finding #4's
+`doc_get` mitigation typechecked, linted, and passed the full non-live test suite cleanly, and
+still broke a real run. The only thing that caught it was re-running the actual live pipeline,
+the same lesson M21's real tag-push and M23's real dogfooding sessions already established for
+this project in different contexts.
+
+**Second round of live findings, while verifying M30.1/M30.4** — two more real bugs, one of them
+serious:
+
+6. **An empty, no-op run trivially passed the conformance gate.** `lint()` on a document with zero
+   elements returns zero diagnostics — there's nothing to flag — so a run where the orchestrator
+   silently built nothing at all (found live: diagram-builder reported "Task completed" without
+   ever calling a single authoring tool) was reporting `success: true` with a 0-element diagram.
+   **This is a false positive, not just messy output — worse than finding #4's duplication, since
+   nothing about the result even hinted something was wrong.** ✅ **Fixed.** `runDiagramTask` now
+   also fetches `doc_get()` in parallel with the `lint()` gate check and requires at least one
+   element to exist before declaring success; `diagram-builder`'s prompt was also made more
+   directive ("you must actually call scene_apply/element_add__/connect_ tools before reporting
+   completion"). Covered by a real regression test (`runDiagramTask.test.ts`, new
+   `orchestratorFactory` injection point mirroring `IcadAgentExecutor`'s existing `runTask`
+   injection) — a real MCP session, a fake orchestrator that calls no tools, no LLM involved —
+   proving the empty-document case is now caught deterministically rather than relying on live
+   testing alone to catch a regression here again.
+7. **conformance-exporter confused the MCP document with a file on disk.** It tried to glob for
+   `**/*.icad` and then asked "the user" for the exact file path — `lint()`/`quickfix_apply*` take
+   no path argument at all, they operate on whatever document is already open in the MCP server's
+   own state, but deepagents' built-in filesystem tools (`glob`/`ls`/`read_file`/`grep`, meant for
+   an agent's own scratch/planning memory) are available to every sub-agent by default and the
+   model reached for one of those instead. Contributed heavily to one run's ~30-minute duration —
+   a long, confused back-and-forth ending in the sub-agent giving up and asking a question that (in
+   this non-interactive pipeline) could never be answered. ✅ **Fixed** — `CONFORMANCE_EXPORTER_PROMPT`
+   now states explicitly that the diagram is not a file, there is nothing to glob or search for,
+   and every conformance tool takes no path argument.
+
+Both fixes landed together, verified with a clean (no concurrent load) live run — which
+immediately validated finding #6's fix working exactly as intended: it correctly reported
+`success: false` ("the document has zero elements") instead of a false positive, timing back to a
+reasonable ~5.4 minutes. But the failure itself pointed at the real underlying cause:
+
+8. **The orchestrator called both sub-agent delegations in the same message — in parallel —
+   instead of sequentially.** deepagents' own `task` tool description explicitly invites this
+   ("Launch multiple agents concurrently when their tasks are independent, using a single message
+   with multiple tool calls"), and the orchestrator prompt never said these two specific
+   delegations are _not_ independent. The result: conformance-exporter ran before (or alongside)
+   diagram-builder, validated a still-empty document, found trivially zero diagnostics (nothing
+   built yet = nothing to flag), and reported "fully compliant" — an empty diagram sailing through
+   for the wrong reason. Finding #6's gate caught the outcome correctly; this is the fix for _why_
+   it kept happening. ✅ **Fixed** — the orchestrator's system prompt now states explicitly that
+   these two steps are sequential and dependent, to call the task tool for diagram-builder alone
+   and wait for its result before ever calling it for conformance-exporter, and that calling both
+   in the same message is a real mistake, not a valid time-saving move.
+
+**Re-running with #6-#8 fixed together confirmed the sequencing fix worked** (delegations ran one
+at a time, in order) but surfaced a ninth, different issue:
+
+9. **`scene_apply`'s `connect` and `connect_nearest` batch-op shapes are easy to confuse, and a
+   confused model can burn a very long time on it.** `connect_nearest` takes flat string ids
+   (`fromId`/`toId`); `connect` takes port-ref objects (`from`/`to`, each `{ elementId, port }`).
+   A run's diagram-builder mixed the two up, got a schema-validation error back, and — reproduced
+   directly against a real MCP subprocess with no LLM involved, confirming this is a genuine
+   validation failure and not a fluke — spent the better part of 33 minutes retrying and re-failing
+   before giving up with zero elements built (caught correctly by finding #6's gate, not a false
+   positive). **Worth noting explicitly: this is not a crash.** Tracing it down confirmed
+   LangGraph's `ToolNode` already catches this specific exception class
+   (`ToolInputParsingException`, a client-side schema mismatch on the tool call itself) and reports
+   it back to the model as a normal tool error automatically — a different, already-safe code path
+   from finding #3's fix (which covers server-side business-logic errors, a `ToolException` from a
+   valid-shaped call the MCP server itself rejects). The model saw a real error and kept trying;
+   it just couldn't work out the right shape from the error alone within a reasonable number of
+   attempts. ✅ **Mitigated** — `ibm-diagram-authoring` now spells out both shapes side by side with
+   an explicit "do not mix these up" callout, using the exact two field names each one needs.
+   **Not yet re-confirmed live** — the fix is cheap and clearly correct on inspection (matches the
+   real schema exactly), but the next live run to prove it actually helps a confused model recover
+   faster hadn't completed as of this writing.
+
+**Overall assessment of the M30.1 live-testing loop**: two independent runs earlier in this
+milestone (the original M30 "Done when" confirmation, and the first M30.1-specific check) already
+demonstrated a full, correct, non-duplicated success — M30's core capability and M30.1's
+correctness improvement are both genuinely proven, not assumed. The five further issues found
+while chasing a _clean timing number_ specifically (findings #5-#9) are real and now fixed or
+mitigated, but a fully clean, fast, first-try success on every single run isn't guaranteed with an
+8B local model doing multi-step tool orchestration — expect occasional retries or failures or
+docs/00-decision-log.md's D37 gate legitimately rejecting a run outright, honestly reported, never
+a silent false success. Continued live verification of the remaining pieces (M30.2, M30.3, M32/M33)
+proceeds where practical without treating every single run as a hard blocker on forward progress —
+each real bug found this way gets fixed and documented on its own merits, same as here.
+
+##### M30.1 — Teach `scene_apply` batch-building in the authoring skill
+
+✅ **Shipped** (2026-08-06), **timing impact still unmeasured.** Updated
+`packages/mcp/skills/ibm-diagram-authoring/SKILL.md` to teach `scene_apply` as the preferred
+pattern for a diagram's initial build (rewrote the worked example to use one batch call instead of
+per-element calls, and spelled out the "an op referenced later in the array needs an explicit id"
+constraint), and reinforced the same preference in `apps/agent/src/subagents.ts`'s
+`DIAGRAM_BUILDER_PROMPT`.
+
+**Correctness confirmed live**: a fresh run after this change produced a clean, correct, non-
+duplicated topology — 6 real elements + 4 connectors, both Virtual Server instances correctly
+represented as individual icons inside the Application Tier group (not just the group's own corner
+icon, which is what an earlier buggy run had done). **Timing not yet cleanly measured** — the two
+live attempts made to compare before/after were each confounded by something else: the first by
+concurrent `pnpm build`/`test`/`lint` work running on the same machine at the same time (~22
+minutes, not trustworthy), the second by findings #6/#7 above (~30 minutes, mostly spent on a
+confused conformance-exporter conversation, not diagram-building at all). A clean measurement
+(no concurrent load, findings #6/#7 fixed) is the next live run.
+
+**Done when:** `packages/mcp/src/skills.test.ts` still passes (tool names referenced stay real) —
+✅ confirmed — and a fresh live run's transcript shows diagram-builder issuing a `scene_apply` call
+for the initial build rather than one call per element. The top-level orchestrator transcript
+doesn't show sub-agents' own internal tool calls (they run in an isolated subgraph), so confirming
+this specifically needs either a deepagents-level trace of the sub-agent's own turns or inferring
+it indirectly from a real speedup — still open.
+
+##### M30.2 — Disable Ollama's reasoning mode for tool-calling turns
+
+Not yet built. Set `think: false` on the `ChatOllama` constructed in `model.ts`. Cheap, direct,
+already-verified-real option (`@langchain/ollama`'s `ChatOllamaCallOptions.think`). **Confirm before
+locking in as the default:** re-run the live dogfooding prompt with `think: false` and compare
+against a `think: true` baseline — finding #4's duplication may be partly a symptom of the model
+not reasoning enough about its own prior actions, so turning reasoning off entirely could make that
+worse even as it speeds up each turn. If quality regresses, keep `think` configurable
+(`ICAD_AGENT_MODEL_THINK` env var or similar) rather than hardcoding it off.
+
+**Done when:** a live run with `think: false` completes measurably faster (see M30.4's timing) with
+no regression in diagram correctness (element/connector count, no new duplication) versus a
+`think: true` baseline on the same prompt.
+
+##### M30.3 — Deterministic pre-lint pass before escalating to the conformance-exporter sub-agent
+
+Not yet built. Before delegating to conformance-exporter, `runDiagramTask` (or the orchestrator's
+own flow) runs `lint()` → `quickfix_apply_all()` → `lint()` once, procedurally, in code — matching
+the same "don't trust the LLM with a mechanical step" reasoning already applied to the hard export
+gate (D37) and the path-relay fix (finding #1). Only invoke the conformance-exporter LLM sub-agent
+at all if error-severity diagnostics still remain after that automatic pass (the uncommon case,
+since `quickfix_apply_all` already resolves most rule violations without judgment). This is a
+real, deliberate scope change to conformance-exporter's role, not just a performance tweak — it
+already has a signed-off design from the reflection this milestone's live testing prompted, but
+implementation is deferred to be executed and verified on its own, per the usual one-milestone-at-
+a-time cadence.
+
+**Done when:** a live run whose diagram is already quick-fixable to zero errors skips the
+conformance-exporter LLM delegation entirely (confirmed via the transcript showing no `task` call
+with `subagent_type: conformance-exporter`), and a live run that still needs real judgment (a
+manually-seeded unfixable diagnostic) still correctly falls through to the sub-agent.
+
+##### M30.4 — Per-phase timing instrumentation
+
+✅ **Shipped** (2026-08-06), built ahead of M30.2/M30.3 (moved up in the sequence — without real
+per-phase numbers, comparing M30.1/M30.2's actual effect would have been guesswork on top of
+guesswork). `RunDiagramTaskResult` now carries a `timing` field (`sessionStartMs`, `docSetupMs`,
+`orchestratorMs`, `gateCheckMs`, `exportSaveMs`, `pngMs`, `totalMs`, via `performance.now()`) on
+both success and failure branches, so a failed run's timing is visible too, not just a successful
+one's.
+
+**Immediately paid for itself**: the first live run measured with it showed `orchestratorMs:
+1,837,893` (~30.6 minutes) against a ~3-6 minute baseline from earlier runs — the number itself is
+what prompted digging into _why_, which is exactly how findings #6 and #7 above were found. Without
+a number to be suspicious of, a slow-but-not-hung run might have been shrugged off as "small models
+are just slow sometimes" instead of a real, fixable bug.
+
+**Done when:** a live run's timing breakdown is captured — ✅ confirmed, see above. Comparing a
+`think: true` vs. `think: false` run (M30.2) and a before/after M30.1 comparison both still need a
+clean run free of findings #6/#7's confounds to be trustworthy.
 
 #### M31 — Agent-side PNG export
 
+✅ **Done** (2026-08-06)
+
 SVG→PNG conversion
 ([D35](00-decision-log.md#d35--existing-diagrams-are-referenced-by-file-path-png-is-produced-agent-side--locked-v6))
-as the last step of `conformance-exporter`, after `export_diagram({ format: "svg" })` succeeds.
+via [`@resvg/resvg-js`](https://github.com/yisibl/resvg-js) (`apps/agent/src/pngExport.ts`'s
+`convertSvgToPng` — a real Rust SVG renderer via native bindings, not a headless browser), run
+procedurally by `runDiagramTask` right after the export/save step succeeds (M30 finding #1 moved
+export/save out of conformance-exporter's own tools; PNG conversion was written to follow that same
+procedural pattern from the start, not added to any sub-agent's toolset).
 
 **Done when:** a real run produces `.icad` + `.svg` + `.png` for the same diagram, and the PNG is
-visually confirmed to match the SVG (spot-checked, not just "didn't throw").
+visually confirmed to match the SVG (spot-checked, not just "didn't throw"). ✅ Verified two ways:
+`pngExport.test.ts` checks real PNG structure (magic bytes + IHDR width/height) against a hand-built
+SVG, independent of any LLM; separately, a real ICAD-exported SVG (a labeled box containing an IBM
+Virtual Server icon) was converted and visually inspected — correct colors, glyph, and layout, not
+just valid PNG bytes.
 
 #### M32 — A2A server surface
 

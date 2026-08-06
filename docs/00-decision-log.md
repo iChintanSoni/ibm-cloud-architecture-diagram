@@ -570,9 +570,8 @@ A Deep Agents orchestrator interprets the request (plus, for a modification, the
 `doc_get()` scene) and delegates to two sub-agents: **diagram-builder** (loads the existing
 `ibm-diagram-authoring` skill; drives `catalog_search`/`element_add_*`/`connect[_nearest]`/
 `scene_apply`) and **conformance-exporter** (loads `ibm-diagram-export`; drives
-`lint`/`quickfix_apply_all`/`export_diagram`/`doc_save` plus the new agent-side SVG→PNG step, see
-[D35](#d35--existing-diagrams-are-referenced-by-file-path-png-is-produced-agent-side--locked-v6)).
-Both share `ibm-diagram-spec` as common reference context.
+`lint`/`quickfix_apply`/`quickfix_apply_all` only). Both share `ibm-diagram-spec` as common
+reference context.
 
 - **Why:** Mirrors the build-vs-validate boundary the three existing MCP skills already assume
   ([D16](#d16--authoring--spec--export-agent-skills--locked-v2)); keeps each sub-agent's own
@@ -580,21 +579,29 @@ Both share `ibm-diagram-spec` as common reference context.
   juggling authoring conventions and export mechanics together.
 - **Consequence:** No third, finer-grained sub-agent tier (e.g., a standalone requirements-parsing
   sub-agent) for v6; the orchestrator itself does requirement interpretation.
+- **Amended during real M30 live-model testing:** `export_diagram`/`doc_save` (plus the agent-side
+  SVG→PNG step, [D35](#d35--existing-diagrams-are-referenced-by-file-path-png-is-produced-agent-side--locked-v6))
+  were originally planned as conformance-exporter's own tools, relayed the real output path via
+  its natural-language delegation instruction. A real qwen3:8b run invented a fake path
+  (`/exports/diagram.svg`) instead of reproducing the real one, failing the task — moved to a
+  deterministic procedural step in `runDiagramTask` instead (`apps/agent/src/tools.ts`'s comment
+  on `CONFORMANCE_EXPORTER_TOOL_NAMES` has the full account). See
+  [Roadmap M30](09-roadmap.md#m30--deep-agent-orchestrator--sub-agents) for the complete list of
+  live-testing findings.
 
 ### D34 — One ephemeral MCP subprocess per task, single task at a time · Locked (v6)
 
 For each A2A task, `apps/agent` spawns a fresh `packages/mcp` stdio subprocess, does `doc_open`
-(given an explicit path) or `doc_create`, runs the sub-agents against it, then `doc_save` + export
+(given an explicit path) or `doc_create`, runs the sub-agents against it, then exports and saves,
+and tears the subprocess down. No pooling or reuse across tasks; no concurrent tasks in v6.
 
-- tears the subprocess down. No pooling or reuse across tasks; no concurrent tasks in v6.
-
-* **Why:** The MCP server holds exactly one open document for its whole process lifetime
+- **Why:** The MCP server holds exactly one open document for its whole process lifetime
   ([AI agents & MCP](guide/05-ai-agents-mcp.md)) — fresh-per-task is the simplest correct mapping,
   matches this initiative's single-user/local-first scope
   ([D4](#d4--local-first-single-user-files--locked)), and sidesteps the stale-module-cache gotcha a
   long-running MCP session has hit before (a rebuilt server binary is invisible to an
   already-spawned process) since every task gets a clean process.
-* **Consequence:** No session-manager/subprocess-pool code for v6; each task pays a subprocess
+- **Consequence:** No session-manager/subprocess-pool code for v6; each task pays a subprocess
   cold-start cost, accepted as the right v6 tradeoff. Revisit if throughput ever becomes the
   bottleneck — see the multi-caller note under
   [D32](#d32--a2a-server-is-primary-a2a-client-is-plumbing-only-localhost-only-no-auth--locked-v6).
