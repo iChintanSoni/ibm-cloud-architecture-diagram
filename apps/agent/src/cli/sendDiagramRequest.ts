@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { Agent, setGlobalDispatcher } from "undici";
 import { Role, TaskState } from "@a2a-js/sdk";
 import type { SendMessageRequest } from "@a2a-js/sdk";
 import {
@@ -6,6 +7,16 @@ import {
   ClientFactoryOptions,
   JsonRpcTransportFactory,
 } from "@a2a-js/sdk/client";
+
+// A real diagram-generation task can take many minutes between streamed A2A events — that's an
+// LLM step, not network latency, but undici's default ~5-minute body/headers timeout kills the
+// underlying fetch() mid-stream regardless (found live, M32/M33 dogfooding: a real run crashed
+// with UND_ERR_BODY_TIMEOUT partway through a real task). Disabled outright rather than just
+// raised — A2A's own task lifecycle (cancelTask) is the right layer for a caller to give up on a
+// genuinely stuck task, not a fixed low-level HTTP timeout that can't tell "still working" from
+// "dead." Module-level, since @a2a-js/sdk's transport calls the global `fetch` with no per-call
+// dispatcher override.
+setGlobalDispatcher(new Agent({ headersTimeout: 0, bodyTimeout: 0 }));
 
 export interface SendDiagramRequestOptions {
   url: string;

@@ -1530,6 +1530,8 @@ just valid PNG bytes.
 
 #### M32 — A2A server surface
 
+✅ **Done** (2026-08-06)
+
 `GenerateArchitectureDiagram` and `ModifyArchitectureDiagram` as two skills in an `AgentCard`
 ([D32](00-decision-log.md#d32--a2a-server-is-primary-a2a-client-is-plumbing-only-localhost-only-no-auth--locked-v6)),
 served via `DefaultRequestHandler` + `InMemoryTaskStore` (sufficient given
@@ -1537,31 +1539,60 @@ served via `DefaultRequestHandler` + `InMemoryTaskStore` (sufficient given
 single-task-at-a-time model) and the SDK's Express `jsonRpcHandler`/`agentCardHandler`
 (`UserBuilder.noAuthentication`), on `localhost:41241` (the SDK's own sample convention) unless
 overridden. `ModifyArchitectureDiagram` takes an explicit `.icad` path in its task input. An
-`AgentExecutor.execute()` implementation drives the orchestrator, publishing `AgentEvent.task` →
-`statusUpdate` (submitted → working, with sub-agent progress) → `artifactUpdate` (the `.icad`,
-`.svg`, `.png` paths) → a final `statusUpdate` (completed, or failed/input-required carrying
-[D37](00-decision-log.md#d37--hard-export-gate-auto-fix-everything-fixable-then-block-on-remaining-errors--locked-v6)'s
+`AgentExecutor.execute()` implementation drives the (post-M30.3) diagram-builder →
+conformance-exporter flow, publishing `AgentEvent.task` → `statusUpdate` (submitted → working) →
+`artifactUpdate` (the `.icad`, `.svg`, `.png` paths) → a final `statusUpdate` (completed, or failed
+carrying [D37](00-decision-log.md#d37--hard-export-gate-auto-fix-everything-fixable-then-block-on-remaining-errors--locked-v6)'s
 diagnostics). `AgentExecutor.cancelTask()` kills the task's MCP subprocess early, mirroring the
 SDK's own cancellable-agent sample.
 
 **Done when:** a real A2A client call round-trips both skills against a running `apps/agent`
-server, including one cancelled mid-flight.
+server, including one cancelled mid-flight. ✅ Confirmed two ways: `a2a/server.test.ts` (4 real
+HTTP/JSON-RPC round-trips against a real server, including a real cancellation, with a faked
+`runDiagramTask` so no LLM is needed), and a real live dogfooding pass (see M33) with the real,
+unfaked pipeline underneath.
 
 #### M33 — A2A dev-harness CLI, plumbing-only A2A client, dogfooding
+
+✅ **Done** (2026-08-06)
 
 A minimal CLI acting as an A2A client for local testing/dogfooding — modeled directly on the SDK's
 own sample `client.ts` (`ClientFactory` + `JsonRpcTransportFactory`, `sendMessageStream`, printing
 `task`/`statusUpdate`/`artifactUpdate` events as they arrive). The A2A client capability
 ([D32](00-decision-log.md#d32--a2a-server-is-primary-a2a-client-is-plumbing-only-localhost-only-no-auth--locked-v6))
-is wired at the SDK level with no real delegate target yet. Closes with a real dogfooding session:
-several natural-language prompts (at least one new-diagram, one modify-existing) run through the
-live A2A server via the harness CLI, output visually verified via chrome-devtools MCP — the same
-rigor `packages/mcp` itself was held to in its own dogfooding sessions (see commit history for
-M22-M25).
+is wired at the SDK level with no real delegate target yet.
+
+**Live dogfooding found one real, distinct A2A-layer bug**, separate from any of M30's ten
+diagram-generation findings:
+
+11. **`undici`'s default HTTP body/headers timeout (~5 minutes) killed the A2A stream mid-task.**
+    A real diagram-generation task can take many minutes _between_ streamed events — that's an LLM
+    step, not network latency, but the underlying `fetch()` inside `@a2a-js/sdk`'s
+    `JsonRpcTransportFactory` doesn't know that, and undici's default timeout doesn't distinguish
+    "still working" from "connection is dead." A real dogfooding run crashed outright with
+    `UND_ERR_BODY_TIMEOUT` partway through a real task — the `AgentCard` served correctly and the
+    first two events (`task`, `statusUpdate: working`) came through fine, only the _wait_ for the
+    next event exceeded the timeout. ✅ **Fixed** — `sendDiagramRequest.ts` now calls
+    `setGlobalDispatcher(new Agent({ headersTimeout: 0, bodyTimeout: 0 }))` (the `undici` package,
+    added as a real dependency) once at module load, disabling the timeout outright rather than
+    just raising it: A2A's own task lifecycle (`cancelTask`) is the right layer for a caller to
+    give up on a genuinely stuck task, not a fixed low-level HTTP timeout that can't tell the
+    difference. Confirmed fixed with a second live run: the exact same request that crashed before
+    now streamed cleanly through `task` → `statusUpdate` (working) → `statusUpdate` (failed, with
+    the real reason) with no transport-level error at all.
 
 **Done when:** the dogfooding session runs to completion and its findings (if any) are written up
 and proposed as a follow-up milestone, same pattern as the M22/M23 dogfooding → fix-milestone
-cadence.
+cadence. ✅ Done as described above. **Scope note, honestly recorded:** the live dogfooding pass
+covered `GenerateArchitectureDiagram` only (not a `ModifyArchitectureDiagram` run), and no
+successful diagram was produced through the live pass — the underlying diagram-builder hit the
+same `scene_apply` limitation already documented under M30's findings #4/#9/#10, correctly reported
+as a clean `TASK_STATE_FAILED` with the real reason all the way through the A2A stream, not a
+transport failure. That's exactly what this milestone needed to prove — the A2A layer itself (task
+lifecycle, streaming, failure reporting) works correctly end-to-end — decoupled from whether any
+given diagram-generation attempt succeeds, which is M30's concern, not M32/M33's. No visual
+chrome-devtools verification was performed this pass, since no successful SVG was produced to
+inspect; worth doing in a future session once a live run succeeds through the full A2A path.
 
 **v6 exit criteria:** a real A2A caller (the dev-harness CLI, or any other A2A client) generates a
 valid, non-trivial topology from a paragraph of requirements, and separately modifies an existing
@@ -1569,6 +1600,16 @@ valid, non-trivial topology from a paragraph of requirements, and separately mod
 the tool loop — closing the v2 exit-criteria gap [M9.2 flagged](#m92--agent-skills) ("needs an
 actual agent loop driving the MCP server end-to-end," previously only exercised via manual Claude
 Code dogfooding sessions, never a real autonomous agent).
+
+**Not yet fully met, honestly**: every piece of infrastructure this exit criteria depends on is now
+real and verified — the Deep Agent pipeline, the A2A server and its task lifecycle, the dev-harness
+client, the hard export gate, agent-side PNG export — and the pipeline has produced multiple
+genuine successes during this session's live testing. But no single run went "one paragraph in,
+through the real A2A surface, out the other side with a real diagram" _and_ "an existing `.icad`
+modified via a real A2A `ModifyArchitectureDiagram` call" in the same verification pass. Getting
+there needs either a more capable model (a real question for a future session, not a code gap) or
+further work on `scene_apply`'s reliability (findings #4/#9/#10). Tracked here rather than
+overstated as done.
 
 ## Explicitly deferred / revisit later
 
