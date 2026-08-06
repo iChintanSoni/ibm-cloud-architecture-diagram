@@ -1174,15 +1174,40 @@ already named. See [Agent Runtime](11-agent-runtime.md).
 
 #### M29 — Agent package scaffold + MCP subprocess lifecycle
 
-A new workspace package (`@icad/agent`), wired into the root `build`/`typecheck`/`lint`/`test`
-scripts like every other package. No agent/LLM logic yet — just the plumbing
+✅ **Done** (2026-08-06)
+
+`apps/agent` (`@icad/agent`) — a new workspace package, structured like `packages/mcp` (plain
+`tsc` build, `vitest` tests, no bundler), `private: true` like the other shells since it isn't
+published as a library. `typecheck`/`lint`/`test` are picked up automatically by the root's
+recursive scripts; `build` follows the existing apps-build-their-own-way convention (`apps/web`/
+`vscode`/`desktop` aren't in the root `build` script either — each is invoked directly,
+`pnpm --filter @icad/agent build`).
+
+No agent/LLM logic yet — just the plumbing
 ([D34](00-decision-log.md#d34--one-ephemeral-mcp-subprocess-per-task-single-task-at-a-time--locked-v6)):
-a wrapper (via `@langchain/mcp-adapters`) that spawns `packages/mcp/dist/index.js` as a stdio
-subprocess for one task, calls `doc_open`/`doc_create`, and tears the subprocess down after.
+`McpSession` (`src/mcpSession.ts`), a thin wrapper over `@langchain/mcp-adapters`'
+`MultiServerMCPClient`, spawning `@icad/mcp`'s compiled stdio entrypoint as a fresh child process
+per session (`restart: { enabled: false }` — a dead subprocess fails the task, it never silently
+respawns onto a document state the caller no longer recognizes). The entrypoint path is resolved
+via real Node module resolution (`createRequire(import.meta.url).resolve("@icad/mcp")`, following
+its `package.json` `main`) rather than a hardcoded relative path across the monorepo — works
+whether the workspace dependency is a pnpm symlink (dev) or a real copy (a materialized
+`pnpm deploy` layout, same shape M21.2's release tarball already produces). Exposes both
+`tools()` (LangChain-compatible `StructuredToolInterface[]`, for M30's orchestrator/sub-agents to
+call directly) and a direct `callTool(name, args)` escape hatch that needs no LLM at all — used by
+this milestone's own tests, and by any future non-agent plumbing.
 
 **Done when:** an integration test spins a real subprocess and round-trips a real `.icad` + `.svg`
 through it (`doc_create` → `element_add_box` → `export_diagram` → `doc_save`), with no hand-written
-mock of the MCP protocol.
+mock of the MCP protocol. ✅ `src/mcpSession.test.ts` does exactly that — spawns the real compiled
+`@icad/mcp` binary, then reads back the actual `.icad`/`.svg` files it wrote to disk (rather than
+trusting whatever shape the LangChain tool wrapper's return value happens to have) to confirm the
+whole protocol round-trip is real, not just the call. A second test confirms an unknown tool name
+fails loudly instead of silently no-op-ing. Verified further: `pnpm -r typecheck`/`lint` both clean
+across all 8 workspace projects including the new one; every other package's own test suite still
+green (`@icad/mcp` 34, `@icad/ui-web` 84, `@icad/web` 25, `@icad/core` 663 — [M12](#m12--performance-at-scale)'s
+own perf benchmark showed its already-documented flakiness under full-suite concurrent load,
+re-confirmed harmless by re-running that one file in isolation, clean).
 
 #### M30 — Deep Agent orchestrator + sub-agents
 
