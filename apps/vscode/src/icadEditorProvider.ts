@@ -25,7 +25,7 @@ function themeKindOf(theme: vscode.ColorTheme): ThemeKind {
  * we bridge that into VS Code's undo stack explicitly instead of routing through VS Code's
  * text-edit undo model. The extension host never touches `.icad` semantics (parsing, migration,
  * rendering) at all — the real Editor runs entirely inside the webview; the host is a thin file-I/O
- * and undo/redo relay (docs/02-architecture.md#shells).
+ * and undo/redo relay (docs/architecture.md#shells).
  */
 export class IcadEditorProvider implements vscode.CustomEditorProvider<IcadDocument> {
   static readonly viewType = "icad.editor";

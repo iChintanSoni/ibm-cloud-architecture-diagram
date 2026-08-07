@@ -3,7 +3,7 @@
 Sequenced to de-risk the custom engine first, then add surfaces and the agent story. Milestones,
 not dates.
 
-## v1 — Editor-first web shell (MVP) · [D20](00-decision-log.md#d20--mvp--editor-first-web-shell--locked)
+## v1 — Editor-first web shell (MVP) · [D20](./decision-log.md#d20--mvp--editor-first-web-shell--locked)
 
 Ship a usable, on-spec human editor in the browser.
 
@@ -12,7 +12,7 @@ Ship a usable, on-spec human editor in the browser.
 ✅ **Done** (2026-07-22)
 
 - `packages/core`: scene model, command bus + undo, SVG DOM renderer, pan/zoom, selection,
-  hit-testing. Framework-agnostic ([D2](00-decision-log.md#d2--framework-agnostic-typescript-core--thin-shells--locked)).
+  hit-testing. Framework-agnostic ([D2](./decision-log.md#d2--framework-agnostic-typescript-core--thin-shells--locked)).
 
 #### M2 — Icon catalog pipeline
 
@@ -20,8 +20,8 @@ Ship a usable, on-spec human editor in the browser.
 
 - `packages/catalog-build` converts a pinned IBM stencils commit → `packages/catalog` (manifest +
   SVGs): 242 icons across 11 categories (a `groups` category and 35 icons added per
-  [D23](00-decision-log.md#d23--catalog-gains-a-groups-icon-category-narrowing-d21--locked)). See
-  [Icon Catalog](04-icon-catalog.md).
+  [D23](./decision-log.md#d23--catalog-gains-a-groups-icon-category-narrowing-d21--locked)). See
+  [Icon Catalog](../packages/catalog-build/docs/icon-catalog.md).
 - `core/catalog` runtime search/resolve. Keywords are auto-tokenized from each icon's own literal
   upstream name at build time, with a manual `packages/catalog-build/src/keywordOverrides.ts` table
   layered on top for architecture terms with no name overlap — first added for `"region"`, `"cache"`,
@@ -45,7 +45,7 @@ Ship a usable, on-spec human editor in the browser.
 - A `deployedTo` Group originally required a `deployedOn` Box ancestor; M7.1 removed that
   unsupported assertion after cross-checking the published Architecture Framework.
 - Container presets (named shortcuts like VPC/Subnet/Region over these three primitives) are
-  explicitly out of scope here — [D21](00-decision-log.md#d21--container-presets-are-a-named-shortcut-layer-not-new-element-types--locked) lands them in M7 instead.
+  explicitly out of scope here — [D21](./decision-log.md#d21--container-presets-are-a-named-shortcut-layer-not-new-element-types--locked) lands them in M7 instead.
 
 #### M4 — Smart connectors
 
@@ -53,7 +53,7 @@ Ship a usable, on-spec human editor in the browser.
 
 - Connectors bind to named ports (`n`/`e`/`s`/`w`/`center`) and route through a grid-based
   orthogonal (Manhattan) router: obstacle-free where possible, fewest bends, mild west→east bias
-  per [Layout convention](05-ibm-spec-conformance.md#layout-convention). Obstacles are leaf shapes
+  per [Layout convention](../packages/core/docs/ibm-spec-conformance.md#layout-convention). Obstacles are leaf shapes
   (icon/actor/text) only — containers are never treated as obstacles, since IBM deployment
   diagrams routinely cross a box/zone boundary. (M23.1, 2026-07-31) Containers unrelated to
   either endpoint (not an ancestor/descendant of, or equal to, the endpoint) add a soft routing
@@ -75,7 +75,7 @@ Ship a usable, on-spec human editor in the browser.
 - Moving or resizing a connected element re-routes its attached `"auto"` connectors as part of the
   same undoable command; `editor.setConnectorWaypoints()` overrides a route manually (switches it
   to `"manual"`, exempt from auto re-routing) and `editor.autoRouteConnector()` reverts it.
-- Full IBM connector nomenclature ([Connector nomenclature](05-ibm-spec-conformance.md#connector-nomenclature)):
+- Full IBM connector nomenclature ([Connector nomenclature](../packages/core/docs/ibm-spec-conformance.md#connector-nomenclature)):
   the five connection types (logical/physical/tunneling/double-tunnel/plain, with
   unidirectional/bidirectional + green-private/blue-public variants) and the six relationship
   types (dependency, association, aggregation, composition, implementation, extends), each with
@@ -91,11 +91,11 @@ Ship a usable, on-spec human editor in the browser.
   shape; a migration registry (empty until the schema bumps past v1) feeds into a repair pass that
   keeps a loaded scene always structurally valid regardless of source — a dangling `parentId` is
   cleared, a `parentId` cycle is broken, a connector missing either endpoint is dropped, and
-  degenerate (non-positive/non-finite) geometry is clamped to a minimum size ([File Format](03-file-format.md#versioning--migration)).
-- SVG export (canonical, with the re-editable `.icad` source embedded per [D8](00-decision-log.md#d8--re-editable-svg-via-embedded-icad-copy--locked)) and PNG export (1×/2×/3×, transparent/white) via `core/io/export`.
+  degenerate (non-positive/non-finite) geometry is clamped to a minimum size ([File Format](../packages/core/docs/file-format.md#versioning--migration)).
+- SVG export (canonical, with the re-editable `.icad` source embedded per [D8](./decision-log.md#d8--re-editable-svg-via-embedded-icad-copy--locked)) and PNG export (1×/2×/3×, transparent/white) via `core/io/export`.
 - `apps/web`: real Open/Save/Save-As through the File System Access API, falling back to
-  download/upload on browsers without it ([D9](00-decision-log.md#d9--file-system-access-api--fallback--locked)); continuous IndexedDB autosave with a recovery banner offering to
-  discard on reload after a crash ([D10](00-decision-log.md#d10--autosave-draft--crash-recovery--locked)).
+  download/upload on browsers without it ([D9](./decision-log.md#d9--file-system-access-api--fallback--locked)); continuous IndexedDB autosave with a recovery banner offering to
+  discard on reload after a crash ([D10](./decision-log.md#d10--autosave-draft--crash-recovery--locked)).
 
 #### M6 — Conformance linter
 
@@ -120,7 +120,7 @@ Ship a usable, on-spec human editor in the browser.
   containment with the prescribed 16px inset, and the four container presets confirmed by IBM
   worked examples (IBM Cloud, Public Network, OpenShift, Availability zone). Inferred presets
   remain withheld pending IBM Design confirmation. **Region and VPC added as a fifth/sixth
-  confirmed preset per [D24](00-decision-log.md#d24--regionvpcsubnet-are-box-only-availability-zoneon-prem-are-boundary--locked).**
+  confirmed preset per [D24](./decision-log.md#d24--regionvpcsubnet-are-box-only-availability-zoneon-prem-are-boundary--locked).**
 
 ##### M7.1 — Published-guidance conformance alignment
 
@@ -205,7 +205,7 @@ Closed out the remaining M7 chrome: a real pan/zoom camera plus the surfaces tha
    indicator, Find and Command-palette actions, and the theme switch.
 3. Added `CommandPalette` (Ctrl/Cmd+K) and `FindBar` (Ctrl/Cmd+F) — Find matches element labels,
    resolved catalog icon names, and **frame names**, jumping/zooming the viewport to each match
-   exactly per [Find on canvas](06-editor-ux.md#find-on-canvas-f).
+   exactly per [Find on canvas](../packages/core/docs/editor-ux.md#find-on-canvas-f).
 4. Added a **Frames** tab to the inspector listing frames in presentation order with click-to-jump
    and a **Present frames** mode; arrow/PageUp/PageDown keys step frame-to-frame while presenting.
 5. Persisted the auto/light/dark chrome preference to `localStorage`, independent of any one
@@ -224,7 +224,7 @@ a reload.
 
 Extended M7.3's template mechanism with 4 new, fixed built-in templates — faithful reproductions of
 IBM's own published "Single Region, Multi-Zone" Kubernetes/OpenShift reference architectures
-(see [D30](00-decision-log.md#d30--iksroks-single-region-multi-zone-reference-diagrams-ship-as-4-built-in-templates--locked)
+(see [D30](./decision-log.md#d30--iksroks-single-region-multi-zone-reference-diagrams-ship-as-4-built-in-templates--locked)
 for the full source→catalog icon mapping and the fidelity trade-offs made along the way):
 
 1. Added `iks-sr-mz-classic`, `iks-sr-mz-vpc`, `roks-sr-mz-classic`, `roks-sr-mz-vpc` as new
@@ -256,7 +256,7 @@ command surface like any other template.
 
 🟡 **In progress** — everything automatable is done, and a live-browser verification pass has since
 found and fixed four real defects the automated suite couldn't see; only the actual human
-VoiceOver/NVDA sign-off pass remains ([Accessibility](07-accessibility.md)).
+VoiceOver/NVDA sign-off pass remains ([Accessibility](../packages/core/docs/accessibility.md)).
 
 ##### M8.1 — Baseline canvas keyboard operation, roles/names, CI a11y checks
 
@@ -272,7 +272,7 @@ tree and live regions"), landed the foundational layer everything else builds on
    just geometry.
 2. Added a meaningful keyboard tab order (`computeTabOrder()`,
    `packages/core/src/interaction/tabOrder.ts`): containers before children, siblings west→east
-   per [Layout convention](05-ibm-spec-conformance.md#layout-convention), connectors last.
+   per [Layout convention](../packages/core/docs/ibm-spec-conformance.md#layout-convention), connectors last.
    `SvgRenderer` keeps exactly one element as the sole `tabindex="0"` node (roving tabindex) and
    re-renders the existing selection outline as the shared visual focus indicator; `Editor` gained
    `tabOrder()`, `focusNext()`/`focusPrevious()` (auto-panning into view only when the target isn't
@@ -362,7 +362,7 @@ violation:
    (by design), but a connector attached to one of those descendants from _outside_ the deleted
    subtree survived with an endpoint that no longer resolves — surfacing live as an interactive
    element literally named "Connector: unknown element to unknown element". The `.icad` repair pass
-   already drops exactly this case on load ([File Format](03-file-format.md#versioning--migration)),
+   already drops exactly this case on load ([File Format](../packages/core/docs/file-format.md#versioning--migration)),
    but nothing cleaned it up live in the running editor. Fixed `removeElement` to also remove (and
    undo-restore) any connector referencing a deleted element
    (`packages/core/src/commands/commands.ts`), with a regression test in `commandBus.test.ts`.
@@ -378,7 +378,7 @@ keyboard E2E specs all still pass.
 
 **Remaining for M8:** the actual human sign-off pass. A live-browser accessibility-tree walk is a
 strong proxy but isn't the same as a person's ears at a real screen reader judging phrasing,
-timing, and verbosity — [Accessibility](07-accessibility.md#manual-screen-reader-script-voiceover--nvda)
+timing, and verbosity — [Accessibility](../packages/core/docs/accessibility.md#manual-screen-reader-script-voiceover--nvda)
 now has a concrete ~20-minute script for that pass (VoiceOver or NVDA), written so any teammate can
 run it without prior context.
 
@@ -399,7 +399,7 @@ Make the same engine machine-authorable and put it where developers live.
 
 `packages/mcp` — a new workspace package, an MCP server exposing `core/api`'s `Editor` to agents
 over stdio, so "agents and humans drive one engine" per D2/D15
-([Agent Integration](08-agent-integration.md), [D15](00-decision-log.md#d15--mcp-full-authoring-toolset--locked-v2)):
+([Agent Integration](../packages/mcp/docs/agent-integration.md), [D15](./decision-log.md#d15--mcp-full-authoring-toolset--locked-v2)):
 
 1. `Editor` isn't headless by itself — its constructor needs a real `HTMLElement` container and its
    renderer touches bare DOM globals (D3's locked "live SVG DOM nodes"). `src/headlessEditor.ts`
@@ -456,7 +456,7 @@ over stdio, so "agents and humans drive one engine" per D2/D15
 ✅ **Done** (2026-07-24)
 
 `packages/mcp/skills/` — three composable `SKILL.md` packages
-([D16](00-decision-log.md#d16--authoring--spec--export-agent-skills--locked-v2), [Agent Integration](08-agent-integration.md)):
+([D16](./decision-log.md#d16--authoring--spec--export-agent-skills--locked-v2), [Agent Integration](../packages/mcp/docs/agent-integration.md)):
 
 1. **`ibm-diagram-spec`** — the conventions reference: element semantics (Box/Group/Zone/Actor/
    Connector), color usage, connector nomenclature (connection vs. relationship families,
@@ -491,7 +491,7 @@ edits") are called met.
 diagrams-in-repo next to code.
 
 A new `apps/vscode` package: a VS Code `CustomEditorProvider` (own `CustomDocument`, not
-`CustomTextEditorProvider`) registered for `*.icad`, per [Architecture](02-architecture.md#shells):
+`CustomTextEditorProvider`) registered for `*.icad`, per [Architecture](./architecture.md#shells):
 _"core runs in the webview, the extension host handles file I/O."_
 
 1. **Two bundles.** `src/` is the extension host (plain Node, bundled with esbuild to
@@ -509,7 +509,7 @@ redo()` replay (`packages/core/src/commands/commandBus.ts`) — so the host's
    no feedback loop; a separate `{type: "sync"}` message reports post-undo/redo content back to the
    host without pushing a spurious second stack entry. Ctrl+Z/Ctrl+Shift+Z are handled by VS Code
    natively, not by a second in-webview keybinding.
-3. **Hot exit replaces autosave/crash-recovery outright** ([D10](00-decision-log.md#d10--autosave-draft--crash-recovery--locked))
+3. **Hot exit replaces autosave/crash-recovery outright** ([D10](./decision-log.md#d10--autosave-draft--crash-recovery--locked))
    — `backupCustomDocument` writes the working copy to VS Code's own backup URI; no IndexedDB draft
    store or recovery banner was ported, since VS Code's tab dirty-dot and hot exit already cover
    that job for a custom editor.
@@ -577,7 +577,7 @@ real device this environment doesn't have; they proceed in parallel with v3, not
 interactive sign-off, code signing, and DMG packaging are what's left (all need a real machine).
 
 Same "core runs in the webview, the host handles file I/O" split as
-[M10](#m10--appsvscode) ([Architecture](02-architecture.md#shells)). Landed so far:
+[M10](#m10--appsvscode) ([Architecture](./architecture.md#shells)). Landed so far:
 
 1. `apps/desktop` scaffolded via `tauri init` (`--ci`, non-interactive) and hand-tuned: a Tauri
    (Rust) host in `src-tauri/`, no separate webview package — `tauri.conf.json`'s `frontendDist`
@@ -585,7 +585,7 @@ Same "core runs in the webview, the host handles file I/O" split as
    server) and `beforeDevCommand`/`beforeBuildCommand` just run `apps/web`'s existing `dev`/`build`
    scripts. `@icad/core` and `@icad/ui-web` are therefore reused unmodified, same as M10 confirmed
    possible — there's no `apps/desktop/webview/src` fork to keep in sync.
-2. **Persistence reused as-is, per [D22](00-decision-log.md#d22--desktop-shell-reuses-webs-file-system-access--autosave-layer-unlike-vs-code--locked-v3)**:
+2. **Persistence reused as-is, per [D22](./decision-log.md#d22--desktop-shell-reuses-webs-file-system-access--autosave-layer-unlike-vs-code--locked-v3)**:
    `apps/web`'s D9 File System Access path and D10 OPFS/IndexedDB autosave+recovery banner are
    completely untouched. The only new code is `apps/web/src/persistence/tauri.ts` — native
    Open/Save/Save-As via `@tauri-apps/plugin-dialog`+`plugin-fs`, a `consumeStartupFile()`/
@@ -614,14 +614,14 @@ Same "core runs in the webview, the host handles file I/O" split as
    real code-signing/distribution.
 6. **Real app icon, sourced from IBM's own catalog, not invented.** `apps/desktop/app-icon.svg`
    recolors the `ibm-cloud` glyph from
-   [Icon Catalog](04-icon-catalog.md) (`packages/catalog/2.0.0/icons/network/ibm-cloud.svg`, the
+   [Icon Catalog](../packages/catalog-build/docs/icon-catalog.md) (`packages/catalog/2.0.0/icons/network/ibm-cloud.svg`, the
    pinned IBM-Cloud/architecture-icons stencil) white-on-IBM-Blue-60, centered in a rounded square
    per macOS's convention of baking the icon's silhouette into the artwork rather than relying on
    OS masking. `pnpm tauri icon app-icon.svg` regenerated every platform size/format from it (the
    iOS/Android variants it also produces were deleted — v3 has no mobile target); a rebuild
    confirmed the bundled `.app`'s `icon.icns` byte-for-byte matches the regenerated one. Still an
    explicit placeholder pending real IBM Design sign-off before any real distribution, same as
-   [D21](00-decision-log.md#d21--container-presets-are-a-named-shortcut-layer-not-new-element-types--locked)'s
+   [D21](./decision-log.md#d21--container-presets-are-a-named-shortcut-layer-not-new-element-types--locked)'s
    posture on unconfirmed presets.
 7. **Native window chrome now follows the resolved theme, not just launch-time config.**
    `persistence/tauri.ts`'s `setNativeTheme()` calls `@tauri-apps/api/window`'s
@@ -684,7 +684,7 @@ Same "core runs in the webview, the host handles file I/O" split as
 **Not yet done:**
 
 - Code signing/notarization (an IBM org/certificate dependency, not a code task — same posture as
-  [D17](00-decision-log.md#d17--official--ibm-internal-tool--locked)'s sign-off gate) and the actual
+  [D17](./decision-log.md#d17--official--ibm-internal-tool--locked)'s sign-off gate) and the actual
   interactive pass: open by double-click, Open/Save/Save-As, native file association end to end,
   offline launch. Same limitation M10 hit — this environment can build, bundle, and unit-test the
   app but has no GUI/display access to drive a native window interactively.
@@ -699,13 +699,13 @@ natively; the app runs fully offline post-install.
 (`packages/core/src/perf/benchmark.test.ts`), per the overlap note this section used to carry.
 What remains here is purely the virtualization decision that benchmark informs.
 
-[D3](00-decision-log.md#d3--svg-dom-rendering--locked) flagged viewport virtualization as something
+[D3](./decision-log.md#d3--svg-dom-rendering--locked) flagged viewport virtualization as something
 "very large diagrams may need... later" — benchmark first, build only if the benchmark demands it:
 
 1. ✅ Generate synthetic large diagrams (500 / 1,000 / 2,000 elements and connectors) and measure,
    headlessly in `packages/core` under its own jsdom Vitest environment: initial load, hit-testing,
    lint pass time, pan/zoom, and command-bus dispatch/undo/redo. Results and budgets in
-   [Canvas parity plan → M15 step 7](10-canvas-parity-plan.md#m15--interaction-foundations).
+   [Canvas parity plan → M15 step 7](../packages/core/docs/canvas-parity-plan.md#m15--interaction-foundations).
 2. Only if a real threshold is breached, add viewport virtualization to the SVG renderer: cull
    off-screen elements from the live DOM while keeping them in the scene model and hit-testing
    index. This touches several things M8 built on the assumption of a fully-materialized DOM —
@@ -728,9 +728,9 @@ un-started), with a11y/keyboard coverage re-verified against the virtualized DOM
 ✅ **Done**
 
 1. ✅ **Refresh trigger.** Stays a deliberate, IBM Design-signaled manual re-pin
-   ([D17](00-decision-log.md#d17--official--ibm-internal-tool--locked)), not a scheduled job — but
+   ([D17](./decision-log.md#d17--official--ibm-internal-tool--locked)), not a scheduled job — but
    the process is now concrete and documented end to end
-   ([Icon Catalog → Re-pin process](04-icon-catalog.md#re-pin-process-roadmap-m13)):
+   ([Icon Catalog → Re-pin process](../packages/catalog-build/docs/icon-catalog.md#re-pin-process-roadmap-m13)):
    `packages/catalog/current.json` (`{ "version": "…" }`) became the single canonical pointer every
    runtime loader reads (`apps/web/src/catalog.ts`, `packages/mcp/src/catalog.ts`,
    `packages/core`'s golden-fixture test all switched from a hardcoded `"2.0.0"` path literal to a
@@ -752,7 +752,7 @@ un-started), with a11y/keyboard coverage re-verified against the virtualized DOM
    file might show placeholder icons (its pinned `catalog.version` differs from the one currently
    bundled).
 4. ✅ **Migration-registry question, decided explicitly**:
-   [D29](00-decision-log.md#d29--catalog-ref-compatibility-uses-catalog-aliases-not-the-icad-schema-migration-registry--locked-v3) —
+   [D29](./decision-log.md#d29--catalog-ref-compatibility-uses-catalog-aliases-not-the-icad-schema-migration-registry--locked-v3) —
    catalog-ref compatibility lives entirely in the catalog manifest's own `aliases` mechanism, not
    the `.icad` schema `MIGRATIONS` registry (`packages/core/src/io/icad.ts`); the two are
    independent version axes and re-pinning the catalog never forces a schema bump.
@@ -773,13 +773,13 @@ end-to-end with a defined missing-icon story.
 ## v4 — Canvas parity
 
 ✅ **Complete.** All seven milestones (M14–M20) are done. Full plan, audit evidence, and
-per-defect provenance in [Canvas parity plan](10-canvas-parity-plan.md); decisions in
-[D25–D28](00-decision-log.md#canvas--direct-manipulation).
+per-defect provenance in [Canvas parity plan](../packages/core/docs/canvas-parity-plan.md); decisions in
+[D25–D28](./decision-log.md#canvas--direct-manipulation).
 
 Make the canvas render what IBM actually specifies, and make it directly manipulable. M14
 (visual conformance — icons, connectors, container tabs) was pulled ahead because the shipped icon
 set was visually wrong against
-[D5](00-decision-log.md#d5--crisp--professional-visual-style--locked)/[D17](00-decision-log.md#d17--official--ibm-internal-tool--locked).
+[D5](./decision-log.md#d5--crisp--professional-visual-style--locked)/[D17](./decision-log.md#d17--official--ibm-internal-tool--locked).
 M15–M20 (direct manipulation — drag, resize, marquee, clipboard, alignment, connector editing,
 rotation, and color picker) followed.
 
@@ -793,7 +793,7 @@ kit_ v1.1 deck and the IBM 2.0 `.drawio` stencils vendored in
 
 1. ✅ **Icon tiles.** IBM's icon is a 48×48 solid category tile with a 24×24 white glyph inset by
    12 (actors: solid black circle). `extract.ts` regenerated all 242 icons off the corrected
-   framing ([D25](00-decision-log.md#d25--icons-render-as-ibm-authors-them-solid-tile-white-glyph--locked)).
+   framing ([D25](./decision-log.md#d25--icons-render-as-ibm-authors-them-solid-tile-white-glyph--locked)).
    Caught and fixed two bugs before shipping: both extraction paths (`extract.ts` and
    `extractDrawioLibrary.ts`, the latter feeding the 35-icon Groups category) were still framing
    glyphs into a 0..20 space against the renderer's corrected 0..24 expectation; the on-disk SVG
@@ -813,7 +813,7 @@ kit_ v1.1 deck and the IBM 2.0 `.drawio` stencils vendored in
    what IBM actually labels "Traffic Through Tunnel/Encapsulation". Fixed as a Properties-panel
    display-label correction; no schema or `.icad` change. _(This corrects the original audit
    finding, which misread the raster deck image as implying a 12th connector type — the stencil
-   XML, a higher-precedence [normative source](05-ibm-spec-conformance.md#normative-sources),
+   XML, a higher-precedence [normative source](../packages/core/docs/ibm-spec-conformance.md#normative-sources),
    settled it before any code was written against the wrong premise.)_
 4. ✅ **Container sidebar tab** on Group and Zone, not Box alone, colored to each container's own
    accent — IBM's worked examples draw it on every container. Frame excluded (no IBM semantic).
@@ -826,7 +826,7 @@ kit_ v1.1 deck and the IBM 2.0 `.drawio` stencils vendored in
    set with no name, and a non-numeric port. Both additions are purely additive optional fields —
    neither needed a `.icad` version bump or migration entry.
 7. ✅ **Golden fixtures.** Not a `.drawio` parser — building one, even test-only, would cut against
-   [D7](00-decision-log.md#d7--export-only-interop-svgpng-no-drawio-import--locked)'s locked
+   [D7](./decision-log.md#d7--export-only-interop-svgpng-no-drawio-import--locked)'s locked
    "no `.drawio` import," which exists precisely because a full mxGraph mapping surface is large
    and fragile; that reasoning doesn't stop applying just because the importer is dev-only.
    Instead, `svgRenderer.goldenFixtures.test.ts` hand-reproduces the `iks_sr_mz_vpc` reference
@@ -846,9 +846,9 @@ connector types round-trip through `.icad`, the linter, and MCP with corrected d
 ✅ **Done.**
 
 No user-visible features; everything after this depends on it. Full detail in
-[Canvas parity plan → M15](10-canvas-parity-plan.md#m15--interaction-foundations).
+[Canvas parity plan → M15](../packages/core/docs/canvas-parity-plan.md#m15--interaction-foundations).
 
-1. ✅ Ephemeral gesture layer ([D26](00-decision-log.md#d26--gestures-are-ephemeral-commits-are-commands--locked)):
+1. ✅ Ephemeral gesture layer ([D26](./decision-log.md#d26--gestures-are-ephemeral-commits-are-commands--locked)):
    `Editor.beginInteraction()`, `SvgRenderer.previewTransform()`.
 2. ✅ Partial + order-correct rendering: `render()` now reconciles DOM order to z-order (previously
    never happened), plus `renderElements()` for targeted re-renders.
@@ -865,7 +865,7 @@ No user-visible features; everything after this depends on it. Full detail in
    (`hitTest.ts`), falling back to z-order — the previous topmost-wins default — for every other
    overlap, including unrelated containers at different depths.
 4. ✅ The `CanvasController` interaction state machine moved into core
-   ([D27](00-decision-log.md#d27--the-interaction-state-machine-lives-in-core-not-the-shells--locked)):
+   ([D27](./decision-log.md#d27--the-interaction-state-machine-lives-in-core-not-the-shells--locked)):
    click/shift-click select, keyboard nav/nudge/delete, and mouse + keyboard connect flows, wired
    into both `apps/web` and `apps/vscode`, whose `App.tsx` canvas elements no longer carry any
    interaction handlers of their own. Pan/marquee/drag/resize/rotate modes are new gestures for
@@ -884,7 +884,7 @@ No user-visible features; everything after this depends on it. Full detail in
    expected — except a single 10-element move, which costs roughly a full re-render (~2s at 2,000
    elements) because dispatch/undo/redo each re-run the full-scene render+lint pass, not just the
    changed ids. That's a new finding (C13 in the
-   [canvas parity plan](10-canvas-parity-plan.md#confirmed-defects)), not the virtualization
+   [canvas parity plan](../packages/core/docs/canvas-parity-plan.md#confirmed-defects)), not the virtualization
    question this milestone was checking for — full detail and the observed numbers are there.
 
 **Done when:** a scripted 200-frame drag of a 40-element subtree holds frame budget, produces
@@ -896,14 +896,14 @@ the same `CanvasController` with no shell-local interaction code.
 ✅ **Done** — all 7 items have landed: M16.1 (drag-to-move), M16.2 (8-handle resize), M16.3
 (marquee selection + Ctrl/Cmd+A), M16.4 (double-click to drill into a nested container), M16.5
 (clipboard), M16.6 (right-click context menus), and M16.7 (Alt+click select-through); see
-[Canvas parity plan → M16](10-canvas-parity-plan.md#m16--the-core-loop).
+[Canvas parity plan → M16](../packages/core/docs/canvas-parity-plan.md#m16--the-core-loop).
 
 Drag-to-move, 8-handle resize, marquee (fully-enclosed), select-all, clipboard
 (copy/cut/paste/duplicate/Alt-drag clone), context menus, Alt+click select-through, and
 double-click to drill into a nested container with both bounding boxes shown — the last three
 straight from the kit's own "Prescribed location / Scaling elements" instructions to IBM users.
 Every gesture ships with its keyboard equivalent in the same PR;
-[D19](00-decision-log.md#d19--full-ibm-equal-access--wcag-21-aa--locked) is a requirement, not a
+[D19](./decision-log.md#d19--full-ibm-equal-access--wcag-21-aa--locked) is a requirement, not a
 follow-up.
 
 1. ✅ **Drag-to-move.** `CanvasController` migrated from mouse to Pointer Events with
@@ -916,7 +916,7 @@ follow-up.
    per element, and `createEditor.ts`'s subscription repaints just the affected ids
    (`SvgRenderer.renderElements()`, extended to also repaint any attached connector and resync tab
    order) instead of the whole scene for a position-only change — see C13 in the
-   [canvas parity plan](10-canvas-parity-plan.md#confirmed-defects), now resolved. Keyboard parity
+   [canvas parity plan](../packages/core/docs/canvas-parity-plan.md#confirmed-defects), now resolved. Keyboard parity
    for this gesture was already satisfied by M8's arrow-key nudge; no new keyboard code was needed.
 2. ✅ **8-handle resize** (Shift aspect-lock, Alt resize-from-center). `CanvasController` gained a
    `resizing` mode alongside `dragging`, on the same Pointer Events/`setPointerCapture` plumbing;
@@ -1003,7 +1003,7 @@ alignment guides, live gesture readout), M17.3 (live 16px buffer enforcement on 
 (containers auto-grow on drag), M17.5 (container resize reflows children), M17.6 (drop-target
 highlight, drag-to-reparent, and the reparent-render bug fix it surfaced), and M17.7 (alternating
 fills re-derive on reparent, a direct consequence of M17.6's own fix) — M17 complete; see
-[Canvas parity plan → M17](10-canvas-parity-plan.md#m17--the-feedback-layer).
+[Canvas parity plan → M17](../packages/core/docs/canvas-parity-plan.md#m17--the-feedback-layer).
 
 Rendered grid and snapping, alignment guides with spacing hints, drop-target highlight, live 16px
 buffer enforcement, containers that auto-grow rather than let children escape, child reflow on
@@ -1038,7 +1038,7 @@ container never leapfrogs its own descendants — the renderer paints one flat, 
 keyboard-equivalent (Ctrl/Cmd+`]`/`[`, Shift for the to-front/to-back variants), and reachable from
 the Edit menu, command palette, right-click menu, and MCP. Full detail, the corruption bug a naive
 per-bracket renumbering scheme would have caused, and the pre-existing `groupElements` bug this
-work found and fixed along the way: [Canvas parity plan → M18.1](10-canvas-parity-plan.md#m181--z-order).
+work found and fixed along the way: [Canvas parity plan → M18.1](../packages/core/docs/canvas-parity-plan.md#m181--z-order).
 
 ##### M18.2 — Align
 
@@ -1050,7 +1050,7 @@ own bounding box (never a designated anchor element) — the Figma/Illustrator/P
 convention. Connectors in the selection are silently excluded (their position is entirely derived
 from the elements they connect, not independently movable). Reachable from the Edit menu, the
 command palette, and MCP; no context-menu entry or keyboard shortcut, same reasoning M18.1 gave for
-keeping the context menu lean. Full detail: [Canvas parity plan → M18.2](10-canvas-parity-plan.md#m182--align).
+keeping the context menu lean. Full detail: [Canvas parity plan → M18.2](../packages/core/docs/canvas-parity-plan.md#m182--align).
 
 ##### M18.3 — Distribute
 
@@ -1062,7 +1062,7 @@ between them moves so consecutive gaps match — the Figma/Illustrator/PowerPoin
 Requires at least three distributable (non-connector) elements; connectors in the selection are
 silently excluded, same reasoning as M18.2. Reachable from the Edit menu, the command palette, and
 MCP; no context-menu entry or keyboard shortcut, same reasoning M18.2 gave for align. Full detail:
-[Canvas parity plan → M18.3](10-canvas-parity-plan.md#m183--distribute).
+[Canvas parity plan → M18.3](../packages/core/docs/canvas-parity-plan.md#m183--distribute).
 
 #### M19 — Connector editing
 
@@ -1082,7 +1082,7 @@ button (`element.type === "connector" && element.routing === "manual"`, single s
 
 ✅ **Done** — rotation handle with 15° Shift-snapping, rotation-aware hit-testing/handles/ports/bounds,
 IBM palette swatches + free color picker, and two new linter rules (`non-zero-rotation`,
-`off-palette-color`). See [Canvas parity plan → M20](10-canvas-parity-plan.md#m20--full-range-on-demand).
+`off-palette-color`). See [Canvas parity plan → M20](../packages/core/docs/canvas-parity-plan.md#m20--full-range-on-demand).
 
 **v4 exit criteria:** a render of an IBM-authored template is visually indistinguishable from IBM's
 own export; an architect builds a nested multi-zone diagram end to end using only the mouse, and
@@ -1092,7 +1092,7 @@ editing throughout; every new capability is reachable from the MCP surface; AA r
 ## v5 — Release channel
 
 Get a downloadable build of the engine into people's hands — a preview channel, distinct from the
-[D17](00-decision-log.md#d17--official--ibm-internal-tool--locked)-gated official IBM release.
+[D17](./decision-log.md#d17--official--ibm-internal-tool--locked)-gated official IBM release.
 
 #### M21 — Licensing + release packaging
 
@@ -1163,14 +1163,14 @@ with web/mcp/vscode/desktop (macOS/Windows/Linux) artifacts attached.
 desktop artifacts for all three desktop platforms, unattended (✅ — confirmed via a real tag push,
 not just workflow linting).
 
-## v6 — Autonomous agent runtime (Deep Agents + A2A) · [D31](00-decision-log.md#d31--new-agent-package-hosts-the-deep-agent-runtime-kept-separate-from-the-mcp-server--locked-v6)
+## v6 — Autonomous agent runtime (Deep Agents + A2A) · [D31](./decision-log.md#d31--new-agent-package-hosts-the-deep-agent-runtime-kept-separate-from-the-mcp-server--locked-v6)
 
 Close the gap [M9.2](#m92--agent-skills) left open: a real agent loop that drives `packages/mcp`
 end-to-end from natural language, not just documentation an agent framework could in principle
 follow. Introduces `apps/agent` — a LangChain JS Deep Agents runtime, exposed over A2A via
 [`@a2a-js/sdk`](https://github.com/a2aproject/a2a-js) — as the concrete "Solution Architecture
-Agent" [D15](00-decision-log.md#d15--mcp-full-authoring-toolset--locked-v2)/[D16](00-decision-log.md#d16--authoring--spec--export-agent-skills--locked-v2)
-already named. See [Agent Runtime](11-agent-runtime.md).
+Agent" [D15](./decision-log.md#d15--mcp-full-authoring-toolset--locked-v2)/[D16](./decision-log.md#d16--authoring--spec--export-agent-skills--locked-v2)
+already named. See [Agent Runtime](../apps/agent/docs/agent-runtime.md).
 
 #### M29 — Agent package scaffold + MCP subprocess lifecycle
 
@@ -1184,7 +1184,7 @@ recursive scripts; `build` follows the existing apps-build-their-own-way convent
 `pnpm --filter @icad/agent build`).
 
 No agent/LLM logic yet — just the plumbing
-([D34](00-decision-log.md#d34--one-ephemeral-mcp-subprocess-per-task-single-task-at-a-time--locked-v6)):
+([D34](./decision-log.md#d34--one-ephemeral-mcp-subprocess-per-task-single-task-at-a-time--locked-v6)):
 `McpSession` (`src/mcpSession.ts`), a thin wrapper over `@langchain/mcp-adapters`'
 `MultiServerMCPClient`, spawning `@icad/mcp`'s compiled stdio entrypoint as a fresh child process
 per session (`restart: { enabled: false }` — a dead subprocess fails the task, it never silently
@@ -1214,12 +1214,12 @@ re-confirmed harmless by re-running that one file in isolation, clean).
 ✅ **Done** (2026-08-06)
 
 The orchestrator + `diagram-builder` + `conformance-exporter` sub-agent structure
-([D33](00-decision-log.md#d33--orchestrator-plus-two-sub-agents-diagram-builder-and-conformance-exporter--locked-v6)),
+([D33](./decision-log.md#d33--orchestrator-plus-two-sub-agents-diagram-builder-and-conformance-exporter--locked-v6)),
 each loading the appropriate existing `packages/mcp/skills/` `SKILL.md`. Configurable chat model
 via LangChain's generic interface
-([D36](00-decision-log.md#d36--agent-memory-is-ephemeral-per-task-the-llm-provider-is-configurable--locked-v6));
+([D36](./decision-log.md#d36--agent-memory-is-ephemeral-per-task-the-llm-provider-is-configurable--locked-v6));
 ephemeral per-task memory. The hard export gate
-([D37](00-decision-log.md#d37--hard-export-gate-auto-fix-everything-fixable-then-block-on-remaining-errors--locked-v6)):
+([D37](./decision-log.md#d37--hard-export-gate-auto-fix-everything-fixable-then-block-on-remaining-errors--locked-v6)):
 `runDiagramTask` runs its own independent `lint()` after the orchestrator finishes and refuses to
 report success with any `error` diagnostic outstanding — never merely trusted to what the
 sub-agents report about their own work.
@@ -1246,7 +1246,7 @@ testing could have caught. Five real findings, in the order hit:
    `/exports/diagram.svg` instead of reproducing the real one, failing the task outright. Fix:
    `export_diagram`/`doc_save` moved out of conformance-exporter's tools entirely, now called
    procedurally by `runDiagramTask` with the real paths, after the lint gate passes. See the
-   amendment on [D33](00-decision-log.md#d33--orchestrator-plus-two-sub-agents-diagram-builder-and-conformance-exporter--locked-v6).
+   amendment on [D33](./decision-log.md#d33--orchestrator-plus-two-sub-agents-diagram-builder-and-conformance-exporter--locked-v6).
 2. **`@langchain/ollama`'s `ChatOllama` rejects non-string tool-message content**, and most
    `@icad/mcp` tools return one (their `ok()` helper pairs a text summary with `structuredContent`
    for the outputSchema; `@langchain/mcp-adapters` folds both into a `{type, text,
@@ -1476,7 +1476,7 @@ directly and sequentially by `runDiagramTask`'s own code: diagram-builder runs, 
 involved) `quickfix_apply_all()` → `lint()` once; conformance-exporter is only built and invoked at
 all if error-severity diagnostics survive that, with the remaining diagnostics handed to it
 directly in its task message rather than making it re-discover them via its own `lint()` call. See
-[D33's amendment](00-decision-log.md#d33--orchestrator-plus-two-sub-agents-diagram-builder-and-conformance-exporter--locked-v6)
+[D33's amendment](./decision-log.md#d33--orchestrator-plus-two-sub-agents-diagram-builder-and-conformance-exporter--locked-v6)
 for the full reasoning.
 
 **Done when:** a live run whose diagram is already quick-fixable to zero errors skips the
@@ -1514,7 +1514,7 @@ clean run free of findings #6/#7's confounds to be trustworthy.
 ✅ **Done** (2026-08-06)
 
 SVG→PNG conversion
-([D35](00-decision-log.md#d35--existing-diagrams-are-referenced-by-file-path-png-is-produced-agent-side--locked-v6))
+([D35](./decision-log.md#d35--existing-diagrams-are-referenced-by-file-path-png-is-produced-agent-side--locked-v6))
 via [`@resvg/resvg-js`](https://github.com/yisibl/resvg-js) (`apps/agent/src/pngExport.ts`'s
 `convertSvgToPng` — a real Rust SVG renderer via native bindings, not a headless browser), run
 procedurally by `runDiagramTask` right after the export/save step succeeds (M30 finding #1 moved
@@ -1533,16 +1533,16 @@ just valid PNG bytes.
 ✅ **Done** (2026-08-06)
 
 `GenerateArchitectureDiagram` and `ModifyArchitectureDiagram` as two skills in an `AgentCard`
-([D32](00-decision-log.md#d32--a2a-server-is-primary-a2a-client-is-plumbing-only-localhost-only-no-auth--locked-v6)),
+([D32](./decision-log.md#d32--a2a-server-is-primary-a2a-client-is-plumbing-only-localhost-only-no-auth--locked-v6)),
 served via `DefaultRequestHandler` + `InMemoryTaskStore` (sufficient given
-[D34](00-decision-log.md#d34--one-ephemeral-mcp-subprocess-per-task-single-task-at-a-time--locked-v6)'s
+[D34](./decision-log.md#d34--one-ephemeral-mcp-subprocess-per-task-single-task-at-a-time--locked-v6)'s
 single-task-at-a-time model) and the SDK's Express `jsonRpcHandler`/`agentCardHandler`
 (`UserBuilder.noAuthentication`), on `localhost:41241` (the SDK's own sample convention) unless
 overridden. `ModifyArchitectureDiagram` takes an explicit `.icad` path in its task input. An
 `AgentExecutor.execute()` implementation drives the (post-M30.3) diagram-builder →
 conformance-exporter flow, publishing `AgentEvent.task` → `statusUpdate` (submitted → working) →
 `artifactUpdate` (the `.icad`, `.svg`, `.png` paths) → a final `statusUpdate` (completed, or failed
-carrying [D37](00-decision-log.md#d37--hard-export-gate-auto-fix-everything-fixable-then-block-on-remaining-errors--locked-v6)'s
+carrying [D37](./decision-log.md#d37--hard-export-gate-auto-fix-everything-fixable-then-block-on-remaining-errors--locked-v6)'s
 diagnostics). `AgentExecutor.cancelTask()` kills the task's MCP subprocess early, mirroring the
 SDK's own cancellable-agent sample.
 
@@ -1559,7 +1559,7 @@ unfaked pipeline underneath.
 A minimal CLI acting as an A2A client for local testing/dogfooding — modeled directly on the SDK's
 own sample `client.ts` (`ClientFactory` + `JsonRpcTransportFactory`, `sendMessageStream`, printing
 `task`/`statusUpdate`/`artifactUpdate` events as they arrive). The A2A client capability
-([D32](00-decision-log.md#d32--a2a-server-is-primary-a2a-client-is-plumbing-only-localhost-only-no-auth--locked-v6))
+([D32](./decision-log.md#d32--a2a-server-is-primary-a2a-client-is-plumbing-only-localhost-only-no-auth--locked-v6))
 is wired at the SDK level with no real delegate target yet.
 
 **Live dogfooding found one real, distinct A2A-layer bug**, separate from any of M30's ten
@@ -1611,26 +1611,50 @@ there needs either a more capable model (a real question for a future session, n
 further work on `scene_apply`'s reliability (findings #4/#9/#10). Tracked here rather than
 overstated as done.
 
+## v7 — Hardening & ergonomics · [Improvement plan](./improvement-plan.md)
+
+Milestones **M34–M40** are specified in the [Improvement plan](./improvement-plan.md), not here —
+that document holds the audit evidence (confirmed defects A1–A14), the item definitions (I1–I18),
+and the sequencing rationale. This section exists so the roadmap doesn't appear to stop at M33.
+
+| Milestone | Contents                  | Theme                                                                                                                               |
+| --------- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| M34       | I13, I14, I5, I16, I18    | Safety & truth: MCP path confinement, `.icad` validation, the rotate/drag defect, the two unmet shipped claims, benchmark isolation |
+| M35       | I1, I2 (step 1), I10      | Perf floor: scene indexes, deferred lint, per-document autosave                                                                     |
+| M36       | I7, I8                    | Ergonomics: inline canvas text editing, Library drag-and-drop                                                                       |
+| M37       | I17                       | Real-browser gesture E2E + visual baselines                                                                                         |
+| M38       | I3                        | Commands become serializable patches                                                                                                |
+| M39       | I4, I6, I2 (step 2)       | Spatial index, renderer diffing, scoped lint rules                                                                                  |
+| M40+      | I15, I9, I12, I11 backlog | Agent visual feedback, quick-connect, shell decomposition                                                                           |
+
+Four of the plan's [open strategic questions](./improvement-plan.md#open-strategic-questions)
+would reorder this — notably whether the product is human-first or agent-first (M36 vs. I15), and
+whether [D7](./decision-log.md#d7--export-only-interop-svgpng-no-drawio-import--locked) still
+holds. M34 is unaffected by all of them.
+
 ## Explicitly deferred / revisit later
 
-- Real-time multi-user collaboration ([D4](00-decision-log.md#d4--local-first-single-user-files--locked) is single-user by design).
-- `.drawio` import / round-trip ([D7](00-decision-log.md#d7--export-only-interop-svgpng-no-drawio-import--locked)).
+- Real-time multi-user collaboration ([D4](./decision-log.md#d4--local-first-single-user-files--locked) is single-user by design) — but see
+  [I3](./improvement-plan.md#i3--commands-become-serializable-patches): the closure-based command
+  model makes this a core rewrite rather than a later feature, so "deferred" is a live decision,
+  not a free one.
+- `.drawio` import / round-trip ([D7](./decision-log.md#d7--export-only-interop-svgpng-no-drawio-import--locked)).
 - Concurrent multi-task A2A sessions, cross-session agent memory, and real A2A-client delegation to
   another agent — all deferred by [v6](#v6--autonomous-agent-runtime-deep-agents--a2a)'s own
-  [D32](00-decision-log.md#d32--a2a-server-is-primary-a2a-client-is-plumbing-only-localhost-only-no-auth--locked-v6)/[D34](00-decision-log.md#d34--one-ephemeral-mcp-subprocess-per-task-single-task-at-a-time--locked-v6)/[D36](00-decision-log.md#d36--agent-memory-is-ephemeral-per-task-the-llm-provider-is-configurable--locked-v6),
+  [D32](./decision-log.md#d32--a2a-server-is-primary-a2a-client-is-plumbing-only-localhost-only-no-auth--locked-v6)/[D34](./decision-log.md#d34--one-ephemeral-mcp-subprocess-per-task-single-task-at-a-time--locked-v6)/[D36](./decision-log.md#d36--agent-memory-is-ephemeral-per-task-the-llm-provider-is-configurable--locked-v6),
   pending real demand.
 - Cloud sync / share links / accounts.
-- Public open-source release (depends on IBM decision, [D17](00-decision-log.md#d17--official--ibm-internal-tool--locked)).
+- Public open-source release (depends on IBM decision, [D17](./decision-log.md#d17--official--ibm-internal-tool--locked)).
 
 ## Cross-cutting throughout
 
-- IBM Design sign-off gates each release ([D17](00-decision-log.md#d17--official--ibm-internal-tool--locked)).
+- IBM Design sign-off gates each release ([D17](./decision-log.md#d17--official--ibm-internal-tool--locked)).
 - Tests grow with features: Vitest (core), Playwright (web + keyboard E2E), CI a11y.
 - Every human-editor capability lands as a **command** so the v2 MCP server inherits it for free.
   From v4 on, a _gesture_ is ephemeral and a _commit_ is the command
-  ([D26](00-decision-log.md#d26--gestures-are-ephemeral-commits-are-commands--locked)) — in-flight
+  ([D26](./decision-log.md#d26--gestures-are-ephemeral-commits-are-commands--locked)) — in-flight
   drag state is deliberately not part of the document, the undo history, or the MCP surface, but
   every committed mutation still is.
 - From v4 on, interaction lives in `packages/core`, not the shells
-  ([D27](00-decision-log.md#d27--the-interaction-state-machine-lives-in-core-not-the-shells--locked)),
+  ([D27](./decision-log.md#d27--the-interaction-state-machine-lives-in-core-not-the-shells--locked)),
   so a new gesture reaches web, VS Code, and desktop in one change rather than three.

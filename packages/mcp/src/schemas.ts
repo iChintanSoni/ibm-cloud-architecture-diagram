@@ -1,7 +1,7 @@
 import { z } from "zod";
 
-/** Shared zod fragments mirroring @icad/core's scene/catalog types (docs/03-file-format.md,
- * docs/05-ibm-spec-conformance.md) — kept in one place so every tool schema stays in sync. */
+/** Shared zod fragments mirroring @icad/core's scene/catalog types (packages/core/docs/file-format.md,
+ * packages/core/docs/ibm-spec-conformance.md) — kept in one place so every tool schema stays in sync. */
 
 export const pointSchema = z.object({ x: z.number(), y: z.number() });
 
@@ -30,7 +30,7 @@ const relationshipTypeSchema = z.enum([
 ]);
 
 /** The five IBM connection types (physical/protocol traffic) plus the six relationship types
- * (logical, not traffic) — docs/05-ibm-spec-conformance.md#connector-nomenclature. */
+ * (logical, not traffic) — packages/core/docs/ibm-spec-conformance.md#connector-nomenclature. */
 export const connectorTypeSchema = z.union([
   connectionTypeSchema,
   relationshipTypeSchema,
@@ -61,7 +61,7 @@ export const connectorAnnotationSchema = z.object({
   port: z.string().optional(),
 });
 
-/** D24 (docs/00-decision-log.md): Region/VPC/Subnet are Box, not Zone — only az/on-prem remain. */
+/** D24 (docs/decision-log.md): Region/VPC/Subnet are Box, not Zone — only az/on-prem remain. */
 export const zoneKindSchema = z.enum(["az", "on-prem"]);
 
 export const diagramTemplateIdSchema = z.enum([

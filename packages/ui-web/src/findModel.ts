@@ -5,11 +5,11 @@ export interface FindMatch {
   id: ElementId;
   label: string;
   type: SceneElement["type"];
-  /** "frame" surfaces the Excalidraw-style "jump straight to a section" case (docs/06-editor-ux.md#find-on-canvas-f). */
+  /** "frame" surfaces the Excalidraw-style "jump straight to a section" case (packages/core/docs/editor-ux.md#find-on-canvas-f). */
   kind: "frame" | "element";
 }
 
-/** Searches element labels, icon catalog names, and frame names (docs/06-editor-ux.md#find-on-canvas-f). */
+/** Searches element labels, icon catalog names, and frame names (packages/core/docs/editor-ux.md#find-on-canvas-f). */
 export function findMatches(
   elements: SceneElement[],
   catalog: Catalog,

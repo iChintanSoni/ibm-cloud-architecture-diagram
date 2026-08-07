@@ -40,7 +40,7 @@ jobs:
       - name: Lint
         run: pnpm -r lint
 
-      # Includes the axe-core accessibility smoke test (docs/07-accessibility.md#testing--ci).
+      # Includes the axe-core accessibility smoke test (packages/core/docs/accessibility.md#testing--ci).
       - name: Test
         run: pnpm -r test
 
@@ -65,7 +65,7 @@ jobs:
       - name: Install Playwright browsers
         run: pnpm --filter @icad/web exec playwright install --with-deps chromium
 
-      # Real-browser accessibility + keyboard-only E2E flows (docs/07-accessibility.md#testing--ci):
+      # Real-browser accessibility + keyboard-only E2E flows (packages/core/docs/accessibility.md#testing--ci):
       # the axe-core check in the "Test" job above runs under jsdom, which can't evaluate
       # layout-dependent rules (color-contrast, ...) or drive real Tab-key focus traversal.
       - name: E2E tests (Playwright + axe-core)

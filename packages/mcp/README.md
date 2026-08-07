@@ -38,11 +38,26 @@ Point your MCP client at it directly with Node:
 
 stdio is the only transport (no HTTP/SSE); no environment variables, API keys, or network access
 are required — it's fully local and offline, reading and writing `.icad` files on disk. See the
-[AI agents & MCP guide](https://github.com/iChintanSoni/ibm-cloud-architecture-diagram/blob/main/docs/guide/05-ai-agents-mcp.md)
+[AI agents & MCP guide](https://github.com/iChintanSoni/ibm-cloud-architecture-diagram/blob/main/packages/mcp/docs/ai-agents-mcp.md)
 for the full tool list and Agent Skills under `skills/`.
+
+## Docs
+
+| Doc                                                   | What's inside                                                                  |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------ |
+| [AI agents & MCP](./docs/ai-agents-mcp.md)            | The full tool list, the Agent Skills, and a worked end-to-end example          |
+| [Agent integration spec](./docs/agent-integration.md) | How the MCP surface maps onto core's command API, and why it's shaped that way |
+
+Cross-cutting context: [Architecture](../../docs/architecture.md),
+[Decision log](../../docs/decision-log.md) (D15/D16),
+[Improvement plan](../../docs/improvement-plan.md).
 
 ## Limitations
 
 - PNG export isn't supported — only SVG (needs a real browser canvas, not available headlessly).
 - One document per server process, for its whole life.
 - No handoff to a running human editor instance.
+- Paths are resolved against the process working directory with no confinement — see
+  [I13](../../docs/improvement-plan.md#i13--mcp-filesystem-confinement).
+- No tool returns a rendering, so an agent can't see what it drew — see
+  [I15](../../docs/improvement-plan.md#i15--agent-visual-feedback-mcp).

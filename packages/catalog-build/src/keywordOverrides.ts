@@ -12,7 +12,7 @@
  * bump as long as the slug itself doesn't change.
  *
  * Only add a term here once you've confirmed by hand that the icon is a genuine, defensible match
- * for it (docs/04-icon-catalog.md) — not every plausible architecture term has a real icon behind
+ * for it (packages/catalog-build/docs/icon-catalog.md) — not every plausible architecture term has a real icon behind
  * it (e.g. no icon in this catalog specifically depicts a "zone" or "container" as such), and
  * forcing an unrelated icon to match one just to avoid a zero-result search is worse than the gap.
  */

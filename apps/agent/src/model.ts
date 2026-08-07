@@ -13,7 +13,7 @@ export interface ModelConfig {
    * "thinking" models like qwen3 default to reasoning enabled). M30.2: a real, verified option
    * (`ChatOllamaCallOptions.think`) that can measurably cut per-turn latency, but left
    * caller-configurable rather than hardcoded off — a live A/B comparison hadn't confirmed
-   * disabling it by default is safe for diagram-correctness before this shipped (docs/09-roadmap.md's
+   * disabling it by default is safe for diagram-correctness before this shipped (docs/roadmap.md's
    * M30.2 entry). */
   think?: boolean;
 }
@@ -29,7 +29,7 @@ function parseThinkEnv(value: string | undefined): boolean | undefined {
   );
 }
 
-/** Provider-agnostic model resolution (docs/00-decision-log.md#d36): reads config/env instead of
+/** Provider-agnostic model resolution (docs/decision-log.md#d36): reads config/env instead of
  * hardcoding a vendor SDK. Only "ollama" is implemented today — this project's own local
  * verification setup — but the switch is structured so a real cloud provider can be added later
  * without reshaping callers, which all depend on the returned `LanguageModelLike`, never on a

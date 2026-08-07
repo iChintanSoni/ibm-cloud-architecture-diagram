@@ -78,7 +78,7 @@ function withErrorRecovery(original: StructuredTool): StructuredTool {
 
 /**
  * One `@icad/mcp` stdio subprocess for the lifetime of a single agent task
- * (docs/00-decision-log.md#d34): started fresh by `start()`, torn down by `close()` once the
+ * (docs/decision-log.md#d34): started fresh by `start()`, torn down by `close()` once the
  * task completes. Never pooled or reused across tasks — see D34's rationale (the MCP server
  * holds exactly one open document for its whole process lifetime, and a long-running session
  * can end up running stale, pre-rebuild code).

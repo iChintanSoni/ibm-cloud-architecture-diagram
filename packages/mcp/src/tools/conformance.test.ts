@@ -18,7 +18,7 @@ describe("conformance & export tools", () => {
   });
 
   it("lint() reports a real diagnostic, and quickfix_apply resolves it by id", async () => {
-    // An unlabeled box trips the missing-label rule (docs/05-ibm-spec-conformance.md).
+    // An unlabeled box trips the missing-label rule (packages/core/docs/ibm-spec-conformance.md).
     await client.callTool({
       name: "element_add_box",
       arguments: { at: { x: 0, y: 0 } },

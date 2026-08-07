@@ -9,7 +9,8 @@ ICAD models the published [IBM Cloud Architecture Framework](https://cloud.ibm.c
 diagram spec, not generic boxes-and-arrows. This is the convention reference the
 `ibm-diagram-authoring` and `ibm-diagram-export` skills build on and the `lint` MCP tool enforces.
 If you're operating inside the `ibm-cloud-diagram` repo, the full source is
-`docs/05-ibm-spec-conformance.md` / `docs/04-icon-catalog.md` — this file is the compact version for
+`packages/core/docs/ibm-spec-conformance.md` / `packages/catalog-build/docs/icon-catalog.md` — this
+file is the compact version for
 authoring against the MCP server directly.
 
 ## Element semantics

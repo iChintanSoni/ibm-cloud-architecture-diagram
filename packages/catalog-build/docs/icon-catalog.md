@@ -1,9 +1,9 @@
 # Icon Catalog
 
 The catalog is the bundled, offline, versioned set of IBM icons the editor draws from. It is
-**generated at build time** from IBM's published stencils ([D11](00-decision-log.md#d11--build-time-icon-conversion-bundled-offline-catalog--locked)).
+**generated at build time** from IBM's published stencils ([D11](../../../docs/decision-log.md#d11--build-time-icon-conversion-bundled-offline-catalog--locked)).
 
-> **Status:** implemented ([Roadmap M2](09-roadmap.md#m2--icon-catalog-pipeline)).
+> **Status:** implemented ([Roadmap M2](../../../docs/roadmap.md#m2--icon-catalog-pipeline)).
 > `packages/catalog-build` has generated `packages/catalog/2.0.0` — 241 icons across 11 categories
 > (`ai`, `actors`, `applications`, `compute`, `data`, `devops`, `network`, `observability`,
 > `security`, `storage`, `groups`), pinned at upstream commit `32d9c311b`. A few details below
@@ -50,7 +50,7 @@ Steps:
      stencil XML was redundant; that held for every category except this one — a full decode found
      35 Groups-family icons (corner glyphs for container presets like Region/VPC/Availability
      Zone/Security Group) with no `svg/`-tree equivalent under any name (see
-     [D23](00-decision-log.md#d23--catalog-gains-a-groups-icon-category-narrowing-d21--locked)).
+     [D23](../../../docs/decision-log.md#d23--catalog-gains-a-groups-icon-category-narrowing-d21--locked)).
      Each entry is a JSON blob (`{ xml, title, ... }`) with the real glyph as a base64
      `data:image/svg+xml` URI buried inside its HTML-entity-escaped `xml` field; most decode to a
      flat, already-colored glyph with their own `viewBox` (no 48×48 tile to strip), though a
@@ -122,28 +122,28 @@ Re-running the pipeline against a newer upstream tag produces a new catalog vers
 ```
 
 > **Containers are not catalog entries.** Box/Group/Boundary (`zone` internally) ship as native ICAD engine primitives
-> ([Architecture → Scene model](02-architecture.md#the-core)), not `icons[]` rows — deliberately no
+> ([Architecture → Scene model](../../../docs/architecture.md#the-core)), not `icons[]` rows — deliberately no
 > `groups` category above. IBM's kit does ship ~30 _named_ container stencils (VPC, Subnet, Region,
 > Availability Zone, Authorization Boundary, …), each with a preset icon/color/label. Per
-> [D21](00-decision-log.md#d21--container-presets-are-a-named-shortcut-layer-not-new-element-types--locked),
+> [D21](../../../docs/decision-log.md#d21--container-presets-are-a-named-shortcut-layer-not-new-element-types--locked),
 > we don't fork these into new element types — instead the library panel offers them as one-click,
 > pre-styled inserts over the three primitives. See the proposed table below.
 
 ## Container presets
 
-A static lookup the library panel ([M7](09-roadmap.md#m7--chrome-templates-find-themes-carbon))
+A static lookup the library panel ([M7](../../../docs/roadmap.md#m7--chrome-templates-find-themes-carbon))
 uses to offer named, pre-styled inserts: pick "VPC" and get a correctly colored, correctly bordered
 Box with the VPC glyph in the corner and "VPC" as the label — instead of drawing a Box and manually
 styling it. Each row is `{ name, kind, category color, corner icon }`; `kind` follows the
-[Element semantics](05-ibm-spec-conformance.md#element-semantics) rule (Box = solid/`deployedOn`,
+[Element semantics](../../core/docs/ibm-spec-conformance.md#element-semantics) rule (Box = solid/`deployedOn`,
 Group = dashed/`deployedTo`, Boundary = dotted boundary).
 
 **Confidence:** rows marked `✓` reproduce IBM's own worked example from the kit exactly (border
 style, color, and icon all confirmed). The rest are inferred from the kit's stencil legend — which
 turned out to be internally inconsistent (its "OpenShift" swatch shows a solid border even though
 the kit's own worked diagram uses a dashed one) — plus semantic reasoning from the [Element
-semantics](05-ibm-spec-conformance.md#element-semantics) rule. Treat unmarked rows as a starting
-draft, not a spec citation; confirm against IBM Design before shipping ([D17](00-decision-log.md#d17--official--ibm-internal-tool--locked)).
+semantics](../../core/docs/ibm-spec-conformance.md#element-semantics) rule. Treat unmarked rows as a starting
+draft, not a spec citation; confirm against IBM Design before shipping ([D17](../../../docs/decision-log.md#d17--official--ibm-internal-tool--locked)).
 
 ### IBM Core
 
@@ -192,9 +192,9 @@ implementation time.
 **Security/Access/Resource/Account Group are `Group` (dashed, `deployedTo`), not `Boundary`** —
 an earlier draft of this table guessed Boundary from the stencil legend alone. `images/DeployedTo.png`
 (App SG/Data SG/Maint SG render as dashed red containers) and
-[docs/05](05-ibm-spec-conformance.md#element-semantics)'s own worked-example text both confirm
+[docs/05](../../core/docs/ibm-spec-conformance.md#element-semantics)'s own worked-example text both confirm
 Security Group is `Group`; Access/Resource/Account Group are updated to match for consistency,
-though no worked example confirms those three specifically ([D24](00-decision-log.md#d24--regionvpcsubnet-are-box-only-availability-zoneon-prem-are-boundary--locked)).
+though no worked example confirms those three specifically ([D24](../../../docs/decision-log.md#d24--regionvpcsubnet-are-box-only-availability-zoneon-prem-are-boundary--locked)).
 
 Source: _IBM_IT Architecture diagrams kit_ v1.1, "Groups" slides, cross-checked against
 [IBM-Cloud/architecture-icons](https://github.com/IBM-Cloud/architecture-icons)'s `svg/` tree and
@@ -217,19 +217,19 @@ search.
 
 ## Licensing & branding
 
-As an official IBM tool ([D17](00-decision-log.md#d17--official--ibm-internal-tool--locked)), use of the IBM icons and brand is sanctioned. We still
+As an official IBM tool ([D17](../../../docs/decision-log.md#d17--official--ibm-internal-tool--locked)), use of the IBM icons and brand is sanctioned. We still
 record the upstream `ref` and license in the manifest and honor the icon repo's terms. IBM Design
 sign-off applies to how icons/colors are rendered.
 
 ## Versioning strategy
 
-- Catalog versions are semver, independent of app version ([D29](00-decision-log.md#d29--catalog-ref-compatibility-uses-catalog-aliases-not-the-icad-schema-migration-registry--locked-v3):
+- Catalog versions are semver, independent of app version ([D29](../../../docs/decision-log.md#d29--catalog-ref-compatibility-uses-catalog-aliases-not-the-icad-schema-migration-registry--locked-v3):
   catalog-ref compatibility never touches the `.icad` schema `MIGRATIONS` registry).
 - `.icad` files pin a catalog version (`catalog: { id, version }`); the app bundles the current +
   a compatibility shim of `aliases` so older files resolve.
 - Bumping the catalog is a deliberate, reviewed change (IBM Design sign-off), not automatic.
 
-### Re-pin process (Roadmap [M13](09-roadmap.md#m13--catalog-refresh-cadence--migration-tooling))
+### Re-pin process (Roadmap [M13](../../../docs/roadmap.md#m13--catalog-refresh-cadence--migration-tooling))
 
 `packages/catalog/current.json` (`{ "version": "2.0.0" }`) is the single source of truth every
 runtime loader reads (`apps/web/src/catalog.ts`, `packages/mcp/src/catalog.ts`,
@@ -249,7 +249,7 @@ runtime loader reads (`apps/web/src/catalog.ts`, `packages/mcp/src/catalog.ts`,
 3. Hand-review the remaining `removed` list: anything not caught by the exact-match heuristic (e.g.
    a rename paired with a real visual tweak) gets a manual `aliases` entry if appropriate, or is
    accepted as a genuine removal — any `.icad` still referencing it falls back to a gray-tile icon
-   plus the `non-catalog-icon` lint diagnostic (unchanged by this process, [D29](00-decision-log.md#d29--catalog-ref-compatibility-uses-catalog-aliases-not-the-icad-schema-migration-registry--locked-v3)).
+   plus the `non-catalog-icon` lint diagnostic (unchanged by this process, [D29](../../../docs/decision-log.md#d29--catalog-ref-compatibility-uses-catalog-aliases-not-the-icad-schema-migration-registry--locked-v3)).
 4. Flip `packages/catalog/current.json`'s `"version"` to the new value.
 5. Run `pnpm -r typecheck && pnpm -r lint && pnpm -r test` across the workspace.
 6. Once confident, delete the old `packages/catalog/<oldVersion>/` directory (optional, manual —

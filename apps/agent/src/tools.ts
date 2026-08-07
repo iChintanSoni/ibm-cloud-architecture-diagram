@@ -3,8 +3,8 @@ import type { StructuredTool } from "@langchain/core/tools";
 /**
  * Which of `@icad/mcp`'s real registered tools (verified against
  * `packages/mcp/src/tools/*.ts`, not the sometimes-stale guide docs — currently 30, not the 25
- * `docs/guide/05-ai-agents-mcp.md` still describes) each part of the agent gets, per
- * docs/00-decision-log.md#d33.
+ * `packages/mcp/docs/ai-agents-mcp.md` still describes) each part of the agent gets, per
+ * docs/decision-log.md#d33.
  *
  * Document lifecycle (`doc_create`/`doc_open`/`doc_get`) is deliberately **not** delegated to any
  * LLM here — `runDiagramTask` calls it procedurally before the orchestrator ever runs, since "new

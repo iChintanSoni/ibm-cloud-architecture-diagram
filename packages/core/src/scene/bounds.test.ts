@@ -103,7 +103,7 @@ describe("boundsOf", () => {
   });
 });
 
-describe("fitRectWithPadding (M17.4, docs/10-canvas-parity-plan.md)", () => {
+describe("fitRectWithPadding (M17.4, packages/core/docs/canvas-parity-plan.md)", () => {
   it("pads a bare bbox on every side when no existing rect is given", () => {
     const result = fitRectWithPadding({ x: 10, y: 10, w: 100, h: 50 }, 16);
     expect(result).toEqual({ x: -6, y: -6, w: 132, h: 82 });
@@ -134,7 +134,7 @@ describe("fitRectWithPadding (M17.4, docs/10-canvas-parity-plan.md)", () => {
   });
 });
 
-describe("autoFitContainer (M17.4, docs/10-canvas-parity-plan.md)", () => {
+describe("autoFitContainer (M17.4, packages/core/docs/canvas-parity-plan.md)", () => {
   it("returns undefined for an unknown container", () => {
     const scene = new Scene();
     expect(autoFitContainer(scene, "missing")).toBeUndefined();

@@ -3,7 +3,7 @@ import { CONTAINER_CHILD_PADDING_PX } from "../scene/containerPadding.js";
 
 /**
  * The 8 handles IBM's kit prescribes ("Prescribed location / Scaling elements",
- * docs/10-canvas-parity-plan.md): 4 corners + 4 mid-edges. Order is render/hit-test order only,
+ * packages/core/docs/canvas-parity-plan.md): 4 corners + 4 mid-edges. Order is render/hit-test order only,
  * not semantically meaningful.
  */
 export const RESIZE_HANDLES = [
@@ -25,18 +25,18 @@ export type ResizeHandle = (typeof RESIZE_HANDLES)[number];
 const MIN_SIZE = 1;
 
 export interface ResizeOptions {
-  /** Corner handles only (docs/10-canvas-parity-plan.md's "Shift aspect-lock"): preserves the
+  /** Corner handles only (packages/core/docs/canvas-parity-plan.md's "Shift aspect-lock"): preserves the
    * original w/h ratio, driven by whichever axis the pointer moved further along. */
   aspectLock?: boolean;
   /** Grows/shrinks symmetrically around the original center instead of anchoring the opposite
-   * edge/corner (docs/10-canvas-parity-plan.md's "Alt resize-from-center"). */
+   * edge/corner (packages/core/docs/canvas-parity-plan.md's "Alt resize-from-center"). */
   fromCenter?: boolean;
 }
 
 /**
  * Computes a candidate bounding box for dragging `handle` by scene-space `(dx, dy)` from `start`.
  * Pure and scene-independent — no snapping/inset clamping here (that's M17's "live 16px buffer
- * enforcement", docs/10-canvas-parity-plan.md#m17--the-feedback-layer); this only derives the
+ * enforcement", packages/core/docs/canvas-parity-plan.md#m17--the-feedback-layer); this only derives the
  * geometry a resize gesture previews/commits.
  */
 export function resizeBounds(

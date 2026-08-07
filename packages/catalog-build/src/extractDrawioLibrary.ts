@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { JSDOM } from "jsdom";
 import { normalizeIcon, type NormalizedIcon } from "./extract.js";
 
-// Must match extract.ts's GLYPH_VIEWBOX (D25, docs/00-decision-log.md) — both feed the same
+// Must match extract.ts's GLYPH_VIEWBOX (D25, docs/decision-log.md) — both feed the same
 // catalog, and packages/core/src/render/svgRenderer.ts's glyph viewBoxes assume every asset,
 // regardless of which extraction path produced it, is normalized into the same 0..24 space.
 const GLYPH_VIEWBOX = 24;

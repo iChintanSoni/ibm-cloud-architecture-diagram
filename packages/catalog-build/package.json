@@ -1,7 +1,7 @@
 {
   "name": "@icad/catalog-build",
   "version": "0.0.0",
-  "description": "Build-time pipeline converting pinned IBM-Cloud/architecture-icons SVGs into packages/catalog (docs/04-icon-catalog.md).",
+  "description": "Build-time pipeline converting pinned IBM-Cloud/architecture-icons SVGs into packages/catalog (packages/catalog-build/docs/icon-catalog.md).",
   "license": "UNLICENSED",
   "private": true,
   "type": "module",

@@ -763,7 +763,7 @@ describe("createEditor", () => {
       editor.focusPrevious();
       expect(editor.focusedElement()).toBe(east);
 
-      // Tab navigation alone never selects anything (docs/07-accessibility.md).
+      // Tab navigation alone never selects anything (packages/core/docs/accessibility.md).
       expect(editor.selection.get()).toEqual([]);
     });
 
@@ -1337,7 +1337,7 @@ describe("createEditor", () => {
     });
   });
 
-  describe("z-order (M18.1, docs/10-canvas-parity-plan.md)", () => {
+  describe("z-order (M18.1, packages/core/docs/canvas-parity-plan.md)", () => {
     function paintOrderIds(): string[] {
       return editor.scene.all().map((el) => el.id);
     }
@@ -1516,7 +1516,7 @@ describe("createEditor", () => {
     });
   });
 
-  describe("align (M18.2, docs/10-canvas-parity-plan.md)", () => {
+  describe("align (M18.2, packages/core/docs/canvas-parity-plan.md)", () => {
     it("alignLeft/alignCenterHorizontal/alignRight/alignTop/alignMiddle/alignBottom align to the selection's own bbox edge/center, and undo restores exactly", () => {
       const a = editor.addBox({
         at: { x: 0, y: 0 },
@@ -1673,7 +1673,7 @@ describe("createEditor", () => {
     });
   });
 
-  describe("distribute (M18.3, docs/10-canvas-parity-plan.md)", () => {
+  describe("distribute (M18.3, packages/core/docs/canvas-parity-plan.md)", () => {
     it("distributeHorizontal/distributeVertical space elements evenly and undo restores exactly", () => {
       // Three boxes: a at x 0 w 50, b at x 200 w 50, c at x 300 w 100
       // Horizontal: anchor a & c; gap = (300-50-50)/2 = 100; b target x = 150 → dx -50
@@ -1885,7 +1885,7 @@ describe("createEditor", () => {
     });
   });
 
-  describe("clipboard (M16.5, docs/10-canvas-parity-plan.md)", () => {
+  describe("clipboard (M16.5, packages/core/docs/canvas-parity-plan.md)", () => {
     it("copy then paste clones with fresh ids, offset by the paste cascade, and selects the copy", () => {
       const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
 
@@ -2184,7 +2184,7 @@ describe("createEditor", () => {
     });
   });
 
-  describe("lock / hide (M18.4, docs/10-canvas-parity-plan.md)", () => {
+  describe("lock / hide (M18.4, packages/core/docs/canvas-parity-plan.md)", () => {
     it("lockElements sets locked:true, prevents a second lock from pushing an undo entry, and undo restores exactly", () => {
       const id = editor.addBox({ at: { x: 0, y: 0 }, label: "box" });
       expect(editor.scene.get(id)?.locked).toBeUndefined();

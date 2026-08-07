@@ -2,7 +2,7 @@ import type { ConnectorAnnotation } from "./types.js";
 
 /**
  * Formats a structured connector annotation as IBM's kit describes it
- * (docs/05-ibm-spec-conformance.md#connector-nomenclature): NAME, then a space-separated
+ * (packages/core/docs/ibm-spec-conformance.md#connector-nomenclature): NAME, then a space-separated
  * SECURITY descriptor, then a `:PORT` suffix — e.g. `HTTPS TLS1.3:443`. The kit's own deck shows
  * this wrapped in a literal `[...]` bracket, but that bracket is template placeholder notation
  * (the same convention `[PORT]` itself uses, not literal punctuation to render) — this follows

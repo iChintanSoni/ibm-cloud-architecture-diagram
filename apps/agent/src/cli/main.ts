@@ -3,7 +3,7 @@ import { TaskState, taskStateToJSON } from "@a2a-js/sdk";
 import { DEFAULT_A2A_PORT } from "../a2a/index.js";
 import { sendDiagramRequest } from "./sendDiagramRequest.js";
 
-const HELP = `icad-agent-cli — A2A dev-harness client (docs/09-roadmap.md#m33)
+const HELP = `icad-agent-cli — A2A dev-harness client (docs/roadmap.md#m33)
 
 Usage:
   icad-agent-cli "<requirement or edit instruction>" --output <path.icad> [options]
@@ -12,7 +12,7 @@ Options:
   --output <path>     Where to save the .icad (required). .svg/.png default to the same
                        basename unless overridden below.
   --existing <path>   Modify this existing .icad instead of creating a new one
-                       (docs/00-decision-log.md#d35 — ModifyArchitectureDiagram).
+                       (docs/decision-log.md#d35 — ModifyArchitectureDiagram).
   --svg <path>        Override the .svg output path.
   --png <path>        Override the .png output path.
   --level <level>     Diagram level for a new diagram: blank | system-context | high-level |

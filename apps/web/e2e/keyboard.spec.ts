@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { runCommand, startBlankDiagram } from "./fixtures.js";
 
 /**
- * Keyboard-only authoring flow (docs/07-accessibility.md#canvas-the-hard-20): every step below
+ * Keyboard-only authoring flow (packages/core/docs/accessibility.md#canvas-the-hard-20): every step below
  * uses only page.keyboard — no mouse clicks or drags — covering create, select, nudge, connect,
  * group/ungroup, delete, and undo. `.focus()` jumps are used the way a screen-reader user jumps
  * via region/heading navigation, standing in for tabbing through unrelated chrome.

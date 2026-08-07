@@ -1,6 +1,6 @@
 # Accessibility
 
-Accessibility is a first-class v1 requirement, not a retrofit ([D19](00-decision-log.md#d19--full-ibm-equal-access--wcag-21-aa--locked)). Target: **IBM Equal
+Accessibility is a first-class v1 requirement, not a retrofit ([D19](../../../docs/decision-log.md#d19--full-ibm-equal-access--wcag-21-aa--locked)). Target: **IBM Equal
 Access / WCAG 2.1 AA**. The hard part of a diagram editor is making a **canvas** accessible; we
 plan for it from the start.
 
@@ -8,7 +8,7 @@ plan for it from the start.
 
 - [IBM Equal Access Toolkit](https://www.ibm.com/able/toolkit/) as the working checklist.
 - [WCAG 2.1 AA](https://www.w3.org/TR/WCAG21/) as the conformance bar.
-- Carbon components give us accessible chrome (menus, dialogs, panels, forms) by default ([D18](00-decision-log.md#d18--carbon-design-system--ibm-plex-for-app-chrome--locked)).
+- Carbon components give us accessible chrome (menus, dialogs, panels, forms) by default ([D18](../../../docs/decision-log.md#d18--carbon-design-system--ibm-plex-for-app-chrome--locked)).
 
 ## Chrome (the easy 80%)
 
@@ -19,7 +19,7 @@ plan for it from the start.
 
 ## Canvas (the hard 20%)
 
-The SVG DOM choice ([D3](00-decision-log.md#d3--svg-dom-rendering--locked)) pays off here: elements are real DOM nodes we can annotate,
+The SVG DOM choice ([D3](../../../docs/decision-log.md#d3--svg-dom-rendering--locked)) pays off here: elements are real DOM nodes we can annotate,
 focus, and expose to assistive tech.
 
 - **Keyboard operation of everything.** Create, select, move, resize, connect, label, group, and
@@ -28,7 +28,7 @@ focus, and expose to assistive tech.
 - **An accessible object tree.** In parallel with the visual canvas, maintain an ARIA-annotated
   structure so a screen reader can navigate the diagram as a list/tree of elements with roles,
   names, and relationships ("VPC box, contains 3 elements; connector from API Gateway to VSI").
-- **Named elements.** Every icon has an accessible name from the [catalog](04-icon-catalog.md);
+- **Named elements.** Every icon has an accessible name from the [catalog](../../catalog-build/docs/icon-catalog.md);
   boxes/groups/zones/actors use their labels; connectors announce endpoints + type.
 - **Selection & focus.** A single roving focus model shared by keyboard and pointer; focus is
   always visible and announced.
@@ -47,7 +47,7 @@ not just geometric: "Actor _Customer_ connects to _API Gateway_ (request flow)."
 
 ## The linter serves a11y too
 
-Some [linter](05-ibm-spec-conformance.md) rules double as accessibility guards — e.g. **missing
+Some [linter](./ibm-spec-conformance.md) rules double as accessibility guards — e.g. **missing
 label** is both a spec violation and an accessible-name gap. Fixing spec issues improves SR output.
 
 ## Testing & CI
@@ -56,7 +56,7 @@ label** is both a spec violation and an accessible-name gap. Fixing spec issues 
   violations.
 - **Keyboard E2E:** Playwright flows that build and edit a diagram using only the keyboard.
 - **Manual:** periodic screen-reader passes (VoiceOver / NVDA) on core flows.
-- **Design sign-off:** IBM Design + accessibility review gates releases ([D17](00-decision-log.md#d17--official--ibm-internal-tool--locked)).
+- **Design sign-off:** IBM Design + accessibility review gates releases ([D17](../../../docs/decision-log.md#d17--official--ibm-internal-tool--locked)).
 
 ## Scope note
 

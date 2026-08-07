@@ -10,7 +10,7 @@ import type {
 export const ICAD_FORMAT = "icad" as const;
 export const ICAD_VERSION = 1 as const;
 
-/** On-disk shape of a .icad file (docs/03-file-format.md). */
+/** On-disk shape of a .icad file (packages/core/docs/file-format.md). */
 export interface IcadDocument {
   format: typeof ICAD_FORMAT;
   version: number;
@@ -61,7 +61,7 @@ export function applyIcad(scene: Scene, input: unknown): void {
 /**
  * Ordered `vN -> vN+1` steps, keyed by the version they upgrade *from*.
  * Empty until the schema bumps past 1 — see
- * docs/03-file-format.md#versioning--migration.
+ * packages/core/docs/file-format.md#versioning--migration.
  */
 const MIGRATIONS: Record<number, (doc: IcadDocument) => IcadDocument> = {};
 
@@ -69,7 +69,7 @@ const MIGRATIONS: Record<number, (doc: IcadDocument) => IcadDocument> = {};
  * Validates and upgrades a raw parsed .icad document, then repairs it so
  * the resulting scene is always structurally valid regardless of source
  * (hand-edited files, older buggy versions, partial writes) — see
- * docs/03-file-format.md#versioning--migration.
+ * packages/core/docs/file-format.md#versioning--migration.
  */
 function migrate(input: unknown): IcadDocument {
   if (typeof input !== "object" || input === null) {

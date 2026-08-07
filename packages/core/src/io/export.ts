@@ -5,7 +5,7 @@ import type { SvgRenderer } from "../render/svgRenderer.js";
 import { ICAD_VERSION, toIcad } from "./icad.js";
 
 export interface SvgExportOptions {
-  /** Embeds the full .icad JSON so the file can be reopened and re-edited (docs/03-file-format.md#svg-canonical). Default true. */
+  /** Embeds the full .icad JSON so the file can be reopened and re-edited (packages/core/docs/file-format.md#svg-canonical). Default true. */
   embedSource?: boolean;
 }
 
@@ -34,7 +34,7 @@ function base64Encode(input: string): string {
 /**
  * Padded bounding box of every element in the scene, independent of the editor's current
  * pan/zoom — export always captures the whole diagram, not just what's currently visible in the
- * viewport (docs/06-editor-ux.md).
+ * viewport (packages/core/docs/editor-ux.md).
  */
 function exportBounds(scene: Scene): Rect {
   const bbox = boundsOfElements(scene.all());
@@ -110,7 +110,7 @@ function bytesToBase64(bytes: Uint8Array): string {
 }
 
 /** Fetches every url(...) referenced in an @font-face `src` value and inlines it as a base64
- * data: URI, so the exported file is self-contained (docs/03-file-format.md#svg-canonical's
+ * data: URI, so the exported file is self-contained (packages/core/docs/file-format.md#svg-canonical's
  * "embedded fonts") and renders identically on a machine that doesn't have IBM Plex Sans installed
  * as a system font. Returns undefined if any referenced file can't be fetched (e.g. blocked by a
  * host CSP), so the caller skips that @font-face rule rather than emit one with a broken src. */

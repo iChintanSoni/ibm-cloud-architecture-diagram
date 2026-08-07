@@ -10,11 +10,11 @@ import {
 
 /**
  * Regression guard, not a real-browser performance target
- * (docs/09-roadmap.md#m12--performance-at-scale, docs/10-canvas-parity-plan.md M15 step 7). jsdom
+ * (docs/roadmap.md#m12--performance-at-scale, packages/core/docs/canvas-parity-plan.md M15 step 7). jsdom
  * is dramatically slower than a real browser at SVG DOM churn, so these budgets are generous
  * multiples (roughly 2-5x) of the baseline observed on this test environment — they exist to
  * catch an accidental O(n) sneaking into a hot path (e.g. pan/zoom starting to touch the full
- * scene), not to assert real-browser frame timing. See docs/10-canvas-parity-plan.md's C13 for
+ * scene), not to assert real-browser frame timing. See packages/core/docs/canvas-parity-plan.md's C13 for
  * the actual documented numbers and the dispatch-cost finding this benchmark surfaced.
  *
  * GitHub Actions' shared runners are both slower and noisier than a dedicated dev machine — the
@@ -61,7 +61,7 @@ const BUDGETS: Record<number, Budget> = {
   },
 };
 
-describe("performance benchmark (docs/09-roadmap.md#m12--performance-at-scale)", () => {
+describe("performance benchmark (docs/roadmap.md#m12--performance-at-scale)", () => {
   for (const size of [500, 1000, 2000] as const) {
     const budget = BUDGETS[size];
 
@@ -106,7 +106,7 @@ describe("performance benchmark (docs/09-roadmap.md#m12--performance-at-scale)",
       );
 
       // A single *committed* move is the realistic unit to measure. `Scene._transaction`
-      // (M16.1, docs/10-canvas-parity-plan.md's C13) coalesces every `_put` a command makes
+      // (M16.1, packages/core/docs/canvas-parity-plan.md's C13) coalesces every `_put` a command makes
       // into one change event, and `createEditor.ts`'s subscription repaints just the affected
       // ids for an "update"-reason event instead of the whole scene — so dispatch/undo/redo
       // each cost roughly the size of the *moved* set, not the whole diagram, unlike before this
@@ -124,7 +124,7 @@ describe("performance benchmark (docs/09-roadmap.md#m12--performance-at-scale)",
 
   it(
     "a scripted 200-update drag of a ~40-element subtree holds frame budget, produces exactly " +
-      "one undo entry, and runs the linter exactly once (docs/09-roadmap.md M15 'Done when')",
+      "one undo entry, and runs the linter exactly once (docs/roadmap.md M15 'Done when')",
     () => {
       const { doc } = buildSyntheticDocument(2000);
       const catalog = new Catalog(SYNTHETIC_CATALOG, SYNTHETIC_ASSETS);

@@ -7,9 +7,9 @@ function centerOf(el: SceneElement): { x: number; y: number } {
 /**
  * Chooses a reasonable port pair for connecting two elements without
  * requiring the author to pick exact ports — the dominant axis between their
- * centers, biased west→east on a tie (docs/05-ibm-spec-conformance.md#layout-convention).
+ * centers, biased west→east on a tie (packages/core/docs/ibm-spec-conformance.md#layout-convention).
  * Used by both mouse drag-to-connect and keyboard connect mode
- * (docs/06-editor-ux.md#core-interactions).
+ * (packages/core/docs/editor-ux.md#core-interactions).
  */
 export function pickPorts(
   from: SceneElement,

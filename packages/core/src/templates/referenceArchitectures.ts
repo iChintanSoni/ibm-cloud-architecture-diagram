@@ -11,7 +11,7 @@ import { actor, connector, icon } from "./elementBuilders.js";
 import type { DiagramTemplate } from "./templates.js";
 
 /**
- * IBM reference-architecture template ids (docs/09-roadmap.md#m26--reference-architecture-templates).
+ * IBM reference-architecture template ids (docs/roadmap.md#m26--reference-architecture-templates).
  * Distinct from `DocumentMeta["diagramLevel"]`: these are all "detailed/deployment"-level worked
  * examples, not a 5th diagram level of their own — see `TEMPLATE_DIAGRAM_LEVEL` in templates.ts.
  */
@@ -48,7 +48,7 @@ export const REFERENCE_ARCHITECTURE_TEMPLATES: readonly DiagramTemplate[] = [
   },
 ] as const;
 
-/** IBM Compute category primary/secondary pair (docs/00-decision-log.md#d30) — used for the
+/** IBM Compute category primary/secondary pair (docs/decision-log.md#d30) — used for the
  * translucent "Master" band so it stays on-palette (no off-palette-color lint diagnostic). */
 const MASTER_BAND_STROKE = "#198038";
 const MASTER_BAND_FILL = "#defbe6";
@@ -142,7 +142,7 @@ function clusterGroup(
 /**
  * All four IBM "Single Region, Multi-Zone" reference diagrams
  * (IBM-Cloud/architecture-icons `drawio/templates/2.0/{iks,roks}_sr_mz_{classic,vpc}.drawio`)
- * share one skeleton — see docs/00-decision-log.md#d30 for the full source→catalog icon mapping
+ * share one skeleton — see docs/decision-log.md#d30 for the full source→catalog icon mapping
  * this was built from. `distribution` swaps the cluster icon/label (Kubernetes vs. OpenShift);
  * `infrastructure` adds the "IBM VPC" wrapping box and swaps load-balancer icons/labels.
  */
@@ -162,7 +162,7 @@ function srMzClusterElements(options: SrMzOptions): SceneElement[] {
   const masterLabelId = `${prefix}-master-label`;
 
   // Layout computed bottom-up: each container's size is its content's size plus a fixed padding,
-  // so nesting never collapses to zero inset (see docs/00-decision-log.md#d30). One shared
+  // so nesting never collapses to zero inset (see docs/decision-log.md#d30). One shared
   // zone/subnet size for all 3 zones, stacked vertically. Workers sit side-by-side within a
   // subnet, matching IBM's own source drawing (D30) — this used to be a vertical stack instead,
   // worked around the risk of a straight Load-Balancer-to-Worker-2 connector crossing Worker-1's

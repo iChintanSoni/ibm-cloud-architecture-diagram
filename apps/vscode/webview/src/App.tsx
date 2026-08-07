@@ -90,7 +90,7 @@ export function App() {
   const [catalog] = useState(createIbmCloudCatalog);
 
   const { kind: themeKind, carbonTheme } = useVsCodeTheme();
-  // Mirrors CanvasController's own mode (D27, docs/00-decision-log.md) for rendering only —
+  // Mirrors CanvasController's own mode (D27, docs/decision-log.md) for rendering only —
   // CanvasController is the source of truth, this is just what triggers a re-render. The
   // *specific* LibraryPlacement being armed is a ui-web concept core's controller can't know
   // about, so it's tracked separately, only for the Library panel's "armed" highlight.
@@ -113,12 +113,12 @@ export function App() {
   const [findQuery, setFindQuery] = useState("");
   const [findActiveIndex, setFindActiveIndex] = useState(0);
   const [announcement, setAnnouncement] = useState("");
-  // Background grid visibility (M17.2, docs/10-canvas-parity-plan.md) — defaults on, no
+  // Background grid visibility (M17.2, packages/core/docs/canvas-parity-plan.md) — defaults on, no
   // persistence in this shell (unlike apps/web's localStorage): a cosmetic-only view preference,
   // the same narrower-parity posture this shell already takes on PNG export.
   const [gridVisible, setGridVisible] = useState(true);
 
-  // Live region for meaningful changes (docs/07-accessibility.md#canvas-the-hard-20): briefly
+  // Live region for meaningful changes (packages/core/docs/accessibility.md#canvas-the-hard-20): briefly
   // clears first so the same message announces again even if it repeats back to back.
   const announce = (message: string) => {
     setAnnouncement("");
@@ -167,7 +167,7 @@ export function App() {
     editor.setGridVisible(gridVisible);
 
     // The canvas's own pointer + keyboard interaction, as one state machine (D27,
-    // docs/00-decision-log.md) — wheel pan/zoom, click-to-select, drag-to-connect, and the
+    // docs/decision-log.md) — wheel pan/zoom, click-to-select, drag-to-connect, and the
     // canvas's own keyboard operability all live here now, not as separate listeners in this
     // component. This shell's job shrinks to wiring: mirroring mode changes into React state for
     // rendering, and formatting announcement text core can't own (it stays string-agnostic).
@@ -282,7 +282,7 @@ export function App() {
     editorRef.current?.setGridVisible(gridVisible);
   }, [gridVisible]);
 
-  // Global command palette / find / zoom shortcuts (docs/06-editor-ux.md#keyboard-first).
+  // Global command palette / find / zoom shortcuts (packages/core/docs/editor-ux.md#keyboard-first).
   // Deliberately excludes Ctrl/Cmd+Z / Shift+Z / Y: VS Code owns undo/redo for the active custom
   // editor and bridges it back in via the "undo"/"redo" host messages above — binding it here too
   // would double-undo.
@@ -337,7 +337,7 @@ export function App() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  // Presentation-mode stepping (docs/06-editor-ux.md#frames-sections--presentation).
+  // Presentation-mode stepping (packages/core/docs/editor-ux.md#frames-sections--presentation).
   useEffect(() => {
     if (presentingFrameId === undefined) return;
     const onKeyDown = (event: KeyboardEvent) => {
@@ -364,7 +364,7 @@ export function App() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [presentingFrameId, frames]);
 
-  // Presentation mode owns the keyboard while active (docs/06-editor-ux.md#frames-sections--
+  // Presentation mode owns the keyboard while active (packages/core/docs/editor-ux.md#frames-sections--
   // presentation, handled by the effect above) — an app-level concern CanvasController doesn't
   // know about, so it's suspended from outside rather than checking presentingFrameId itself.
   useEffect(() => {
@@ -503,7 +503,7 @@ export function App() {
 
   // Mouse users arm a placement, then click a canvas location for it. A keyboard activation
   // (Enter/Space on the library button) has no click position to give, so it places immediately
-  // at the viewport center instead of entering that mouse-only aiming mode (docs/07-accessibility.md#canvas-the-hard-20).
+  // at the viewport center instead of entering that mouse-only aiming mode (packages/core/docs/accessibility.md#canvas-the-hard-20).
   const handleChooseFromLibrary = (
     placement: LibraryPlacement,
     immediate?: boolean,

@@ -7,9 +7,9 @@ import { Scene } from "../scene/scene.js";
 import { SvgRenderer } from "./svgRenderer.js";
 
 /**
- * M14.7 (docs/10-canvas-parity-plan.md): IBM's own diagrams as the visual regression suite.
+ * M14.7 (packages/core/docs/canvas-parity-plan.md): IBM's own diagrams as the visual regression suite.
  *
- * This does NOT parse the vendored `.drawio` templates — D7 (docs/00-decision-log.md) locks
+ * This does NOT parse the vendored `.drawio` templates — D7 (docs/decision-log.md) locks
  * "no `.drawio` import" precisely because a full mxGraph mapping surface is large and fragile,
  * and that reasoning applies just as much to a test-only importer as a product feature. Instead,
  * this hand-reproduces the structure of the `iks_sr_mz_vpc` reference diagram (the same one
@@ -25,7 +25,7 @@ import { SvgRenderer } from "./svgRenderer.js";
 // runs with this package's root (packages/core) as its working directory.
 //
 // Version isn't hardcoded — packages/catalog/current.json is the single source of truth a
-// catalog re-pin flips (docs/04-icon-catalog.md "Versioning strategy", roadmap M13).
+// catalog re-pin flips (packages/catalog-build/docs/icon-catalog.md "Versioning strategy", roadmap M13).
 const CATALOG_ROOT = path.resolve(process.cwd(), "../catalog");
 const { version: CURRENT_CATALOG_VERSION } = JSON.parse(
   readFileSync(path.join(CATALOG_ROOT, "current.json"), "utf-8"),

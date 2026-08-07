@@ -67,7 +67,7 @@ export interface TopBarProps {
   onBringForward: () => void;
   onSendBackward: () => void;
   /** Shared across all four z-order actions, same shallow gate as `canGroup` — each command is a
-   * safe no-op when nothing actually moves (M18, docs/10-canvas-parity-plan.md). */
+   * safe no-op when nothing actually moves (M18, packages/core/docs/canvas-parity-plan.md). */
   canChangeZOrder: boolean;
 
   onAlignLeft: () => void;
@@ -77,7 +77,7 @@ export interface TopBarProps {
   onAlignMiddle: () => void;
   onAlignBottom: () => void;
   /** Shared across all six align actions, same shallow `>= 2` gate as `canGroup` (M18.2,
-   * docs/10-canvas-parity-plan.md) — the real no-op check (fewer than two alignable elements, or
+   * packages/core/docs/canvas-parity-plan.md) — the real no-op check (fewer than two alignable elements, or
    * an already-aligned selection) happens in `Editor.applyAlign`. */
   canAlign: boolean;
 
@@ -85,13 +85,13 @@ export interface TopBarProps {
   onDistributeVertical: () => void;
   /** Shared across both distribute actions. Same shallow `>= 3` gate — the real no-op check
    * (fewer than three distributable elements, or already-even spacing) happens in
-   * `Editor.applyDistribute` (M18.3, docs/10-canvas-parity-plan.md). */
+   * `Editor.applyDistribute` (M18.3, packages/core/docs/canvas-parity-plan.md). */
   canDistribute: boolean;
 
   onToggleLock: () => void;
   onToggleHide: () => void;
   /** Shared shallow gate for both lock and hide — any selection means the action is available
-   * (M18.4, docs/10-canvas-parity-plan.md). */
+   * (M18.4, packages/core/docs/canvas-parity-plan.md). */
   canToggleLockHide: boolean;
 
   zoomPercent: number;
@@ -107,7 +107,7 @@ export interface TopBarProps {
   themePreference: ThemePreference;
   onThemeChange: (preference: ThemePreference) => void;
 
-  /** Background grid visibility (M17.2, docs/10-canvas-parity-plan.md) — a view preference, not
+  /** Background grid visibility (M17.2, packages/core/docs/canvas-parity-plan.md) — a view preference, not
    * part of the document. */
   gridVisible: boolean;
   onToggleGrid: () => void;
@@ -141,7 +141,7 @@ function MenuAction({
   );
 }
 
-/** Full Carbon UI Shell top bar (docs/06-editor-ux.md#layout): Menu · File Edit View Insert Help. */
+/** Full Carbon UI Shell top bar (packages/core/docs/editor-ux.md#layout): Menu · File Edit View Insert Help. */
 export function TopBar({
   onNew,
   onOpen,

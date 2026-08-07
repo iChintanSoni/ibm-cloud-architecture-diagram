@@ -14,7 +14,7 @@ const CONTAINER_TYPE_LABEL: Record<string, string> = {
 /**
  * "group" for containers (screen readers announce them as regions holding other
  * elements), "button" for everything selectable/activatable via Enter/Space
- * (docs/07-accessibility.md#canvas-the-hard-20).
+ * (packages/core/docs/accessibility.md#canvas-the-hard-20).
  */
 export function accessibleRole(element: SceneElement): AccessibleRole {
   return element.type === "box" ||
@@ -38,7 +38,7 @@ function elementName(element: SceneElement, catalog: Catalog): string {
 
 /**
  * Screen-reader accessible name for a scene element
- * (docs/07-accessibility.md#canvas-the-hard-20). Containers mention their
+ * (packages/core/docs/accessibility.md#canvas-the-hard-20). Containers mention their
  * child count; connectors describe both endpoints and the connection/
  * relationship type instead of just geometry. Locked/hidden state is appended
  * so assistive technology can announce it (M18.4).

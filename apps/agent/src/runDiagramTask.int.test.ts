@@ -7,7 +7,7 @@ import { runDiagramTask } from "./runDiagramTask.js";
 // Live end-to-end: a real local Ollama model, driving the real diagram-builder agent and
 // (conditionally, M30.3) the conformance-exporter agent, against a real spawned @icad/mcp
 // subprocess. This is the milestone's own "Done when" bar
-// (docs/09-roadmap.md#m30--deep-agent-orchestrator--sub-agents): a hardcoded natural-language
+// (docs/roadmap.md#m30--deep-agent-orchestrator--sub-agents): a hardcoded natural-language
 // requirement produces a lint-clean .icad + exported SVG for a real multi-tier topology — not a
 // mock of any of these pieces.
 //

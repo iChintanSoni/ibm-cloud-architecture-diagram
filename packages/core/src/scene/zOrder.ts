@@ -2,7 +2,7 @@ import type { Scene } from "./scene.js";
 import type { ElementId, SceneElement } from "./types.js";
 
 /** Reorders one sibling bracket (elements sharing a parent, already in z-order) given which of
- * them are selected. Used by z-order commands (docs/10-canvas-parity-plan.md M18). */
+ * them are selected. Used by z-order commands (packages/core/docs/canvas-parity-plan.md M18). */
 export type SiblingReorder = (
   bracket: ElementId[],
   selected: Set<ElementId>,
@@ -68,7 +68,7 @@ function hasCyclicParent(
 /**
  * Pre-order DFS of the containment tree, siblings in current z-order (or `overrides`'s order for
  * a given parent bracket) — the only element ordering that's safe for `SvgRenderer`'s flat,
- * non-nested paint model (`render()`/`syncDomOrder()`, docs/10-canvas-parity-plan.md M18): every
+ * non-nested paint model (`render()`/`syncDomOrder()`, packages/core/docs/canvas-parity-plan.md M18): every
  * container is immediately followed by its whole subtree, so no z-order command can ever push a
  * container's paint order past its own descendants' — a bare per-bracket renumbering scheme
  * can't guarantee that, since a bracket's own index range can land between an unrelated

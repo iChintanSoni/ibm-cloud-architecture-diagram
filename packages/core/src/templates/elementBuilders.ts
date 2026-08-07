@@ -5,7 +5,7 @@ import type {
   IconNodeElement,
 } from "../scene/types.js";
 
-/** Small element-builder helpers shared by every template (docs/09-roadmap.md#m73). */
+/** Small element-builder helpers shared by every template (docs/roadmap.md#m73). */
 
 export function frame(
   id: string,

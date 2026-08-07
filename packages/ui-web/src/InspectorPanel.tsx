@@ -48,7 +48,7 @@ const CONNECTION_TYPES: ConnectorType[] = [
   "traffic-through-double-tunnel",
 ];
 
-/** The annotation's name field reads "Encapsulation NAME" for these, "Protocol/Application NAME" otherwise (docs/05-ibm-spec-conformance.md#connector-nomenclature). */
+/** The annotation's name field reads "Encapsulation NAME" for these, "Protocol/Application NAME" otherwise (packages/core/docs/ibm-spec-conformance.md#connector-nomenclature). */
 const TUNNEL_TYPES: ConnectorType[] = [
   "tunneling-connection",
   "traffic-through-double-tunnel",
@@ -66,7 +66,7 @@ const RELATIONSHIP_TYPES: ConnectorType[] = [
 const CONNECTOR_TYPES = [...CONNECTION_TYPES, ...RELATIONSHIP_TYPES];
 
 /**
- * IBM's own connector names (docs/05-ibm-spec-conformance.md#connector-nomenclature), not the
+ * IBM's own connector names (packages/core/docs/ibm-spec-conformance.md#connector-nomenclature), not the
  * raw kebab-case schema value. "tunneling-connection" is labeled "Traffic Through Tunnel/
  * Encapsulation" — what `Connectors.drawio` actually names that line; "Tunneling Connection" is
  * a caption in IBM's own stencil with no edge/line style of its own, not a distinct connector.
@@ -316,7 +316,7 @@ function ElementProperties({
             ))}
           </div>
 
-          {/* Rotation (M20, docs/10-canvas-parity-plan.md): only for non-frame elements.
+          {/* Rotation (M20, packages/core/docs/canvas-parity-plan.md): only for non-frame elements.
               Frames are excluded from all direct-manipulation rotation operations. */}
           {element.type !== "frame" && (
             <NumberInput
@@ -525,7 +525,7 @@ function ElementProperties({
         </>
       )}
 
-      {/* Color picker (M20, docs/10-canvas-parity-plan.md, D28): IBM 9-pair palette swatches +
+      {/* Color picker (M20, packages/core/docs/canvas-parity-plan.md, D28): IBM 9-pair palette swatches +
           a free color input for deliberate off-spec one-offs. Shown for all non-connector elements
           (connectors use flowColor, not style.stroke/fill for their semantic color).
           The linter's `off-palette-color` rule flags non-palette choices as advisory. */}
@@ -590,7 +590,7 @@ function ElementProperties({
         </div>
       )}
 
-      {/* Lock / Hide (M18.4, docs/10-canvas-parity-plan.md) */}
+      {/* Lock / Hide (M18.4, packages/core/docs/canvas-parity-plan.md) */}
       <div className="icad-properties__lock-hide">
         <Checkbox
           id={`icad-property-locked-${element.id}`}

@@ -24,7 +24,7 @@ function skillsRoot(): string {
 
 /** The deepagents `skills` source-path convention: a directory containing one subdirectory per
  * skill, each with its own SKILL.md. `role` scopes each sub-agent to only the skills it should
- * see (docs/00-decision-log.md#d33) — diagram-builder and conformance-exporter each get their own
+ * see (docs/decision-log.md#d33) — diagram-builder and conformance-exporter each get their own
  * root, even though both include `ibm-diagram-spec`, rather than sharing one root that would
  * expose all three skills to both. */
 export function skillSourcePath(

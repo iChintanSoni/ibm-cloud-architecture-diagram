@@ -29,6 +29,6 @@ export const SKIPPED_SUBPATHS = ["DevOps/Network"];
 /**
  * Not part of `CATEGORY_BY_FOLDER` because it has no corresponding `svg/<folder>` — its
  * icons come from a second extraction source, `drawio/stencils/2.0/not_released_in_drawio.xml`
- * (see `extractDrawioLibrary.ts` and D23 in docs/00-decision-log.md).
+ * (see `extractDrawioLibrary.ts` and D23 in docs/decision-log.md).
  */
 export const GROUPS_CATEGORY = { id: "groups", name: "Groups" };

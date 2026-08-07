@@ -8,7 +8,7 @@ export interface CommandPaletteProps {
   onClose: () => void;
 }
 
-/** Run any action by name (docs/06-editor-ux.md#keyboard-first), opened with Ctrl/Cmd+K. */
+/** Run any action by name (packages/core/docs/editor-ux.md#keyboard-first), opened with Ctrl/Cmd+K. */
 export function CommandPalette({
   open,
   commands,
@@ -35,7 +35,7 @@ export function CommandPalette({
     setQuery("");
     setActiveIndex(0);
     inputRef.current?.focus();
-    // Restores focus to whatever opened the palette (docs/07-accessibility.md#chrome-the-easy-80).
+    // Restores focus to whatever opened the palette (packages/core/docs/accessibility.md#chrome-the-easy-80).
     return () => previousFocusRef.current?.focus();
   }, [open]);
 

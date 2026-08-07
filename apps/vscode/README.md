@@ -27,7 +27,25 @@ Download the `.vsix` from the project's [GitHub
 Releases](https://github.com/iChintanSoni/ibm-cloud-architecture-diagram/releases) page, then in
 VS Code: Extensions view → `...` menu → **Install from VSIX...**, and pick the downloaded file.
 
+## Docs
+
+- [The VS Code extension](./docs/vscode-extension.md) — what it is, how to run it from source,
+  what differs from the web shell, and the full **Limitations** list
+
+Cross-cutting context: [Architecture](../../docs/architecture.md),
+[Decision log](../../docs/decision-log.md), [Roadmap](../../docs/roadmap.md#m10--appsvscode).
+
 ## Known limitations
 
 - Export only offers **SVG** today (no PNG export in this shell yet).
 - No manual light/dark toggle — it always follows VS Code's theme.
+
+## Development
+
+```bash
+pnpm --filter @icad/core build
+pnpm --filter icad-vscode build     # then launch "Run ICAD Extension" in VS Code
+```
+
+The extension host is a thin file-I/O and undo/redo relay — the real engine runs entirely inside
+the webview, so `.icad` semantics (parsing, migration, rendering) never leave `@icad/core`.

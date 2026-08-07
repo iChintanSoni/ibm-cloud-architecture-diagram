@@ -25,7 +25,7 @@ export function registerConformanceTools(
     {
       title: "Validate the current document",
       description:
-        "Runs the IBM conformance linter (docs/05-ibm-spec-conformance.md) over the current document and " +
+        "Runs the IBM conformance linter (packages/core/docs/ibm-spec-conformance.md) over the current document and " +
         "returns every diagnostic. Use quickfix_apply/quickfix_apply_all to resolve ones with a fix available.",
       outputSchema: complianceSummarySchema.shape,
     },
@@ -111,7 +111,7 @@ export function registerConformanceTools(
       title: "Export the current document as SVG",
       description:
         "Exports the current document as a canonical, re-editable SVG (the .icad source is embedded per " +
-        'docs/03-file-format.md unless embedSource is false). Blocked if the export gate is "block" and ' +
+        'packages/core/docs/file-format.md unless embedSource is false). Blocked if the export gate is "block" and ' +
         "error-severity diagnostics remain — resolve them via quickfix_apply* first. PNG export isn't " +
         "supported by this server yet (requires a real browser canvas).",
       inputSchema: {

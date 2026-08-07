@@ -6,7 +6,7 @@ import { McpSession } from "./mcpSession.js";
 
 // Real subprocess spawn + stdio handshake per test — slower than a mock, deliberately: the whole
 // point of this suite is proving the real @icad/mcp binary round-trips, not a hand-written
-// simulation of the MCP protocol (docs/09-roadmap.md#m29--agent-package-scaffold--mcp-subprocess-lifecycle).
+// simulation of the MCP protocol (docs/roadmap.md#m29--agent-package-scaffold--mcp-subprocess-lifecycle).
 const TEST_TIMEOUT_MS = 30_000;
 
 describe("McpSession", () => {

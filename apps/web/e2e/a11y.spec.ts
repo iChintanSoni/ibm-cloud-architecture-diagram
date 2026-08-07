@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 import { runCommand, startBlankDiagram } from "./fixtures.js";
 
 /**
- * Real-browser accessibility checks (docs/07-accessibility.md#testing--ci): unlike the jsdom
+ * Real-browser accessibility checks (packages/core/docs/accessibility.md#testing--ci): unlike the jsdom
  * smoke test (packages/ui-web/src/a11y.test.tsx), this evaluates layout-dependent rules too
  * (color-contrast, target sizing) against actual Chromium rendering.
  */

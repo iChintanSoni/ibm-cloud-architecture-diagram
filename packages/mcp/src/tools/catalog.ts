@@ -20,7 +20,7 @@ export function registerCatalogTools(
     {
       title: "Search the IBM Cloud icon catalog",
       description:
-        "Search the bundled IBM Cloud icon catalog (docs/04-icon-catalog.md) by name, category, or keyword, " +
+        "Search the bundled IBM Cloud icon catalog (packages/catalog-build/docs/icon-catalog.md) by name, category, or keyword, " +
         `ranked by relevance and capped at the ${SEARCH_RESULT_LIMIT} best matches. Returns matching icons ` +
         "with the `id` to pass as `catalogRef` to element_add_icon. If `truncated` is true, narrow the query " +
         "(e.g. add a category word) rather than assuming these are every match.",

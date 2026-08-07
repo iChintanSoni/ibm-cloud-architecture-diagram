@@ -2,7 +2,7 @@ import { boundsOf } from "./bounds.js";
 import type { Scene } from "./scene.js";
 import type { ElementId } from "./types.js";
 
-/** The six alignment edges/axes (M18.2, docs/10-canvas-parity-plan.md) — "centerH"/"middle" match
+/** The six alignment edges/axes (M18.2, packages/core/docs/canvas-parity-plan.md) — "centerH"/"middle" match
  * PowerPoint's split naming (horizontal centering vs. vertical centering) rather than reusing
  * "center" for both. */
 export type AlignMode =

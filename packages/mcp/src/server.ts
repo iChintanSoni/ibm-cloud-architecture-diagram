@@ -8,7 +8,7 @@ import { registerConformanceTools } from "./tools/conformance.js";
 
 /**
  * Builds a fresh MCP server with its own headless `Editor` (one document per server instance, per
- * D4 — docs/00-decision-log.md#d4--local-first-single-user-files--locked). A factory, not a
+ * D4 — docs/decision-log.md#d4--local-first-single-user-files--locked). A factory, not a
  * module-level singleton, so tests can create isolated server+editor pairs via `InMemoryTransport`
  * without leaking state between them.
  */

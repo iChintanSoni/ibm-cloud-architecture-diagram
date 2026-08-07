@@ -2,7 +2,7 @@
 
 The SVG icons and metadata under `2.0.0/` are converted, at build time, from a pinned commit of
 IBM's public [`IBM-Cloud/architecture-icons`](https://github.com/IBM-Cloud/architecture-icons)
-repository (see `packages/catalog-build`, `docs/04-icon-catalog.md`):
+repository (see `packages/catalog-build`, `packages/catalog-build/docs/icon-catalog.md`):
 
 - **Upstream repo:** https://github.com/IBM-Cloud/architecture-icons
 - **Pinned commit:** `32d9c311b0dadb95f0fe4fa88b27f3af41c1dbc5` (also recorded in

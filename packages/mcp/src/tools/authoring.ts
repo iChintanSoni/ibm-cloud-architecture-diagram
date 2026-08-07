@@ -145,7 +145,7 @@ export function registerAuthoringTools(
     {
       title: "Add a Box (deployedOn container)",
       description:
-        "Adds a Box — a solid-border deployedOn container (docs/05-ibm-spec-conformance.md).",
+        "Adds a Box — a solid-border deployedOn container (packages/core/docs/ibm-spec-conformance.md).",
       inputSchema: containerPlacementSchema,
       outputSchema: idOutput,
     },
@@ -164,7 +164,7 @@ export function registerAuthoringTools(
     {
       title: "Add a Group (deployedTo container)",
       description:
-        "Adds a Group — a dashed-border deployedTo container (docs/05-ibm-spec-conformance.md).",
+        "Adds a Group — a dashed-border deployedTo container (packages/core/docs/ibm-spec-conformance.md).",
       inputSchema: containerPlacementSchema,
       outputSchema: idOutput,
     },
@@ -249,7 +249,7 @@ export function registerAuthoringTools(
     {
       title: "Add a presentation Frame",
       description:
-        "Adds a Frame — a named, orderable section for presentation mode (docs/06-editor-ux.md#frames-sections--presentation). " +
+        "Adds a Frame — a named, orderable section for presentation mode (packages/core/docs/editor-ux.md#frames-sections--presentation). " +
         "Frames are always top-level, never nested.",
       inputSchema: {
         id: placementSchema.id,
@@ -361,7 +361,7 @@ export function registerAuthoringTools(
     {
       title: "Connect two exact ports",
       description:
-        "Draws an IBM-typed connector between two exact ports (docs/05-ibm-spec-conformance.md#connector-nomenclature). " +
+        "Draws an IBM-typed connector between two exact ports (packages/core/docs/ibm-spec-conformance.md#connector-nomenclature). " +
         "Use connect_nearest instead if you don't want to specify exact ports.",
       inputSchema: {
         from: portRefSchema,
@@ -716,7 +716,7 @@ export function registerAuthoringTools(
     (ids) => editor().alignBottom(ids),
   );
 
-  // ── Lock / Hide (M18.4, docs/10-canvas-parity-plan.md) ──────────────────────
+  // ── Lock / Hide (M18.4, packages/core/docs/canvas-parity-plan.md) ──────────────────────
   const lockHideOutput = { ids: z.array(z.string()), changed: z.boolean() };
   const lockHideTool = (
     name: string,
@@ -748,7 +748,7 @@ export function registerAuthoringTools(
     );
   };
 
-  // ── Rotation (M20, docs/10-canvas-parity-plan.md) ───────────────────────────
+  // ── Rotation (M20, packages/core/docs/canvas-parity-plan.md) ───────────────────────────
   server.registerTool(
     "element_rotate",
     {
@@ -756,7 +756,7 @@ export function registerAuthoringTools(
       description:
         "Sets the rotation of a single element in degrees (0–359). " +
         "Connectors and Frames cannot be rotated. " +
-        "Non-zero rotation is flagged as off-spec by the linter (D28, docs/00-decision-log.md) — " +
+        "Non-zero rotation is flagged as off-spec by the linter (D28, docs/decision-log.md) — " +
         "use it only when a deliberate off-spec one-off is needed. " +
         "Returns `changed: false` when the element is already at the target rotation or cannot be rotated.",
       inputSchema: {
@@ -784,7 +784,7 @@ export function registerAuthoringTools(
     },
   );
 
-  // ── Connector editing (M19, docs/10-canvas-parity-plan.md) ─────────────────
+  // ── Connector editing (M19, packages/core/docs/canvas-parity-plan.md) ─────────────────
   server.registerTool(
     "connector_retarget",
     {

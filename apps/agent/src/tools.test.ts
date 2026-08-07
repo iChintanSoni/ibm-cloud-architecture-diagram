@@ -23,7 +23,7 @@ describe("pickTools", () => {
   });
 });
 
-describe("tool name partitions (docs/00-decision-log.md#d33)", () => {
+describe("tool name partitions (docs/decision-log.md#d33)", () => {
   it("diagram-builder and conformance-exporter never claim the same tool", () => {
     const overlap = DIAGRAM_BUILDER_TOOL_NAMES.filter((name) =>
       (CONFORMANCE_EXPORTER_TOOL_NAMES as readonly string[]).includes(name),

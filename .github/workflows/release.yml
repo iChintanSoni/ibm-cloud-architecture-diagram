@@ -1,7 +1,7 @@
 name: Release
 
-# Preview/unsigned artifact pipeline (M21, docs/09-roadmap.md) — not the IBM-Design-sign-off-gated
-# release D17 describes (docs/00-decision-log.md#d17). Push a `vX.Y.Z` tag to build all four
+# Preview/unsigned artifact pipeline (M21, docs/roadmap.md) — not the IBM-Design-sign-off-gated
+# release D17 describes (docs/decision-log.md#d17). Push a `vX.Y.Z` tag to build all four
 # downloadable artifacts and attach them to a draft GitHub Release for manual review + publish.
 on:
   push:
@@ -31,7 +31,7 @@ jobs:
             --draft \
             --title "ICAD ${{ github.ref_name }} (preview build)" \
             --generate-notes \
-            --notes "> **Preview build.** Unsigned, community-packaged artifacts — not yet gated by IBM Design sign-off ([D17](https://github.com/${{ github.repository }}/blob/main/docs/00-decision-log.md#d17--official--ibm-internal-tool--locked)). Expect Gatekeeper (macOS) / SmartScreen (Windows) warnings on the desktop installers."
+            --notes "> **Preview build.** Unsigned, community-packaged artifacts — not yet gated by IBM Design sign-off ([D17](https://github.com/${{ github.repository }}/blob/main/docs/decision-log.md#d17--official--ibm-internal-tool--locked)). Expect Gatekeeper (macOS) / SmartScreen (Windows) warnings on the desktop installers."
 
   build-web:
     needs: prepare

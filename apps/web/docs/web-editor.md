@@ -4,7 +4,7 @@ The full reference for `apps/web` — every element type, interaction, panel, an
 actually behave today. Screenshots below are the built-in **High-level / logical** template
 (light theme) at 100% zoom.
 
-![Populated canvas: Customer actor → API Gateway → Application (inside Application tier group, inside VPC box, inside IBM Cloud box) → Object storage](images/hero-canvas-overview.png)
+![Populated canvas: Customer actor → API Gateway → Application (inside Application tier group, inside VPC box, inside IBM Cloud box) → Object storage](../../../docs/screenshots/hero-canvas-overview.png)
 
 ## Layout
 
@@ -20,16 +20,16 @@ Library panel, and there's no ruler along the canvas edges.
 
 ## Elements and their IBM semantics
 
-| Element               | Border         | IBM semantic            | Meaning                                                                                                                                                                                                                                                          |
-| --------------------- | -------------- | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Box**               | solid          | `deployedOn`            | A location something runs on (a VPC, a server, a cluster).                                                                                                                                                                                                       |
-| **Group**             | dashed         | `deployedTo`            | A grouping of services/apps that share a deployment target.                                                                                                                                                                                                      |
-| **Zone** ("Boundary") | dashed         | `boundary`              | An availability zone or on-premises boundary — the only two `ZoneKind`s; region/VPC/subnet render as **Box** instead ([D24](../00-decision-log.md#d24--regionvpcsubnet-are-box-only-availability-zoneon-prem-are-boundary--locked)). Set the kind in Properties. |
-| **Actor**             | rounded        | `actor`                 | A person or external role.                                                                                                                                                                                                                                       |
-| **Icon** (`iconNode`) | —              | `node`                  | A single IBM Cloud service/component from the catalog.                                                                                                                                                                                                           |
-| **Text**              | —              | —                       | A free-floating label.                                                                                                                                                                                                                                           |
-| **Frame**             | dashed, titled | —                       | A named section used for Find, navigation, and presentation mode — not a diagram element with IBM meaning of its own.                                                                                                                                            |
-| **Connector**         | —              | connection/relationship | See [Connectors](#connectors) below.                                                                                                                                                                                                                             |
+| Element               | Border         | IBM semantic            | Meaning                                                                                                                                                                                                                                                                  |
+| --------------------- | -------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Box**               | solid          | `deployedOn`            | A location something runs on (a VPC, a server, a cluster).                                                                                                                                                                                                               |
+| **Group**             | dashed         | `deployedTo`            | A grouping of services/apps that share a deployment target.                                                                                                                                                                                                              |
+| **Zone** ("Boundary") | dashed         | `boundary`              | An availability zone or on-premises boundary — the only two `ZoneKind`s; region/VPC/subnet render as **Box** instead ([D24](../../../docs/decision-log.md#d24--regionvpcsubnet-are-box-only-availability-zoneon-prem-are-boundary--locked)). Set the kind in Properties. |
+| **Actor**             | rounded        | `actor`                 | A person or external role.                                                                                                                                                                                                                                               |
+| **Icon** (`iconNode`) | —              | `node`                  | A single IBM Cloud service/component from the catalog.                                                                                                                                                                                                                   |
+| **Text**              | —              | —                       | A free-floating label.                                                                                                                                                                                                                                                   |
+| **Frame**             | dashed, titled | —                       | A named section used for Find, navigation, and presentation mode — not a diagram element with IBM meaning of its own.                                                                                                                                                    |
+| **Connector**         | —              | connection/relationship | See [Connectors](#connectors) below.                                                                                                                                                                                                                                     |
 
 Boxes, Groups, Zones, and Frames are all **containers**: dropping or reparenting an element into
 one sets `parentId`, and moving or deleting the container cascades to everything inside it.
@@ -42,7 +42,7 @@ Click an icon in the Library panel to arm it, then click anywhere on the canvas 
 that point — or press **Enter/Space** on a focused icon to place it at the center of the current
 viewport. There's no drag-and-drop from the Library onto the canvas today.
 
-![Library panel filtered to a "database" search, showing category-grouped results](images/library-panel-search.png)
+![Library panel filtered to a "database" search, showing category-grouped results](../../../docs/screenshots/library-panel-search.png)
 
 Search filters by id, name, keyword, and alias. Results are grouped by category (Compute, Network,
 Storage, Security, Data, DevOps, AI, Observability, Applications, Actors, Groups — 241 icons
@@ -109,12 +109,12 @@ retarget either end to a different port — auto-routing connectors re-route imm
 edited path. A "Reset routing" button in the Properties tab drops any manual edits and returns to
 automatic routing.
 
-![Connector selected, showing waypoint drag handles, a midpoint insert handle, and an endpoint retarget handle on canvas alongside the connector's type/direction/protocol properties](images/connector-editing.png)
+![Connector selected, showing waypoint drag handles, a midpoint insert handle, and an endpoint retarget handle on canvas alongside the connector's type/direction/protocol properties](../../../docs/screenshots/connector-editing.png)
 
 ## Templates
 
 `File → New` (or the New Diagram dialog on first launch) offers four starting points — see
-[Getting started](01-getting-started.md#your-first-diagram) for what each contains. Templates
+[Getting started](../../../docs/guide/getting-started.md#your-first-diagram) for what each contains. Templates
 encode IBM conventions (correct containment, west→east flow, on-spec colors) so a new diagram
 starts clean.
 
@@ -129,12 +129,12 @@ type/direction/flow-color selectors. Stroke and fill are set from the nine IBM p
 a free-form custom color picker; a Locked/Hidden pair of checkboxes mirrors the same toggles in
 Layers.
 
-![Properties tab showing the selected "Application" icon: label, X/Y/W/H, a rotation field, parent container, IBM catalog reference, IBM palette stroke/fill swatches with a custom color picker, and Locked/Hidden checkboxes](images/properties-tab.png)
+![Properties tab showing the selected "Application" icon: label, X/Y/W/H, a rotation field, parent container, IBM catalog reference, IBM palette stroke/fill swatches with a custom color picker, and Locked/Hidden checkboxes](../../../docs/screenshots/properties-tab.png)
 
 **Layers** — the full containment tree in descending z-order, click any node to select it on
 canvas; each row also has its own Lock and Hide toggle.
 
-![Layers tab showing the nested tree in descending z-order — Frame → Box → Box → Group → Icons, plus the Actor and three Connectors — with per-row lock/hide toggle buttons](images/layers-tab.png)
+![Layers tab showing the nested tree in descending z-order — Frame → Box → Box → Group → Icons, plus the Actor and three Connectors — with per-row lock/hide toggle buttons](../../../docs/screenshots/layers-tab.png)
 
 **Frames** — lists frames in presentation order; a **Present** button steps through them
 (PageUp/PageDown or arrow keys, Escape to exit) — useful for reviews.
@@ -143,12 +143,12 @@ canvas; each row also has its own Lock and Hide toggle.
 
 ## The linter
 
-ICAD ships an advisory linter (`core/linter`, 16 rules) covering container semantics, IBM color
+ICAD ships an advisory linter (`core/linter`, 25 rules) covering container semantics, IBM color
 usage, missing/duplicate labels, connector correctness (dangling connectors, unbound ports,
 non-standard types, malformed protocol annotations), and west→east layout. Each diagnostic is
 `error`/`warn`/`info`, targets a specific element, and — where possible — offers a one-click fix.
 
-![Validation tab showing a "missing-label" warning on an unlabeled box, with an "Add label" quick-fix link, and the corresponding warning badge on the canvas element](images/validation-tab.png)
+![Validation tab showing a "missing-label" warning on an unlabeled box, with an "Add label" quick-fix link, and the corresponding warning badge on the canvas element](../../../docs/screenshots/validation-tab.png)
 
 Fixes are ordinary undoable commands, so **Undo** reverts a quick-fix like any other edit. Rule
 severities are configurable per document (**Rule settings**, in the Validation tab), and the
@@ -161,13 +161,13 @@ is allowed to block export.
 (`i / N`); Next/Previous step through them and the viewport jumps to each one, including jumping
 straight to a section frame.
 
-![Find bar with "gateway" typed in, showing 1 of 1 match and the viewport zoomed to the matching "API Gateway" icon](images/find-bar-match.png)
+![Find bar with "gateway" typed in, showing 1 of 1 match and the viewport zoomed to the matching "API Gateway" icon](../../../docs/screenshots/find-bar-match.png)
 
 ## Themes
 
 Auto / Light / Dark, set from the Theme menu in the top bar, the View menu, or the command palette:
 
-![Command palette open, listing File/View/Insert commands including the three theme options](images/command-palette.png)
+![Command palette open, listing File/View/Insert commands including the three theme options](../../../docs/screenshots/command-palette.png)
 
 "Auto" follows the OS via `prefers-color-scheme` and updates live. The choice persists in
 `localStorage`, independent of any single `.icad` file's own saved theme — opening a file adopts
@@ -193,9 +193,9 @@ The Export dialog offers **SVG** (canonical — spec colors, always embeds the d
 transparent or white background). The dialog also shows the linter's compliance summary and lets
 you set the export gate for this export.
 
-![Export dialog: PNG format selected, showing Scale, Background, and Export gate controls plus a "0 errors / 0 warnings / 0 info" conformance summary](images/export-modal.png)
+![Export dialog: PNG format selected, showing Scale, Background, and Export gate controls plus a "0 errors / 0 warnings / 0 info" conformance summary](../../../docs/screenshots/export-modal.png)
 
-See [File format & export](06-file-format-and-export.md) for the full `.icad` schema and export
+See [File format & export](../../../docs/guide/file-format-and-export.md) for the full `.icad` schema and export
 details.
 
 ## Limitations

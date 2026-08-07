@@ -9,7 +9,7 @@ export interface LinterOptions {
 }
 
 /**
- * Advisory conformance checker (docs/05-ibm-spec-conformance.md). Never
+ * Advisory conformance checker (packages/core/docs/ibm-spec-conformance.md). Never
  * blocks editing; export gating is layered on top by callers inspecting
  * the returned diagnostics' severities.
  */

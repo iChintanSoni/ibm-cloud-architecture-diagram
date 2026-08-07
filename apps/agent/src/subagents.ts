@@ -12,14 +12,14 @@ export interface AgentBundle {
   agent: ReturnType<typeof createDeepAgent>;
   /** `files` entries (the loaded SKILL.md content) to merge into this agent's initial `.invoke()`
    * state, so its declared `skills` source path resolves to real content on the default ephemeral
-   * StateBackend (docs/00-decision-log.md#d36). */
+   * StateBackend (docs/decision-log.md#d36). */
   skillFiles: Record<string, SkillFile>;
 }
 
 export interface AgentBuilderOptions {
   model: BaseLanguageModel;
   /** Every MCP tool available on the current session — filtered down to this agent's own subset
-   * internally (docs/00-decision-log.md#d33). */
+   * internally (docs/decision-log.md#d33). */
   tools: readonly StructuredTool[];
 }
 
@@ -94,7 +94,7 @@ export async function buildDiagramBuilderAgent(
 }
 
 /** Builds conformance-exporter as a standalone Deep Agent, invoked directly by `runDiagramTask`
- * — and only when procedural quick-fixing alone didn't reach zero errors (docs/00-decision-log.md#d33's
+ * — and only when procedural quick-fixing alone didn't reach zero errors (docs/decision-log.md#d33's
  * amendment for M30.3): the two agents are no longer delegated between by an orchestrator LLM,
  * since the choice of whether conformance-exporter runs at all is now fully deterministic. */
 export async function buildConformanceExporterAgent(

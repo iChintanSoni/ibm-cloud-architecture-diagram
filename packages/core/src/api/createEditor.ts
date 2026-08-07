@@ -180,7 +180,7 @@ export interface ComplianceSummary {
 /** An in-progress ephemeral gesture returned by `Editor.beginInteraction` (D26). */
 export interface Interaction {
   /** Applies a scene-space delta as a live preview. Call repeatedly, e.g. once per pointer-move.
-   * `dropTargetId` (M17.6, docs/10-canvas-parity-plan.md) is the container currently under the
+   * `dropTargetId` (M17.6, packages/core/docs/canvas-parity-plan.md) is the container currently under the
    * pointer that this drag would reparent into if released now, or `undefined` for none —
    * `CanvasController` recomputes it every move, and only the last value passed in before
    * `commit()` is used. */
@@ -518,7 +518,7 @@ function resolveTheme(preference: CanvasSettings["theme"]): ResolvedTheme {
 
 /**
  * The public, framework-agnostic surface of the engine
- * (docs/02-architecture.md#public-api-coreapi). Shells and the future MCP
+ * (docs/architecture.md#public-api-coreapi). Shells and the future MCP
  * server both drive the editor through this API only.
  */
 export class Editor {
@@ -573,7 +573,7 @@ export class Editor {
         this.focusedId = undefined;
       // A coalesced "update"-reason change (Scene._transaction) never added/removed/reparented/
       // reordered anything, so a scoped repaint of just the affected ids is safe and much cheaper
-      // than a full render() at diagram scale (C13, docs/10-canvas-parity-plan.md). Every command
+      // than a full render() at diagram scale (C13, packages/core/docs/canvas-parity-plan.md). Every command
       // that could have changed containment or z-order reports a different reason and falls
       // through to the full render() below. Empty ids (e.g. a conformance-only change) needs no
       // element repaint at all — the lint refresh below still runs.
@@ -903,8 +903,8 @@ export class Editor {
 
   /**
    * Pans/zooms the viewport to frame the given elements — used by Find
-   * (docs/06-editor-ux.md#find-on-canvas-f) and frame presentation
-   * (docs/06-editor-ux.md#frames-sections--presentation).
+   * (packages/core/docs/editor-ux.md#find-on-canvas-f) and frame presentation
+   * (packages/core/docs/editor-ux.md#frames-sections--presentation).
    */
   focusOnElements(
     ids: ElementId[],
@@ -946,7 +946,7 @@ export class Editor {
   }
 
   /**
-   * Meaningful keyboard tab order (docs/07-accessibility.md#canvas-the-hard-20):
+   * Meaningful keyboard tab order (packages/core/docs/accessibility.md#canvas-the-hard-20):
    * containers before children, siblings west→east, connectors last.
    */
   tabOrder(): ElementId[] {
@@ -1022,7 +1022,7 @@ export class Editor {
    * Dispatches a committed move as one undo step — shared by `nudgeElements` and
    * `beginInteraction()`'s own `commit()`. With no `dropTargetId`, grows the moved elements' shared
    * parent to fit afterward if it no longer comfortably contains them (M17.4,
-   * docs/10-canvas-parity-plan.md); this only applies when every one of `ids` shares the same
+   * packages/core/docs/canvas-parity-plan.md); this only applies when every one of `ids` shares the same
    * defined parent (an ambiguous multi-parent selection, or top-level elements with no parent at
    * all, simply skips it — there's no single container to grow). With one, reparents every one of
    * `ids` into it instead (M17.6) and grows *that* container to fit — `CanvasController` has
@@ -1053,7 +1053,7 @@ export class Editor {
   }
 
   /**
-   * Begins an ephemeral move interaction — a live drag preview (D26, docs/00-decision-log.md)
+   * Begins an ephemeral move interaction — a live drag preview (D26, docs/decision-log.md)
    * that bypasses the scene, the command bus, and the linter until `commit()`. Every `update()`
    * call is a plain SVG attribute write (`SvgRenderer.previewTransform`), so a gesture never
    * floods undo history or re-runs the linter per pointer-move; `commit()` collapses the whole
@@ -1111,7 +1111,7 @@ export class Editor {
   }
 
   /**
-   * Begins an ephemeral resize interaction (M16.2, docs/10-canvas-parity-plan.md) — a live
+   * Begins an ephemeral resize interaction (M16.2, packages/core/docs/canvas-parity-plan.md) — a live
    * preview via `SvgRenderer.previewResize()` that bypasses the scene, the command bus, and the
    * linter until `commit()`. Unlike `beginInteraction()`'s move, this deliberately does **not**
    * use move-with/`moveElements`: an edge/corner handle that shifts the element's own x or y (e.g.
@@ -1364,7 +1364,7 @@ export class Editor {
   /**
    * Groups 2+ elements into a new Group container sized to their combined
    * bounds (+ padding), reparenting all of them into it as one undoable step
-   * (docs/06-editor-ux.md#core-interactions). Nests the new group under the
+   * (packages/core/docs/editor-ux.md#core-interactions). Nests the new group under the
    * elements' shared parent when they all have the same one, otherwise the
    * group lands at canvas root. Selects the new group. No-ops (returns
    * undefined) for fewer than two known elements.
@@ -1399,7 +1399,7 @@ export class Editor {
       ...existing.map((id) => reparentElement(this.scene, id, groupId)),
       // Without this, the new group (added with no explicit z, tied at 0 with everything else)
       // paints *over* the members it was just built to contain — Map insertion order puts a
-      // just-added element last, and containerFill() is always opaque (docs/10-canvas-parity-plan.md
+      // just-added element last, and containerFill() is always opaque (packages/core/docs/canvas-parity-plan.md
       // M18). No overrides needed: setZOrder's do() recomputes paintOrder() fresh once this batch's
       // earlier add/reparent sub-commands have actually run, so it sees the group's real containment.
       setZOrder(this.scene, undefined, "group elements"),
@@ -1446,7 +1446,7 @@ export class Editor {
   }
 
   /**
-   * Shared plumbing for the four z-order commands below (docs/10-canvas-parity-plan.md M18).
+   * Shared plumbing for the four z-order commands below (packages/core/docs/canvas-parity-plan.md M18).
    * `reorder` is applied per sibling bracket (elements sharing a parent) among `ids`, never
    * globally — the renderer paints one flat, non-nested list (`scene.all()`), so a global z change
    * on a container could push it in front of its own descendants; scoping to siblings makes that
@@ -1499,7 +1499,7 @@ export class Editor {
   }
 
   /**
-   * Shared plumbing for the six align commands (M18.2, docs/10-canvas-parity-plan.md). Computes
+   * Shared plumbing for the six align commands (M18.2, packages/core/docs/canvas-parity-plan.md). Computes
    * every alignable element's move via `computeAlignMoves` (which itself excludes connectors and
    * already-aligned elements) and, on a no-op (fewer than two alignable elements, or nothing that
    * actually moves), skips the dispatch and returns `false` so callers can skip a live-region
@@ -1571,7 +1571,7 @@ export class Editor {
     return this.applyDistribute(ids, "vertical", "distribute vertical");
   }
 
-  // ── Lock / Hide (M18.4, docs/10-canvas-parity-plan.md) ─────────────────────
+  // ── Lock / Hide (M18.4, packages/core/docs/canvas-parity-plan.md) ─────────────────────
 
   /**
    * Locks the given elements (and all their descendants) — prevents drag, resize,
@@ -1646,7 +1646,7 @@ export class Editor {
    * Rotates a single element to `degrees` (0–359, normalised). Connectors and Frames are excluded
    * — connectors derive their shape entirely from endpoints + routing, and Frame is excluded from
    * all direct-manipulation operations. Returns `false` if the element doesn't exist, is a
-   * connector or frame, or is already at the target rotation (M20, docs/10-canvas-parity-plan.md).
+   * connector or frame, or is already at the target rotation (M20, packages/core/docs/canvas-parity-plan.md).
    */
   rotateElement(id: ElementId, degrees: number): boolean {
     const el = this.scene.get(id);
@@ -1663,7 +1663,7 @@ export class Editor {
    * Connects two elements without requiring exact ports — picks a reasonable
    * port pair from their relative position (`pickPorts`) — for mouse
    * drag-to-connect and keyboard connect mode alike
-   * (docs/06-editor-ux.md#core-interactions).
+   * (packages/core/docs/editor-ux.md#core-interactions).
    */
   connectNearest(
     fromId: ElementId,
@@ -1700,7 +1700,7 @@ export class Editor {
 
   /**
    * Adds several elements and/or connectors as one call and one undo step — for building a whole
-   * diagram section at once instead of one addX()/connect() call per element (docs/09-roadmap.md
+   * diagram section at once instead of one addX()/connect() call per element (docs/roadmap.md
    * M23.4). All-or-nothing: every op is validated against a disposable scratch Scene (seeded with
    * a copy of the real one) before anything touches the real scene or dispatches anything, so a
    * connect op can reference an element added earlier in the same batch (the scratch scene sees it
@@ -1821,7 +1821,7 @@ export class Editor {
   }
 
   /** Highlights the container a live drag would reparent into if released now (M17.6,
-   * docs/10-canvas-parity-plan.md) — pass `undefined` to clear it. */
+   * packages/core/docs/canvas-parity-plan.md) — pass `undefined` to clear it. */
   setDropTarget(id: ElementId | undefined): void {
     this.renderer.setDropTarget(id);
   }

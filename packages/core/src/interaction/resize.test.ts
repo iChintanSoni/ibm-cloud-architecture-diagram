@@ -107,7 +107,7 @@ describe("resizeBounds", () => {
   });
 });
 
-// Container-resize reflow (M17.5, docs/10-canvas-parity-plan.md) — repositions a child pinched by
+// Container-resize reflow (M17.5, packages/core/docs/canvas-parity-plan.md) — repositions a child pinched by
 // a shrinking container, never resizes it.
 describe("reflowChildren", () => {
   const CONTAINER_AFTER = { x: 0, y: 0, w: 100, h: 100 };

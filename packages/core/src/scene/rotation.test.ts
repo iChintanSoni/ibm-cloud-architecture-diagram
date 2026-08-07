@@ -1,5 +1,5 @@
 /**
- * M20 rotation geometry tests (docs/10-canvas-parity-plan.md).
+ * M20 rotation geometry tests (packages/core/docs/canvas-parity-plan.md).
  * Covers rotatedCorners, rotatedBounds, rotation-aware hit-testing, the rotateElement command,
  * and the two new linter rules (non-zero-rotation, off-palette-color).
  */

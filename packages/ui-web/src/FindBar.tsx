@@ -14,7 +14,7 @@ export interface FindBarProps {
   onClose: () => void;
 }
 
-/** Find on canvas (docs/06-editor-ux.md#find-on-canvas-f): labels, icon names, frame names. */
+/** Find on canvas (packages/core/docs/editor-ux.md#find-on-canvas-f): labels, icon names, frame names. */
 export function FindBar({
   open,
   query,
@@ -35,7 +35,7 @@ export function FindBar({
         ? document.activeElement
         : null;
     inputRef.current?.focus();
-    // Restores focus to whatever opened Find (docs/07-accessibility.md#chrome-the-easy-80).
+    // Restores focus to whatever opened Find (packages/core/docs/accessibility.md#chrome-the-easy-80).
     return () => previousFocusRef.current?.focus();
   }, [open]);
 

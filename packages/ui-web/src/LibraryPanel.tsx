@@ -137,7 +137,7 @@ export function LibraryPanel({
                     {/* Mirrors SvgRenderer's iconNode/actor tile (packages/core/src/render/svgRenderer.ts):
                         a solid category-color tile (square, or a circle for "rounded"/actor-style
                         icons) with the catalog's white glyph inset on top — the glyph asset is always
-                        white by design (D25, docs/00-decision-log.md), so without a tile behind it
+                        white by design (D25, docs/decision-log.md), so without a tile behind it
                         here it was rendering invisibly on the panel's own light background. viewBox is
                         24 (GLYPH_VIEWBOX_SIZE in svgRenderer.ts), not 20 — a stale leftover from before
                         M14 moved glyph geometry to a 24x24 frame; declaring 20 clipped the outer few

@@ -13,7 +13,7 @@ import type {
  * Minimal one-icon catalog for the synthetic diagrams below — a real bundled catalog would work
  * identically for benchmark purposes (only `resolve()`'s color lookup matters to the renderer),
  * but pulling one in would give `packages/core` a build-time dependency on `packages/catalog` it
- * doesn't otherwise have (docs/00-decision-log.md — shells inject the catalog, core never imports it).
+ * doesn't otherwise have (docs/decision-log.md — shells inject the catalog, core never imports it).
  */
 export const SYNTHETIC_CATALOG: CatalogManifest = {
   id: "bench-catalog",
@@ -59,7 +59,7 @@ export interface SyntheticDiagram {
  * (Box) each holding a row of icons chained by connectors — the same nesting + connector density
  * `iks_sr_mz_vpc` (the reference diagram in svgRenderer.goldenFixtures.test.ts) has, just repeated
  * until `targetCount` elements exist. Used by benchmark.test.ts to measure render/hit-test/lint/
- * command-bus cost at realistic scale (docs/09-roadmap.md#m12--performance-at-scale).
+ * command-bus cost at realistic scale (docs/roadmap.md#m12--performance-at-scale).
  */
 export function buildSyntheticDocument(targetCount: number): SyntheticDiagram {
   const elements: SceneElement[] = [];

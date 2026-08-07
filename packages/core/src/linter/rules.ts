@@ -76,7 +76,7 @@ function diagnostic(
   };
 }
 
-/** Boxes/groups/zones/actors should carry a label per docs/05-ibm-spec-conformance.md. */
+/** Boxes/groups/zones/actors should carry a label per packages/core/docs/ibm-spec-conformance.md. */
 export const missingLabelRule: Rule = (scene: Scene): Diagnostic[] => {
   const diagnostics: Diagnostic[] = [];
   for (const el of scene.all()) {
@@ -205,7 +205,7 @@ export const catalogIconRule: Rule = (scene, context): Diagnostic[] => {
 
 /**
  * Document-level, not per-element (Roadmap M13): flags when this file's pinned
- * `scene.catalog` ({ id, version }, docs/03-file-format.md) doesn't match the currently
+ * `scene.catalog` ({ id, version }, packages/core/docs/file-format.md) doesn't match the currently
  * bundled catalog. Informational only — `catalogIconRule` already flags any actually-broken
  * `catalogRef`, and `Catalog.resolve()`'s `aliases` fallback (packages/core/src/catalog/catalog.ts)
  * already resolves most renames invisibly — this just explains *why* a file might be showing
@@ -585,8 +585,8 @@ function rectsOverlap(
  *
  * Scoped to same-parent siblings only, grouped in one O(n) pass, then compared pairwise only
  * *within* each (typically small) group — not all-pairs across the whole scene, which would be
- * O(n²) against the perf budgets M27.3 already flagged as tight (docs/09-roadmap.md#m12).
- * Connectors are excluded: their own stored x/y/w/h is a degenerate 0x0 rect (docs/02-architecture.md), not a real footprint.
+ * O(n²) against the perf budgets M27.3 already flagged as tight (docs/roadmap.md#m12).
+ * Connectors are excluded: their own stored x/y/w/h is a degenerate 0x0 rect (docs/architecture.md), not a real footprint.
  */
 export const siblingOverlapRule: Rule = (scene): Diagnostic[] => {
   const groups = new Map<string, SceneElement[]>();
@@ -672,7 +672,7 @@ export const standardConnectorTypeRule: Rule = (scene): Diagnostic[] => {
 };
 
 /**
- * IBM's structured protocol/encapsulation annotation (docs/05-ibm-spec-conformance.md#connector-
+ * IBM's structured protocol/encapsulation annotation (packages/core/docs/ibm-spec-conformance.md#connector-
  * nomenclature) only makes sense with a name — a security/port descriptor with nothing to
  * describe is incomplete — and its PORT segment is always a network port number.
  */
@@ -904,7 +904,7 @@ export const iconGeometryRule: Rule = (scene): Diagnostic[] => {
 
 /**
  * Non-zero rotation is off-spec per IBM's architecture diagram kit — IBM's own worked examples
- * use only horizontal/vertical elements (D28, docs/00-decision-log.md). This rule is advisory:
+ * use only horizontal/vertical elements (D28, docs/decision-log.md). This rule is advisory:
  * the linter never blocks rotation, just flags it so diagrams that don't need it stay clean.
  * Quick-fix resets the element to 0°. Connectors and Frames are excluded — connectors derive
  * their geometry from routing (no rotation field is ever set on them), and Frame is excluded
@@ -932,7 +932,7 @@ export const nonZeroRotationRule: Rule = (scene): Diagnostic[] => {
 
 /**
  * Colors outside IBM's 9-pair primary/secondary palette are off-spec (D28,
- * docs/00-decision-log.md). This rule is advisory — the picker exists for deliberate one-offs —
+ * docs/decision-log.md). This rule is advisory — the picker exists for deliberate one-offs —
  * and flags both `style.stroke` and `style.fill` when they don't match any palette entry.
  * Quick-fix is not offered here (there's no canonical "nearest palette color" function) to avoid
  * a lossy auto-correction the user didn't ask for.

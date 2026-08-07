@@ -22,8 +22,8 @@ import { withKeywordOverrides } from "./keywordOverrides.js";
 import { slugify } from "./slug.js";
 
 const UPSTREAM_REPO = "https://github.com/IBM-Cloud/architecture-icons.git";
-// Pinned per D11 (docs/00-decision-log.md) for reproducible builds — bump deliberately,
-// with IBM Design sign-off, per docs/04-icon-catalog.md "Versioning strategy".
+// Pinned per D11 (docs/decision-log.md) for reproducible builds — bump deliberately,
+// with IBM Design sign-off, per packages/catalog-build/docs/icon-catalog.md "Versioning strategy".
 const UPSTREAM_REF = "32d9c311b0dadb95f0fe4fa88b27f3af41c1dbc5";
 const CATALOG_VERSION = "2.0.0";
 
@@ -220,7 +220,7 @@ function main() {
     }
   }
 
-  // Second extraction source (D23, docs/00-decision-log.md): icons embedded in the "IBM Not
+  // Second extraction source (D23, docs/decision-log.md): icons embedded in the "IBM Not
   // Released In Drawio" stencil library, which has no `svg/<folder>` counterpart. Shares
   // `seenSlugs` with the pass above so a Groups-category glyph never shadows/duplicates an
   // already-emitted icon of the same slug.

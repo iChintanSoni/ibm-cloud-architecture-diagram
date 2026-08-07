@@ -10,7 +10,7 @@ function prefersDark(): boolean {
   );
 }
 
-/** Resolves the auto/light/dark preference (docs/06-editor-ux.md#themes) to a Carbon theme token. */
+/** Resolves the auto/light/dark preference (packages/core/docs/editor-ux.md#themes) to a Carbon theme token. */
 export function useResolvedTheme(preference: ThemePreference): CarbonTheme {
   const [systemPrefersDark, setSystemPrefersDark] = useState(prefersDark);
 

@@ -22,20 +22,20 @@ export interface RunDiagramTaskInput {
   requirement: string;
   /** Diagram level for a *new* diagram. Ignored when `existingIcadPath` is given. Default "blank". */
   level?: DiagramLevel;
-  /** Path to an existing .icad to modify (docs/00-decision-log.md#d35). Omit to create a new one. */
+  /** Path to an existing .icad to modify (docs/decision-log.md#d35). Omit to create a new one. */
   existingIcadPath?: string;
   outputIcadPath: string;
   outputSvgPath: string;
   /** Rendered agent-side from the exported SVG once conformance is verified
-   * (docs/00-decision-log.md#d35) — omit to skip PNG entirely and only produce .icad/.svg. */
+   * (docs/decision-log.md#d35) — omit to skip PNG entirely and only produce .icad/.svg. */
   outputPngPath?: string;
-  /** Defaults to `resolveChatModel()` (docs/00-decision-log.md#d36). */
+  /** Defaults to `resolveChatModel()` (docs/decision-log.md#d36). */
   model?: BaseLanguageModel;
   /** LangGraph recursion limit for each agent run. A real multi-tier diagram needs many
    * sequential tool calls; the LangGraph default (25) is too low for that. */
   recursionLimit?: number;
   /** Aborts the in-flight agent run(s) (e.g. from an A2A `cancelTask` call, M32) — cheap to
-   * support given the fresh-subprocess-per-task model (docs/00-decision-log.md#d34): an abort
+   * support given the fresh-subprocess-per-task model (docs/decision-log.md#d34): an abort
    * rejects `agent.invoke()`, and the `finally` block below still tears the MCP subprocess down
    * either way. */
   signal?: AbortSignal;
@@ -194,7 +194,7 @@ export async function runDiagramTask(
 
     // Content check happens before any lint/quick-fix work — an empty document trivially passes
     // lint (nothing to flag), so this must be its own explicit check, not inferred from a clean
-    // lint result. See the M30 dogfooding findings in docs/09-roadmap.md.
+    // lint result. See the M30 dogfooding findings in docs/roadmap.md.
     const doc = structuredContentOf(
       await session.callToolRaw("doc_get", {}),
     ) as unknown as { document: { elements: unknown[] } };

@@ -1,7 +1,7 @@
 # AI agents & MCP
 
 `packages/mcp` is an [MCP](https://modelcontextprotocol.io) server that wraps the same
-`@icad/core` engine the human editors use, as a full authoring toolset for AI agents: 25 tools
+`@icad/core` engine the human editors use, as a full authoring toolset for AI agents: 46 tools
 across catalog search, document I/O, element authoring, and conformance/export — every mutating
 tool is a real core command, so anything an agent builds is undoable, validated against the
 linter, and opens as a normal `.icad` file a person can then edit by hand.
@@ -61,11 +61,24 @@ offline, reading and writing `.icad` files on disk.
 `doc_create`/`doc_open` refuse to replace unsaved changes unless you pass `force: true` — there's
 one document per server process for its whole lifetime, not a multi-document session model.
 
-**Authoring** (15 tools):
-`element_add_icon`, `element_add_box`, `element_add_group`, `element_add_zone`,
-`element_add_actor`, `element_add_text`, `element_add_frame`, `element_update`, `element_move`,
-`element_delete`, `connect` (exact ports), `connect_nearest` (auto-picked ports),
-`group_elements`, `ungroup_element`, `frame_reorder`.
+**Authoring** (36 tools):
+
+- _Create_ — `element_add_icon`, `element_add_box`, `element_add_group`, `element_add_zone`,
+  `element_add_actor`, `element_add_text`, `element_add_frame`.
+- _Modify_ — `element_update`, `element_move`, `element_delete`, `element_rotate`,
+  `element_reparent`.
+- _Connect_ — `connect` (exact ports), `connect_nearest` (auto-picked ports),
+  `connector_retarget`, `connector_reset_routing`.
+- _Group & frame_ — `group_elements`, `ungroup_element`, `frame_reorder`.
+- _Align_ — `element_align_left`, `element_align_right`, `element_align_top`,
+  `element_align_bottom`, `element_align_center_horizontal`, `element_align_middle`.
+- _Distribute_ — `element_distribute_horizontal`, `element_distribute_vertical`.
+- _Z-order_ — `element_bring_to_front`, `element_bring_forward`, `element_send_backward`,
+  `element_send_to_back`.
+- _Visibility_ — `element_lock`, `element_unlock`, `element_hide`, `element_show`.
+- _Batch_ — `scene_apply`, which applies many of the above in one call as a single undo step.
+  Prefer it when building a diagram from scratch; see the `ibm-diagram-authoring` skill for how to
+  shape a batch.
 
 **Conformance & export**:
 
@@ -106,8 +119,8 @@ sequenceDiagram
   A->>M: doc_save({ path: "diagram.icad" })
 ```
 
-The resulting `.icad` opens identically in the [web editor](02-web-editor.md),
-[VS Code](03-vscode-extension.md), or [desktop app](04-desktop-app.md) — agent-built and
+The resulting `.icad` opens identically in the [web editor](../../../apps/web/docs/web-editor.md),
+[VS Code](../../../apps/vscode/docs/vscode-extension.md), or [desktop app](../../../apps/desktop/docs/desktop-app.md) — agent-built and
 human-built diagrams are the same file format, edited through the same engine.
 
 ## Limitations

@@ -35,7 +35,7 @@ function main() {
     console.log(
       "  (a removal with no confident rename match — review manually before adopting;\n" +
         "   a genuine removal will silently placeholder-fallback for any file that references it,\n" +
-        "   see docs/04-icon-catalog.md and the catalog-version-mismatch/non-catalog-icon lint rules)",
+        "   see packages/catalog-build/docs/icon-catalog.md and the catalog-version-mismatch/non-catalog-icon lint rules)",
     );
   }
 

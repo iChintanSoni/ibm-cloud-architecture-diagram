@@ -25,7 +25,7 @@ function hasCyclicParent(
  * Children are stored in **descending** z-order (highest z first) so the
  * topmost row in the panel is the frontmost element — matching Figma,
  * Illustrator, and PowerPoint's own layer panel conventions (M18.5,
- * docs/10-canvas-parity-plan.md).  The input `elements` array from
+ * packages/core/docs/canvas-parity-plan.md).  The input `elements` array from
  * `Scene.all()` is already ascending-z sorted, so we simply reverse each
  * sibling list after building the tree.
  */
@@ -63,7 +63,7 @@ export function buildLayerTree(elements: SceneElement[]): LayerNode[] {
  * `elementsById`, when given, lets an unlabeled connector fall back through `annotation.name` and
  * then `"{from} → {to}"` instead of a generic "Untitled connector" — a connector with neither field
  * set (common for one drawn by hand rather than via `connect()`'s `label`/`annotation` options)
- * otherwise renders identically to every other unlabeled connector (F3, docs/09-roadmap.md M18).
+ * otherwise renders identically to every other unlabeled connector (F3, docs/roadmap.md M18).
  * A connector's own `.label.text` (e.g. "HTTPS") still takes priority, same as any other element
  * type, unchanged from before. Omitting `elementsById` preserves the old behavior exactly for
  * callers with no convenient full-scene lookup on hand.

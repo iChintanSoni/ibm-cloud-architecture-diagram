@@ -289,7 +289,7 @@ describe("CanvasController", () => {
     unsubscribe();
   });
 
-  describe("drag-to-move (M16.1, docs/10-canvas-parity-plan.md)", () => {
+  describe("drag-to-move (M16.1, packages/core/docs/canvas-parity-plan.md)", () => {
     it("drags an element past the threshold, cascades to descendants, and lands one undo entry", () => {
       // 96x96 (a multiple of the default 8px grid) so a well-clear-of-tolerance drag delta lands
       // every candidate edge exactly on a grid line — snapMove (already unit-tested on its own,
@@ -533,7 +533,7 @@ describe("CanvasController", () => {
     });
   });
 
-  describe("drag-to-reparent (M17.6, docs/10-canvas-parity-plan.md)", () => {
+  describe("drag-to-reparent (M17.6, packages/core/docs/canvas-parity-plan.md)", () => {
     it("highlights a container hovered mid-drag, cleared on release", () => {
       const box = editor.addBox({
         at: { x: 300, y: 0 },
@@ -689,7 +689,7 @@ describe("CanvasController", () => {
     });
   });
 
-  describe("8-handle resize (M16.2, docs/10-canvas-parity-plan.md)", () => {
+  describe("8-handle resize (M16.2, packages/core/docs/canvas-parity-plan.md)", () => {
     function resizeHandle(handleId: string): Element {
       const el = container.querySelector(
         `[data-icad-resize-handle="${handleId}"]`,
@@ -975,7 +975,7 @@ describe("CanvasController", () => {
     });
   });
 
-  describe("marquee selection (M16.3, docs/10-canvas-parity-plan.md)", () => {
+  describe("marquee selection (M16.3, packages/core/docs/canvas-parity-plan.md)", () => {
     it("selects only elements fully enclosed by the dragged rectangle", () => {
       const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
       const b = editor.addBox({
@@ -1105,7 +1105,7 @@ describe("CanvasController", () => {
     });
   });
 
-  describe("double-click to drill into a nested container (M16.4, docs/10-canvas-parity-plan.md)", () => {
+  describe("double-click to drill into a nested container (M16.4, packages/core/docs/canvas-parity-plan.md)", () => {
     it("double-clicking a container's own background drills into it, selecting it and pushing its own faint outline", () => {
       const box = editor.addBox({
         at: { x: 0, y: 0 },
@@ -1295,7 +1295,7 @@ describe("CanvasController", () => {
     });
   });
 
-  describe("clipboard (M16.5, docs/10-canvas-parity-plan.md)", () => {
+  describe("clipboard (M16.5, packages/core/docs/canvas-parity-plan.md)", () => {
     it("Ctrl/Cmd+C then Ctrl/Cmd+V clones the selection, offset, and selects the copy", () => {
       const a = editor.addBox({ at: { x: 0, y: 0 }, w: 50, h: 50, label: "a" });
       editor.selection.set([a]);
@@ -1466,7 +1466,7 @@ describe("CanvasController", () => {
     });
   });
 
-  describe("context menu (M16.6, docs/10-canvas-parity-plan.md)", () => {
+  describe("context menu (M16.6, packages/core/docs/canvas-parity-plan.md)", () => {
     it("right-clicking an unselected element selects it and reports the screen + scene point", () => {
       const onContextMenu = vi.fn();
       withOptions({ onContextMenu });
@@ -1566,7 +1566,7 @@ describe("CanvasController", () => {
     });
   });
 
-  describe("Alt+click select-through (M16.7, docs/10-canvas-parity-plan.md)", () => {
+  describe("Alt+click select-through (M16.7, packages/core/docs/canvas-parity-plan.md)", () => {
     it("a plain click always lands on the deepest element, same as before", () => {
       const box = editor.addBox({
         at: { x: 0, y: 0 },
@@ -1652,7 +1652,7 @@ describe("CanvasController", () => {
     });
   });
 
-  describe("wheel zoom/pan batching (docs/06-editor-ux.md#core-interactions)", () => {
+  describe("wheel zoom/pan batching (packages/core/docs/editor-ux.md#core-interactions)", () => {
     it("Ctrl+scroll zooms toward the cursor after the next animation frame", async () => {
       wheel(container, 10, 10, -100, { ctrlKey: true });
       // Not applied synchronously — flushed on the next animation frame instead.
@@ -1707,7 +1707,7 @@ describe("CanvasController", () => {
     });
   });
 
-  describe("space+drag and middle-drag panning (M17.1, docs/10-canvas-parity-plan.md)", () => {
+  describe("space+drag and middle-drag panning (M17.1, packages/core/docs/canvas-parity-plan.md)", () => {
     it("middle-click drag pans the viewport by the client delta (no scale applied)", () => {
       pointerEvent("pointerdown", container, 10, 10, { button: 1 });
       expect(controller.getMode()).toEqual({ kind: "panning" });
@@ -1826,7 +1826,7 @@ describe("CanvasController", () => {
     });
   });
 
-  describe("keyboard operability (docs/07-accessibility.md#canvas-the-hard-20)", () => {
+  describe("keyboard operability (packages/core/docs/accessibility.md#canvas-the-hard-20)", () => {
     it("Enter selects the currently focused element", () => {
       const id = editor.addBox({
         at: { x: 0, y: 0 },

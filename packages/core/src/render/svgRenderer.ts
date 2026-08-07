@@ -43,7 +43,7 @@ const ICON_CONTAINER = 48;
  * Every catalog asset's glyph is normalized (packages/catalog-build/src/extract.ts's
  * GLYPH_VIEWBOX) to fill a 0..24 coordinate space — IBM's own real glyph box (confirmed against
  * upstream source, e.g. load-balancer--local.svg's `<g transform="translate(12, 12)">` wrapping a
- * 24x24 glyph), not the 0..20 space ICAD previously assumed (D25, docs/00-decision-log.md). Both
+ * 24x24 glyph), not the 0..20 space ICAD previously assumed (D25, docs/decision-log.md). Both
  * glyph use-sites below must declare this same viewBox so the shared asset isn't misframed —
  * their on-screen *display* size (width/height) is independent and differs per use-site.
  */
@@ -92,7 +92,7 @@ const SEQUENCE_BADGE_MAX_WIDTH = 16;
  * labelText inherits (~16-18px). */
 const LABEL_LINE_HEIGHT_PX = 18;
 /** Side length of the single tiled grid rect, scene units — large enough that no realistic pan
- * ever scrolls past its edge (docs/09-roadmap.md#m12--performance-at-scale's benchmark tops out at
+ * ever scrolls past its edge (docs/roadmap.md#m12--performance-at-scale's benchmark tops out at
  * 2,000 elements, nowhere near this span) without needing to track/resize it against the live
  * viewport. */
 const GRID_EXTENT = 1_000_000;
@@ -103,7 +103,7 @@ interface Palette {
   stroke: string;
   zone: string;
   frame: string;
-  /** Faint background grid stroke (M17.2, docs/10-canvas-parity-plan.md) — deliberately not one
+  /** Faint background grid stroke (M17.2, packages/core/docs/canvas-parity-plan.md) — deliberately not one
    * of the 9 IBM category colors; it's chrome, not diagram content. */
   grid: string;
 }
@@ -124,7 +124,7 @@ const PALETTES: Record<ResolvedTheme, Palette> = {
 };
 
 /**
- * Independent of connectorType (docs/05-ibm-spec-conformance.md#connector-nomenclature).
+ * Independent of connectorType (packages/core/docs/ibm-spec-conformance.md#connector-nomenclature).
  * Public's `#4376BB` is a distinct "link blue" from IBM's own Connectors.drawio reference —
  * not one of the 9 category colors (which is why it doesn't match Blue 60 `#0f62fe`).
  */
@@ -191,7 +191,7 @@ const CONNECTION_TYPES = new Set<ConnectorType>([
 ]);
 
 /**
- * Line style + arrowheads per docs/05-ibm-spec-conformance.md#connector-nomenclature, confirmed
+ * Line style + arrowheads per packages/core/docs/ibm-spec-conformance.md#connector-nomenclature, confirmed
  * against `Connectors.drawio`'s own style strings. Relationships (dependency/association/
  * aggregation/composition) use the open-V `endArrow=open` marker there, distinct from
  * implementation/extends's hollow *closed* triangle (`endArrow=block;endFill=0`) — the two are
@@ -346,10 +346,10 @@ const MARKER_DEFS: Array<{
 ];
 
 /**
- * Renders a Scene to a live SVG DOM tree (docs/02-architecture.md#rendering-svg-dom).
+ * Renders a Scene to a live SVG DOM tree (docs/architecture.md#rendering-svg-dom).
  * Reconciliation is keyed by element id: existing nodes are updated in place,
  * stale nodes (removed from the scene) are dropped. Stroke/text colors follow
- * the resolved light/dark theme (docs/06-editor-ux.md#themes); icon containers
+ * the resolved light/dark theme (packages/core/docs/editor-ux.md#themes); icon containers
  * stay white-on-black per the IBM icon spec regardless of theme.
  */
 export class SvgRenderer {
@@ -370,22 +370,22 @@ export class SvgRenderer {
   private hoveredPortsId: string | undefined;
   private draftConnector: { from: Point; to: Point } | undefined;
   private marqueeRect: Rect | undefined;
-  /** Alignment guide lines (M17.2, docs/10-canvas-parity-plan.md) — the exact `SnapGuide[]`
+  /** Alignment guide lines (M17.2, packages/core/docs/canvas-parity-plan.md) — the exact `SnapGuide[]`
    * `snapMove()` already computes during drag; empty outside an in-progress drag. */
   private snapGuides: SnapGuide[] = [];
   /** Live position/dimension HUD (M17.2) shown during drag/resize — cleared (`undefined`) outside
    * a gesture. `at` is where the label anchors, scene-space. */
   private gestureReadout: { text: string; at: Point } | undefined;
   /** Ancestor-to-innermost chain of containers currently "drilled into" (M16.4,
-   * docs/10-canvas-parity-plan.md) — rendered as a faint outline each, distinct from the active
+   * packages/core/docs/canvas-parity-plan.md) — rendered as a faint outline each, distinct from the active
    * selection's dashed one, so both are visible at once per IBM's prescribed model. Empty outside
    * a drill scope. */
   private drillPath: string[] = [];
   /** Container a live drag would reparent into if released now (M17.6,
-   * docs/10-canvas-parity-plan.md) — `undefined` outside a drag or when nothing valid is hovered. */
+   * packages/core/docs/canvas-parity-plan.md) — `undefined` outside a drag or when nothing valid is hovered. */
   private dropTargetId: string | undefined;
   private currentScene?: Scene;
-  /** Live resize preview geometry (M16.2, docs/10-canvas-parity-plan.md), keyed by element id —
+  /** Live resize preview geometry (M16.2, packages/core/docs/canvas-parity-plan.md), keyed by element id —
    * checked by renderOverlays() so the selection outline/handles track the previewed bbox rather
    * than the last-committed one. Empty outside an in-progress resize gesture. */
   private previewGeometry = new Map<string, Rect>();
@@ -395,7 +395,7 @@ export class SvgRenderer {
    * checked by renderElement/renderOverlays so the connector path and handles update live. Cleared
    * on commit/abort. */
   private previewWaypoints = new Map<string, Array<{ x: number; y: number }>>();
-  /** Guards syncDomOrder's reorder walk (C10, docs/10-canvas-parity-plan.md) — the id sequence
+  /** Guards syncDomOrder's reorder walk (C10, packages/core/docs/canvas-parity-plan.md) — the id sequence
    * last reconciled into the DOM, so an unchanged z-order costs one string comparison, not an
    * O(n) appendChild-as-move-to-end pass on every render. */
   private lastOrderSignature = "";
@@ -415,7 +415,7 @@ export class SvgRenderer {
     // alongside) drag-to-move (M16.1) — CDP-dispatched synthetic pointer events don't exercise the
     // browser's selection machinery, so this was invisible to automated testing and only surfaced
     // with a real mouse. Set on the SVG root, not per-shell CSS, so both `apps/web` and
-    // `apps/vscode` get it for free (D2, docs/00-decision-log.md).
+    // `apps/vscode` get it for free (D2, docs/decision-log.md).
     this.svg.style.setProperty("user-select", "none");
     this.svg.style.setProperty("-webkit-user-select", "none");
 
@@ -444,7 +444,7 @@ export class SvgRenderer {
       marker.appendChild(path);
       defs.appendChild(marker);
     }
-    // Background grid (M17.2, docs/10-canvas-parity-plan.md): an SVG <pattern>, not per-line
+    // Background grid (M17.2, packages/core/docs/canvas-parity-plan.md): an SVG <pattern>, not per-line
     // elements — patternUnits="userSpaceOnUse" tiles in the same scene-space coordinate system
     // the viewBox already maps, so it scales and pans for free with zero extra work on pan/zoom
     // and costs a constant handful of DOM nodes regardless of diagram size or zoom level.
@@ -503,13 +503,13 @@ export class SvgRenderer {
     this.gridPatternPath.setAttribute("stroke", this.palette.grid);
   }
 
-  /** Shows or hides the background grid (M17.2, docs/10-canvas-parity-plan.md) — a view
+  /** Shows or hides the background grid (M17.2, packages/core/docs/canvas-parity-plan.md) — a view
    * preference, not part of the document, mirroring theme's own "call any time" shape. */
   setGridVisible(visible: boolean): void {
     this.gridRect.style.display = visible ? "" : "none";
   }
 
-  /** Applies the camera (docs/06-editor-ux.md#core-interactions) as the root SVG's viewBox. */
+  /** Applies the camera (packages/core/docs/editor-ux.md#core-interactions) as the root SVG's viewBox. */
   applyViewport(viewport: ViewportState): void {
     const rect = this.container.getBoundingClientRect();
     const w = (rect.width || FALLBACK_VIEWPORT_SIZE.w) / viewport.scale;
@@ -597,8 +597,8 @@ export class SvgRenderer {
 
   /**
    * Reorders existing DOM nodes to match scene.all()'s z-order (paint order doubles as SVG
-   * stacking order, docs/07-accessibility.md#canvas-the-hard-20) — previously never happened
-   * (C10, docs/10-canvas-parity-plan.md): a z-order change repainted the element in place but
+   * stacking order, packages/core/docs/accessibility.md#canvas-the-hard-20) — previously never happened
+   * (C10, packages/core/docs/canvas-parity-plan.md): a z-order change repainted the element in place but
    * never actually moved it in the DOM. Guarded by lastOrderSignature so the common case (no
    * element added/removed/re-ordered since the last render) costs one string comparison, not an
    * O(n) walk.
@@ -606,7 +606,7 @@ export class SvgRenderer {
    * Walks the *current* DOM order alongside the desired one, moving a node only when it's
    * actually out of place (`insertBefore` it just ahead of the next-correct node) rather than
    * unconditionally `appendChild`-ing every element whenever the signature changes at all (C14,
-   * docs/10-canvas-parity-plan.md) — the previous blanket re-append detached-and-reinserted every
+   * packages/core/docs/canvas-parity-plan.md) — the previous blanket re-append detached-and-reinserted every
    * node on *any* add/remove/reorder, including ones whose relative position never changed, which
    * silently blurs keyboard focus off a real element (e.g. Ctrl+D/paste dropping focus to
    * `<body>`, discovered live in a real browser: jsdom doesn't model focus-on-detach, so no
@@ -616,7 +616,7 @@ export class SvgRenderer {
    * C14's minimal-move fix only reduces *unnecessary* reorders — it can't help a z-order command
    * (M18), whose whole point is a genuine reorder of the focused node itself: `insertBefore` on an
    * attached, focused element is still a detach-then-reinsert, which still blurs it in a real
-   * browser (C15, docs/10-canvas-parity-plan.md; again invisible to jsdom). Explicitly restore
+   * browser (C15, packages/core/docs/canvas-parity-plan.md; again invisible to jsdom). Explicitly restore
    * focus below if the reorder is what knocked it out.
    */
   private syncDomOrder(elements: SceneElement[]): void {
@@ -652,7 +652,7 @@ export class SvgRenderer {
 
   /**
    * Mirrors SelectionManager state with a lightweight editor-only outline
-   * (docs/07-accessibility.md#canvas-the-hard-20). Never moves real DOM
+   * (packages/core/docs/accessibility.md#canvas-the-hard-20). Never moves real DOM
    * focus itself: focus follows `focusedId` (`focusElement()`), a separate
    * concept from selection, so callers that merely highlight a selection
    * (Find, frame presentation) don't steal focus from whatever the user is
@@ -678,10 +678,10 @@ export class SvgRenderer {
   }
 
   /**
-   * Live drag preview (D26, docs/00-decision-log.md): sets — or clears, at `dx === dy === 0` — a
+   * Live drag preview (D26, docs/decision-log.md): sets — or clears, at `dx === dy === 0` — a
    * CSS-style `transform` directly on each id's own `<g>` node (and its selection outline, if
    * selected), bypassing `render()`/the linter/the scene entirely. Elements are flat DOM siblings,
-   * not nested SVG groups (docs/07-accessibility.md#canvas-the-hard-20's `aria-owns` tree exists
+   * not nested SVG groups (packages/core/docs/accessibility.md#canvas-the-hard-20's `aria-owns` tree exists
    * precisely because containment isn't expressed via DOM nesting), so moving a container this way
    * does *not* carry its children — callers must pass every id that should visually move,
    * descendants included. Connectors are deliberately left untransformed and out of sync with a
@@ -706,7 +706,7 @@ export class SvgRenderer {
   }
 
   /**
-   * Live resize preview (M16.2, docs/10-canvas-parity-plan.md): re-renders a single element at a
+   * Live resize preview (M16.2, packages/core/docs/canvas-parity-plan.md): re-renders a single element at a
    * candidate `{x,y,w,h}` without touching the scene, the command bus, or the linter — resize
    * changes intrinsic geometry `renderElement` reads directly off the element, so (unlike
    * `previewTransform`'s translate) this rebuilds the node rather than just moving it. Pass `null`
@@ -741,7 +741,7 @@ export class SvgRenderer {
   }
 
   /**
-   * Live rotation preview (M20, docs/10-canvas-parity-plan.md): re-renders a single element at a
+   * Live rotation preview (M20, packages/core/docs/canvas-parity-plan.md): re-renders a single element at a
    * candidate rotation without touching the scene, the command bus, or the linter. Pass `null` to
    * restore the last-committed rotation. Rotation is stored in `previewGeometry` alongside the
    * element's existing x/y/w/h so `geometryOf` picks it up for all overlay positioning (selection
@@ -813,7 +813,7 @@ export class SvgRenderer {
     if (this.currentScene) this.renderOverlays(this.currentScene);
   }
 
-  /** Rubber-band rectangle preview for marquee selection (M16.3, docs/10-canvas-parity-plan.md), or
+  /** Rubber-band rectangle preview for marquee selection (M16.3, packages/core/docs/canvas-parity-plan.md), or
    * clears it when passed `undefined`. The actual selection is computed by the caller
    * (`hitTestRect` + `selection.set()`) on every move — this only draws the drag rectangle itself. */
   setMarqueeRect(rect: Rect | undefined): void {
@@ -821,7 +821,7 @@ export class SvgRenderer {
     if (this.currentScene) this.renderOverlays(this.currentScene);
   }
 
-  /** Alignment guide lines (M17.2, docs/10-canvas-parity-plan.md) — the exact `SnapGuide[]`
+  /** Alignment guide lines (M17.2, packages/core/docs/canvas-parity-plan.md) — the exact `SnapGuide[]`
    * `snapMove()` returns during a live drag; pass `[]` to clear at drag end/abort. */
   setSnapGuides(guides: SnapGuide[]): void {
     this.snapGuides = guides;
@@ -829,7 +829,7 @@ export class SvgRenderer {
   }
 
   /** Live position/dimension HUD shown during a drag or resize gesture (M17.2,
-   * docs/10-canvas-parity-plan.md) — pass `undefined` to clear it at commit/abort. */
+   * packages/core/docs/canvas-parity-plan.md) — pass `undefined` to clear it at commit/abort. */
   setGestureReadout(readout: { text: string; at: Point } | undefined): void {
     this.gestureReadout = readout;
     if (this.currentScene) this.renderOverlays(this.currentScene);
@@ -837,7 +837,7 @@ export class SvgRenderer {
 
   /**
    * Faint bounding-box context for the container(s) currently drilled into (M16.4,
-   * docs/10-canvas-parity-plan.md), outermost first — draws alongside, not instead of, the normal
+   * packages/core/docs/canvas-parity-plan.md), outermost first — draws alongside, not instead of, the normal
    * active-selection outline so both render at once (IBM's own prescribed model: "make sure the
    * inside bounding box is highlighted"). Pass `[]` to clear.
    */
@@ -847,13 +847,13 @@ export class SvgRenderer {
   }
 
   /** Highlights the container a live drag would reparent into if released now (M17.6,
-   * docs/10-canvas-parity-plan.md) — pass `undefined` to clear it. */
+   * packages/core/docs/canvas-parity-plan.md) — pass `undefined` to clear it. */
   setDropTarget(id: string | undefined): void {
     this.dropTargetId = id;
     if (this.currentScene) this.renderOverlays(this.currentScene);
   }
 
-  /** Reveals port markers (n/e/s/w) on a hovered element (docs/06-editor-ux.md#core-interactions), or clears them. */
+  /** Reveals port markers (n/e/s/w) on a hovered element (packages/core/docs/editor-ux.md#core-interactions), or clears them. */
   setHoveredElement(id?: string): void {
     this.hoveredPortsId = id;
     if (this.currentScene) this.renderOverlays(this.currentScene);
@@ -884,7 +884,7 @@ export class SvgRenderer {
     g.setAttribute("data-icad-type", el.type);
     g.setAttribute("role", accessibleRole(el));
     g.setAttribute("aria-label", accessibleName(el, scene, this.catalog));
-    // Screen-reader object tree (docs/07-accessibility.md#canvas-the-hard-20): containment is
+    // Screen-reader object tree (packages/core/docs/accessibility.md#canvas-the-hard-20): containment is
     // a flat DOM list (paint order doubles as the SVG stacking order), so `aria-owns` is how
     // a container's contents are exposed as parent/child rather than a flat sequence.
     const childIds = scene.childrenOf(el.id).map((child) => child.id);
@@ -898,7 +898,7 @@ export class SvgRenderer {
     // needed beyond the Properties panel toggle and the Layers badge added in M18.5.
     if (el.locked) g.setAttribute("data-icad-locked", "true");
     else g.removeAttribute("data-icad-locked");
-    // Rotation (M20, docs/10-canvas-parity-plan.md): rotate the whole <g> about the element's
+    // Rotation (M20, packages/core/docs/canvas-parity-plan.md): rotate the whole <g> about the element's
     // own center so every visual part (fill, label, glyph, sidebar tab) turns together.
     // Connectors and connectors' <g> nodes never carry rotation.
     if (el.type !== "connector" && el.rotation) {
@@ -925,7 +925,7 @@ export class SvgRenderer {
         break;
       }
       case "group": {
-        // Sidebar tab on every container, not Box alone (C7, docs/10-canvas-parity-plan.md) — IBM's
+        // Sidebar tab on every container, not Box alone (C7, packages/core/docs/canvas-parity-plan.md) — IBM's
         // own worked examples (Public Network, IBM Cloud, Region, OpenShift, Zone) all carry one.
         const stroke = el.style?.stroke ?? this.palette.stroke;
         g.appendChild(
@@ -982,7 +982,7 @@ export class SvgRenderer {
       }
       case "iconNode": {
         // Solid category-color tile + white glyph is the IBM icon spec itself (D25,
-        // docs/00-decision-log.md), not theme-dependent. Falls back to a neutral gray if the
+        // docs/decision-log.md), not theme-dependent. Falls back to a neutral gray if the
         // catalogRef can't be resolved (e.g. a stale reference against a since-changed catalog
         // version — Roadmap M13) rather than rendering a blank/black tile.
         g.appendChild(
@@ -1350,7 +1350,7 @@ export class SvgRenderer {
   }
 
   /**
-   * IBM's structured protocol/encapsulation annotation (docs/05-ibm-spec-conformance.md#connector-
+   * IBM's structured protocol/encapsulation annotation (packages/core/docs/ibm-spec-conformance.md#connector-
    * nomenclature), formatted via formatConnectorAnnotation and rendered below the connector's
    * midpoint — clear of the label above it (label sits at mid.y-4) and the sequence badge
    * straddling the line (radius 9, so it spans mid.y-9..mid.y+9).
@@ -1396,8 +1396,8 @@ export class SvgRenderer {
   }
 
   /**
-   * IBM's "sequencing or numbering for flowcharts or use cases" badge (docs/05-ibm-spec-
-   * conformance.md#connector-nomenclature) — a small circled label straddling the connector's
+   * IBM's "sequencing or numbering for flowcharts or use cases" badge
+   * (packages/core/docs/ibm-spec-conformance.md#connector-nomenclature) — a small circled label straddling the connector's
    * midpoint, distinct from the connector's own text label (which floats above the line).
    */
   private sequenceBadge(points: Point[], text: string): SVGGElement {
@@ -1451,7 +1451,7 @@ export class SvgRenderer {
       this.overlayLayer.appendChild(outline);
     }
 
-    // Drop-target highlight (M17.6, docs/10-canvas-parity-plan.md): a distinct affirmative green
+    // Drop-target highlight (M17.6, packages/core/docs/canvas-parity-plan.md): a distinct affirmative green
     // (Carbon Green 50), not the blue selection/drill family or the magenta guides — reads as "drop
     // here," not "this is selected" or "the canvas is telling you something about alignment."
     if (this.dropTargetId) {
@@ -1523,7 +1523,7 @@ export class SvgRenderer {
       }
     }
 
-    // 8-handle resize (M16.2, docs/10-canvas-parity-plan.md): only for a single non-connector,
+    // 8-handle resize (M16.2, packages/core/docs/canvas-parity-plan.md): only for a single non-connector,
     // non-frame selection — Frame is excluded everywhere else a pointer directly manipulates an
     // element (drag, hover-ports, connect-mode; see CanvasController), and multi-element
     // proportional resize isn't something IBM's own prescribed gesture (single inside-shape,
@@ -1562,7 +1562,7 @@ export class SvgRenderer {
         }
         this.overlayLayer.appendChild(handleGroup);
 
-        // Rotation handle (M20, docs/10-canvas-parity-plan.md): a circle above the element's
+        // Rotation handle (M20, packages/core/docs/canvas-parity-plan.md): a circle above the element's
         // top-center, connected by a short stem. Placed in the same rotated coordinate system
         // as the resize handles so it always appears "above" the element regardless of its
         // current rotation. Excluded for Frame (same reasoning as resize handles).
@@ -1841,7 +1841,7 @@ export class SvgRenderer {
       this.overlayLayer.appendChild(rect);
     }
 
-    // Alignment guides (M17.2, docs/10-canvas-parity-plan.md): a distinct color from the blue
+    // Alignment guides (M17.2, packages/core/docs/canvas-parity-plan.md): a distinct color from the blue
     // selection/marquee family so a guide reads as "the canvas telling you something" rather than
     // "part of the current selection."
     for (const guide of this.snapGuides) {

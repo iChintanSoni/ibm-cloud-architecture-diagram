@@ -4,7 +4,7 @@
 
 ## Principles
 
-- **Single human-readable JSON file** ([D6](00-decision-log.md#d6--icad-is-a-single-human-readable-json-file--locked)) — reviewable in a PR, diffable, agent-generatable.
+- **Single human-readable JSON file** ([D6](../../../docs/decision-log.md#d6--icad-is-a-single-human-readable-json-file--locked)) — reviewable in a PR, diffable, agent-generatable.
 - **Icons referenced by catalog ID**, never embedded — files stay small and diffs stay clean.
 - **Versioned + migratable** — a `restore/migrate` layer upgrades older files on open (the same
   discipline Excalidraw uses via its `restore.ts`).
@@ -55,7 +55,7 @@ Elements are a discriminated union on `type`. Shared fields:
   "label": { "text": "VPC", "position": "s" },
   "style": {/* stroke, fill, dashed, color token */},
   "z": 12, // paint order — global, but maintained as a pre-order traversal of containment (M18.1,
-  // docs/10-canvas-parity-plan.md), so a container's z is always lower than every one of
+  // packages/core/docs/canvas-parity-plan.md), so a container's z is always lower than every one of
   // its own descendants'. Absent on most elements until a z-order command first touches
   // their sibling bracket; defaults to 0 when unset.
 }
@@ -80,21 +80,21 @@ routed `waypoints` for stable re-open, but the router can re-derive them — `ro
 were last set. `direction` (`"unidirectional"` default, or `"bidirectional"`) and `flowColor`
 (`"private"`/`"public"`) apply to connection-type connectors; `cardinality` (`{ from?, to? }`
 labels) applies to relationship-type connectors. See
-[Connector nomenclature](05-ibm-spec-conformance.md#connector-nomenclature) for the full type list.
+[Connector nomenclature](./ibm-spec-conformance.md#connector-nomenclature) for the full type list.
 
 ## Catalog references, not embeds
 
-`catalogRef` is a stable ID resolved against the bundled [Icon Catalog](04-icon-catalog.md) pinned
+`catalogRef` is a stable ID resolved against the bundled [Icon Catalog](../../catalog-build/docs/icon-catalog.md) pinned
 by `catalog.version`. Benefits: tiny files, clean diffs, and icons that update in lockstep when we
 bump the catalog. If a referenced ID is missing after a catalog change, `Catalog.resolve()` falls
 back to the catalog manifest's own `aliases` array at every lookup site (render, lint, MCP
 authoring) — not a `.icad` schema migration step; catalog-ref compatibility and the `.icad` schema
 `version` are deliberately independent axes
-([D29](00-decision-log.md#d29--catalog-ref-compatibility-uses-catalog-aliases-not-the-icad-schema-migration-registry--locked-v3)).
+([D29](../../../docs/decision-log.md#d29--catalog-ref-compatibility-uses-catalog-aliases-not-the-icad-schema-migration-registry--locked-v3)).
 Failing that, the icon renders as a neutral gray/black placeholder tile with a
 `non-catalog-icon` lint diagnostic, and an informational `catalog-version-mismatch` diagnostic
 explains that the file's pinned catalog version differs from the one currently bundled
-([Icon Catalog → Versioning strategy](04-icon-catalog.md#versioning-strategy)).
+([Icon Catalog → Versioning strategy](../../catalog-build/docs/icon-catalog.md#versioning-strategy)).
 
 ## Versioning & migration
 
@@ -105,13 +105,13 @@ explains that the file's pinned catalog version differs from the one currently b
 
 ## Export
 
-Handled by `core/io`. See also [Editor UX → Export](06-editor-ux.md#export).
+Handled by `core/io`. See also [Editor UX → Export](./editor-ux.md#export).
 
 ### SVG (canonical)
 
 - Produced directly from the render tree, so export == on-screen.
 - Defaults mirror IBM guidance: transparent background, embedded fonts/images, spec colors.
-- **Re-editable copy ([D8](00-decision-log.md#d8--re-editable-svg-via-embedded-icad-copy--locked)):** the full `.icad` JSON is embedded in a
+- **Re-editable copy ([D8](../../../docs/decision-log.md#d8--re-editable-svg-via-embedded-icad-copy--locked)):** the full `.icad` JSON is embedded in a
   `<metadata>`/`<desc>` block so the tool can reopen the SVG and restore the editable scene. The
   `core/io` export API accepts an `embedSource: false` option to omit it, but no surface currently
   exposes that as a UI toggle — SVG export always embeds the source today.
@@ -129,8 +129,8 @@ Handled by `core/io`. See also [Editor UX → Export](06-editor-ux.md#export).
 
 ### Export gate
 
-The [linter](05-ibm-spec-conformance.md) can optionally **warn or block** export when the diagram
-has spec violations ([D12](00-decision-log.md#d12--advisory-linter--quick-fixes--optional-export-gate--locked)). Configurable; default = warn.
+The [linter](./ibm-spec-conformance.md) can optionally **warn or block** export when the diagram
+has spec violations ([D12](../../../docs/decision-log.md#d12--advisory-linter--quick-fixes--optional-export-gate--locked)). Configurable; default = warn.
 Both the gate and per-rule severity overrides live in the document's `conformance` object, so a
 team's chosen validation policy travels with the diagram.
 
@@ -138,4 +138,4 @@ team's chosen validation policy travels with the diagram.
 
 We considered a zipped container (embedding assets/fonts). Rejected for v1: it defeats
 git-diffability and clean PR review, which are core to the local-first, files-first stance
-([D4](00-decision-log.md#d4--local-first-single-user-files--locked)). Self-contained sharing is served by the embedded-source SVG instead.
+([D4](../../../docs/decision-log.md#d4--local-first-single-user-files--locked)). Self-contained sharing is served by the embedded-source SVG instead.

@@ -1,7 +1,7 @@
 import type { CatalogManifest, IconMeta } from "./types.js";
 
 /**
- * Runtime view over a bundled icon catalog (see docs/04-icon-catalog.md).
+ * Runtime view over a bundled icon catalog (see packages/catalog-build/docs/icon-catalog.md).
  * The manifest and assets are injected rather than imported directly, so
  * `core` has no build-time dependency on `packages/catalog` — a shell
  * decides which catalog version to load.

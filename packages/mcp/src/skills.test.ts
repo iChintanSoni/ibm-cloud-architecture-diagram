@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { createTestClient } from "./testClient.js";
 
-/** Guards against skill docs drifting from the real MCP surface (docs/08-agent-integration.md:
+/** Guards against skill docs drifting from the real MCP surface (packages/mcp/docs/agent-integration.md:
  * "Skills version alongside the MCP toolset ... so guidance never references tools that don't
  * exist"). Every inline-code token shaped like a tool name (snake_case, or one of the rare
  * bare-word tool names) must be a real registered tool. */

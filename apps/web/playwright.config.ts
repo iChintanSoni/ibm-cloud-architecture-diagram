@@ -1,7 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 /**
- * Real-browser accessibility + keyboard E2E checks (docs/07-accessibility.md#testing--ci):
+ * Real-browser accessibility + keyboard E2E checks (packages/core/docs/accessibility.md#testing--ci):
  * jsdom (packages/ui-web/src/a11y.test.tsx) can't evaluate layout-dependent rules like
  * color-contrast, and can't drive real Tab-key focus traversal at all. These run against an
  * actual Chromium instance instead.

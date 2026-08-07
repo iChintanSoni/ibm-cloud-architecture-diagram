@@ -6,7 +6,7 @@ export class ToolError extends Error {}
 
 /**
  * Per-server state: one `Editor` for the process's whole life (one process = one open document,
- * per D4 — docs/00-decision-log.md#d4--local-first-single-user-files--locked). A factory, not a
+ * per D4 — docs/decision-log.md#d4--local-first-single-user-files--locked). A factory, not a
  * module-level singleton, so each `createMcpServer()` call (production: once; tests: once per
  * test, via `InMemoryTransport`) gets its own isolated `Editor` and no state leaks across tests.
  */

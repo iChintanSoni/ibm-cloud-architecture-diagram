@@ -5,7 +5,7 @@ import { createEditor, type Catalog, type Editor } from "@icad/core";
  * `Editor` isn't headless on its own — its constructor requires a real `HTMLElement` container and
  * its renderer touches bare DOM globals (`document.createElementNS`, `XMLSerializer`, `Image`,
  * `URL`, `Blob`, ...) directly, per D3's locked "live SVG DOM nodes" rendering choice
- * (docs/00-decision-log.md#d3--svg-dom-rendering--locked). `packages/core`'s own test suite already
+ * (docs/decision-log.md#d3--svg-dom-rendering--locked). `packages/core`'s own test suite already
  * proves the intended path: it runs under a jsdom Vitest environment and calls
  * `createEditor({ container: document.createElement("div"), catalog })` directly.
  *

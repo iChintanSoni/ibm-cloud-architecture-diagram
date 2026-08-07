@@ -109,7 +109,7 @@ export function placeLibraryItem(
 }
 
 /** The canvas point centered in the current viewport — used for keyboard-only placement, where
- * there's no click position to place at (docs/07-accessibility.md#canvas-the-hard-20). */
+ * there's no click position to place at (packages/core/docs/accessibility.md#canvas-the-hard-20). */
 export function viewportCenter(editor: Editor, canvasEl: HTMLElement): Point {
   const rect = canvasEl.getBoundingClientRect();
   const { x, y, scale } = editor.viewport.get();

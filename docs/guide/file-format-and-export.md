@@ -31,7 +31,7 @@ Elements are a discriminated union on `type` (`box | group | zone | actor | icon
 text | frame`), each carrying both geometry (`x`/`y`/`w`/`h`, `parentId`) and its IBM `semantic`
 (`deployedOn` | `deployedTo` | `boundary` | `actor` | `node`). The full schema, including
 connector fields (`from`/`to` port refs, `connectorType`, `direction`, `flowColor`, `cardinality`,
-`waypoints`), lives in [`docs/03-file-format.md`](../03-file-format.md) — this page summarizes the
+`waypoints`), lives in [`packages/core/docs/file-format.md`](../../packages/core/docs/file-format.md) — this page summarizes the
 parts relevant to using the tool day to day.
 
 Files always load through a repair pass (drop dangling references, clamp degenerate geometry, fix
@@ -55,6 +55,6 @@ set to _Block_, export is refused while any `error`-level diagnostic remains. Th
 per-rule severity overrides are stored in the document itself (`conformance`), so a team's
 validation policy travels with the file.
 
-See [The web editor → Export](02-web-editor.md#export) for what the dialog looks like, and
-[The web editor → The linter](02-web-editor.md#the-linter) for how diagnostics and quick-fixes
+See [The web editor → Export](../../apps/web/docs/web-editor.md#export) for what the dialog looks like, and
+[The web editor → The linter](../../apps/web/docs/web-editor.md#the-linter) for how diagnostics and quick-fixes
 work.

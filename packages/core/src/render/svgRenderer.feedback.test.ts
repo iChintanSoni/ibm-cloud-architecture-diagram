@@ -29,7 +29,7 @@ function box(id: string, x: number, y: number): BoxElement {
   };
 }
 
-describe("SvgRenderer feedback layer (M17.2, docs/10-canvas-parity-plan.md)", () => {
+describe("SvgRenderer feedback layer (M17.2, packages/core/docs/canvas-parity-plan.md)", () => {
   let container: HTMLDivElement;
   let scene: Scene;
   let renderer: SvgRenderer;
@@ -138,7 +138,7 @@ describe("SvgRenderer feedback layer (M17.2, docs/10-canvas-parity-plan.md)", ()
     });
   });
 
-  describe("drop-target highlight (M17.6, docs/10-canvas-parity-plan.md)", () => {
+  describe("drop-target highlight (M17.6, packages/core/docs/canvas-parity-plan.md)", () => {
     it("renders and clears an affirmative highlight over the target container", () => {
       scene._put(box("parent", 0, 0));
       renderer.render(scene);

@@ -62,8 +62,8 @@ interface ResizeState {
 
 /** Container types "double-click to drill into" applies to — Frame excluded, matching every
  * other place a pointer directly manipulates an element (drag, hover-ports, connect-mode): it's a
- * presentation-sectioning background, not an IBM containment primitive (docs/00-decision-log.md's
- * D24, docs/10-canvas-parity-plan.md's M14 sidebar-tab item). */
+ * presentation-sectioning background, not an IBM containment primitive (docs/decision-log.md's
+ * D24, packages/core/docs/canvas-parity-plan.md's M14 sidebar-tab item). */
 function isDrillableContainerType(el: SceneElement): boolean {
   return el.type === "box" || el.type === "zone" || el.type === "group";
 }
@@ -79,7 +79,7 @@ interface MarqueeState {
   moved: boolean;
 }
 
-/** Space+drag and middle-drag panning (M17.1, docs/10-canvas-parity-plan.md). No drag threshold —
+/** Space+drag and middle-drag panning (M17.1, packages/core/docs/canvas-parity-plan.md). No drag threshold —
  * unambiguous the moment either trigger fires, same reasoning M16.2 gave for resize handles. */
 interface PanState {
   pointerId: number;
@@ -112,7 +112,7 @@ interface EndpointDragState {
 }
 
 /**
- * Rotation gesture state (M20, docs/10-canvas-parity-plan.md). The rotation angle is computed
+ * Rotation gesture state (M20, packages/core/docs/canvas-parity-plan.md). The rotation angle is computed
  * from the angle of the pointer vector relative to the element's center — the same approach
  * Figma and Illustrator use, which makes the handle's angular position match what the user drags.
  * `startAngle` is the initial pointer angle minus the element's current rotation so the element
@@ -142,7 +142,7 @@ interface RotateState {
  *   every major browser, including Safari, but at a far more conservative deltaY magnitude than an
  *   equivalent-speed two-finger scroll-pan's deltaX/deltaY. Without the 10x compensation here, zoom
  *   would always feel weaker than pan for the same physical gesture speed — which is exactly what
- *   was reported (docs/06-editor-ux.md#core-interactions). A real Ctrl+wheel from a physical mouse
+ *   was reported (packages/core/docs/editor-ux.md#core-interactions). A real Ctrl+wheel from a physical mouse
  *   hits this same branch and gets the same boost; that's fine; both are "the user asked to zoom
  *   fast," just via different hardware.
  */
@@ -204,8 +204,8 @@ function parsePortAttr(value: string): {
 
 /**
  * The canvas's own pointer + keyboard interaction, as one state machine (D27,
- * docs/00-decision-log.md) — previously ~250 lines duplicated near-identically between
- * `apps/web` and `apps/vscode`'s own `App.tsx` (docs/10-canvas-parity-plan.md's de-fork item).
+ * docs/decision-log.md) — previously ~250 lines duplicated near-identically between
+ * `apps/web` and `apps/vscode`'s own `App.tsx` (packages/core/docs/canvas-parity-plan.md's de-fork item).
  * Owns: wheel pan/zoom, click-to-select, drag-to-move (with a drag threshold, Shift axis-lock,
  * snapping, and Escape-to-abort), 8-handle resize (Shift aspect-lock, Alt resize-from-center,
  * Escape-to-abort — M16.2), drag-to-connect via ports, keyboard connect-mode ("c", Tab, Enter,
@@ -217,7 +217,7 @@ function parsePortAttr(value: string): {
  * equivalent, arrow-key nudge — drag-to-move's own keyboard equivalent, Delete/Backspace,
  * Ctrl/Cmd+A select-all — marquee's own keyboard equivalent, and Ctrl/Cmd+C/X/V/D copy/cut/paste/
  * duplicate — M16.5, inherently keyboard gestures with no separate equivalent to add) — see
- * docs/07-accessibility.md#canvas-the-hard-20, a hard requirement this class must keep meeting,
+ * packages/core/docs/accessibility.md#canvas-the-hard-20, a hard requirement this class must keep meeting,
  * not just replicate incidentally. Resize's own keyboard equivalent is the Properties panel's
  * typed X/Y/W/H fields (`InspectorPanel.tsx`), which predate this gesture and already cover it —
  * mirroring how M16.1 found arrow-key nudge already covered drag-to-move; no new keyboard code was
@@ -234,7 +234,7 @@ function parsePortAttr(value: string): {
  * — no new keyboard code needed, since Tab/Shift+Tab's tab order (M8) already reaches every
  * element regardless of visual overlap.
  *
- * Built on Pointer Events with `setPointerCapture` (D27, docs/00-decision-log.md) so a drag
+ * Built on Pointer Events with `setPointerCapture` (D27, docs/decision-log.md) so a drag
  * survives the cursor leaving the container.
  *
  * Deliberately does NOT own: global app-chrome shortcuts (undo/redo/zoom/find/palette — these
@@ -399,7 +399,7 @@ export class CanvasController {
     return this.editor.scene.childrenOf(id).length > 0;
   }
 
-  // Double-click to drill into a nested container (M16.4, docs/10-canvas-parity-plan.md — straight
+  // Double-click to drill into a nested container (M16.4, packages/core/docs/canvas-parity-plan.md — straight
   // from IBM's own kit instructions: "make sure the inside bounding box is highlighted by double
   // clicking on the inside shape"). Selects and focuses the double-clicked container itself (its
   // own two preceding native clicks already did this; explicit here so it also holds for a
@@ -437,7 +437,7 @@ export class CanvasController {
     this.editor.selection.set(newInner ? [newInner] : []);
   }
 
-  // Right-click context menu (M16.6, docs/10-canvas-parity-plan.md): always preventDefault's the
+  // Right-click context menu (M16.6, packages/core/docs/canvas-parity-plan.md): always preventDefault's the
   // browser's own menu. Syncs selection to the hit target first — an unselected target replaces
   // the selection (matching every other click-to-select path), but a target that's already part
   // of a multi-selection leaves the whole selection alone, so "right-click any member" acts on the
@@ -493,7 +493,7 @@ export class CanvasController {
     this.options.onConnected?.(id, fromId, toId);
   }
 
-  // Scroll pans, Ctrl/Cmd+scroll zooms toward the cursor (docs/06-editor-ux.md#core-interactions).
+  // Scroll pans, Ctrl/Cmd+scroll zooms toward the cursor (packages/core/docs/editor-ux.md#core-interactions).
   // Non-passive so preventDefault actually stops page scroll. Deltas are accumulated and applied
   // via flushWheel() at most once per animation frame rather than synchronously here — see
   // pendingZoom/pendingPan's doc comment for why.
@@ -581,7 +581,7 @@ export class CanvasController {
     this.updateCursor();
   };
 
-  // Pointer drag-to-connect (docs/06-editor-ux.md#core-interactions): hover a shape to reveal its
+  // Pointer drag-to-connect (packages/core/docs/editor-ux.md#core-interactions): hover a shape to reveal its
   // ports (SvgRenderer draws them), pointerdown on one starts a rubber-band drag; dropping on
   // another element's port uses that exact port, dropping anywhere else on it auto-picks a
   // reasonable pair (connectNearest); dropping on empty canvas cancels.
@@ -642,7 +642,7 @@ export class CanvasController {
     );
   };
 
-  // Space+drag / middle-drag panning (M17.1, docs/10-canvas-parity-plan.md): no scene/command
+  // Space+drag / middle-drag panning (M17.1, packages/core/docs/canvas-parity-plan.md): no scene/command
   // involvement at all — purely a `ViewportController` change. Note the sign is the *opposite* of
   // `handleWheel`'s scroll-pan: a "grab" gesture drags the content along with the cursor (dragging
   // right moves the viewport's scene-space origin left, so content visually follows the hand),
@@ -660,7 +660,7 @@ export class CanvasController {
     this.editor.viewport.panBy(-dxClient / scale, -dyClient / scale);
   }
 
-  // Rotation gesture (M20, docs/10-canvas-parity-plan.md): compute the pointer's current angle
+  // Rotation gesture (M20, packages/core/docs/canvas-parity-plan.md): compute the pointer's current angle
   // about the element center, subtract the startOffset to get the candidate rotation, 15° snap on
   // Shift, live-preview via a renderer repaint, show the HUD readout.
   private updateRotate(event: PointerEvent, point: Point): void {
@@ -680,7 +680,7 @@ export class CanvasController {
     });
   }
 
-  // Drag-to-move (M16, docs/10-canvas-parity-plan.md): armed on pointerdown over a selectable
+  // Drag-to-move (M16, packages/core/docs/canvas-parity-plan.md): armed on pointerdown over a selectable
   // element, but only becomes a real drag once the pointer has moved DRAG_THRESHOLD client px —
   // short of that, this stays a plain click (handleClick fires normally on release). Selection is
   // updated here rather than in handleClick so a drag can start immediately with the right
@@ -967,7 +967,7 @@ export class CanvasController {
     this.capturePointer(event.pointerId);
   };
 
-  // Marquee selection (M16.3, docs/10-canvas-parity-plan.md): armed by a pointerdown on empty
+  // Marquee selection (M16.3, packages/core/docs/canvas-parity-plan.md): armed by a pointerdown on empty
   // canvas or a Frame's background, becomes real once past the same DRAG_THRESHOLD drag-to-move
   // uses. Unlike drag/resize there's no separate commit step — `selection.set()` is applied live
   // on every move (cheap: it only repaints overlays, not the scene/linter), and Escape restores
@@ -986,7 +986,7 @@ export class CanvasController {
 
     const rect = rectFromPoints(marquee.startScenePoint, point);
     this.editor.setMarqueeRect(rect);
-    // Fully-enclosed only (Decisions taken, docs/10-canvas-parity-plan.md), matching draw.io and
+    // Fully-enclosed only (Decisions taken, packages/core/docs/canvas-parity-plan.md), matching draw.io and
     // Excalidraw — safest in dense nested diagrams where intersect-mode would constantly grab the
     // enclosing Box/Zone instead of what's inside it.
     let enclosed = hitTestRect(this.editor.scene, rect);
@@ -1056,7 +1056,7 @@ export class CanvasController {
     // could otherwise reintroduce a tiny delta on the axis the user asked to freeze.
     const finalDx = lockAxis === "x" ? 0 : snapped.dx;
     const finalDy = lockAxis === "y" ? 0 : snapped.dy;
-    // Alignment guides + live position readout (M17.2, docs/10-canvas-parity-plan.md) — cleared
+    // Alignment guides + live position readout (M17.2, packages/core/docs/canvas-parity-plan.md) — cleared
     // together at drag end/abort (handlePointerUp/handleGlobalKeyDown). A locked axis's own guide
     // is dropped too (its delta is forced to 0 regardless of what snapMove found there, so drawing
     // it would describe a snap that isn't actually being applied).
@@ -1082,7 +1082,7 @@ export class CanvasController {
     drag.interaction.update(finalDx, finalDy, dropTargetId);
   }
 
-  // Drop-target detection (M17.6, docs/10-canvas-parity-plan.md): the deepest container under the
+  // Drop-target detection (M17.6, packages/core/docs/canvas-parity-plan.md): the deepest container under the
   // pointer's *current* scene point — hitTestAll's own deepest-first stack means a point over a
   // nested leaf (e.g. hovering a sibling icon inside the real target container) still resolves to
   // that container, not just a bare-background hit. Excludes the dragged selection's own current
@@ -1106,7 +1106,7 @@ export class CanvasController {
     return target?.id;
   }
 
-  // 8-handle resize (M16.2, docs/10-canvas-parity-plan.md): unlike drag-to-move there's no
+  // 8-handle resize (M16.2, packages/core/docs/canvas-parity-plan.md): unlike drag-to-move there's no
   // threshold — grabbing a handle is unambiguous, so this is "resizing" from the first pointermove.
   // No move-with — resizeBounds/beginResizeInteraction only ever touch the one resized element,
   // not its descendants. Parent-inset clamping (M17.3) mirrors drag's own layering: this class
@@ -1123,7 +1123,7 @@ export class CanvasController {
     });
     const parentId = this.editor.scene.get(resize.id)?.parentId;
     const bounds = clampRectToParentInset(this.editor.scene, parentId, raw);
-    // Live dimension readout (M17.2, docs/10-canvas-parity-plan.md) — cleared at resize end/abort
+    // Live dimension readout (M17.2, packages/core/docs/canvas-parity-plan.md) — cleared at resize end/abort
     // (handlePointerUp/handleGlobalKeyDown), same lifecycle as drag's own position readout. Reads
     // the clamped bounds, not the raw candidate, so the HUD always matches what's actually
     // previewed/committed.
@@ -1376,7 +1376,7 @@ export class CanvasController {
 
     // A drag-to-connect gesture already handled this interaction on pointerup. Ports are
     // hover-only DOM decorations, not scene elements — this stays DOM-based deliberately (C9,
-    // docs/10-canvas-parity-plan.md): it isn't the divergent hit-test path that item closes.
+    // packages/core/docs/canvas-parity-plan.md): it isn't the divergent hit-test path that item closes.
     if (
       event.target instanceof Element &&
       event.target.closest("[data-icad-port]")
@@ -1415,7 +1415,7 @@ export class CanvasController {
     }
   };
 
-  // Alt+click select-through (M16.7, docs/10-canvas-parity-plan.md): cycles to the next element in
+  // Alt+click select-through (M16.7, packages/core/docs/canvas-parity-plan.md): cycles to the next element in
   // the full occluded stack at this point (hitTestAll's own deepest-then-topmost order) rather than
   // always landing on the same "best" one a plain click picks. Alt+click always replaces the
   // selection outright — it's a reveal tool for reaching one specific occluded element, not a
@@ -1517,7 +1517,7 @@ export class CanvasController {
     if (this.drillPath.length > 0) this.stepOutOfDrill();
   };
 
-  // Keyboard-operable canvas (docs/07-accessibility.md#canvas-the-hard-20). Tab/Shift+Tab move
+  // Keyboard-operable canvas (packages/core/docs/accessibility.md#canvas-the-hard-20). Tab/Shift+Tab move
   // keyboard focus only — wrapping is disabled at the boundary so Tab can still exit to
   // surrounding chrome (no keyboard trap) — Enter/Space select the focused element (Shift+
   // toggles it into/out of a multi-selection), arrow keys nudge the current selection,

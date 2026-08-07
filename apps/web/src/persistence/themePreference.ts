@@ -2,7 +2,7 @@ import type { ThemePreference } from "../useResolvedTheme.js";
 
 /**
  * Persists the auto/light/dark chrome preference across sessions
- * (docs/06-editor-ux.md#themes), independent of any one `.icad` document.
+ * (packages/core/docs/editor-ux.md#themes), independent of any one `.icad` document.
  */
 const STORAGE_KEY = "icad:theme-preference";
 const VALID: ReadonlySet<string> = new Set(["auto", "light", "dark"]);

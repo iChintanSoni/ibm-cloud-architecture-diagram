@@ -1,7 +1,7 @@
 import { Catalog, type CatalogManifest } from "@icad/core";
 
 /**
- * Loads the real IBM icon catalog (docs/04-icon-catalog.md), exactly like
+ * Loads the real IBM icon catalog (packages/catalog-build/docs/icon-catalog.md), exactly like
  * apps/web/src/catalog.ts — this webview is also a Vite build, so the same eager `import.meta.glob`
  * approach bakes the manifest + SVGs straight into the bundle. Only the relative depth differs
  * (apps/vscode/webview/src is one level deeper than apps/web/src).

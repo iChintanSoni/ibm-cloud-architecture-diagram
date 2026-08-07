@@ -13,7 +13,7 @@ import type { AgentBundle } from "./subagents.js";
 // IcadAgentExecutor's `runTask` injection).
 //
 // This specifically regression-tests two real bugs found via live testing
-// (docs/09-roadmap.md's M30 dogfooding findings):
+// (docs/roadmap.md's M30 dogfooding findings):
 //   - An empty document trivially passes lint() (nothing to flag), so a run where the agent
 //     silently did nothing was reporting `success: true` with zero elements before the
 //     "document has content" check existed (finding #6).
@@ -65,7 +65,7 @@ function agentThatThrowsIfCalled(): Promise<AgentBundle> {
   });
 }
 
-describe("runDiagramTask's deterministic gate (docs/00-decision-log.md#d37)", () => {
+describe("runDiagramTask's deterministic gate (docs/decision-log.md#d37)", () => {
   const icadPath = path.join(
     tmpdir(),
     `icad-agent-gate-test-${process.pid}.icad`,

@@ -1,6 +1,6 @@
 /**
  * IBM's 9 category primary colors and their light secondary-fill counterparts
- * (docs/05-ibm-spec-conformance.md#color-usage). Single source of truth shared by the renderer
+ * (packages/core/docs/ibm-spec-conformance.md#color-usage). Single source of truth shared by the renderer
  * (container fill lookup) and the linter (primary/secondary misuse rules) — these used to be two
  * independently hardcoded copies that had drifted (the linter's was missing the gray pair).
  */

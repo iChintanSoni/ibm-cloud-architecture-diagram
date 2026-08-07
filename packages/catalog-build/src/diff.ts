@@ -110,7 +110,7 @@ export function diffCatalogs(
  * Writes each renamed pair's old id into the new manifest's `aliases` array, so a `.icad` file
  * authored against the old catalog version keeps resolving via `Catalog.resolve()`'s existing
  * aliases fallback (packages/core/src/catalog/catalog.ts) — no `.icad` migration involved (D29,
- * docs/00-decision-log.md). Returns the number of icons actually updated.
+ * docs/decision-log.md). Returns the number of icons actually updated.
  */
 export function applyAliasesForRenames(
   newManifestPath: string,

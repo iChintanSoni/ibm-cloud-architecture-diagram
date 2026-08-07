@@ -1,7 +1,7 @@
 /**
  * Scene data model — mirrors the .icad element schema documented in
- * docs/03-file-format.md. Every element carries an IBM `semantic` in
- * addition to its geometry, per docs/05-ibm-spec-conformance.md.
+ * packages/core/docs/file-format.md. Every element carries an IBM `semantic` in
+ * addition to its geometry, per packages/core/docs/ibm-spec-conformance.md.
  */
 
 export type ElementId = string;
@@ -31,7 +31,7 @@ export interface PortRef {
 
 /**
  * Physical/protocol connections and messages between elements
- * (docs/05-ibm-spec-conformance.md#connector-nomenclature).
+ * (packages/core/docs/ibm-spec-conformance.md#connector-nomenclature).
  */
 export type ConnectionType =
   | "logical-connection"
@@ -70,7 +70,7 @@ export interface EndpointLabels {
 }
 
 /**
- * IBM's structured connector annotation (docs/05-ibm-spec-conformance.md#connector-nomenclature):
+ * IBM's structured connector annotation (packages/core/docs/ibm-spec-conformance.md#connector-nomenclature):
  * `name` is "Protocol/Application NAME" for a connection/physical-connection, or "Encapsulation
  * NAME" for a tunnel type — which reading applies is inferred from the connector's own
  * `connectorType`, not stored separately. Rendered via `formatConnectorAnnotation`.
@@ -97,14 +97,14 @@ interface BaseElement {
    * When true, the element cannot be dragged, resized, reparented, or deleted via the UI.
    * Still selectable (via Tab/keyboard) and editable through the Properties panel.
    * Cascades to all descendants when set via `lockElements`/`unlockElements`.
-   * (M18.4, docs/10-canvas-parity-plan.md)
+   * (M18.4, packages/core/docs/canvas-parity-plan.md)
    */
   locked?: boolean;
   /**
    * When true, the element renders at reduced opacity and is excluded from pointer hit-testing
    * (click/marquee). Still reachable via Tab/keyboard for Properties editing. Cascades to all
    * descendants when set via `hideElements`/`showElements`.
-   * (M18.4, docs/10-canvas-parity-plan.md)
+   * (M18.4, packages/core/docs/canvas-parity-plan.md)
    */
   hidden?: boolean;
   /**
@@ -140,7 +140,7 @@ export interface GroupElement extends BaseElement {
 }
 
 /**
- * D24 (docs/00-decision-log.md): only availability-zone/on-prem geographic boundaries render
+ * D24 (docs/decision-log.md): only availability-zone/on-prem geographic boundaries render
  * as the dotted Boundary primitive. Region, VPC, and Subnet are Box (`deployedOn`, solid,
  * sidebar tab) — see BoxElement / templates.ts.
  */

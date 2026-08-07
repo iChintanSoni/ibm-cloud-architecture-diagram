@@ -11,7 +11,7 @@ export interface ContextMenuProps {
 
 /**
  * Right-click (or its keyboard equivalent — the Menu key / Shift+F10, `CanvasController`'s own
- * `onContextMenu`) canvas menu, contextual to the hit target (docs/06-editor-ux.md#core-
+ * `onContextMenu`) canvas menu, contextual to the hit target (packages/core/docs/editor-ux.md#core-
  * interactions) — a thin wrapper over Carbon's own `Menu`/`MenuItem`, which already handles
  * positioning, open/close, and keyboard nav (arrow keys, Enter, Escape) natively, over the same
  * `CommandItem[]` shape the command palette uses, so an action is defined once rather than

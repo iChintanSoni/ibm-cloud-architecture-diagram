@@ -45,14 +45,14 @@ Product name (working): **ICAD — IBM Cloud Architecture Diagrams**. File exten
 ## Non-goals (v1)
 
 - Not a general-purpose whiteboard or mind-mapping tool.
-- Not a draw.io replacement / round-trip editor ([D7](00-decision-log.md#d7--export-only-interop-svgpng-no-drawio-import--locked)).
-- No real-time multi-user collaboration ([D4](00-decision-log.md#d4--local-first-single-user-files--locked)).
+- Not a draw.io replacement / round-trip editor ([D7](./decision-log.md#d7--export-only-interop-svgpng-no-drawio-import--locked)).
+- No real-time multi-user collaboration ([D4](./decision-log.md#d4--local-first-single-user-files--locked)).
 - No cloud backend, accounts, or billing.
-- No hand-drawn/sketch aesthetic ([D5](00-decision-log.md#d5--crisp--professional-visual-style--locked)).
+- No hand-drawn/sketch aesthetic ([D5](./decision-log.md#d5--crisp--professional-visual-style--locked)).
 
 ## Positioning
 
-Official IBM-internal tool ([D17](00-decision-log.md#d17--official--ibm-internal-tool--locked)). This grants IBM branding and sanctioned use of the
+Official IBM-internal tool ([D17](./decision-log.md#d17--official--ibm-internal-tool--locked)). This grants IBM branding and sanctioned use of the
 [IBM Cloud architecture icons](https://github.com/IBM-Cloud/architecture-icons), and it means
 releases are gated by **IBM Design sign-off**. Distribution is internal first; a public open-source
 posture is out of scope unless IBM decides otherwise.

@@ -2,7 +2,7 @@
   "name": "@icad/agent",
   "private": true,
   "version": "0.0.0",
-  "description": "Deep Agents runtime driving @icad/mcp end-to-end from natural language, exposed over A2A (docs/11-agent-runtime.md).",
+  "description": "Deep Agents runtime driving @icad/mcp end-to-end from natural language, exposed over A2A (apps/agent/docs/agent-runtime.md).",
   "license": "Apache-2.0",
   "type": "module",
   "main": "./dist/index.js",

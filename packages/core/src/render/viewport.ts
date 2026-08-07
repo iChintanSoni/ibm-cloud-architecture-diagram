@@ -23,7 +23,7 @@ function clampScale(scale: number): number {
 }
 
 /**
- * Ephemeral pan/zoom camera (docs/06-editor-ux.md#core-interactions). Kept
+ * Ephemeral pan/zoom camera (packages/core/docs/editor-ux.md#core-interactions). Kept
  * outside the undo history and out of the `.icad` document — it's view
  * state, not document state.
  */

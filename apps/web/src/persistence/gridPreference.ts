@@ -1,6 +1,6 @@
 /**
  * Persists the background-grid visibility preference across sessions (M17.2,
- * docs/10-canvas-parity-plan.md), independent of any one `.icad` document — mirrors
+ * packages/core/docs/canvas-parity-plan.md), independent of any one `.icad` document — mirrors
  * themePreference.ts's own shape.
  */
 const STORAGE_KEY = "icad:grid-visible";

@@ -63,7 +63,7 @@ export function addElement(element: SceneElement): Command {
  * a Group's member connected to a sibling elsewhere on the canvas) — without
  * this, the connector survives with an endpoint that no longer resolves,
  * which the `.icad` repair pass only cleans up on next load, not live in the
- * editor (docs/03-file-format.md#versioning--migration). Undo restores
+ * editor (packages/core/docs/file-format.md#versioning--migration). Undo restores
  * everything, parents before children so intermediate parentId lookups stay
  * valid throughout.
  */
@@ -127,7 +127,7 @@ export function updateElement(
 
 /**
  * Moves the given elements by a delta, cascading to every element nested
- * inside them (move-with, docs/02-architecture.md#scene-model) so dragging a
+ * inside them (move-with, docs/architecture.md#scene-model) so dragging a
  * container carries its contents along. Descendants shared by more than one
  * selected id are only moved once.
  */
@@ -168,7 +168,7 @@ export function moveElements(
 
 /**
  * Grows `containerId` to fit its current children plus the 16px buffer, never shrinking it (M17.4,
- * docs/10-canvas-parity-plan.md) — the counterpart to `moveElements` no longer clamping a dragged
+ * packages/core/docs/canvas-parity-plan.md) — the counterpart to `moveElements` no longer clamping a dragged
  * child to its parent's inset (`snapping.ts`'s `snapMove`): instead of stopping the child at a
  * wall mid-gesture, the parent grows to fit once the move actually commits. Meant to be batched
  * immediately after a `moveElements` targeting (some of) this container's own children — `do()`
@@ -210,7 +210,7 @@ export function autoGrowContainer(
  * own descendant's child), which would hang move-with/cascading-delete.
  *
  * Reports its `_put` as reason **"replace"**, not "update" (a real bug, found and fixed building
- * M17.6, docs/10-canvas-parity-plan.md): a reparent changes the *old* parent's `aria-owns` list and
+ * M17.6, packages/core/docs/canvas-parity-plan.md): a reparent changes the *old* parent's `aria-owns` list and
  * child count too, not just the moved element's own `parentId` — but the old parent's own scene
  * object is never itself `_put`, so `createEditor.ts`'s "update"-reason fast path
  * (`SvgRenderer.renderElements(event.ids)`, scoped to only the ids a `Scene._transaction` actually
@@ -262,7 +262,7 @@ export function reparentElement(
  * bring-to-front/send-to-back/step commands always renumber the whole document, not just the
  * elements that moved, since `paintOrder`'s pre-order-DFS invariant (every container immediately
  * followed by its whole subtree) is a property of the *entire* z assignment, not any one sibling
- * bracket in isolation (docs/10-canvas-parity-plan.md M18). Skips `_put` for any id already at
+ * bracket in isolation (packages/core/docs/canvas-parity-plan.md M18). Skips `_put` for any id already at
  * its target index, mirroring `reorderFrames`'s own "skip unchanged" pattern.
  *
  * `do()` recomputes `paintOrder` fresh against the *current* scene rather than a value captured
@@ -456,7 +456,7 @@ export function autoRouteConnector(scene: Scene, id: ElementId): Command {
 
 /**
  * Changes one or both endpoints of a connector to new element/port targets
- * (M19 endpoint retargeting, docs/10-canvas-parity-plan.md). Automatically
+ * (M19 endpoint retargeting, packages/core/docs/canvas-parity-plan.md). Automatically
  * re-routes auto-routing connectors after the change; manual connectors keep
  * their current waypoints (the user will drag them into shape).
  */
@@ -490,7 +490,7 @@ export function retargetConnector(
 
 /**
  * Sets `locked: true` on the given ids and all their descendants (M18.4,
- * docs/10-canvas-parity-plan.md). Skip-unchanged: any id already locked is
+ * packages/core/docs/canvas-parity-plan.md). Skip-unchanged: any id already locked is
  * silently skipped so a no-op selection doesn't produce a spurious undo entry.
  * Reports `_put`s as reason `"update"` — a field-only change (no geometry, no
  * containment), so the `renderElements` fast path handles it.
@@ -552,7 +552,7 @@ export function unlockElements(scene: Scene, ids: ElementId[]): Command {
 
 /**
  * Sets `hidden: true` on the given ids and all their descendants (M18.4,
- * docs/10-canvas-parity-plan.md). Reports `_put`s as reason `"update"` — same
+ * packages/core/docs/canvas-parity-plan.md). Reports `_put`s as reason `"update"` — same
  * rationale as `lockElements`.
  */
 export function hideElements(scene: Scene, ids: ElementId[]): Command {
@@ -660,7 +660,7 @@ export function updateConformance(
 
 /**
  * Sets `rotation` (degrees, 0–359 normalised) on a single element as one undoable step (M20,
- * docs/10-canvas-parity-plan.md). Connectors and Frames are excluded — connectors have no visual
+ * packages/core/docs/canvas-parity-plan.md). Connectors and Frames are excluded — connectors have no visual
  * body to rotate (their shape is entirely derived from endpoints + routing), and Frame is a
  * presentation-sectioning background that is intentionally excluded from all direct-manipulation
  * operations that don't make structural sense for it. Rotation is a field-only change (no geometry

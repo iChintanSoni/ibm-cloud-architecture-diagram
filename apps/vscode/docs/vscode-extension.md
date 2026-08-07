@@ -26,7 +26,7 @@ create one — and it opens in the custom editor by default.
 
 ## What's different from the web app
 
-Most of [the web editor](02-web-editor.md) works identically inside VS Code. A few things are
+Most of [the web editor](../../web/docs/web-editor.md) works identically inside VS Code. A few things are
 necessarily different because VS Code owns the window chrome and file lifecycle:
 
 - **Undo/redo** is wired into VS Code's own undo stack (Ctrl/Cmd+Z routes through VS Code, not a
@@ -38,11 +38,11 @@ necessarily different because VS Code owns the window chrome and file lifecycle:
 - **Theme** follows VS Code's active color theme automatically; there's no manual Auto/Light/Dark
   picker in this shell.
 - **Export** only offers **SVG** today. The web app gained a PNG format option later
-  ([M11](../09-roadmap.md#m11--appsdesktop-tauri-shell)); the VS Code webview is a separately
+  ([M11](../../../docs/roadmap.md#m11--appsdesktop-tauri-shell)); the VS Code webview is a separately
   built package and hasn't picked that change up yet.
 
 Everything else — element types, connectors, templates, the linter, find, the command palette —
-behaves the same as the [web editor](02-web-editor.md).
+behaves the same as the [web editor](../../web/docs/web-editor.md).
 
 ## Limitations
 

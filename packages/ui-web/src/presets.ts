@@ -52,7 +52,7 @@ export const confirmedContainerPresets: readonly ContainerPreset[] = [
     zoneKind: "az",
     cornerIcon: "ibm-cloud/data-center",
   },
-  // Region/VPC newly confirmed by D24 (docs/00-decision-log.md) — Box, not Boundary/Zone.
+  // Region/VPC newly confirmed by D24 (docs/decision-log.md) — Box, not Boundary/Zone.
   {
     id: "region",
     name: "Region",

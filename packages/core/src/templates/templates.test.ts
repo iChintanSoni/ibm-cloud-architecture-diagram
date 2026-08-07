@@ -129,7 +129,7 @@ describe("diagram templates", () => {
   );
 });
 
-describe("reference architecture templates (docs/00-decision-log.md#d30)", () => {
+describe("reference architecture templates (docs/decision-log.md#d30)", () => {
   it("publishes the four IKS/ROKS Single Region Multi-Zone choices", () => {
     expect(
       REFERENCE_ARCHITECTURE_TEMPLATES.map((template) => template.id),
@@ -189,7 +189,7 @@ describe("reference architecture templates (docs/00-decision-log.md#d30)", () =>
       expect(zones).toHaveLength(3);
       expect(subnets).toHaveLength(3);
 
-      // Three documented, advisory-only diagnostic categories (docs/00-decision-log.md#d30). Two
+      // Three documented, advisory-only diagnostic categories (docs/decision-log.md#d30). Two
       // are stable across the whole M27 epic: the decorative "Master" band is an unlabeled Box
       // (missing-label) carrying a separately-rotated Text label (non-zero-rotation) so the
       // band's own border isn't rotated - both are marked gutterExempt (M27.6/M27.7) so the

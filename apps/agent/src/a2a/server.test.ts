@@ -65,7 +65,7 @@ async function collectEvents(
   return events;
 }
 
-describe("A2A server (docs/00-decision-log.md#d32)", () => {
+describe("A2A server (docs/decision-log.md#d32)", () => {
   let handle: A2AServerHandle;
   let workDir: string;
 

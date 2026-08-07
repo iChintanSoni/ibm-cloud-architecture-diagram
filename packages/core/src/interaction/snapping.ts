@@ -23,7 +23,7 @@ export interface SnapResult {
 export interface SnapOptions {
   /** Scene-space distance under which a grid line or sibling edge/center snaps. Defaults to 8. */
   tolerance?: number;
-  /** Overrides `scene.canvas.grid` (C11 in docs/10-canvas-parity-plan.md). Mainly for tests. */
+  /** Overrides `scene.canvas.grid` (C11 in packages/core/docs/canvas-parity-plan.md). Mainly for tests. */
   gridSize?: number;
 }
 
@@ -67,7 +67,7 @@ function bestCandidate(
  * Deliberately does **not** clamp to the parent's 16px inset the way it used to (M15–M17.3): a
  * dragged child is now let all the way to wherever the pointer takes it, and
  * `Editor.beginInteraction()`'s own `commit()` grows the parent to fit afterward
- * (`autoFitContainer`, M17.4, docs/10-canvas-parity-plan.md) rather than stopping the child at a
+ * (`autoFitContainer`, M17.4, packages/core/docs/canvas-parity-plan.md) rather than stopping the child at a
  * wall mid-gesture — "auto-grow... instead of letting it escape," not "refuse to overlap and get
  * stuck." Resize's own inset clamp (`clampRectToParentInset`) is unaffected: that's a distinct,
  * deliberately kept hard limit (M17.3), since "dragged toward an edge" in the roadmap's own wording
@@ -218,7 +218,7 @@ function clampNumber(value: number, min: number, max: number): number {
 }
 
 /**
- * Clamps a candidate rect (M17.3, docs/10-canvas-parity-plan.md) so none of its four edges cross
+ * Clamps a candidate rect (M17.3, packages/core/docs/canvas-parity-plan.md) so none of its four edges cross
  * its own parent's 16px inset — a hard constraint, not a snap-if-close candidate. Unlike
  * `snapMove`'s own clamp (which translates a fixed-size bbox as a whole), each edge here is
  * clamped independently: a resize handle only ever moves a subset of the four edges, and the

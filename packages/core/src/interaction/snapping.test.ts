@@ -110,7 +110,7 @@ describe("snapMove", () => {
   // M17.4 removed the parent-inset clamp that used to live here: a dragged child no longer gets
   // stopped at its parent's buffer mid-gesture (that was M15/M16.1's original "refuse to overlap"
   // behavior) — instead the parent grows to fit at commit time
-  // (`autoFitContainer`/`Editor.beginInteraction().commit()`, docs/10-canvas-parity-plan.md).
+  // (`autoFitContainer`/`Editor.beginInteraction().commit()`, packages/core/docs/canvas-parity-plan.md).
   // `PARENT_INSET` itself stays exported/used by `clampRectToParentInset` (resize's own, still-hard
   // limit, M17.3).
   it("no longer clamps to the parent's inset — the child can be dragged past its bottom-right edge", () => {
@@ -183,7 +183,7 @@ describe("snapMove", () => {
   });
 });
 
-// Resize's own parent-inset clamp (M17.3, docs/10-canvas-parity-plan.md) — unlike snapMove's
+// Resize's own parent-inset clamp (M17.3, packages/core/docs/canvas-parity-plan.md) — unlike snapMove's
 // whole-bbox clamp above (a move translates rigidly), each edge here is independent: a resize
 // handle only ever moves a subset of the four edges, so only the edge(s) actually dragged should
 // ever be capped.

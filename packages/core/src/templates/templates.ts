@@ -19,7 +19,7 @@ export type { ReferenceArchitectureTemplateId } from "./referenceArchitectures.j
 /**
  * Distinct from `DocumentMeta["diagramLevel"]`: the 4 reference-architecture ids are all
  * "detailed/deployment"-level worked examples (see TEMPLATE_DIAGRAM_LEVEL below), not a 5th
- * diagram level of their own (docs/09-roadmap.md#m26--reference-architecture-templates).
+ * diagram level of their own (docs/roadmap.md#m26--reference-architecture-templates).
  */
 export type DiagramTemplateId =
   DocumentMeta["diagramLevel"] | ReferenceArchitectureTemplateId;

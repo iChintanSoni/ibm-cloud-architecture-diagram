@@ -9,8 +9,8 @@ export type { Point };
 
 /**
  * Scene-space distance tolerance for line-like hits (connectors). A connector's declared
- * x/y/w/h is a degenerate 0x0 rect (docs/02-architecture.md), so without this every connector is
- * geometrically unhittable (C9, docs/10-canvas-parity-plan.md) — this module tests distance to
+ * x/y/w/h is a degenerate 0x0 rect (docs/architecture.md), so without this every connector is
+ * geometrically unhittable (C9, packages/core/docs/canvas-parity-plan.md) — this module tests distance to
  * its real rendered polyline instead. Callers driving a live, zoomable viewport should scale a
  * fixed on-screen pixel tolerance by `1 / viewport.scale` so a connector stays equally easy to
  * click at any zoom level; this flat default suits callers with no viewport to hand (tests,
@@ -107,7 +107,7 @@ function matches(
  * (e.g. a connector, which never has a `parentId`, overlapping an unrelated container). This
  * replaces the previous z-order-only heuristic, which only happened to prefer children in the
  * common case because the editor's own placement/grouping flow tends to add a child after its
- * container (C9, docs/10-canvas-parity-plan.md) — not a rule the engine actually enforced. An
+ * container (C9, packages/core/docs/canvas-parity-plan.md) — not a rule the engine actually enforced. An
  * earlier version of this tie-break compared raw ancestor-*count* depth instead of an actual
  * ancestor relationship, which meant any unrelated container nested a level or more deep always
  * beat a connector (always depth 0) regardless of z-order or of whether the two were related at
@@ -150,7 +150,7 @@ export function hitTest(
 
 /**
  * Elements fully enclosed within `rect` — marquee selection semantics, matching draw.io and
- * Excalidraw (docs/10-canvas-parity-plan.md's Decisions taken: fully-enclosed, not intersect).
+ * Excalidraw (packages/core/docs/canvas-parity-plan.md's Decisions taken: fully-enclosed, not intersect).
  * A connector is enclosed only if every point on its rendered path sits inside `rect`; every
  * other element is enclosed on its own declared bounds only — a marquee need not also enclose a
  * container's contents to pick up the container itself.

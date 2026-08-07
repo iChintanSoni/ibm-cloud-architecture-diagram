@@ -1,8 +1,8 @@
 import { A2A_PROTOCOL_VERSION, type AgentCard } from "@a2a-js/sdk";
 
 /**
- * `apps/agent`'s A2A identity (docs/00-decision-log.md#d32): two skills matching the exact
- * "GenerateArchitectureDiagram" capability already named in docs/08-agent-integration.md, plus
+ * `apps/agent`'s A2A identity (docs/decision-log.md#d32): two skills matching the exact
+ * "GenerateArchitectureDiagram" capability already named in packages/mcp/docs/agent-integration.md, plus
  * the new "ModifyArchitectureDiagram" for editing an existing `.icad`.
  */
 export function buildAgentCard(port: number): AgentCard {
@@ -55,7 +55,7 @@ export function buildAgentCard(port: number): AgentCard {
         name: "Modify Architecture Diagram",
         description:
           "Edits an existing .icad diagram from a natural-language instruction. Requires an " +
-          "existingIcadPath in the request message's metadata (docs/00-decision-log.md#d35).",
+          "existingIcadPath in the request message's metadata (docs/decision-log.md#d35).",
         tags: ["diagram", "ibm-cloud", "architecture", "modify", "edit"],
         examples: ["Add a Redis cache next to the Application tier."],
         inputModes: ["text/plain"],

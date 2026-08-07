@@ -120,7 +120,7 @@ export class Scene {
    * — including the case where every id is top-level (no single container to point at), which a
    * caller distinguishes from "ambiguous" the same way either way: there's nothing to act on.
    * Used by auto-grow (M17.4) and drag-to-reparent's own "already in this container" check
-   * (M17.6, docs/10-canvas-parity-plan.md). */
+   * (M17.6, packages/core/docs/canvas-parity-plan.md). */
   sharedParentId(ids: ElementId[]): ElementId | undefined {
     if (ids.length === 0) return undefined;
     const parentIds = new Set(ids.map((id) => this.get(id)?.parentId));
@@ -147,7 +147,7 @@ export class Scene {
    * `fn` into a single coalesced event fired after it returns, instead of one event per call. A
    * command that touches N elements (move-with cascade, cascading delete, ...) previously
    * triggered N full render+lint passes via the `scene.on()` subscription — one per `_put` — which
-   * dominated the cost of every multi-element gesture (C13, docs/10-canvas-parity-plan.md). Only
+   * dominated the cost of every multi-element gesture (C13, packages/core/docs/canvas-parity-plan.md). Only
    * `CommandBus` calls this, wrapping each `do()`/`undo()`. Reentrant: a transaction started while
    * already inside one just runs `fn()` against the outer buffer rather than flushing early, so a
    * `batch()`'s per-sub-command writes all land in one coalesced event.

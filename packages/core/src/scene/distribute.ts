@@ -2,7 +2,7 @@ import { boundsOf } from "./bounds.js";
 import type { Scene } from "./scene.js";
 import type { ElementId } from "./types.js";
 
-/** The two distribution axes (M18.3, docs/10-canvas-parity-plan.md). */
+/** The two distribution axes (M18.3, packages/core/docs/canvas-parity-plan.md). */
 export type DistributeMode = "horizontal" | "vertical";
 
 export interface DistributeMove {

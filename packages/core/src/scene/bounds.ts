@@ -7,7 +7,7 @@ import type { ElementId, SceneElement } from "./types.js";
  * Returns the four corners of an element's own bounding box, rotated about its own center by
  * `degrees`. Used to build the axis-aligned bounding box of a rotated element for hit-testing,
  * auto-grow, alignment, and distribute — all of which work in the canvas's unrotated coordinate
- * space even when the element itself is displayed rotated (M20, docs/10-canvas-parity-plan.md).
+ * space even when the element itself is displayed rotated (M20, packages/core/docs/canvas-parity-plan.md).
  */
 export function rotatedCorners(
   el: { x: number; y: number; w: number; h: number; rotation?: number },
@@ -57,7 +57,7 @@ export function rotatedBounds(el: {
  * Scene-space bounding box of a plain list of elements (e.g. a clipboard snapshot that may no
  * longer match the live scene) — the geometry half of `boundsOf`, factored out so callers with
  * detached elements in hand don't need a `Scene` to query. A connector's declared x/y/w/h is a
- * degenerate 0x0 rect (docs/02-architecture.md), so its own waypoints are used instead; a
+ * degenerate 0x0 rect (docs/architecture.md), so its own waypoints are used instead; a
  * connector with none (a straight auto-routed line) contributes nothing, the same accepted
  * simplification `boundsOf` itself already carried.
  */
@@ -122,7 +122,7 @@ export function boundsOf(scene: Scene, ids: ElementId[]): Rect | undefined {
  * shrinking below it) when given. With no `existing`, this is exactly the sizing
  * `Editor.groupElements()` already used to size a brand-new container to its contents; with one,
  * it's `autoFitContainer`'s own "grow to fit, never shrink" rule (M17.4,
- * docs/10-canvas-parity-plan.md).
+ * packages/core/docs/canvas-parity-plan.md).
  */
 export function fitRectWithPadding(
   bbox: Rect,
@@ -144,7 +144,7 @@ export function fitRectWithPadding(
 
 /**
  * The smallest rect containing every current child of `containerId` plus a `padding` buffer on
- * every side (M17.4, docs/10-canvas-parity-plan.md) — reuses `fitRectWithPadding`, the same
+ * every side (M17.4, packages/core/docs/canvas-parity-plan.md) — reuses `fitRectWithPadding`, the same
  * bbox+padding math `groupElements()` uses at creation time, generalized to an *existing*
  * container: the result never shrinks below the container's own current bounds (auto-grow only
  * ever expands — a resize's own explicit shrink-and-reflow is M17.5's job, not this). Returns

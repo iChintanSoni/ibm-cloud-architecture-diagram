@@ -7,7 +7,7 @@ export interface Point {
 
 /** Resolves a named port on an element's bounding box to a canvas point.
  * When the element has a non-zero `rotation`, the port's unrotated position is rotated about
- * the element's center to match the rendered location (M20, docs/10-canvas-parity-plan.md).
+ * the element's center to match the rendered location (M20, packages/core/docs/canvas-parity-plan.md).
  */
 export function portPoint(el: SceneElement, side: PortSide): Point {
   const { x, y, w, h } = el;

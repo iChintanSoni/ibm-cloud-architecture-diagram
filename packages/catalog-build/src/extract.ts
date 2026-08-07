@@ -1,6 +1,6 @@
 import { JSDOM } from "jsdom";
 
-// IBM's own glyph occupies a 24x24 local box (D25, docs/00-decision-log.md) — matching
+// IBM's own glyph occupies a 24x24 local box (D25, docs/decision-log.md) — matching
 // DEFAULT_LOCAL_SIZE below, so the common case reframes at scale(1) rather than shrinking to fit
 // an arbitrary smaller box. packages/core/src/render/svgRenderer.ts's glyph viewBoxes must agree
 // with this constant, since both draw the same normalized asset into their own coordinate space.
@@ -174,7 +174,7 @@ function reframeGlyph(svg: Element): boolean {
  * Converts one upstream IBM icon SVG (48x48 canvas: a colored background tile plus a white
  * glyph) into a 24x24 white glyph fragment, plus the tile's own accent color as separate
  * metadata. The glyph is deliberately left white rather than recolored — per D25
- * (docs/00-decision-log.md), ICAD's renderer paints the solid category tile (or, for a rounded/
+ * (docs/decision-log.md), ICAD's renderer paints the solid category tile (or, for a rounded/
  * actor tile, a solid circle) behind the glyph itself, matching how IBM's own icon is
  * constructed, rather than inlining a colored glyph onto a white host container.
  *

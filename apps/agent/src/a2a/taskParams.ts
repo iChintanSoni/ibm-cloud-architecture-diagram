@@ -41,7 +41,7 @@ function stringField(
 
 /**
  * Reads the caller's requirement (the message's text part) and this task's file paths/level from
- * the message's `metadata` bag (docs/00-decision-log.md#d35 — an explicit path, not inline
+ * the message's `metadata` bag (docs/decision-log.md#d35 — an explicit path, not inline
  * content). `outputIcadPath` defaults to a per-task temp path if the caller doesn't care where it
  * lands; `outputSvgPath`/`outputPngPath` default to that same path with a swapped extension.
  */

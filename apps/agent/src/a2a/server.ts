@@ -28,7 +28,7 @@ export interface StartA2AServerOptions {
 }
 
 /**
- * Localhost-only, no auth (docs/00-decision-log.md#d32) — `UserBuilder.noAuthentication` is a
+ * Localhost-only, no auth (docs/decision-log.md#d32) — `UserBuilder.noAuthentication` is a
  * first-class supported mode of `@a2a-js/sdk` itself, not a bespoke bypass.
  * `InMemoryTaskStore` is sufficient given the single-task-at-a-time model (D34): nothing here
  * needs to survive a process restart.

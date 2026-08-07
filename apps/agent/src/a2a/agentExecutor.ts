@@ -77,9 +77,9 @@ function nowIso(): string {
 export type RunDiagramTaskFn = typeof runDiagramTask;
 
 /**
- * The A2A-facing implementation of ICAD's two skills (docs/00-decision-log.md#d32):
+ * The A2A-facing implementation of ICAD's two skills (docs/decision-log.md#d32):
  * GenerateArchitectureDiagram / ModifyArchitectureDiagram, both routed through the same
- * `runDiagramTask` (docs/11-agent-runtime.md's request lifecycle) — which skill was invoked
+ * `runDiagramTask` (apps/agent/docs/agent-runtime.md's request lifecycle) — which skill was invoked
  * doesn't change the executor's own logic, only whether the caller supplied `existingIcadPath`.
  */
 export class IcadAgentExecutor implements AgentExecutor {

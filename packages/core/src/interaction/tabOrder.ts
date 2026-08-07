@@ -19,9 +19,9 @@ function connectorPosition(scene: Scene, connector: ConnectorElement): number {
 }
 
 /**
- * Meaningful keyboard tab order (docs/07-accessibility.md#canvas-the-hard-20):
+ * Meaningful keyboard tab order (packages/core/docs/accessibility.md#canvas-the-hard-20):
  * containers before their children, siblings ordered west-to-east (per
- * docs/05-ibm-spec-conformance.md#layout-convention); connectors last,
+ * packages/core/docs/ibm-spec-conformance.md#layout-convention); connectors last,
  * ordered by their source element's position since they don't nest.
  */
 export function computeTabOrder(scene: Scene): SceneElement[] {

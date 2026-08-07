@@ -15,7 +15,7 @@ import { TopBar, type TopBarProps } from "./TopBar.js";
 /**
  * jsdom has no layout engine, so visual/layout-dependent rules (contrast,
  * target size, ...) can't be evaluated reliably here — those need a real
- * browser (docs/07-accessibility.md#testing--ci, tracked for M8.2's
+ * browser (packages/core/docs/accessibility.md#testing--ci, tracked for M8.2's
  * Playwright + axe-core pass). Everything else — landmarks, labels, roles,
  * ARIA validity, duplicate ids — runs for real and must stay clean.
  */

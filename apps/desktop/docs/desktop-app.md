@@ -42,7 +42,7 @@ detection check) gets:
   of dropping into your Downloads folder.
 
 Everything else — element types, connectors, templates, the linter, file format — is identical to
-[the web editor](02-web-editor.md), since it's literally the same build.
+[the web editor](../../web/docs/web-editor.md), since it's literally the same build.
 
 ## Limitations
 

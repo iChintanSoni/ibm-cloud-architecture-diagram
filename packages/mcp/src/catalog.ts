@@ -6,13 +6,13 @@ import { Catalog, type CatalogManifest } from "@icad/core";
 /**
  * Node-native equivalent of `apps/web/src/catalog.ts`'s `createIbmCloudCatalog()` — that one uses
  * Vite's `import.meta.glob`, a browser-bundler feature not available in this plain Node process.
- * Reads directly from the sibling `packages/catalog` data directory (docs/04-icon-catalog.md) —
+ * Reads directly from the sibling `packages/catalog` data directory (packages/catalog-build/docs/icon-catalog.md) —
  * that directory has no `package.json` of its own, so this only works from inside a full clone of
  * this monorepo. That's an accepted constraint for now (matches D4's local-first, single-user
  * scope), not a silent assumption.
  *
  * The version isn't hardcoded — `packages/catalog/current.json` is the single source of truth a
- * catalog re-pin flips (docs/04-icon-catalog.md "Versioning strategy", roadmap M13).
+ * catalog re-pin flips (packages/catalog-build/docs/icon-catalog.md "Versioning strategy", roadmap M13).
  */
 const CATALOG_ROOT = fileURLToPath(new URL("../../catalog", import.meta.url));
 const { version: CURRENT_VERSION } = JSON.parse(

@@ -63,9 +63,9 @@ const TERMINAL_STATES = new Set<TaskState>([
 
 /**
  * Sends one GenerateArchitectureDiagram/ModifyArchitectureDiagram request
- * (docs/00-decision-log.md#d32) and streams it to completion — modeled directly on
+ * (docs/decision-log.md#d32) and streams it to completion — modeled directly on
  * `@a2a-js/sdk`'s own sample `client.ts`, since that's exactly what a dev-harness/test client is
- * supposed to look like. Not a product surface (docs/11-agent-runtime.md's Limitations section);
+ * supposed to look like. Not a product surface (apps/agent/docs/agent-runtime.md's Limitations section);
  * this is the plumbing-only A2A client (D32) used for local testing and the M33 dogfooding pass.
  */
 export async function sendDiagramRequest(
