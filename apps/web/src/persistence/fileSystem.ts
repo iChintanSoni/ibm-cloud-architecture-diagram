@@ -7,6 +7,17 @@ const ICAD_PICKER_TYPES: FilePickerAcceptType[] = [
   { description: "ICAD diagram", accept: { "application/json": [".icad"] } },
 ];
 
+/** Open additionally accepts a `.icad`-exported SVG (I16, docs/improvement-plan.md#i16--honour-or-retract-the-shipped-claims)
+ * — Save never targets one, so this stays separate from {@link ICAD_PICKER_TYPES} rather than
+ * widening it for both directions. */
+const OPEN_PICKER_TYPES: FilePickerAcceptType[] = [
+  ...ICAD_PICKER_TYPES,
+  {
+    description: "ICAD-exported SVG",
+    accept: { "image/svg+xml": [".svg"] },
+  },
+];
+
 export function supportsFileSystemAccess(): boolean {
   return (
     typeof window !== "undefined" &&
@@ -29,7 +40,7 @@ export async function openIcadFile(): Promise<OpenedIcadFile | null> {
   if (!supportsFileSystemAccess()) return null;
   try {
     const handles = await window.showOpenFilePicker!({
-      types: ICAD_PICKER_TYPES,
+      types: OPEN_PICKER_TYPES,
     });
     const handle = handles[0];
     if (!handle) return null;

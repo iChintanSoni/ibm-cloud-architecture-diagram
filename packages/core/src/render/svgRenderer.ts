@@ -688,10 +688,42 @@ export class SvgRenderer {
    * live move; they re-route correctly once the caller commits a real command and `render()` runs
    * again — an accepted simplification, not an oversight, matching this file's other documented
    * trade-offs (see `offsetRectilinear`).
+   *
+   * Composes the live `translate` with the element's own *committed* `rotate` (I5,
+   * docs/improvement-plan.md#i5--dragrotate-transform-collision) rather than overwriting the
+   * `transform` attribute outright — `renderElement` (below) and this method both write to that
+   * one attribute on the same `<g>`, and a plain overwrite silently discarded whichever one ran
+   * last. Confirmed live (three distinct symptoms, all from the same root cause): dragging a
+   * rotated element visually snapped it to 0° for the whole gesture; `abort()`'s
+   * `previewTransform(ids, 0, 0)` call stripped the `rotate(...)` via `removeAttribute` and never
+   * repainted afterward (`abort()` dispatches no command, fires no scene change), leaving the
+   * element visibly unrotated until something unrelated happened to trigger a render; a
+   * net-zero-delta `commit()` did the same, since `dx === 0 && dy === 0` also skips
+   * `commitMove` entirely. `translate(dx, dy) rotate(deg cx cy)` is deliberately ordered
+   * translate-outermost: SVG's transform list applies right-to-left against the element's local
+   * geometry, so this rotates the shape about its own center exactly as `renderElement` already
+   * does, then slides the whole already-rotated result by `(dx, dy)` in the parent's (screen)
+   * coordinate space — a plain screen-space nudge regardless of the shape's own current angle,
+   * which is the only visually-correct order for a drag preview.
    */
   previewTransform(ids: string[], dx: number, dy: number): void {
-    const transform = dx === 0 && dy === 0 ? null : `translate(${dx}, ${dy})`;
+    if (!this.currentScene) return;
+    const scene = this.currentScene;
     for (const id of ids) {
+      const committed = scene.get(id);
+      let transform: string | null = null;
+      if (committed && committed.type !== "connector" && committed.rotation) {
+        const cx = committed.x + committed.w / 2;
+        const cy = committed.y + committed.h / 2;
+        const rotatePart = `rotate(${committed.rotation} ${cx} ${cy})`;
+        transform =
+          dx === 0 && dy === 0
+            ? rotatePart
+            : `translate(${dx}, ${dy}) ${rotatePart}`;
+      } else if (dx !== 0 || dy !== 0) {
+        transform = `translate(${dx}, ${dy})`;
+      }
+
       const node = this.nodes.get(id);
       if (node) {
         if (transform) node.setAttribute("transform", transform);

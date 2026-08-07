@@ -21,7 +21,10 @@ implemented — no HTTP/SSE). Point your MCP client at it directly with Node:
   "mcpServers": {
     "icad": {
       "command": "node",
-      "args": ["/absolute/path/to/ibm-cloud-diagram/packages/mcp/dist/index.js"]
+      "args": [
+        "/absolute/path/to/ibm-cloud-diagram/packages/mcp/dist/index.js"
+      ],
+      "env": { "ICAD_MCP_WORKSPACE_ROOT": "/absolute/path/to/your/diagrams" }
     }
   }
 }
@@ -35,13 +38,23 @@ standalone preview tarball (unsigned, see the root README's positioning note) is
 on tagged pushes — extract it and point your client at `mcp/dist/index.js` inside it (keep the
 extracted `mcp/` and `catalog/` directories together; see the tarball's own `mcp/README.md`).
 
-One more thing worth knowing before you wire this up: **relative `path` arguments** (to
-`doc_open` / `doc_save` / `export_diagram`) resolve against the _server process's_ working
-directory, not your MCP client's. If your client config sets a different `cwd`, prefer absolute
-paths.
+Two things worth knowing before you wire this up:
 
-No environment variables, API keys, or network access are required — it's fully local and
-offline, reading and writing `.icad` files on disk.
+- **`doc_open`/`doc_save`/`export_diagram`'s `path` argument is confined to a workspace root**
+  (I13, [Improvement plan](../../../docs/improvement-plan.md#i13--mcp-filesystem-confinement)): a
+  `..` traversal, an absolute path outside the root, a symlink that resolves back out of it, a
+  path through a `.git` directory, or a disallowed extension (`.icad` for
+  `doc_open`/`doc_save`, `.svg` for `export_diagram`) is refused outright, not silently
+  reinterpreted. `ICAD_MCP_WORKSPACE_ROOT` sets the root; unset, it falls back to the server
+  process's own working directory. Relative `path` arguments resolve against that root, not your
+  MCP client's own `cwd` — if your client config sets a different one, prefer absolute paths (they
+  still have to resolve inside the root).
+- **Overwriting a pre-existing file needs `force: true`** unless this session is the one that
+  created or opened it — `doc_save`/`export_diagram` refuse a silent clobber of something already
+  on disk that this session doesn't know about.
+
+No API keys or network access are required — it's fully local and offline, reading and writing
+`.icad` files on disk within the confined workspace root.
 
 ## The tools
 

@@ -19,11 +19,20 @@ export interface OpenedNativeFile {
 
 const ICAD_FILTER = [{ name: "ICAD diagram", extensions: ["icad"] }];
 
+/** The explicit native Open dialog additionally accepts a `.icad`-exported SVG (I16,
+ * docs/improvement-plan.md#i16--honour-or-retract-the-shipped-claims) — Save, and the
+ * OS-file-association paths below (`consumeStartupFile`/`onNativeFileOpen`, which only ever fire
+ * for a `.icad` double-click/"Open With", never an SVG), stay on {@link ICAD_FILTER} unchanged. */
+const OPEN_FILTER = [
+  ...ICAD_FILTER,
+  { name: "ICAD-exported SVG", extensions: ["svg"] },
+];
+
 /** Prompts a native Open dialog. Null means the user canceled. */
 export async function openIcadFileNative(): Promise<OpenedNativeFile | null> {
   const { open } = await import("@tauri-apps/plugin-dialog");
   const { readTextFile } = await import("@tauri-apps/plugin-fs");
-  const path = await open({ multiple: false, filters: ICAD_FILTER });
+  const path = await open({ multiple: false, filters: OPEN_FILTER });
   if (!path || Array.isArray(path)) return null;
   return { path, text: await readTextFile(path) };
 }

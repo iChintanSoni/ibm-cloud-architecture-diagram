@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { Scene } from "../scene/scene.js";
 import type { BoxElement } from "../scene/types.js";
-import { applyIcad, fromIcad, toIcad } from "./icad.js";
+import {
+  applyIcad,
+  applyIcadWithReport,
+  fromIcad,
+  fromIcadWithReport,
+  toIcad,
+} from "./icad.js";
 
 function box(id: string): BoxElement {
   return {
@@ -150,6 +156,156 @@ describe(".icad io", () => {
       const doc = toIcad(new Scene({ meta: { title: "Demo" } }));
       const scene = fromIcad(doc);
       expect(scene.meta.title).toBe("Demo");
+    });
+
+    it("drops an element with an unknown type discriminant instead of crashing the whole load (I14)", () => {
+      const scene = fromIcad({
+        format: "icad",
+        version: 1,
+        elements: [
+          box("kept"),
+          {
+            id: "bogus",
+            type: "hexagon",
+            semantic: "node",
+            x: 0,
+            y: 0,
+            w: 1,
+            h: 1,
+          },
+        ],
+      });
+      expect(scene.has("kept")).toBe(true);
+      expect(scene.has("bogus")).toBe(false);
+    });
+
+    it("drops an element whose semantic doesn't match its type (I14)", () => {
+      const scene = fromIcad({
+        format: "icad",
+        version: 1,
+        elements: [{ ...box("mismatched"), semantic: "boundary" }],
+      });
+      expect(scene.has("mismatched")).toBe(false);
+    });
+
+    it("drops an element with a non-finite x/y instead of letting NaN reach the live scene (I14)", () => {
+      const scene = fromIcad({
+        format: "icad",
+        version: 1,
+        elements: [box("kept"), { ...box("nan-x"), x: Number.NaN }],
+      });
+      expect(scene.has("kept")).toBe(true);
+      expect(scene.has("nan-x")).toBe(false);
+    });
+
+    it("dedupes a duplicate id, keeping the first occurrence (I14)", () => {
+      const scene = fromIcad({
+        format: "icad",
+        version: 1,
+        elements: [
+          { ...box("dup"), label: { text: "first" } },
+          { ...box("dup"), label: { text: "second" } },
+        ],
+      });
+      expect(scene.get("dup")).toMatchObject({ label: { text: "first" } });
+    });
+
+    it("never throws for a document whose elements array is entirely garbage (I14)", () => {
+      expect(() =>
+        fromIcad({
+          format: "icad",
+          version: 1,
+          elements: [null, 42, "nope", { random: "shape" }],
+        }),
+      ).not.toThrow();
+    });
+  });
+
+  describe("fromIcadWithReport / applyIcadWithReport (I14, docs/improvement-plan.md#i14--icad-schema-validation)", () => {
+    it("reports invalid elements dropped for structural schema failures", () => {
+      const { scene, report } = fromIcadWithReport({
+        format: "icad",
+        version: 1,
+        elements: [box("kept"), { id: "bad", type: "hexagon" }],
+      });
+      expect(scene.has("kept")).toBe(true);
+      expect(report.invalidElementsDropped).toHaveLength(1);
+      expect(report.invalidElementsDropped[0]!.id).toBe("bad");
+    });
+
+    it("reports duplicate ids dropped, distinct from invalid-shape drops", () => {
+      const { report } = fromIcadWithReport({
+        format: "icad",
+        version: 1,
+        elements: [box("dup"), box("dup")],
+      });
+      expect(report.duplicateIdsDropped).toEqual(["dup"]);
+      expect(report.invalidElementsDropped).toHaveLength(0);
+    });
+
+    it("still reports the pre-existing repair categories (dangling parent, cycle, dangling connector, geometry clamp)", () => {
+      const { report } = fromIcadWithReport({
+        format: "icad",
+        version: 1,
+        elements: [
+          { ...box("orphan"), parentId: "missing-parent" },
+          { ...box("cyc-a"), parentId: "cyc-b" },
+          { ...box("cyc-b"), parentId: "cyc-a" },
+          {
+            id: "dangling-conn",
+            type: "connector",
+            semantic: "node",
+            x: 0,
+            y: 0,
+            w: 0,
+            h: 0,
+            from: { elementId: "orphan", port: "e" },
+            to: { elementId: "nonexistent", port: "w" },
+            connectorType: "association",
+          },
+          { ...box("degenerate"), w: 0, h: Number.NaN },
+        ],
+      });
+      expect(report.danglingParentsCleared).toContain("orphan");
+      expect(report.cyclesBroken).toEqual(
+        expect.arrayContaining(["cyc-a", "cyc-b"]),
+      );
+      expect(report.danglingConnectorsDropped).toContain("dangling-conn");
+      expect(report.geometryClamped).toContain("degenerate");
+    });
+
+    it("returns an all-empty report for an already-clean document", () => {
+      const { report } = fromIcadWithReport(toIcad(new Scene()));
+      expect(report).toEqual({
+        invalidElementsDropped: [],
+        duplicateIdsDropped: [],
+        danglingParentsCleared: [],
+        cyclesBroken: [],
+        danglingConnectorsDropped: [],
+        geometryClamped: [],
+      });
+    });
+
+    it("applyIcadWithReport mirrors applyIcad but also returns the report", () => {
+      const scene = new Scene();
+      const report = applyIcadWithReport(scene, {
+        format: "icad",
+        version: 1,
+        elements: [box("dup"), box("dup")],
+      });
+      expect(scene.has("dup")).toBe(true);
+      expect(report.duplicateIdsDropped).toEqual(["dup"]);
+    });
+
+    it("applyIcad (the plain, pre-existing API) still behaves identically with the report discarded", () => {
+      const scene = new Scene();
+      applyIcad(scene, {
+        format: "icad",
+        version: 1,
+        elements: [box("kept"), { id: "bad", type: "hexagon" }],
+      });
+      expect(scene.has("kept")).toBe(true);
+      expect(scene.has("bad")).toBe(false);
     });
   });
 });

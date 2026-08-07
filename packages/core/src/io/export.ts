@@ -31,6 +31,18 @@ function base64Encode(input: string): string {
   return btoa(binary);
 }
 
+/** Inverse of {@link base64Encode} — same Buffer/browser dual path, same UTF-8 reasoning, in
+ * reverse: atob() decodes to a Latin1 string, so its char codes have to be collected back into
+ * raw bytes before TextDecoder can interpret them as UTF-8. */
+function base64Decode(input: string): string {
+  if (typeof Buffer !== "undefined")
+    return Buffer.from(input, "base64").toString("utf-8");
+  const binary = atob(input);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
+}
+
 /**
  * Padded bounding box of every element in the scene, independent of the editor's current
  * pan/zoom — export always captures the whole diagram, not just what's currently visible in the
@@ -275,4 +287,52 @@ function loadImage(src: string): Promise<HTMLImageElement> {
     img.onerror = () => reject(new Error("Failed to load SVG for PNG export"));
     img.src = src;
   });
+}
+
+/** Thrown by {@link readIcadFromSvg} when the SVG *does* carry an `icad:source` metadata node —
+ * i.e., it was genuinely exported by this tool with `embedSource` on — but that node's content
+ * can't actually be decoded. Distinct from "this SVG has no embedded source at all" (which is not
+ * an error — a plain, non-ICAD SVG, or one exported with `embedSource: false`, has no such node
+ * and simply isn't re-editable), so callers can tell "nothing to import" from "something's wrong
+ * with what should have been importable" and message the user accordingly. */
+export class IcadSourceCorruptError extends Error {}
+
+/**
+ * Reads the re-editable `.icad` source `exportSvg` embeds ([D8](../../../docs/decision-log.md#d8--re-editable-svg-via-embedded-icad-copy--locked)),
+ * the counterpart export.ts lacked until I16
+ * (docs/improvement-plan.md#i16--honour-or-retract-the-shipped-claims): D8 and every shell's own
+ * "SVGs embed a re-editable copy" claim were true of what `exportSvg` *writes*, but nothing in the
+ * codebase ever read `icad:source` back — a shell opening one of its own exported SVGs got a plain
+ * `JSON.parse` failure instead of its diagram back.
+ *
+ * Returns the raw parsed document (`unknown`, matching {@link fromIcad}'s own contract) for the
+ * caller to hand to `fromIcad`/`fromIcadWithReport`/`applyIcad`/`applyIcadWithReport` — this
+ * function's only job is "get the JSON back out of the SVG," not validate it; that's already those
+ * functions' job (and, since I14, a real structural schema, not just a JSON.parse). Returns
+ * `undefined` — not an error — when `svgText` has no `icad:source` node at all: a plain SVG, or
+ * one exported with `embedSource: false`, was never meant to round-trip and asking for it back is
+ * a legitimate "no" rather than a failure.
+ */
+export function readIcadFromSvg(svgText: string): unknown | undefined {
+  const doc = new DOMParser().parseFromString(svgText, "image/svg+xml");
+  if (doc.querySelector("parsererror")) {
+    throw new IcadSourceCorruptError("Could not parse this file as SVG/XML.");
+  }
+  const metadata = doc.getElementById("icad:source");
+  if (!metadata) return undefined;
+  const encoded = metadata.textContent;
+  if (!encoded) {
+    throw new IcadSourceCorruptError(
+      'This SVG has an "icad:source" metadata node, but it\'s empty.',
+    );
+  }
+  try {
+    return JSON.parse(base64Decode(encoded));
+  } catch (err) {
+    throw new IcadSourceCorruptError(
+      `This SVG's embedded "icad:source" couldn't be decoded: ${
+        err instanceof Error ? err.message : String(err)
+      }`,
+    );
+  }
 }

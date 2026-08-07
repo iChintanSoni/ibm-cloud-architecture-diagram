@@ -6,6 +6,7 @@ import type {
   DocumentMeta,
   SceneElement,
 } from "../scene/types.js";
+import { validateElements, type DroppedElement } from "./icadSchema.js";
 
 export const ICAD_FORMAT = "icad" as const;
 export const ICAD_VERSION = 1 as const;
@@ -21,6 +22,49 @@ export interface IcadDocument {
   elements: SceneElement[];
 }
 
+/**
+ * Everything `migrate()`/`repair()` silently fixed or dropped while loading a `.icad` document
+ * (I14, docs/improvement-plan.md#i14--icad-schema-validation) — so a caller that wants to surface
+ * "3 elements were dropped" to a user can, instead of the fix being invisible. `fromIcad`/
+ * `applyIcad` discard this (matching their pre-existing signatures exactly, so no caller needed to
+ * change); `fromIcadWithReport`/`applyIcadWithReport` are the same load, with the report attached.
+ */
+export interface RepairReport {
+  /** Failed structural validation against `icadSchema.ts`'s `sceneElementSchema` — wrong or
+   * missing `type` discriminant, a `semantic` that doesn't match its `type`, a non-finite `x`/`y`,
+   * an invalid connector port, an unrecognized field, and similar. Dropped outright: there is no
+   * repair for "the wrong shape entirely" the way there is for the narrower problems below. */
+  invalidElementsDropped: DroppedElement[];
+  /** An element `id` claimed by more than one element in the document. First occurrence is kept;
+   * every later element with that same id is dropped — a deliberate policy (and a behavior change
+   * from `Scene._replaceAll`'s previous implicit "last one wins" `Map` semantics, which dropped
+   * the *earlier* one with no signal either way that anything had happened at all). */
+  duplicateIdsDropped: string[];
+  /** `parentId` pointed at an id absent from the document — the `parentId` was cleared, lifting
+   * the element to the top level. */
+  danglingParentsCleared: string[];
+  /** `parentId` formed a cycle (an element transitively its own ancestor) — broken by clearing
+   * that element's `parentId`. */
+  cyclesBroken: string[];
+  /** A connector whose `from`/`to` `elementId` doesn't resolve to any element in the document —
+   * the connector itself was dropped. */
+  danglingConnectorsDropped: string[];
+  /** A non-positive or non-finite `w`/`h` was clamped to the minimum size (`1`) rather than
+   * dropped — the one field-level repair that predates I14. */
+  geometryClamped: string[];
+}
+
+function emptyReport(): RepairReport {
+  return {
+    invalidElementsDropped: [],
+    duplicateIdsDropped: [],
+    danglingParentsCleared: [],
+    cyclesBroken: [],
+    danglingConnectorsDropped: [],
+    geometryClamped: [],
+  };
+}
+
 export function toIcad(scene: Scene): IcadDocument {
   return {
     format: ICAD_FORMAT,
@@ -34,7 +78,15 @@ export function toIcad(scene: Scene): IcadDocument {
 }
 
 export function fromIcad(input: unknown): Scene {
-  const doc = migrate(input);
+  return fromIcadWithReport(input).scene;
+}
+
+/** Like {@link fromIcad}, but also returns what `migrate()`/`repair()` had to fix or drop. */
+export function fromIcadWithReport(input: unknown): {
+  scene: Scene;
+  report: RepairReport;
+} {
+  const { doc, report } = migrate(input);
   const scene = new Scene({
     meta: doc.meta,
     canvas: doc.canvas,
@@ -42,20 +94,44 @@ export function fromIcad(input: unknown): Scene {
     conformance: doc.conformance,
   });
   scene._replaceAll(doc.elements);
-  return scene;
+  return { scene, report };
 }
 
 /** Like fromIcad, but mutates an existing Scene in place (used by Editor.loadIcad). */
 export function applyIcad(scene: Scene, input: unknown): void {
-  const doc = migrate(input);
-  scene.meta = doc.meta;
-  scene.canvas = doc.canvas;
-  scene.catalog = doc.catalog;
-  scene.conformance = {
-    exportGate: doc.conformance?.exportGate ?? "warn",
-    ruleSeverities: { ...(doc.conformance?.ruleSeverities ?? {}) },
-  };
+  applyIcadWithReport(scene, input);
+}
+
+/**
+ * Like {@link applyIcad}, but also returns what `migrate()`/`repair()` had to fix or drop.
+ *
+ * Defaults `meta`/`canvas`/`catalog`/`conformance` through a throwaway `Scene` rather than
+ * assigning `doc.*` onto `scene` directly (a real pre-existing bug this surfaced while adding
+ * I14's own tests: a legacy schema-v1 document with no `meta` object at all — valid input,
+ * `icad.test.ts`'s "defaults conformance settings when opening a pre-M6 schema-v1 document" case
+ * — set `scene.meta = undefined`, crashing the very next `_replaceAll` call, which unconditionally
+ * writes `this.meta.updatedAt`. `fromIcad` never had this bug: it already goes through `new
+ * Scene({ meta: doc.meta, ... })`, whose constructor merges a partial/absent `meta` with its own
+ * defaults — reusing that same constructor here, instead of duplicating its default values,
+ * guarantees `applyIcad` treats a legacy document identically to `fromIcad` on the same input.
+ */
+export function applyIcadWithReport(
+  scene: Scene,
+  input: unknown,
+): RepairReport {
+  const { doc, report } = migrate(input);
+  const defaults = new Scene({
+    meta: doc.meta,
+    canvas: doc.canvas,
+    catalog: doc.catalog,
+    conformance: doc.conformance,
+  });
+  scene.meta = defaults.meta;
+  scene.canvas = defaults.canvas;
+  scene.catalog = defaults.catalog;
+  scene.conformance = defaults.conformance;
   scene._replaceAll(doc.elements);
+  return report;
 }
 
 /**
@@ -70,8 +146,15 @@ const MIGRATIONS: Record<number, (doc: IcadDocument) => IcadDocument> = {};
  * the resulting scene is always structurally valid regardless of source
  * (hand-edited files, older buggy versions, partial writes) — see
  * packages/core/docs/file-format.md#versioning--migration.
+ *
+ * Element-shape validation (I14, `icadSchema.ts`) runs *after* the migration loop, not before —
+ * it checks each element against the *current* (`ICAD_VERSION`) shape, so a v1 document destined
+ * to be migrated to a hypothetical future v2 isn't rejected against v2's rules before a migration
+ * step has had a chance to actually produce that shape. `MIGRATIONS` is empty today, so this only
+ * matters once it isn't; a future migration step should validate whatever *its own* expected input
+ * shape is itself, since this function's schema check only ever validates the final one.
  */
-function migrate(input: unknown): IcadDocument {
+function migrate(input: unknown): { doc: IcadDocument; report: RepairReport } {
   if (typeof input !== "object" || input === null) {
     throw new Error("Invalid .icad document: expected a JSON object");
   }
@@ -105,43 +188,83 @@ function migrate(input: unknown): IcadDocument {
     doc = step(doc);
   }
 
-  return repair(doc);
+  const { valid, dropped } = validateElements(doc.elements);
+  const { doc: repaired, report } = repair({
+    ...doc,
+    elements: valid as SceneElement[],
+  });
+  report.invalidElementsDropped = dropped;
+  return { doc: repaired, report };
 }
 
 /**
  * Fixes the file up so a scene built from it is always internally
- * consistent, without ever throwing: a dangling `parentId` is cleared, a
- * `parentId` cycle is broken, a connector missing an endpoint is dropped,
- * and degenerate geometry is clamped to a minimum size.
+ * consistent, without ever throwing: a duplicate id is deduplicated, a
+ * dangling `parentId` is cleared, a `parentId` cycle is broken, a connector
+ * missing an endpoint is dropped, and degenerate geometry is clamped to a
+ * minimum size. `doc.elements` is assumed already structurally valid
+ * (schema-checked by the caller, `migrate()` above) — this function only
+ * fixes *referential* problems between otherwise well-formed elements.
  */
-function repair(doc: IcadDocument): IcadDocument {
-  const ids = new Set(doc.elements.map((el) => el.id));
+function repair(doc: IcadDocument): {
+  doc: IcadDocument;
+  report: RepairReport;
+} {
+  const report = emptyReport();
 
-  const withValidParents = doc.elements.map((el) =>
-    el.parentId && !ids.has(el.parentId) ? withoutParent(el) : el,
-  );
+  const deduped: SceneElement[] = [];
+  const seenIds = new Set<string>();
+  for (const el of doc.elements) {
+    if (seenIds.has(el.id)) {
+      report.duplicateIdsDropped.push(el.id);
+      continue;
+    }
+    seenIds.add(el.id);
+    deduped.push(el);
+  }
+
+  const ids = new Set(deduped.map((el) => el.id));
+
+  const withValidParents = deduped.map((el) => {
+    if (el.parentId && !ids.has(el.parentId)) {
+      report.danglingParentsCleared.push(el.id);
+      return withoutParent(el);
+    }
+    return el;
+  });
 
   const parentOf = new Map(withValidParents.map((el) => [el.id, el.parentId]));
-  const acyclic = withValidParents.map((el) =>
-    hasCycle(el.id, parentOf) ? withoutParent(el) : el,
-  );
+  const acyclic = withValidParents.map((el) => {
+    if (hasCycle(el.id, parentOf)) {
+      report.cyclesBroken.push(el.id);
+      return withoutParent(el);
+    }
+    return el;
+  });
 
-  const repaired = acyclic
-    .filter(
-      (el) =>
-        el.type !== "connector" ||
-        (ids.has(el.from.elementId) && ids.has(el.to.elementId)),
-    )
-    .map((el) => {
-      const w = clampSize(el.w);
-      const h = clampSize(el.h);
-      return w === el.w && h === el.h ? el : { ...el, w, h };
-    });
+  const connectorsOk = acyclic.filter((el) => {
+    if (el.type !== "connector") return true;
+    const ok = ids.has(el.from.elementId) && ids.has(el.to.elementId);
+    if (!ok) report.danglingConnectorsDropped.push(el.id);
+    return ok;
+  });
 
-  return repaired.length === doc.elements.length &&
-    repaired.every((el, i) => el === doc.elements[i])
-    ? doc
-    : { ...doc, elements: repaired };
+  const repaired = connectorsOk.map((el) => {
+    const w = clampSize(el.w);
+    const h = clampSize(el.h);
+    if (w === el.w && h === el.h) return el;
+    report.geometryClamped.push(el.id);
+    return { ...el, w, h };
+  });
+
+  const unchanged =
+    repaired.length === doc.elements.length &&
+    repaired.every((el, i) => el === doc.elements[i]);
+
+  return {
+    doc: unchanged ? doc : { ...doc, elements: repaired },
+    report,
+  };
 }
 
 function clampSize(value: number): number {

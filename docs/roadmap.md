@@ -1617,15 +1617,15 @@ Milestones **M34–M40** are specified in the [Improvement plan](./improvement-p
 that document holds the audit evidence (confirmed defects A1–A14), the item definitions (I1–I18),
 and the sequencing rationale. This section exists so the roadmap doesn't appear to stop at M33.
 
-| Milestone | Contents                  | Theme                                                                                                                               |
-| --------- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| M34       | I13, I14, I5, I16, I18    | Safety & truth: MCP path confinement, `.icad` validation, the rotate/drag defect, the two unmet shipped claims, benchmark isolation |
-| M35       | I1, I2 (step 1), I10      | Perf floor: scene indexes, deferred lint, per-document autosave                                                                     |
-| M36       | I7, I8                    | Ergonomics: inline canvas text editing, Library drag-and-drop                                                                       |
-| M37       | I17                       | Real-browser gesture E2E + visual baselines                                                                                         |
-| M38       | I3                        | Commands become serializable patches                                                                                                |
-| M39       | I4, I6, I2 (step 2)       | Spatial index, renderer diffing, scoped lint rules                                                                                  |
-| M40+      | I15, I9, I12, I11 backlog | Agent visual feedback, quick-connect, shell decomposition                                                                           |
+| Milestone | Contents                                    | Theme                                                                                                                               |
+| --------- | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| ✅ M34    | I13, I14, I5, I16, I18 — shipped 2026-08-07 | Safety & truth: MCP path confinement, `.icad` validation, the rotate/drag defect, the two unmet shipped claims, benchmark isolation |
+| M35       | I1, I2 (step 1), I10                        | Perf floor: scene indexes, deferred lint, per-document autosave                                                                     |
+| M36       | I7, I8                                      | Ergonomics: inline canvas text editing, Library drag-and-drop                                                                       |
+| M37       | I17                                         | Real-browser gesture E2E + visual baselines                                                                                         |
+| M38       | I3                                          | Commands become serializable patches                                                                                                |
+| M39       | I4, I6, I2 (step 2)                         | Spatial index, renderer diffing, scoped lint rules                                                                                  |
+| M40+      | I15, I9, I12, I11 backlog                   | Agent visual feedback, quick-connect, shell decomposition                                                                           |
 
 Four of the plan's [open strategic questions](./improvement-plan.md#open-strategic-questions)
 would reorder this — notably whether the product is human-first or agent-first (M36 vs. I15), and

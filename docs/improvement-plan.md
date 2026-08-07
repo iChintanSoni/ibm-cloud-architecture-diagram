@@ -18,20 +18,26 @@ three different ones:
 Sequenced so the cheap, high-confidence fixes land first and the one large refactor (I3) is taken
 deliberately rather than discovered mid-milestone.
 
+## Status
+
+**M34 shipped (2026-08-07):** I18, I13, I14, I5, I16. See each item below for what actually landed
+— in three cases (I18, I5, I16) the fix surfaced a second, related bug caught and fixed in the
+same pass, not just the item as originally scoped.
+
 ---
 
 ## Ranked shortlist
 
 If only six things get done, these six, in this order:
 
-| Rank | Item                                                                        | Why first                                                                                         | Size |
-| ---- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ---- |
-| 1    | [I7 — Inline canvas text editing](#i7--inline-canvas-text-editing)          | Highest-frequency interaction in the product; changes how it _feels_ more than anything else here | M    |
-| 2    | [I13 — MCP filesystem confinement](#i13--mcp-filesystem-confinement)        | Arbitrary file write reachable from a prompt-injected `.icad`                                     | S    |
-| 3    | [I5 — Drag/rotate transform collision](#i5--dragrotate-transform-collision) | Live, user-visible, persistent visual desync; no test covers it                                   | S    |
-| 4    | [I1 — Scene child + z-order indexes](#i1--scene-child--z-order-indexes)     | Unblocks every other perf item; contained to one file                                             | S    |
-| 5    | [I2 — Incremental / deferred lint](#i2--incremental--deferred-lint)         | Cheapest large latency win on the interactive path                                                | S    |
-| 6    | [I14 — `.icad` schema validation](#i14--icad-schema-validation)             | Untrusted input reaches the engine from two shells and an LLM                                     | S    |
+| Rank | Item                                                                        | Why first                                                                                         | Size | Status |
+| ---- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ---- | ------ |
+| 1    | [I7 — Inline canvas text editing](#i7--inline-canvas-text-editing)          | Highest-frequency interaction in the product; changes how it _feels_ more than anything else here | M    | open   |
+| 2    | [I13 — MCP filesystem confinement](#i13--mcp-filesystem-confinement)        | Arbitrary file write reachable from a prompt-injected `.icad`                                     | S    | ✅ M34 |
+| 3    | [I5 — Drag/rotate transform collision](#i5--dragrotate-transform-collision) | Live, user-visible, persistent visual desync; no test covers it                                   | S    | ✅ M34 |
+| 4    | [I1 — Scene child + z-order indexes](#i1--scene-child--z-order-indexes)     | Unblocks every other perf item; contained to one file                                             | S    | open   |
+| 5    | [I2 — Incremental / deferred lint](#i2--incremental--deferred-lint)         | Cheapest large latency win on the interactive path                                                | S    | open   |
+| 6    | [I14 — `.icad` schema validation](#i14--icad-schema-validation)             | Untrusted input reaches the engine from two shells and an LLM                                     | S    | ✅ M34 |
 
 Sizes: **S** ≈ 1 sub-milestone, **M** ≈ 1 milestone, **L** ≈ multi-milestone.
 
@@ -166,6 +172,13 @@ the index must feed candidates into the _existing_ comparator, not replace it.
 ---
 
 ### I5 — Drag/rotate transform collision
+
+✅ **Done (M34, 2026-08-07).** Composed `translate(dx, dy) rotate(deg cx cy)` in `previewTransform`
+(the compose approach, not the wrapper `<g>` — smaller diff, same fix) — translate-outermost so
+the shape rotates about its own center exactly as `renderElement` does, then the whole result
+slides by `(dx, dy)` in screen space. Added 3 regression tests in `createEditor.test.ts` covering
+all three symptoms below; confirmed each one fails without the fix by temporarily reverting it and
+re-running (a real red/green check, not just a passing test written against already-fixed code).
 
 **Problem:** A5. Three user-visible symptoms:
 
@@ -323,6 +336,28 @@ existing siblings. The shell should be composition, per
 
 ### I13 — MCP filesystem confinement
 
+✅ **Done (M34, 2026-08-07).** `packages/mcp/src/workspace.ts`: two-stage confinement (a cheap
+lexical check on the un-resolved root, then a `realpath`-based check on the resolved target —
+comparing like-for-like on each side, since a `realpath`'d root compared against an un-resolved
+candidate would reject legitimate paths whenever the root itself sits under a symlinked ancestor,
+which OS temp directories on macOS always are). Extension allow-lists (`.icad` for
+`doc_open`/`doc_save`, `.svg` for `export_diagram` — not `.png` too, since PNG export doesn't
+exist server-side yet and allow-listing it would promise a capability that isn't real), a `.git`-
+segment reject, and an overwrite guard (`assertOverwritable`, tracking which paths this session
+itself opened or wrote) all landed as specified. `ICAD_MCP_WORKSPACE_ROOT` env var, defaulting to
+the server's own `cwd` (unchanged from before). 19 new unit tests in `workspace.test.ts` cover
+every acceptance criterion below directly against the real filesystem (temp dirs, real symlinks),
+not mocked.
+
+Also fixed, found wiring this through: `apps/agent`'s `McpSession` spawns the MCP subprocess with
+no workspace root at all, so its own tests (writing to `os.tmpdir()`) and — more importantly —
+`runDiagramTask`'s real production path (whose `outputIcadPath`/`outputSvgPath`/`existingIcadPath`
+are supplied directly by the human/A2A caller, never invented by the LLM sub-agents) would have
+started failing under the new confinement. Fixed by having `runDiagramTask` compute the workspace
+root as the common ancestor directory of its own input paths and pass it through
+`McpSession.start({ workspaceRoot })` → `ICAD_MCP_WORKSPACE_ROOT` — confining the subprocess to
+exactly what the caller already authorized, no wider.
+
 **Problem:** A8. `doc_save` and `export_diagram`'s `path` write JSON/SVG anywhere the process can
 reach — `../../../.git/hooks/pre-commit`, `~/.ssh/config`, a mounted share. `doc_open` reads
 anything. An LLM acting on a prompt-injected `.icad` file in a cloned repo is a plausible path to
@@ -344,6 +379,44 @@ a disallowed extension.
 ---
 
 ### I14 — `.icad` schema validation
+
+✅ **Done (M34, 2026-08-07).** `packages/core/src/io/icadSchema.ts`: a `zod` discriminated union
+mirroring `SceneElement` exactly, one arm per element type, each `.strict()`. Added as core's
+**first-ever runtime dependency** (previously zero — a deliberate note, not an oversight: `zod` is
+a pure, zero-dependency validator with no UI-framework coupling, so it doesn't compromise D2's
+"framework-agnostic" core, but it does end an 8k-line streak worth flagging explicitly rather than
+adding quietly).
+
+Deliberately _not_ validated: whether `catalogRef` resolves against a real catalog (needs a live
+`Catalog`, which `io/icad.ts` has no access to by design — already covered live by the linter's
+`catalogIconRule`). `w`/`h` deliberately accept a non-finite/non-positive number (a custom
+`typeof value === "number"` check, not plain `z.number()`, which zod's own default already rejects
+`NaN`/`Infinity` for) — confirmed empirically, not assumed, and preserved on purpose so the
+pre-existing `clampSize` repair step keeps handling that class of garbage exactly as before,
+verified against the original test asserting a `w: 0, h: NaN` element survives clamped to `1`
+rather than getting dropped.
+
+`RepairReport` (new): every category `migrate()`/`repair()` fixes or drops —
+`invalidElementsDropped` (I14's own contribution), plus `duplicateIdsDropped` (new: first
+occurrence kept, later ones dropped — a deliberate policy change from `Scene._replaceAll`'s
+previous silent `Map` "last wins" semantics), and the four pre-existing repair categories
+(`danglingParentsCleared`, `cyclesBroken`, `danglingConnectorsDropped`, `geometryClamped`), now
+actually reported instead of silently applied. `fromIcad`/`applyIcad` keep their exact prior
+signatures (report discarded) — no caller needed to change; `fromIcadWithReport`/
+`applyIcadWithReport` are additive siblings for a caller that wants to surface "3 elements were
+dropped" to a user (not yet wired into any shell's UI — the mechanism exists, the UI surfacing is
+still open, noted under I14's own scope as something intentionally not done here).
+
+Found and fixed in the process: a genuine pre-existing bug in `applyIcad` — assigning
+`scene.meta = doc.meta` directly crashed on a legacy schema-v1 document with no `meta` object at
+all (`scene.meta.updatedAt` on the next `_replaceAll`, `undefined` has no properties), a case
+`fromIcad` already handled correctly via `Scene`'s own constructor defaulting. `applyIcadWithReport`
+now goes through a throwaway `Scene` for the same defaulting, so the two entry points agree.
+
+45 new tests (`icadSchema.test.ts` + additions to `icad.test.ts`), including one confirming a
+`__proto__` key never survives into parsed output or the real prototype chain (zod's `.strict()`
+doesn't flag `__proto__` as an unrecognized key — a confirmed zod quirk, not a vulnerability: the
+key never reaches the parsed result either way).
 
 **Problem:** A7. The VS Code extension opens arbitrary `.icad` files from any cloned repo; the MCP
 server `JSON.parse`s any path an LLM names. `repair()` fixes dangling parents, cycles, orphan
@@ -397,6 +470,9 @@ rasterization needs a real decision (headless browser vs. shipping SVG-only prev
 
 ### I16 — Honour or retract the shipped claims
 
+✅ **Done (M34, 2026-08-07)** for web and desktop; **VS Code explicitly not done** (see below —
+a genuinely separate implementation, not a follow-up oversight).
+
 Two claims are currently made and not met:
 
 1. **Re-editable SVG (A11).** [D8](./decision-log.md#d8--re-editable-svg-via-embedded-icad-copy--locked)
@@ -406,11 +482,63 @@ Two claims are currently made and not met:
    `applyIcad`. Wire into Open in web/desktop/VS Code. Or retract the claim from the README and
    mark D8 as unimplemented. Building it is cheaper than the credibility cost of the gap.
 
+   **Shipped:** `readIcadFromSvg` in `packages/core/src/io/export.ts` — `DOMParser`, find
+   `metadata#icad:source`, base64-decode, `JSON.parse`, return `unknown` for the caller to hand to
+   `fromIcad`/`fromIcadWithReport` (so I14's validation applies to a re-imported SVG exactly as it
+   does to a `.icad` file — verified with a test that tampers the embedded source and confirms the
+   malformed element is dropped, not the whole load rejected). Throws a distinct
+   `IcadSourceCorruptError` when `icad:source` exists but can't be decoded, vs. returning
+   `undefined` (not an error) when there's no embedded source at all — a plain SVG, or one exported
+   with `embedSource: false`, was never meant to round-trip. Confirmed `DOMParser` (including its
+   `<parsererror>` failure-reporting convention) works identically in jsdom — `packages/mcp`
+   already copies it onto the headless Node runtime for exactly this kind of use — and in a real
+   browser, empirically, not assumed.
+
+   Wired into `apps/web`'s Open flow (`loadIntoEditor`, the single choke point all three of its own
+   open paths — File System Access picker, Tauri native dialog, `<input>` fallback — funnel
+   through), which **also covers `apps/desktop`** since it reuses `apps/web`'s own build and
+   persistence layer (D22). File picker types/filters widened to accept `.svg` for Open only, never
+   Save. Verified end-to-end in a real headless Chromium session (not just unit tests): placed a
+   box, exported it through the real Export dialog, re-opened the real downloaded SVG through the
+   real file input, confirmed the box reappeared with identical geometry and zero console errors;
+   separately confirmed both failure paths (no embedded source; corrupted embedded source) each
+   throw their own distinct, correctly-worded error.
+
+   **VS Code not wired**, and deliberately excluded from this pass's scope: its "Open" only ever
+   triggers VS Code's own generic `workbench.action.files.openFile` command, which has no
+   knowledge of ICAD at all — a `.svg` opened this way lands in VS Code's default viewer, not the
+   ICAD custom editor. Adding SVG import there needs a new, ICAD-specific VS Code command, not a
+   picker-filter tweak — real, separate follow-up work.
+
+   **Found in the process, not previously known:** opening _any_ file through this app — a corrupt
+   `.icad` (bad JSON) today, or now a bad SVG — throws uncaught, with **no visible UI feedback** to
+   the user; the app just silently stays on the current canvas. Confirmed this is genuinely
+   pre-existing (reproduced the identical silent-failure shape for a corrupt `.icad`, not something
+   this change introduced) and left it alone rather than building a notification system unprompted
+   — but it's a real, user-facing gap worth its own small item: wrap `loadIntoEditor` in a
+   try/catch and surface _something_ (a toast, at minimum an `alert`) instead of a silent no-op.
+
 2. **One engine, three surfaces (A6).** Container resize reflows children on canvas drag, but not
    from the Properties panel or MCP `element_update`.
    **Fix:** move `reflowChildren` into the shared command path so all three agree. While there:
    `reflowChildren` only takes `childrenOf` (direct children) — a grandchild can be left outside
    the resized bounds.
+
+   **Shipped:** `updateElementProperties` (the one method both the Properties panel and MCP's
+   `element_update` already route through) now reflows direct children on a `w`/`h` change, same
+   as `beginResizeInteraction`'s canvas-drag commit. Caught and fixed a real staleness bug of
+   exactly I3's own catalogued shape before it shipped: computing the reflow clamp against
+   `scene.childrenOf(id)`'s _current_ (pre-dispatch) child position, while a combined x/y+w/h patch
+   also queues a real `moveElements` cascade that will shift that same child by `(dx, dy)` once the
+   batch actually applies — comparing a pre-move child against a post-move container. Fixed by
+   translating each child's coordinates by `(dx, dy)` before handing them to `reflowChildren`.
+   Verified the fix actually matters (not just passes against already-correct code) the same way as
+   I5: temporarily reverted the translation and confirmed the regression test then fails with the
+   exact wrong coordinates the stale read would have produced. 4 new tests in `createEditor.test.ts`
+   plus one MCP-level test in `authoring.test.ts` proving `element_update` itself reflows through
+   the real tool, not just the underlying editor method. The grandchild gap noted above is
+   unchanged — still open, still applies equally to the pre-existing canvas-resize path too, not
+   newly introduced by this fix.
 
 **Size:** S each · **Risk:** low
 
@@ -442,6 +570,18 @@ central claim is IBM-Design fidelity, there are no screenshot baselines.
 
 ### I18 — Isolate the perf benchmark from parallel load
 
+✅ **Done (M34, 2026-08-07).** Split into `vitest.config.ts` (excludes `src/perf/benchmark.test.ts`)
+and a new `vitest.perf.config.ts` (only that file, `fileParallelism: false`, single forked
+process), wired to a new `test:perf` script at both the core-package and root level. Added a
+dedicated `perf` job to `ci.yml` — its own GitHub Actions runner, not a step inside
+`build-and-test`, so it's never sharing a machine with the other five suites. `pnpm -r test` no
+longer touches the benchmark at all; confirmed clean on an otherwise-unmodified tree (the exact
+"broken signal" scenario this item describes) before making any other change this session, so
+every fix after this one could be measured against a suite that was actually telling the truth.
+Optional "assert operation counts instead of wall clock" follow-up not done — the isolation alone
+already restored the signal; that's a separate, independent hardening step, not required to close
+this item.
+
 **Problem:** A14. `pnpm -r test` runs six package suites concurrently; the benchmark measures wall
 clock against budgets calibrated on an idle machine. It fails all three sizes on `loadMs` in the
 recursive run and passes every one in isolation (2,000 elements: 1325ms isolated vs. 2105ms under
@@ -471,15 +611,15 @@ whole purpose is moving these numbers.
 
 Milestone numbers continue from M33.
 
-| Milestone | Contents                  | Rationale                                                                                            |
-| --------- | ------------------------- | ---------------------------------------------------------------------------------------------------- |
-| **M34**   | I13, I14, I5, I16, I18    | Small, high-confidence, safety-and-truth. Ships in one pass. I18 restores the perf signal M35 needs. |
-| **M35**   | I1, I2 (step 1), I10      | Perf floor + autosave correctness. Unblocks I4.                                                      |
-| **M36**   | I7, I8                    | The ergonomics milestone. The one users will notice.                                                 |
-| **M37**   | I17                       | Lock the gestures down before I3 rewrites what's under them.                                         |
-| **M38**   | I3                        | The command-model refactor, on a green suite, alone.                                                 |
-| **M39**   | I4, I6, I2 (step 2)       | The remaining perf work, on top of the new command model.                                            |
-| **M40+**  | I15, I9, I12, I11 backlog | Agent surface and remaining ergonomics.                                                              |
+| Milestone | Contents                                       | Rationale                                                                                                                                                   |
+| --------- | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **M34**   | ✅ I13, I14, I5, I16, I18 — shipped 2026-08-07 | Small, high-confidence, safety-and-truth. Shipped in one pass. I18 restored the perf signal before anything else in this milestone was measured against it. |
+| **M35**   | I1, I2 (step 1), I10                           | Perf floor + autosave correctness. Unblocks I4.                                                                                                             |
+| **M36**   | I7, I8                                         | The ergonomics milestone. The one users will notice.                                                                                                        |
+| **M37**   | I17                                            | Lock the gestures down before I3 rewrites what's under them.                                                                                                |
+| **M38**   | I3                                             | The command-model refactor, on a green suite, alone.                                                                                                        |
+| **M39**   | I4, I6, I2 (step 2)                            | The remaining perf work, on top of the new command model.                                                                                                   |
+| **M40+**  | I15, I9, I12, I11 backlog                      | Agent surface and remaining ergonomics.                                                                                                                     |
 
 M37 before M38 is deliberate: I3 changes the machinery under every gesture, and I17 is the only
 thing that would catch a regression there.

@@ -199,7 +199,7 @@ export function TopBar({
       <HeaderNavigation aria-label="Main menu">
         <HeaderMenu menuLinkName="File" aria-label="File">
           <MenuAction onClick={onNew}>New…</MenuAction>
-          <MenuAction onClick={onOpen}>Open .icad…</MenuAction>
+          <MenuAction onClick={onOpen}>Open…</MenuAction>
           <MenuAction onClick={onSave}>Save .icad</MenuAction>
           {onSaveAs && <MenuAction onClick={onSaveAs}>Save As…</MenuAction>}
           <MenuAction onClick={onExport}>Export…</MenuAction>

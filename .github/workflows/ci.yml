@@ -44,6 +44,33 @@ jobs:
       - name: Test
         run: pnpm -r test
 
+  # A separate job, not a step above: the perf benchmark asserts wall-clock budgets, which are
+  # only meaningful run alone on an otherwise-idle machine — under `pnpm -r test`, six package
+  # suites run concurrently and starve it regardless of the code under test
+  # (I18, docs/improvement-plan.md#i18--isolate-the-perf-benchmark-from-parallel-load). GitHub
+  # Actions gives each job its own runner, so this gets the isolation a step in build-and-test
+  # never could.
+  perf:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        run: pnpm build
+
+      - name: Performance benchmark
+        run: pnpm test:perf
+
   e2e:
     runs-on: ubuntu-latest
     steps:

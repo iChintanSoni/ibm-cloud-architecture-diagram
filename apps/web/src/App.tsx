@@ -11,6 +11,7 @@ import {
   CanvasController,
   createEditor,
   isContainer,
+  readIcadFromSvg,
   ruleMetadata,
   type CanvasMode,
   type ConformanceSeverity,
@@ -592,10 +593,33 @@ export function App() {
   const handleSaveIcad = () => void persistIcad(false);
   const handleSaveIcadAs = () => void persistIcad(true);
 
+  /** True for an SVG document, false for `.icad` JSON — a plain content sniff (leading `<` after
+   * whitespace) rather than trusting the source filename, since a file picked through the browser
+   * download/upload fallback or dropped via drag-and-drop carries no reliable extension either
+   * way. */
+  const looksLikeSvg = (text: string): boolean =>
+    text.trimStart().startsWith("<");
+
+  /** Loads either a `.icad` document or one of this tool's own exported SVGs (I16,
+   * docs/improvement-plan.md#i16--honour-or-retract-the-shipped-claims) — every Open path (File
+   * System Access picker, the Tauri native dialog, and the `<input>` fallback) funnels through
+   * here, so widening this one function covers all of them at once. A plain SVG with no embedded
+   * `.icad` source (or one exported with `embedSource: false`) throws a clear, specific error
+   * instead of `readIcadFromSvg` silently returning `undefined` into `editor.loadIcad()`. */
   const loadIntoEditor = (text: string) => {
     const editor = editorRef.current;
     if (!editor) return;
-    editor.loadIcad(JSON.parse(text));
+    if (looksLikeSvg(text)) {
+      const extracted = readIcadFromSvg(text);
+      if (extracted === undefined) {
+        throw new Error(
+          "This SVG has no editable ICAD source embedded — it wasn't exported from ICAD, or was exported with the re-editable copy turned off.",
+        );
+      }
+      editor.loadIcad(extracted);
+    } else {
+      editor.loadIcad(JSON.parse(text));
+    }
     setThemePreference(editor.scene.canvas.theme);
     setExportGateState(editor.scene.conformance.exportGate);
     setDiagnostics(editor.lint());
@@ -963,7 +987,7 @@ export function App() {
     },
     {
       id: "open",
-      label: "Open .icad…",
+      label: "Open…",
       category: "File",
       run: () => void handleOpenClick(),
     },
@@ -1430,7 +1454,7 @@ export function App() {
         <input
           ref={fileInputRef}
           type="file"
-          accept=".icad,application/json"
+          accept=".icad,.svg,application/json,image/svg+xml"
           style={{ display: "none" }}
           onChange={(e) => {
             const file = e.target.files?.[0];

@@ -1,5 +1,6 @@
 import type { Catalog, Diagnostic, Editor } from "@icad/core";
 import { createHeadlessEditor } from "./headlessEditor.js";
+import type { WorkspaceRoot } from "./workspace.js";
 
 /** Thrown by tool handlers for expected, agent-readable failures (vs. a genuine bug). */
 export class ToolError extends Error {}
@@ -12,6 +13,9 @@ export class ToolError extends Error {}
  */
 export interface ServerState {
   readonly editor: Editor;
+  /** Every filesystem-touching tool confines its path arguments to this root (I13,
+   * docs/improvement-plan.md#i13--mcp-filesystem-confinement, packages/mcp/src/workspace.ts). */
+  readonly workspaceRoot: WorkspaceRoot;
   /** False until `doc_create`/`doc_open` succeeds — gates every authoring/conformance/export/save
    * tool, mirroring the human product's own forced "New Diagram chooser on first launch" (M7.3)
    * rather than silently letting an agent author into a scene it never asked to start. */
@@ -24,16 +28,26 @@ export interface ServerState {
    * — `quickfix_apply` looks up the live object here rather than accepting one over the wire,
    * since `Diagnostic.quickFix` is a `Command` (closures) that can't survive JSON-RPC. */
   lastDiagnostics: Map<string, Diagnostic>;
+  /** Resolved (realpath'd) paths this session has itself opened or written — the overwrite guard
+   * (I13) requires `force` before clobbering a file that already exists on disk *unless* it's one
+   * this session put there or read from itself, so a bare `doc_save()` re-save of the file you
+   * just opened never needs `force`, but a first write to a stranger's pre-existing file does. */
+  knownPaths: Set<string>;
 }
 
-export function createServerState(catalog: Catalog): ServerState {
+export function createServerState(
+  catalog: Catalog,
+  workspaceRoot: WorkspaceRoot,
+): ServerState {
   const editor = createHeadlessEditor(catalog);
   const state: ServerState = {
     editor,
+    workspaceRoot,
     hasExplicitDocument: false,
     lastPath: undefined,
     dirty: false,
     lastDiagnostics: new Map(),
+    knownPaths: new Set(),
   };
   editor.on(() => {
     state.dirty = true;

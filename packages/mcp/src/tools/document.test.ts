@@ -26,7 +26,7 @@ describe("document tools", () => {
   });
 
   it("doc_create then doc_save then doc_open round-trips through disk", async () => {
-    const { client, close } = await createTestClient();
+    const { client, close } = await createTestClient({ workspaceRoot: dir });
     try {
       await client.callTool({
         name: "doc_create",
@@ -54,7 +54,7 @@ describe("document tools", () => {
       expect(before.elements).toHaveLength(1);
 
       // Reopen the same file into a *different* server/document to prove it actually persisted.
-      const other = await createTestClient();
+      const other = await createTestClient({ workspaceRoot: dir });
       try {
         const openResult = await other.client.callTool({
           name: "doc_open",

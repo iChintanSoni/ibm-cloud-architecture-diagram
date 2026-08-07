@@ -224,6 +224,10 @@ importers:
         version: 3.2.7(@types/node@26.1.1)(jsdom@29.1.1)(lightningcss@1.33.0)(sass@1.101.6)(supports-color@8.1.1)(yaml@2.9.0)
 
   packages/core:
+    dependencies:
+      zod:
+        specifier: ^4.1.13
+        version: 4.4.3
     devDependencies:
       typescript:
         specifier: ^5.9.3

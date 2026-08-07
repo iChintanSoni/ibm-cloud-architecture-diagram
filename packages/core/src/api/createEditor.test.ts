@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { Catalog } from "../catalog/catalog.js";
 import type { CatalogManifest } from "../catalog/types.js";
 import { moveElements } from "../commands/commands.js";
+import { IcadSourceCorruptError, readIcadFromSvg } from "../io/export.js";
 import {
   createEditor,
   ExportBlockedError,
@@ -211,6 +212,112 @@ describe("createEditor", () => {
       label: { text: "Subnet" },
     });
     expect(editor.scene.get(child)).toMatchObject({ x: 20, y: 20 });
+  });
+
+  describe("updateElementProperties reflows children on a w/h shrink, matching canvas drag-resize (I16, docs/improvement-plan.md#i16--honour-or-retract-the-shipped-claims)", () => {
+    it("pulls a pinched child back inside the 16px buffer, the same as beginResizeInteraction's own reflow (M17.5)", () => {
+      const parent = editor.addBox({
+        at: { x: 0, y: 0 },
+        w: 100,
+        h: 100,
+        label: "parent",
+      });
+      const child = editor.addIcon("test/vpc", {
+        at: { x: 40, y: 40 },
+        parentId: parent,
+      });
+
+      // Same shrink canvasController.test.ts's own M17.5 nw-handle-drag test exercises (100x100
+      // -> 80x90, anchored so the child's already-tight bottom/right buffer gets pinched) — the
+      // Properties panel and MCP's element_update only ever change w/h (never x/y together with
+      // it, the way a corner-handle drag does), so only w/h shrink here.
+      editor.updateElementProperties(parent, { w: 80, h: 90 });
+
+      const parentAfter = editor.scene.get(parent)!;
+      expect(parentAfter).toMatchObject({ x: 0, y: 0, w: 80, h: 90 });
+      const childAfter = editor.scene.get(child)!;
+      expect(childAfter.x + childAfter.w).toBe(
+        parentAfter.x + parentAfter.w - 16,
+      );
+      expect(childAfter.y + childAfter.h).toBe(
+        parentAfter.y + parentAfter.h - 16,
+      );
+      // Position moved, size didn't — reflow repositions, it never resizes a child.
+      expect(childAfter.w).toBe(48);
+      expect(childAfter.h).toBe(48);
+
+      // One undo step covers the parent's own resize and the child's reflow together.
+      editor.commands.undo();
+      expect(editor.scene.get(parent)).toMatchObject({ w: 100, h: 100 });
+      expect(editor.scene.get(child)).toMatchObject({ x: 40, y: 40 });
+    });
+
+    it("does nothing extra when the child already comfortably fits", () => {
+      const parent = editor.addBox({
+        at: { x: 0, y: 0 },
+        w: 200,
+        h: 200,
+        label: "parent",
+      });
+      const child = editor.addIcon("test/vpc", {
+        at: { x: 30, y: 30 },
+        parentId: parent,
+      });
+      let dispatchCount = 0;
+      const unsubscribe = editor.commands.onDispatch(() => {
+        dispatchCount += 1;
+      });
+
+      editor.updateElementProperties(parent, { w: 150, h: 150 });
+      unsubscribe();
+
+      expect(editor.scene.get(child)).toMatchObject({ x: 30, y: 30 });
+      // Exactly one dispatch (= one undo entry) for the whole call — proving no separate reflow
+      // command was queued alongside the resize (the reflowed Map was empty, so the for-loop
+      // that would push one added nothing).
+      expect(dispatchCount).toBe(1);
+      editor.commands.undo();
+      expect(editor.scene.get(parent)).toMatchObject({ w: 200, h: 200 });
+    });
+
+    it("reflows against the child's post-move-with position when x/y and w/h change together, not its stale pre-move one", () => {
+      // Regression case for a real bug caught before it shipped: computing the reflow clamp
+      // against scene.childrenOf(id)'s current (pre-dispatch) child position, while the queued
+      // moveElements cascade will shift that same child by (dx, dy) once the batch actually
+      // dispatches, compares a pre-move child against a post-move container — the same
+      // "command built from a stale snapshot" bug class docs/improvement-plan.md#i3 catalogs for
+      // commands.ts. Chosen so the two readings genuinely disagree: child at a comfortable
+      // (20, 20) offset from the parent's own corner — clear of the 16px buffer either way you
+      // look at it — patched with a real shrink (100x100 -> 90x90) *and* a move (+20, +20).
+      // Reading the child at its *current* (pre-dispatch) position (20, 20) and clamping against
+      // the *new* container bounds (20, 20, 90, 90) incorrectly finds it too close to the near
+      // edge (buffer starts at 20+16=36; 20 < 36) and pins it there. Reading it at its correct
+      // *post*-move-with position (20+20, 20+20) = (40, 40) — what it will actually be once the
+      // queued moveElements cascade has run — finds it comfortably inside (36..46) and leaves it
+      // alone. Verified this actually distinguishes the two: temporarily reverting the (dx, dy)
+      // translation this test guards reproduces the wrong (36, 36) here.
+      const parent = editor.addBox({
+        at: { x: 0, y: 0 },
+        w: 100,
+        h: 100,
+        label: "parent",
+      });
+      const child = editor.addIcon("test/vpc", {
+        at: { x: 20, y: 20 },
+        parentId: parent,
+      });
+
+      editor.updateElementProperties(parent, { x: 20, y: 20, w: 90, h: 90 });
+
+      expect(editor.scene.get(parent)).toMatchObject({
+        x: 20,
+        y: 20,
+        w: 90,
+        h: 90,
+      });
+      // Move-with alone (no reflow needed) correctly accounts for the child's new position.
+      expect(editor.scene.get(child)).toMatchObject({ x: 40, y: 40 });
+    });
   });
 
   it("reroutes an attached automatic connector after an inspector resize", () => {
@@ -686,6 +793,91 @@ describe("createEditor", () => {
     expect(svg).not.toContain('id="icad:source"');
   });
 
+  describe("readIcadFromSvg round-trip (I16, docs/improvement-plan.md#i16--honour-or-retract-the-shipped-claims)", () => {
+    it("re-opens a diagram from its own exported SVG, end to end through the real public API", async () => {
+      editor.addBox({ at: { x: 5, y: 5 }, w: 220, h: 140, label: "VPC" });
+      editor.addIcon("test/vpc", { at: { x: 20, y: 20 } });
+      const svg = await editor.export({ format: "svg" });
+
+      const extracted = readIcadFromSvg(svg);
+      expect(extracted).toBeDefined();
+
+      const other = createEditor({
+        container: document.createElement("div"),
+        catalog: testCatalog(),
+      });
+      other.loadIcad(extracted);
+
+      // D8's actual claim — "our tool can reopen and edit it" — verified against the real
+      // element data, not just that *something* parsed: every element, geometry included,
+      // survives the export → SVG text → re-import round-trip intact.
+      expect(other.toIcad().elements).toEqual(editor.toIcad().elements);
+    });
+
+    it("returns undefined for a plain SVG with no embedded source — not an error", () => {
+      expect(
+        readIcadFromSvg(
+          '<svg xmlns="http://www.w3.org/2000/svg"><rect/></svg>',
+        ),
+      ).toBeUndefined();
+    });
+
+    it("returns undefined when the diagram was exported with embedSource: false", async () => {
+      editor.addBox({ at: { x: 0, y: 0 }, label: "VPC" });
+      const svg = await editor.export({ format: "svg", embedSource: false });
+      expect(readIcadFromSvg(svg)).toBeUndefined();
+    });
+
+    it("throws IcadSourceCorruptError, not a generic parse error, for malformed embedded source", () => {
+      const svg =
+        '<svg xmlns="http://www.w3.org/2000/svg">' +
+        '<metadata id="icad:source">not-valid-base64!!!</metadata>' +
+        "</svg>";
+      expect(() => readIcadFromSvg(svg)).toThrow(IcadSourceCorruptError);
+    });
+
+    it("throws IcadSourceCorruptError for a source node whose decoded content isn't valid JSON", () => {
+      // Valid base64, deliberately not JSON once decoded.
+      const encoded = Buffer.from("not json at all", "utf-8").toString(
+        "base64",
+      );
+      const svg =
+        '<svg xmlns="http://www.w3.org/2000/svg">' +
+        `<metadata id="icad:source">${encoded}</metadata>` +
+        "</svg>";
+      expect(() => readIcadFromSvg(svg)).toThrow(IcadSourceCorruptError);
+    });
+
+    it("throws IcadSourceCorruptError rather than silently returning something for malformed SVG/XML itself", () => {
+      expect(() =>
+        readIcadFromSvg('<svg><metadata id="icad:source">unterminated'),
+      ).toThrow(IcadSourceCorruptError);
+    });
+
+    it("extracted content is only raw JSON — still goes through fromIcad's own validation, I14 included", async () => {
+      const tampered =
+        '<svg xmlns="http://www.w3.org/2000/svg">' +
+        `<metadata id="icad:source">${Buffer.from(
+          JSON.stringify({
+            format: "icad",
+            version: 1,
+            elements: [{ id: "bad", type: "not-a-real-type" }],
+          }),
+          "utf-8",
+        ).toString("base64")}</metadata>` +
+        "</svg>";
+      const extracted = readIcadFromSvg(tampered);
+      const other = createEditor({
+        container: document.createElement("div"),
+        catalog: testCatalog(),
+      });
+      // Doesn't throw — I14's schema validation drops the one malformed element rather than
+      // failing the whole load, same as it does for a hand-edited .icad file.
+      other.loadIcad(extracted);
+      expect(other.scene.has("bad")).toBe(false);
+    });
+  });
+
   it("pins the host page's font stack onto the exported SVG root", async () => {
     document.body.appendChild(container);
     container.style.fontFamily = '"IBM Plex Sans", system-ui, sans-serif';
@@ -1057,6 +1249,87 @@ describe("createEditor", () => {
       editor.commands.undo();
       expect(editor.scene.get(id)).toBeUndefined();
       expect(editor.commands.canUndo()).toBe(false);
+    });
+
+    describe("composes with a rotated element's own transform (I5, docs/improvement-plan.md#i5--dragrotate-transform-collision)", () => {
+      it("keeps the rotate() transform visible for the whole gesture, translated alongside it", () => {
+        const id = editor.addBox({
+          at: { x: 10, y: 10 },
+          w: 40,
+          h: 20,
+          label: "box",
+        });
+        editor.rotateElement(id, 30);
+        const node = () => container.querySelector(`[data-icad-id="${id}"]`);
+        // 30 degrees, center at (10+20, 10+10) = (30, 20).
+        expect(node()?.getAttribute("transform")).toBe("rotate(30 30 20)");
+
+        const interaction = editor.beginInteraction([id]);
+        interaction.update(5, -5);
+
+        // Before the fix, previewTransform overwrote the whole attribute with just the
+        // translate, visually snapping the element to 0° for the duration of the drag.
+        expect(node()?.getAttribute("transform")).toBe(
+          "translate(5, -5) rotate(30 30 20)",
+        );
+
+        interaction.commit();
+        expect(editor.scene.get(id)).toMatchObject({
+          x: 15,
+          y: 5,
+          rotation: 30,
+        });
+        // Committed: render() runs, and renderElement's own rotate-only transform is back —
+        // center recomputed at the new committed position (15+20, 5+10).
+        expect(node()?.getAttribute("transform")).toBe("rotate(30 35 15)");
+      });
+
+      it("survives abort — the rotation isn't stripped by the preview cleanup", () => {
+        const id = editor.addBox({
+          at: { x: 10, y: 10 },
+          w: 40,
+          h: 20,
+          label: "box",
+        });
+        editor.rotateElement(id, 45);
+        const node = () => container.querySelector(`[data-icad-id="${id}"]`);
+
+        const interaction = editor.beginInteraction([id]);
+        interaction.update(50, 50);
+        interaction.abort();
+
+        // Before the fix: abort()'s previewTransform(ids, 0, 0) called removeAttribute
+        // unconditionally, stripping the rotation with no command dispatched — and therefore no
+        // scene-change event — to ever repaint it back.
+        expect(node()?.getAttribute("transform")).toBe("rotate(45 30 20)");
+        expect(editor.scene.get(id)).toMatchObject({ rotation: 45 });
+      });
+
+      it("survives a net-zero-delta commit — same code path as abort, same bug otherwise", () => {
+        const id = editor.addBox({
+          at: { x: 10, y: 10 },
+          w: 40,
+          h: 20,
+          label: "box",
+        });
+        editor.rotateElement(id, 60);
+        const node = () => container.querySelector(`[data-icad-id="${id}"]`);
+
+        const interaction = editor.beginInteraction([id]);
+        interaction.update(20, 20);
+        interaction.update(0, 0); // drags back to the exact start point before releasing
+        interaction.commit();
+
+        // dx === dy === 0, so commitMove is never even called (the existing skip-if-zero guard)
+        // — this only stays correct because previewTransform's own zero-delta path now falls
+        // back to the rotate-only transform instead of clearing the attribute outright.
+        expect(node()?.getAttribute("transform")).toBe("rotate(60 30 20)");
+        expect(editor.scene.get(id)).toMatchObject({
+          x: 10,
+          y: 10,
+          rotation: 60,
+        });
+      });
     });
 
     it("commit is a no-op when the delta never left zero, or the id list was empty/unknown", () => {

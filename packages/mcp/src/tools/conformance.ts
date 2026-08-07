@@ -1,5 +1,4 @@
 import { writeFile } from "node:fs/promises";
-import path from "node:path";
 import { ExportBlockedError } from "@icad/core";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
@@ -11,10 +10,16 @@ import {
 } from "../state.js";
 import { complianceSummarySchema } from "../schemas.js";
 import { fail, ok, okText } from "../toolResult.js";
+import { assertOverwritable, resolveWritePath } from "../workspace.js";
 
-function resolvePath(input: string): string {
-  return path.resolve(process.cwd(), input);
-}
+const SVG_EXTENSIONS = [".svg"];
+
+const overwriteSchema = z
+  .boolean()
+  .optional()
+  .describe(
+    "Overwrite an existing file at this path even if this session didn't create it",
+  );
 
 export function registerConformanceTools(
   server: McpServer,
@@ -113,7 +118,9 @@ export function registerConformanceTools(
         "Exports the current document as a canonical, re-editable SVG (the .icad source is embedded per " +
         'packages/core/docs/file-format.md unless embedSource is false). Blocked if the export gate is "block" and ' +
         "error-severity diagnostics remain — resolve them via quickfix_apply* first. PNG export isn't " +
-        "supported by this server yet (requires a real browser canvas).",
+        "supported by this server yet (requires a real browser canvas). A `path` is confined to the server's " +
+        "workspace root and must end in .svg; a pre-existing file there that this session didn't create needs " +
+        "force: true to overwrite.",
       inputSchema: {
         format: z.literal("svg"),
         embedSource: z.boolean().optional(),
@@ -123,10 +130,11 @@ export function registerConformanceTools(
           .describe(
             "Write the SVG to this path instead of returning it inline",
           ),
+        force: overwriteSchema,
       },
       outputSchema: { path: z.string().optional(), bytesLength: z.number() },
     },
-    async ({ embedSource, path: outPath }) => {
+    async ({ embedSource, path: outPath, force }) => {
       try {
         requireOpenDocument(state);
         const svg = await state.editor.export({
@@ -134,8 +142,14 @@ export function registerConformanceTools(
           ...(embedSource !== undefined ? { embedSource } : {}),
         });
         if (outPath) {
-          const resolved = resolvePath(outPath);
+          const resolved = await resolveWritePath(
+            state.workspaceRoot,
+            outPath,
+            SVG_EXTENSIONS,
+          );
+          await assertOverwritable(resolved, state.knownPaths, force);
           await writeFile(resolved, svg, "utf-8");
+          state.knownPaths.add(resolved);
           return ok(
             { path: resolved, bytesLength: svg.length },
             `Wrote ${svg.length} bytes to "${resolved}".`,

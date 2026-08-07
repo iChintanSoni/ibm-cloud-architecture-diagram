@@ -24,7 +24,11 @@ describe("McpSession", () => {
   it(
     "round-trips a real .icad + .svg through a real spawned @icad/mcp subprocess",
     async () => {
-      session = await McpSession.start();
+      // The subprocess's workspace root is confined to tmpdir() (I13) so it can write the
+      // .icad/.svg fixtures this test reads back below — matching how runDiagramTask itself
+      // derives a root from its own caller-supplied output paths, not from anything the LLM
+      // decides.
+      session = await McpSession.start({ workspaceRoot: tmpdir() });
 
       await session.callTool("doc_create", { level: "blank", force: true });
       await session.callTool("element_add_box", {

@@ -17,6 +17,49 @@ describe("authoring tools", () => {
     await close();
   });
 
+  it("element_update reflows a pinched child on a w/h shrink, matching the canvas drag-resize gesture (I16, docs/improvement-plan.md#i16--honour-or-retract-the-shipped-claims)", async () => {
+    const box = await client.callTool({
+      name: "element_add_box",
+      arguments: { at: { x: 0, y: 0 }, w: 100, h: 100 },
+    });
+    const boxId = (box.structuredContent as { id: string }).id;
+    const search = await client.callTool({
+      name: "catalog_search",
+      arguments: { query: "vpc" },
+    });
+    const { icons } = search.structuredContent as {
+      icons: Array<{ id: string }>;
+    };
+    expect(icons.length).toBeGreaterThan(0);
+    const icon = await client.callTool({
+      name: "element_add_icon",
+      arguments: {
+        catalogRef: icons[0]!.id,
+        at: { x: 40, y: 40 },
+        parentId: boxId,
+      },
+    });
+    const iconId = (icon.structuredContent as { id: string }).id;
+
+    await client.callTool({
+      name: "element_update",
+      arguments: { id: boxId, patch: { w: 80, h: 90 } },
+    });
+
+    const doc = await client.callTool({ name: "doc_get", arguments: {} });
+    type El = { id: string; x: number; y: number; w: number; h: number };
+    const elements = (doc.structuredContent as { document: { elements: El[] } })
+      .document.elements;
+    const boxAfter = elements.find((el) => el.id === boxId)!;
+    const iconAfter = elements.find((el) => el.id === iconId)!;
+    expect(boxAfter).toMatchObject({ w: 80, h: 90 });
+    // Before I16, this same shrink through element_update left the icon exactly where it
+    // started — outside the shrunk box's own bounds — while a mouse drag-resize of the same
+    // container already pulled it back inside. Both surfaces now agree.
+    expect(iconAfter.x + iconAfter.w).toBe(boxAfter.x + boxAfter.w - 16);
+    expect(iconAfter.y + iconAfter.h).toBe(boxAfter.y + boxAfter.h - 16);
+  });
+
   it("adds a catalog icon found via catalog_search", async () => {
     const search = await client.callTool({
       name: "catalog_search",

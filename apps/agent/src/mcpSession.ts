@@ -83,16 +83,32 @@ function withErrorRecovery(original: StructuredTool): StructuredTool {
  * holds exactly one open document for its whole process lifetime, and a long-running session
  * can end up running stale, pre-rebuild code).
  */
+export interface McpSessionOptions {
+  /** Confines the spawned `@icad/mcp` subprocess's `doc_open`/`doc_save`/`export_diagram` to this
+   * directory (I13, docs/improvement-plan.md#i13--mcp-filesystem-confinement), passed through as
+   * `ICAD_MCP_WORKSPACE_ROOT`. Every path the LLM-driven sub-agents pass to those tools comes from
+   * `RunDiagramTaskInput` fields the caller of `runDiagramTask` supplied directly, not from
+   * anything the LLM invented — so `runDiagramTask` computes this as the common ancestor of those
+   * input paths, covering exactly what the caller already authorized and nothing wider. Omit to
+   * fall back to the subprocess's own cwd (this session's prior, unconfined-by-anything-but-cwd
+   * behavior).
+   */
+  workspaceRoot?: string;
+}
+
 export class McpSession {
   private constructor(private readonly client: MultiServerMCPClient) {}
 
-  static async start(): Promise<McpSession> {
+  static async start(options: McpSessionOptions = {}): Promise<McpSession> {
     const client = new MultiServerMCPClient({
       mcpServers: {
         [SERVER_NAME]: {
           transport: "stdio",
           command: process.execPath,
           args: [resolveMcpServerEntrypoint()],
+          ...(options.workspaceRoot
+            ? { env: { ICAD_MCP_WORKSPACE_ROOT: options.workspaceRoot } }
+            : {}),
           // No auto-restart: a dead subprocess means this task fails, not a silent respawn onto
           // a document state the caller no longer recognizes.
           restart: { enabled: false },

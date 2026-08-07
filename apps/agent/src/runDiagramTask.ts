@@ -1,4 +1,5 @@
 import { readFile, stat } from "node:fs/promises";
+import path from "node:path";
 import type { BaseLanguageModel } from "@langchain/core/language_models/base";
 import type { BaseMessage } from "@langchain/core/messages";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
@@ -143,11 +144,47 @@ function errorsOf(summary: LintSummary): DiagnosticSummary[] {
  * language isn't reliably trustworthy either (see `tools.ts`'s comment on
  * `CONFORMANCE_EXPORTER_TOOL_NAMES`).
  */
+/**
+ * The directory the spawned MCP subprocess is confined to (I13,
+ * docs/improvement-plan.md#i13--mcp-filesystem-confinement): the common ancestor of every path
+ * `input` itself supplies to `doc_open`/`doc_save`/`export_diagram` below. Every one of these
+ * paths came from the caller of `runDiagramTask` directly (an A2A/CLI request, per D32/D34's
+ * localhost-only, single-task trust model) — never from the LLM sub-agents, which only ever pass
+ * *element* ids/coordinates to tools, not filesystem paths (see `tools.ts`'s
+ * `CONFORMANCE_EXPORTER_TOOL_NAMES` comment) — so covering their directories confines the
+ * subprocess to exactly what the caller already authorized, no wider.
+ */
+function computeWorkspaceRoot(input: RunDiagramTaskInput): string {
+  const dirs = [
+    input.existingIcadPath,
+    input.outputIcadPath,
+    input.outputSvgPath,
+  ]
+    .filter((p): p is string => p !== undefined)
+    .map((p) => path.resolve(path.dirname(p)));
+  if (dirs.length === 1) return dirs[0]!;
+  const segmentLists = dirs.map((d) => d.split(path.sep));
+  const shortest = Math.min(...segmentLists.map((s) => s.length));
+  const common: string[] = [];
+  for (let i = 0; i < shortest; i += 1) {
+    const segment = segmentLists[0]![i]!;
+    if (segmentLists.every((segments) => segments[i] === segment)) {
+      common.push(segment);
+    } else {
+      break;
+    }
+  }
+  const joined = common.join(path.sep);
+  return joined || path.sep;
+}
+
 export async function runDiagramTask(
   input: RunDiagramTaskInput,
 ): Promise<RunDiagramTaskResult> {
   const t0 = performance.now();
-  const session = await McpSession.start();
+  const session = await McpSession.start({
+    workspaceRoot: computeWorkspaceRoot(input),
+  });
   const tSessionStart = performance.now();
   try {
     if (input.existingIcadPath) {

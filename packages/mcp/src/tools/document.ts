@@ -1,5 +1,4 @@
 import { readFile, writeFile } from "node:fs/promises";
-import path from "node:path";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import {
@@ -10,15 +9,25 @@ import {
 } from "../state.js";
 import { diagramTemplateIdSchema } from "../schemas.js";
 import { fail, ok, okText } from "../toolResult.js";
+import {
+  assertOverwritable,
+  resolveReadPath,
+  resolveWritePath,
+} from "../workspace.js";
+
+const ICAD_EXTENSIONS = [".icad"];
 
 const forceSchema = z
   .boolean()
   .optional()
   .describe("Discard unsaved changes in the current document without erroring");
 
-function resolvePath(input: string): string {
-  return path.resolve(process.cwd(), input);
-}
+const overwriteSchema = z
+  .boolean()
+  .optional()
+  .describe(
+    "Overwrite an existing file at this path even if this session didn't create or open it",
+  );
 
 export function registerDocumentTools(
   server: McpServer,
@@ -76,19 +85,25 @@ export function registerDocumentTools(
       title: "Open a .icad file",
       description:
         "Load a .icad file from disk into the editor, replacing the current document. Relative paths resolve " +
-        "against the server process's working directory. Errors if the current document has unsaved changes " +
-        "— pass force: true to discard them.",
+        "against the MCP server's configured workspace root (the ICAD_MCP_WORKSPACE_ROOT it was started with, " +
+        "or its own working directory if unset) — a path outside that root, or one that doesn't end in .icad, " +
+        "is refused. Errors if the current document has unsaved changes — pass force: true to discard them.",
       inputSchema: { path: z.string(), force: forceSchema },
     },
     async ({ path: inputPath, force }) => {
       try {
         guardReplace(state, force);
-        const resolved = resolvePath(inputPath);
+        const resolved = await resolveReadPath(
+          state.workspaceRoot,
+          inputPath,
+          ICAD_EXTENSIONS,
+        );
         const raw = await readFile(resolved, "utf-8");
         state.editor.loadIcad(JSON.parse(raw));
         state.hasExplicitDocument = true;
         state.dirty = false;
         state.lastPath = resolved;
+        state.knownPaths.add(resolved);
         return okText(`Opened "${resolved}".`);
       } catch (err) {
         return fail(err);
@@ -102,24 +117,34 @@ export function registerDocumentTools(
       title: "Save the current document",
       description:
         "Write the current document to disk as .icad JSON. Defaults to the path last used by doc_open/doc_save " +
-        "for this document if `path` is omitted.",
-      inputSchema: { path: z.string().optional() },
+        "for this document if `path` is omitted. A `path` is confined to the server's workspace root and must " +
+        "end in .icad, same as doc_open. Refuses to overwrite a pre-existing file this session didn't itself " +
+        "create or open — pass force: true to overwrite it anyway.",
+      inputSchema: { path: z.string().optional(), force: overwriteSchema },
     },
-    async ({ path: inputPath }) => {
+    async ({ path: inputPath, force }) => {
       try {
         requireOpenDocument(state);
-        const target = inputPath ? resolvePath(inputPath) : state.lastPath;
+        const target = inputPath
+          ? await resolveWritePath(
+              state.workspaceRoot,
+              inputPath,
+              ICAD_EXTENSIONS,
+            )
+          : state.lastPath;
         if (!target) {
           throw new ToolError(
             "No path given, and this document has never been saved — pass a path.",
           );
         }
+        await assertOverwritable(target, state.knownPaths, force);
         await writeFile(
           target,
           JSON.stringify(state.editor.toIcad(), null, 2),
           "utf-8",
         );
         state.lastPath = target;
+        state.knownPaths.add(target);
         state.dirty = false;
         return okText(`Saved to "${target}".`);
       } catch (err) {

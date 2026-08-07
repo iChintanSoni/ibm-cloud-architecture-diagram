@@ -123,12 +123,18 @@ export {
   ICAD_VERSION,
   toIcad,
   fromIcad,
+  fromIcadWithReport,
   applyIcad,
+  applyIcadWithReport,
   type IcadDocument,
+  type RepairReport,
 } from "./io/icad.js";
+export { type DroppedElement } from "./io/icadSchema.js";
 export {
   exportSvg,
   exportPng,
+  readIcadFromSvg,
+  IcadSourceCorruptError,
   type SvgExportOptions,
   type PngExportOptions,
 } from "./io/export.js";

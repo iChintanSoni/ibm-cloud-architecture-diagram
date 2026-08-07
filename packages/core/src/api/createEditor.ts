@@ -758,6 +758,14 @@ export class Editor {
    * Updates inspector-editable fields as one undo step. Position edits use
    * move-with semantics so nested contents travel with a container; geometry
    * changes continue to reroute attached automatic connectors.
+   *
+   * A `w`/`h` change also reflows direct children back inside the new bounds (I16,
+   * docs/improvement-plan.md#i16--honour-or-retract-the-shipped-claims), the same
+   * `reflowChildren` step `beginResizeInteraction()`'s `commit()` already runs for a canvas
+   * drag-resize — previously this path (the Properties panel's W/H fields, and MCP's
+   * `element_update`, both of which call this method) left children exactly where they were,
+   * free to end up outside their own container's bounds after a shrink, unlike a mouse-drag
+   * resize of the same container. All three surfaces now agree.
    */
   updateElementProperties(id: ElementId, patch: ElementPropertiesPatch): void {
     const current = this.scene.get(id);
@@ -787,6 +795,34 @@ export class Editor {
       commands.push(
         updateElement(this.scene, id, fieldPatch as Partial<SceneElement>),
       );
+    }
+
+    if (patch.w !== undefined || patch.h !== undefined) {
+      const nextW = patch.w ?? current.w;
+      const nextH = patch.h ?? current.h;
+      // Reflow against each child's *post*-move-with position (child.x + dx, child.y + dy), not
+      // its current one — unlike beginResizeInteraction's canvas drag-resize (which never cascades
+      // a move to children at all), a combined x/y + w/h patch here queues a real moveElements
+      // cascade above that will shift every descendant by (dx, dy) before this reflow command
+      // gets a chance to run. Clamping against the still-current position here would compare a
+      // pre-move child against a post-move container — exactly the "command built from a stale
+      // snapshot" bug class docs/improvement-plan.md#i3 catalogs elsewhere in this file, and
+      // caught here before it shipped by this method's own existing move-with test exercising
+      // both a position and a size change in the same call.
+      const children = this.scene
+        .childrenOf(id)
+        .map((child) => ({ ...child, x: child.x + dx, y: child.y + dy }));
+      if (children.length > 0) {
+        const reflowed = reflowChildren(children, {
+          x: nextX,
+          y: nextY,
+          w: nextW,
+          h: nextH,
+        });
+        for (const [childId, rect] of reflowed) {
+          commands.push(updateElement(this.scene, childId, rect));
+        }
+      }
     }
 
     if (commands.length === 0) return;
